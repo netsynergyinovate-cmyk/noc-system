@@ -19,6 +19,8 @@
   --color-accent: var(--secondary);
   --color-accent-foreground: var(--foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--border);
   --color-ring: var(--primary);
@@ -43,6 +45,12 @@
   --muted-foreground: #656561;
   --border: #e4e4e1;
   --destructive: #b91c1c;
+  /* success dan warning cukup gelap supaya tulisannya tetap 4,5 : 1 di atas
+     latarnya sendiri (bg-success/10, bg-warning/10), bukan hanya di atas putih. */
+  --success: #14773a;
+  --warning: #a94d08;
+  --chart-1: #2563eb;
+  --chart-2: #d55e00;
 }
 
 .dark {
@@ -57,6 +65,10 @@
   --muted-foreground: #b0b0aa;
   --border: #3b3b37;
   --destructive: #ff8a8a;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --chart-1: #60a5fa;
+  --chart-2: #fb923c;
 }
 
 @layer base {
@@ -80,4 +92,31 @@
   ::selection {
     background: #bb371e22;
   }
+}
+
+/* Tile peta hanya tersedia versi terang; di tema gelap warnanya dibalik. */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
+/* uPlot menggambar di canvas; hanya kotak info kursor yang perlu gaya. */
+.traffic-tip {
+  position: absolute;
+  z-index: 10;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--card-foreground);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+}
+.traffic-tip[hidden] {
+  display: none;
+}
+.traffic-tip > :first-child {
+  color: var(--muted-foreground);
 }

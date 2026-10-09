@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { root } from "./lib.mjs";
 
@@ -76,10 +76,25 @@ try {
     STARTER_TEST_RUN: project,
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
     BETTER_AUTH_URL: "http://localhost:3101",
+    REALTIME_TOKEN_SECRET: randomBytes(32).toString("hex"),
+    BACKEND_URL: "http://localhost:8180",
   };
   delete testEnv.__NEXT_PROCESSED_ENV;
   await run(process.execPath, ["scripts/migrate.mjs"], testEnv);
   if (mode === "unit") {
+    // Test backend Go yang butuh PostgreSQL memakai database sekali pakai yang
+    // sama. Dilewati bila Go tidak terpasang, supaya npm test tetap jalan tanpa Go.
+    if (
+      existsSync(resolve(root, "backend/go.mod")) &&
+      spawnSync("go", ["version"], { stdio: "ignore" }).status === 0
+    ) {
+      await run("go", ["-C", "backend", "test", "-count=1", "./..."], {
+        ...testEnv,
+        TEST_DATABASE_URL: url,
+      });
+    } else {
+      console.log("Go tidak ditemukan; test backend dilewati.");
+    }
     const files = readdirSync(resolve(root, "tests"))
       .filter((file) => file.endsWith(".test.mjs"))
       .map((file) => `tests/${file}`);
@@ -87,7 +102,7 @@ try {
   } else {
     await run(
       process.execPath,
-      [resolve(root, "node_modules/@playwright/test/cli.js"), "test"],
+      [resolve(root, "node_modules/@playwright/test/cli.js"), "test", ...process.argv.slice(3)],
       testEnv,
     );
   }

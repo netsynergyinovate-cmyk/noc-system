@@ -17,6 +17,7 @@ function prepare(cwd, overrides = {}) {
   for (const key of [
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
+    "REALTIME_TOKEN_SECRET",
     "DATABASE_URL",
     "MIGRATION_DATABASE_URL",
     "COMPOSE_PROJECT_NAME",
@@ -43,6 +44,12 @@ test("first-run setup creates independent local secrets and is repeatable", () =
     prepare(cwd);
     const first = readFileSync(resolve(cwd, ".env.local"), "utf8");
     assert.match(first, /BETTER_AUTH_SECRET="[a-f0-9]{64}"/);
+    assert.match(first, /REALTIME_TOKEN_SECRET="[a-f0-9]{64}"/);
+    // Dua rahasia itu independen: kebocoran satu tidak membuka yang lain.
+    assert.notEqual(
+      first.match(/BETTER_AUTH_SECRET="([a-f0-9]{64})"/)[1],
+      first.match(/REALTIME_TOKEN_SECRET="([a-f0-9]{64})"/)[1],
+    );
     assert.match(first, /POSTGRES_PASSWORD="[a-f0-9]{48}"/);
     assert.match(first, /DATABASE_URL="postgresql:\/\/starter:/);
     assert.match(first, /COMPOSE_PROJECT_NAME="ngodingpakeai-pg-/);
@@ -59,7 +66,16 @@ test("setup preserves an existing external database and credentials", () => {
     const content = `BETTER_AUTH_SECRET=${"x".repeat(48)}\nBETTER_AUTH_URL=http://localhost:4000\nDATABASE_URL=postgresql://someone:private@db.example/existing\n`;
     writeFileSync(resolve(cwd, ".env.local"), content);
     prepare(cwd);
-    assert.equal(readFileSync(resolve(cwd, ".env.local"), "utf8"), content);
+    // Yang sudah ada tidak diubah; hanya rahasia tiket realtime yang belum ada
+    // ditambahkan di belakangnya.
+    const after = readFileSync(resolve(cwd, ".env.local"), "utf8");
+    assert.ok(after.startsWith(content), "isi lama harus utuh");
+    assert.match(
+      after.slice(content.length),
+      /^\nREALTIME_TOKEN_SECRET="[a-f0-9]{64}"\n$/,
+    );
+    prepare(cwd);
+    assert.equal(readFileSync(resolve(cwd, ".env.local"), "utf8"), after);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
@@ -75,6 +91,19 @@ test("process environment credentials are not copied to disk", () => {
     assert.ok(!contents.includes(secret));
     assert.ok(!contents.includes(url));
     assert.ok(!contents.includes("POSTGRES_PASSWORD"));
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a realtime secret supplied by the environment is not written to disk", () => {
+  const cwd = mkdtempSync(resolve(tmpdir(), "starter-env-"));
+  try {
+    const secret = "realtime-only-secret".repeat(3);
+    prepare(cwd, { REALTIME_TOKEN_SECRET: secret });
+    const contents = readFileSync(resolve(cwd, ".env.local"), "utf8");
+    assert.ok(!contents.includes(secret));
+    assert.ok(!contents.includes("REALTIME_TOKEN_SECRET"));
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

@@ -1,23 +1,18 @@
 import Link from "next/link";
-import { Layers2 } from "lucide-react";
-import { siteConfig } from "@/config/site";
+import { Activity } from "lucide-react";
 
-export function Brand() {
+// Merek NOC ISP: ikon dalam kotak dan nama. Dipakai halaman masuk/daftar dan
+// layout admin. Namanya sudah terbaca dari teksnya, jadi tidak perlu aria-label.
+export function Brand({ href = "/" }: { href?: string }) {
   return (
     <Link
-      href="/"
+      href={href}
       className="inline-flex items-center gap-2.5 rounded-sm font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-      aria-label={`${siteConfig.name} home`}
     >
       <span className="flex size-8 items-center justify-center rounded-lg bg-foreground text-background">
-        <Layers2 className="size-4" aria-hidden="true" />
+        <Activity className="size-4" aria-hidden="true" />
       </span>
-      <span>
-        {siteConfig.name}
-        <span className="ml-2 font-normal text-muted-foreground">
-          / starter
-        </span>
-      </span>
+      NOC ISP
     </Link>
   );
 }

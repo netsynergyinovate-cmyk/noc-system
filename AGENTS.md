@@ -41,7 +41,9 @@ Project-scoped MCP files for Codex, Claude Code, Cursor, and VS Code are include
 - `src/app`: Next.js App Router pages. Server Components by default; use client components for interaction.
 - `src/app/(auth)`: signup/signin. `src/app/(protected)`: protected app screens. Route-group names do not affect URLs.
 - `src/lib/auth.ts`, `auth-client.ts`, `session.ts`: Better Auth server, browser client, and real database-backed session checks. Keep `nextCookies()` last in the plugin list.
+- `src/components/auth-form.tsx`, `src/lib/auth-errors.ts`, `src/app/(auth)/layout.tsx`, `src/app/page.tsx`, `src/components/brand.tsx`: the sign-in and sign-up pages (Indonesian copy; from 1024 px a left panel with the NOC pitch and a static decorative chart, below that only the form). The form talks to the real Better Auth only: there are no demo accounts, no "demo login" button and no bypass, and no operational numbers (not even mock ones) on these public pages. `/` has no UI: it redirects a signed-in visitor to `/app` and anyone else to `/sign-in` (the answer is 200 plus a client redirect because the root `loading.tsx` wraps pages). `authFailureMessage` and `authFailureFocus` (`auth-errors.ts`, pure) are the only place that turns a failure (HTTP status plus Better Auth `code`, or a request that never arrived) into the Indonesian message and the field to focus; server text is never shown (it is English and changes between versions). Sign-in gives ONE message for every credential failure (unknown email, wrong password, anything else) so the page cannot be used to guess which emails exist; 429, network failure, server trouble (5xx, `INVALID_ORIGIN`, `MISSING_OR_NULL_ORIGIN`: the server is at fault, not the password) and `BANNED_USER` each have their own. The fields are inside a `fieldset disabled` while a request runs, which drops focus, so after a failure the form moves it by hand (the password field, selected, for bad credentials; the email field for an email already taken; the submit button otherwise) and marks that field `aria-invalid` with `aria-describedby` to the `role="alert"` message; one request at a time is enforced with a synchronous ref as well as `pending`. The password toggle keeps its name ("Tampilkan kata sandi") and flips `aria-pressed`. The form has `method="post"` so a submit that happens before the scripts load never puts the password in the URL. The left panel's headline is a paragraph, not a heading, so the page's only heading is the form's `h1`. Keep the tests' exact label queries (`getByLabel("Kata sandi", { exact: true })`): the toggle's name contains the same words. Tests: `e2e/login-page.spec.ts` (pure mapping against Better Auth's own error-code tables, structure, `/` redirects, 390/1024/1440 px, contrast in both themes, mocked server answers and focus, waiting state, toggle and Tab order, reduced motion, and the real server: unknown email versus wrong password must read identically, a banned account, an email already taken). Better Auth's rate limit (3 requests per 10 s per path) is real in these tests and is waited out, never disabled. Known limits to close before real data: sign-up is open (anyone who can reach `/sign-up` becomes a `user` and can open the dashboard), and Better Auth trusts a single-valued `X-Forwarded-For` when `trustedProxies` is not set in `src/lib/auth.ts`, so the login rate limit can be sidestepped if the app is reachable without a proxy that overwrites that header.
 - `src/lib/permissions.ts`: shared access control statement and roles for the Better Auth admin plugin. Imported by both the server and browser client, so keep it free of secrets and server-only imports.
+- `src/lib/roles.ts`, `src/lib/session-store.ts`, `src/components/session-provider.tsx`, `src/components/dashboard/role-badge.tsx`, `src/app/(protected)/layout.tsx`: the session and role store the UI reads (who is signed in, which role, what the role may SHOW). The protected layout passes four fields of the real session (`id`, `name`, `email`, `role`) to `SessionProvider`, which creates ONE vanilla Zustand store per provider (`createSessionStore`, React context): never a module-level `create()` store, because the module is shared by every request on the server and a global store would show one user's data to another (`e2e/session-store.spec.ts` checks that the module exports only factories, and `e2e/session-role-ui.spec.ts` checks two accounts never see each other's data, in the server HTML too). Read it with `useSessionUser()`, `useRole()`, `useIsPreview()`, `useCan(permissions)` (a boolean, so no wasted renders) and `useSessionActions()`; the pure selectors live in `session-store.ts` (`selectRole`, `selectCan`, ...). `roleCan` (`roles.ts`) answers exactly like Better Auth's `authClient.admin.checkRolePermission` (same split on commas without trimming, empty or null means `DEFAULT_ROLE`, any one role is enough; a test compares them over every role and permission) except that a role name that is only an inherited property (`constructor`, `toString`, `__proto__`) grants nothing instead of throwing, which Better Auth itself does. Everything here decides what is DISPLAYED and is never an access check: pages and APIs keep `requirePermission` and `withApiPermission`, and hiding a button is not protection. "Peran tiruan" (mock role): in demo mode (`DASHBOARD_DATA=demo`, decided on the server and fixed for the life of the store) the sidebar and the narrow-screen header show "Lihat sebagai", a native `select` with "Peran asli: <role>" plus one "<role> (tiruan)" per role in `permissions.ts`; picking one calls `previewAs`, so `useRole()` and `useCan()` follow it and a developer can see the screens of another role without a second account. It lives only in memory (a reload or another account clears it, `setUser` drops it when the id changes), is never sent to the server or stored, and changes only what the browser SHOWS: the server and every guard still follow the real role (`e2e` checks that previewing admin as a regular account still gets 403 from `/api/admin/notes` and the not-found page from `/admin`, and that a real admin previewing "Petugas" can still open `/admin`). In live mode there is no select, only "Peran: <chip>". `RoleBadge` carries `data-testid="role-badge"`, `data-role` (the effective role), `data-preview` and `data-preview-enabled`; it exists twice in the DOM (sidebar and bar), so query it by role and name or with `:visible`. The sidebar scrolls (`overflow-y-auto`) so the "Keluar" button stays reachable on short screens such as 1366x768 (a test measures it). Access control for the screen: `src/lib/access.ts` names the UI capabilities and maps each to permissions (`capabilities`: `adminArea` = `notes: read-any`, `manageCpe` = `cpe: manage`; frozen, `capabilityPermissions` returns a copy, `selectCanDo` follows the preview role), and `src/components/access.tsx` has `useCanDo(capability)` and `<Can to="adminArea" fallback={...}>` (or `<Can permissions={{ ... }}>` for a one-off; the type forbids giving both or neither; it shows nothing without a user). Components name a capability, never a raw permission object, so the screen policy changes in one place, and `e2e/access.spec.ts` pins the current matrix (admin can every capability, `user` none) so a change has to be deliberate. A new capability (handle alert, manage router, ...) is added there only AFTER its resource and action exist in `permissions.ts` and the server guards it. The first user is `AdminLink` (`dashboard/admin-link.tsx`): the "Buka admin" link no longer comes from an `isAdmin` prop and a database query in the app layout, it reads the role in the store, so a real admin has it in the server HTML (no flash) and the preview role moves it (`e2e/access-ui.spec.ts`, plus the live-mode case in `e2e/setup-gate.spec.ts`). `manageCpe` has no user yet: the CPE dialog is still a mock open to everyone, and gating it (and the handle-alert and add-router buttons) is the next step; do it with `<Can>` or `useCanDo`, and prefer keeping a denied action visible but `aria-disabled` with the reason as text over hiding it where an operator needs to know it exists. Known gap for that step: `POST /api/routers` and `POST /api/routers/test` only call `withApiSession`, so any signed-in account (sign-up is open) can add a router, and the test route makes the server fetch `/rest/system/resource` on any host the caller names and echoes the outcome, which is a server-side request forgery and port-probing primitive; guard both with `withApiPermission` (a new `router` resource in `permissions.ts`) before real devices are used.
 - `src/db/schema/`, `src/db/index.ts`, `drizzle/`: PostgreSQL tables, shared node-postgres pool, committed migrations. Run on Node.js with a persistent PostgreSQL server.
 - `src/app/api/`: thin HTTP route handlers. Use `withApiSession` from `src/lib/api.ts` for authenticated JSON endpoints.
 - `src/services/`: server-only application logic and all domain Drizzle queries. Pass the verified session user ID separately; filter ownership in SQL.
@@ -49,6 +51,13 @@ Project-scoped MCP files for Codex, Claude Code, Cursor, and VS Code are include
 - `src/components/ui`: owned shadcn/ui primitives. Reuse them and `cn()`; add components with `npx shadcn@4.21.0 add <component>`.
 - `src/app/globals.css`: Tailwind v4 theme tokens. No Tailwind v3 config is needed. Motion imports come from `motion/react`; respect reduced motion.
 - `starter.config.json` and `src/config/site.ts`: identity and common paths.
+- `backend/`: separate Go module (`noc-isp/backend`) for the NOC data collector, rule engine, and WebSocket hub. It is not part of the Next.js build or image. Run `npm run backend:dev`, `backend:check`, `backend:build`; see `backend/README.md`. The Notes/Drizzle rules below apply to the Next.js side only.
+- `src/app/api/realtime/ticket`, `src/lib/realtime-ticket.ts`: issue the short-lived signed ticket the Go backend checks (shared `REALTIME_TOKEN_SECRET`). Never expose the secret or put it in a `NEXT_PUBLIC_` variable; the format is documented in `backend/README.md`.
+- `src/app/(protected)/setup`, `src/services/devices.service.ts`: the Setup Perangkat gate. With `DASHBOARD_DATA=live` the dashboard layout redirects to `/setup` until at least one active router or OLT has `last_seen_at` set; the default `demo` mode skips the gate because the dashboard still shows mock data. Flip the default to `live` only once adding and testing devices works, otherwise nobody can open the dashboard.
+- `src/lib/dashboard/`, `src/components/dashboard/`: the dashboard UI with mock data. `store.ts` takes snapshot/delta messages; `mock-feed.ts` is the stand-in for the backend WebSocket and is replaced inside `dashboard-feed.tsx`. The traffic panel's range picker (5 menit/1 jam/6 jam/24 jam/7 hari, `ranges.ts`) reads history and incident markers through `history.ts` (`loadTrafficHistory`, `loadIncidents`), which currently build deterministic mock data; swap them for the backend: `GET /api/v1/traffic/history` already exists (Go backend, needs `DATABASE_URL`; `range=1h|6h|24h|7d` gives the same steps the picker uses, see `backend/README.md`), `GET /api/v1/incidents` does not exist yet. The map (`customer-map.tsx`) takes focus requests through the store: `useDashboardStore.getState().focusMap(customerId)` zooms to that customer, rings them, and shows a banner with "Tampilkan semua"; `/app?focus=<customerId>` sends the same request on load. Anything that wants to point at an incident (incident list, notifications) should call `focusMap`, not touch the map. The Deteksi Anomali page (`/app/anomali`, `anomaly-board.tsx`, `lib/dashboard/anomalies.ts`) lists the same incidents as the chart markers with router, customer and measured value; `anomalyRules` there is the single source for thresholds and must match the Go rule engine. `loadAnomalies` is the seam for a future `GET /api/v1/anomalies`; the mock data is a function of time only, so a given `now` always gives the same list. Active alerts (`lib/dashboard/alerts.ts`) are the contract for a future `GET /api/v1/alerts?status=active`: whole-second `startedAt`/`detectedAt` plus `timeSource` (`event` from the router, `poll` from polling) and `timeUncertaintySeconds`; render times with `AlertTime`, never a bare date string. Each alert also carries `location` (ODP/address/coordinates for customer alerts, router name with null coordinates for router alerts); render it with `AlertPlace` and never invent a point for a router. The Alert page (`/app/alert`, nav label "Alert") shows two lists read from one Zustand store, `useAlertStore` (`lib/dashboard/alert-store.ts`): the dashboard feed (`DashboardFeed`, mounted once in the app layout) loads a snapshot and then applies `alerts` hub messages (`lib/dashboard/alert-sync.ts`: the full active list plus the alerts that ended since the last message, only when something changed; `createMockAlertHub` stands in for the Go hub), and `AlertBoard`, `AnomalyBadge` and nothing else read it, so there is no per-page polling for alerts any more and moving between pages shows no loading skeleton. A pure reducer (`snapshotState`, `messageState`, `pruneResolved`) keeps unchanged alerts as the same objects, drops expired history and applies repeated messages harmlessly; `e2e/alert-sync.spec.ts` replays hub plus reducer over random time steps and requires the result to equal the truth at every step. An alert that just ended moves from the active list (`active-alert-list.tsx`) to the top of the history (`resolved-alert-list.tsx`) in one store update: never in both, never in neither. The cut is exact, `endedAt > now` is active and `endedAt <= now` is history, and `e2e/resolved-alerts.spec.ts` checks it to the second. `loadAlertLists` is the REST backfill seam (initial load and resync once the real backend exists): it loads active first and history second, and `reconcileAlertLists` (also used by the store) drops from the active list anything already in history, so a backend that serves them as two requests keeps the guarantee (the opposite order would let an alert vanish for one poll). Resolved alerts (`ResolvedAlert`) are the contract for a future `GET /api/v1/alerts?status=resolved&from=&to=`: the same fields as active ones with `endedAt` filled, and no root source/impact yet (correlation is only computed for active alerts). The end time has its own precision, `endTimeSource` and `endTimeUncertaintySeconds`, separate from the start's because an alert can start from polling (the on-down webhook failed) and end from the on-up event; render it with `AlertEndTime` (marker attribute `data-end-time-source`, wording about recovery via `describeTimeSource(..., "end")`), while the start keeps `AlertTime` and `data-time-source`, so a row never has two markers with the same attribute. The mock generator is shared (`alertInSlot` in `alerts.ts`), so everything about an alert except the end fields is identical before and after it moves. The history covers `ALERT_HISTORY_SECONDS` (7 days, like the anomaly page), newest ending first, and is paged client-side (`ALERT_HISTORY_PAGE_SIZE`, `lib/dashboard/paging.ts`; the page buttons use `aria-disabled` so keyboard focus survives the last page). The history also has search and filters (pure logic in `lib/dashboard/resolved-filter.ts`, UI in `resolved-filters.tsx`): free text where every word must match (case-insensitive, over what the row shows: customer name, PPPoE username, router, ODP, address, kind and severity labels and the measured text; alert ids are not searched), plus kind, severity, router and "selesai dalam" 1/6/24 hours, which is measured from the start of the current minute (`useNowMinute`) and strict to the second at the boundary. Every option shows how many alerts choosing it would leave (`resolvedFacetCounts`; `e2e/resolved-filter.spec.ts` checks every option in 150 random filter states, and the UI spec checks the option texts), changing any filter returns to page 1, and no match shows a message with a "Tampilkan semua alert selesai" button. Keep `matches`, `filterResolvedAlerts` and `resolvedFacetCounts` in step; filters are component state, not URL state, like the anomaly page's. The active card (`ActiveAlertList`) heads itself with per-severity chips (`1 kritis`, `4 peringatan`, or `Semua normal` when empty; numbers and words, never colour alone) built from `summarizeAlertSeverity` in `alerts.ts`, the same function the dashboard `AnomalyBadge` uses, so the badge and the card always agree on counts and tone; the card carries `data-count`, `data-critical`, `data-warning` and `data-tone` for tests. The `--success` and `--warning` theme tokens are deliberately dark enough that text on their own 10% tint (`bg-success/10`, `bg-warning/10`) stays above 4.5:1; `e2e/active-alert-card.spec.ts` measures it in both themes, so check it before lightening them. A new alert makes a sound once (`AlertSoundController` in the app layout, so it works on every page): `createAlertSoundTracker` (`lib/dashboard/alert-sound.ts`, pure) treats the alerts present when the page opens as the baseline, counts each id as new exactly once even if it disappears and returns, and keeps remembering ids while muted so unmuting never replays old incidents; several new alerts in one store update make one sound, the two-tone critical pattern if any is critical, otherwise the single warning tone (`soundPatterns`, all under one second and quiet). `lib/dashboard/sound-engine.ts` plays them with Web Audio and holds the mute choice (`localStorage` key `alertSound`, session-only if storage is blocked). Browsers refuse sound until the user interacts, so the first click or key unlocks it (the `AlertSoundToggle` in the sidebar and mobile header reads "menunggu klik" until then); an alert that arrives while locked stays silent and is not replayed later. Turning sound on plays one short test tone. Tests cannot hear, so `e2e/alert-sound-ui.spec.ts` replaces `AudioContext` with a recorder via `addInitScript` and checks the tones scheduled; wait for the page to be ready (`ready()`) before the first click or the unlock listener is not attached yet. Both lists show start times to the second with the time-source marker, and history rows carry `data-testid="resolved-alert-row"` (active rows keep `alert-row`); history rows show the same location cell and "Sorot di peta" link as active rows (`AlertPlace`, `HighlightOnMap`, which accept any alert with `customerId` and `location`), and the pair moves with the alert unchanged (`e2e/resolved-alert-location.spec.ts`). `e2e/resolved-alert-location-data.spec.ts` checks every resolved alert over four weeks of mock data against the map's customers and routers (same point, ODP and address; a router alert never gets an invented point), and the UI spec also requires the focus ring to be centred on the map after the click and "Tampilkan semua" plus Back to land on the history again. When a test follows a "Sorot di peta" link to the map, let the fake browser clock run (`clock.install` only): a frozen `Date.now()` (`setFixedTime`) stalls Leaflet's fly animation and the zoom never reaches 16, so pick a moment whose list stays the same for the next 30 seconds instead; the history's start and end times are pinned to the second twice over: `e2e/resolved-time-display.spec.ts` compares with `Intl` in several time zones, and `e2e/resolved-time-seconds.spec.ts` compares with integer arithmetic that does not use `Intl` (every second 00-59, hour 00 never written as 24, month/year/leap-day boundaries with Indonesian month names, half-hour zones such as Asia/Kolkata and Asia/Kathmandu, later pages), so a formatter bug cannot hide behind a test that shares the same library; each customer alert has a "Sorot di peta" link to `/app?focus=<customerId>` (router alerts have no point and say so); build and read such links only through `lib/dashboard/map-focus.ts` (`mapFocusHref`, `readFocusId`) so the limits stay in step; `AnomalySubject` renders who/what is affected for both pages. Running durations tick through `useNowSeconds` (one shared timer, `clock.ts`); only components that call it re-render each second, so keep it out of tables and lists as a whole. The anomaly list filters (kind/severity/status, `lib/dashboard/anomaly-filter.ts`) show faceted counts next to every option, and the per-kind cards double as filter buttons; keep `facetCounts` and `filterAnomalies` in step (a test checks every combination). `loadAnomalies` lives in `lib/dashboard/anomaly-feed.ts`: its active entries are exactly `mockActiveAlerts`, so the dashboard `AnomalyBadge` (links to `/app/alert`), the active list on the Alert page and the Deteksi Anomali page always agree on how many are active. Their ended entries do not match in mock data: the anomaly page still takes its history from the traffic chart's incident markers (`mockIncidents`) while the Alert page's history comes from `mockResolvedAlerts`; a real backend reads both from `network_logs`. `lib/dashboard/correlation.ts` (`correlateAlerts`) groups active alerts that likely share one cause (same ODP, same router, a burst of offline customers, router alert plus its customers); it is pure, takes alert time uncertainty into account, and is frontend-only for now (the Go rule engine does not do it). Every `Anomaly`/`ActiveAlert` carries `rootSource`, `affectedCustomers` (proven, i.e. have their own alert), `servedCustomers` (upper bound) and `correlationId` (`lib/dashboard/incident-root.ts`); `mockActiveAlerts` fills them from the correlation groups, `toAnomaly` gives lone defaults. The incident cards on the Deteksi Anomali page show them. `lib/dashboard/incident-cards.ts` (`buildIncidentCards`, `loadIncidentCards`, `summarizeIncidentCards`) turns the active alerts into one card per correlation group, each with root source, affected/served counts, the oldest member's time fields (render with `AlertTime`), its member alerts and a `focusCustomerId` for `mapFocusHref`; `loadIncidentCards` is the REST seam for a future `GET /api/v1/incidents/cards?status=active` (initial load or backfill), but the UI no longer polls it: cards arrive as `incidents` messages from the hub (`lib/dashboard/incident-sync.ts`: full list right after the snapshot, then only when it changes; `createMockIncidentHub` stands in for the Go hub inside `DashboardFeed`, which is now mounted once in the app layout, not per page), land in the store as `incidentCards` with unchanged cards keeping their object identity, and `IncidentCardList` reads them from there; and `e2e/incident-cards.spec.ts` pins the contract. The correlation rules themselves are pinned three ways: hand-built cases (`e2e/correlation.spec.ts`), timelines through the hub and store plus seeded random sets compared against an independently written reference and checked for closure/monotonicity (`e2e/correlation-flow.spec.ts`), and a cross-page acceptance test on the mock data (`e2e/incident-acceptance.spec.ts`). Change a window or rule in `correlation.ts` and expect those to tell you. The Deteksi Anomali page renders them with `incident-card-list.tsx` (`IncidentCardList`: polled every 5 s, one `article` per card, a "Lihat rincian" toggle that opens the member alerts through the reusable `AlertTable`, open state kept per card id across refreshes, a "Sorot di peta" link when `focusCustomerId` is set); `e2e/incident-card-list.spec.ts` covers it with a fake browser clock.
+- `src/lib/dashboard/handled-registry.ts`, `alert-actions.ts`, `src/components/dashboard/handle-alert-dialog.tsx`: "Tandai ditangani" (PRD flow A step 7: the operator closes an active alert and it moves to the history). Every active row on the Alert page has the button inside its Alert cell, under the severity badge, not in a column of its own: the table already scrolls sideways on many screens and the main action must not hide behind the scroll. `AlertTable` shows it only when `onHandle` is passed, so the incident-card detail tables stay read-only. It opens a Radix `AlertDialog` (`ui/alert-dialog.tsx`, added with shadcn; `motion-reduce:animate-none!` was added to its overlay and content) that names the alert (kind, subject, severity, start time) and the operator (`user.name || user.email`, passed from `alert/page.tsx` through `AlertBoard` to `ActiveAlertList`; the real backend takes it from the session), with focus on "Batal". `useHandleAlert` runs the phases: confirm; saving (one request at a time, buttons use `aria-disabled` and never `disabled` so keyboard focus stays, and the dialog cannot be closed); failed (the reason is written in the dialog, the button becomes "Coba lagi", the alert stays active); done. "Alert already inactive" (it ended by itself, or another operator marked it while the dialog was open) is derived from the latest active list during render, not stored, so it shows at once and needs no effect. Radix returns focus only to a `Trigger` and this one dialog has none, so `restoreFocus` does it by hand: back to the button that opened it, or to the list region (`AlertTable`'s `regionRef`) when that button is gone, which is the case after success because the row has moved. Success also writes a line in the card's `role="status"` description (`HandledNotice`), because the row it concerns is gone. The data side: `ResolvedAlert` gained `handledBy` (null for alerts that ended by themselves) and a third `endTimeSource`, `"operator"` (type `AlertEndSource`), with `endedAt` the second the server processed the confirmation and `endTimeUncertaintySeconds` 0; everything else about the alert is identical before and after. `handledRecord` in `alerts.ts` is the one rule both lists use: a record counts only when `detectedAt <= at < natural endedAt` and `at <= now`, anything else (clock shift, hand-edited storage) is ignored. `mockActiveAlerts` and `mockResolvedAlerts` take the records as an explicit `handled` map (default none), so the pure functions and every older test are unchanged, and the glue that stands in for the backend reads `currentHandled()`: the alert hub's `mockSource`, `createMockIncidentHub`, `loadAnomalies`, and `loadActiveAlerts`/`loadResolvedAlerts`/`loadAlertLists` (which also accept the map, for tests). That is why the dashboard badge, the Alert page, the Deteksi Anomali page and the incident cards agree after a handle; the anomaly page's own history (chart markers) does not list handled alerts, just as it does not list naturally ended ones (the known mock mismatch). `handled-registry.ts` is the mock server's database: localStorage key `alertHandled` (a list of `{id, at, by}`, kept 7 days like the history, validated entry by entry on read, memory only if storage is blocked, re-read whenever its text changes so another tab's mark shows up). `createMockAlertActions` (`alertActions`) is the mock server: 300 ms of latency so "Menyimpan…" is visible; it judges at processing time (`not-active` is the 409 stand-in; `offline` stands in for a failed fetch and reads `navigator.onLine`, which `context.setOffline` flips in tests), records `{id, at, by}` and answers with the same `ResolvedAlert` the hub and REST give. `useAlertStore.markHandled` applies the answer with `handledState` (active to the top of the history in one update; applying it twice, or after the hub message that carries the same alert, changes nothing), and the next hub tick corrects siblings whose correlation impact changed. Mock-only limit: a mark written by another tab in the same second after this tab's hub check reaches this tab's history on the next resync (its active list is right at once); the tab that marks is not affected. The history row writes `ditangani oleh NAME` under the end time (`data-end-time-source="operator"`, `data-handled`), and `describeHandled` also feeds `searchableText`, so searching "ditangani" or the name works (there is no filter dimension for it). The API the real backend must serve (`POST /api/v1/alerts/{id}/handle`) is in `backend/README.md` ("Menandai alert ditangani"). Tests: `e2e/alert-handling.spec.ts` (logic: records, both lists over two days with random marks must stay a partition and lose nothing, the mock server, `handledState`, and a random handle-and-advance replay that must equal the truth after every hub message) and `e2e/alert-handle-ui.spec.ts` (page: button names, dialog, focus, moving to the history, persistence across reload, the other pages, saving, offline, ended while open, marked in another tab, search, 390 px, reduced motion). To hold the "saving" phase use `clock.install` plus `clock.pauseAt` (no `setFixedTime`) so the 300 ms timer waits for `clock.runFor`; when a test searches the history use an operator name that no mock customer has (customers are named Budi, Dewi, ...), because the real directory is searched too.
+- `src/lib/dashboard/alert-badge.ts`, `src/components/dashboard/alert-count-badge.tsx`, `app-nav.tsx`: the badge with the active alert count on the "Alert" menu item, in the sidebar and in the narrow-screen bar, so the count is visible on every page and changes by itself when the hub sends an `alerts` message. The numbers come from `summarizeAlertSeverity` over `useAlertStore().active` (the same function as the active card's chips and the dashboard `AnomalyBadge`, so the three always agree) through the pure `alertBadge`: `null` until the list arrives (never an invented zero), the text capped at `99+` (`ALERT_BADGE_MAX`) while the sentence keeps the real number, zero shows only a green check, the sentence reads `5 alert aktif, 1 kritis` and gains `(koneksi terputus, data terakhir)` when the connection dropped. The tone is told by icon shape and number as well as colour. The link's accessible name must stay exactly "Alert" (many specs find it with `{ name: "Alert", exact: true }`), so the pill is `aria-hidden` inside the link and the sentence travels outside it: `AlertCountAnnouncement` is a sibling `role="status"` region, always mounted so the first content is announced, which the link references with `aria-describedby`; the ids come from `useId` because the sidebar and the bar both exist in the DOM. The subscriptions live in those two child components, so `AppNav` (which only knows the pathname) does not re-render on alert messages. The 10% tint is laid over an opaque `bg-card` (`bg-linear-to-r from-x/10 to-x/10`) instead of over whatever is behind the pill: on the current page the link is `bg-secondary`, and the warning tint over that dropped to 4.26:1. Tests: `e2e/alert-badge.spec.ts` (pure) and `e2e/alert-count-badge.spec.ts` (page: same count and tone on every page, name and description, the zero state, updates without a reload by moving the fake clock, drops at once when an alert is marked handled, 390 px, and contrast of every tone in both themes on the current page and on another).
+- `src/app/(protected)/app/billing`, `src/lib/dashboard/billing.ts`, `billing-filter.ts`, `use-refresh-at.ts`, `src/components/dashboard/billing-*.tsx`: the Status Billing page (menu item "Billing", `/app/billing`), mock data for now (`<MockDataNotice source="sistem billing" />`; the notice takes an optional `source`, and its default text on the other pages is unchanged). `loadBilling` is the REST seam for a future `GET /api/v1/billing` (contract in the comment at the top of `billing.ts` and in `backend/README.md`, "Status billing"): a `BillingOverview` with one `BillingRow` per customer (sorted by name, then username), the invoices that matched nobody (`BillingUnmatched`, reason `unknown`, `duplicate` or `ambiguous`) and the hourly sync state (`BillingSyncState`: the run in progress, `nextRunAt`, and the last 24 finished runs newest first, each success carrying its counts and each failure its message). `matchBilling` is the one statement of the PPPoE matching rule the Go sync must follow: an exact name wins over a trimmed lower-case one whatever the order, a trimmed name that matches exactly one customer counts as `normalized`, an invoice that cannot be paired is reported with its reason and never guessed, and a customer without an invoice keeps the stored status (`match: "none"`). The mock invoices are made from the same customers as the Pelanggan table, with the same `billingStatus`, so the two pages never disagree (`e2e/billing.spec.ts` checks every customer and `e2e/billing-board.spec.ts` reads both pages). The sync schedule is a function of time only (`mockBillingSync`: a run starts at minute 5 of every UTC hour, lasts 4 to 29 seconds, and about 15% fail with one of four messages; a run's content never changes as it moves down the history). A failed sync never hides data: the table keeps the last successful result, and the sync card says how long ago that was and how many syncs failed in a row (`summarizeSync`); there is deliberately no "stale after N hours" threshold. The page polls every 30 seconds (`BILLING_REFRESH_MS`) and also asks again exactly when a sync is due and every 5 seconds while one runs: `nextBillingRefreshAt` gives that time and `useRefreshAt` waits for it with a one second grace so the server has recorded the start; it schedules again only when the due time changes, so a clock that disagrees with the server's falls back to the 30 second poll and cannot loop. `describeSyncState` is the one sentence about the sync (phase, tone, consecutive failures, text such as "Gagal 2 kali berturut-turut"), used by the sync card and by the summary on the Pelanggan page so they always agree. That summary, `BillingSyncChip` (`billing-sync-chip.tsx`, mounted in `pelanggan/page.tsx` above the table), shows when the last sync was, whether it worked, and the age of the data it left behind, with a link to `/app/billing`; it reads only the sync state through `loadBillingSync` (`GET /api/v1/billing/sync`) and refreshes by the same rules. The small parts the card and the summary share (`SyncTime`, `SyncAge`, `SyncCountdown`, `SyncStateIcon`) live in `billing-sync-parts.tsx`. Countdowns and ages tick through `useNowSeconds` in two leaf components (`SyncCountdown`, `SyncAge`), so the tables are not redrawn each second. Times use `formatAlertTime`, so they follow the browser's time zone like alert times. Billing statuses also move through the Zustand store, so every place that shows them changes in the same second a sync finishes, without waiting for a poll: when a successful sync completes, the feed's `delta` carries `billingChanges` (`{ customerId, status }` for each customer whose status differs from the one held; it is computed from the time and the held state, so a skipped second or a clock jump still converges), the snapshot carries the status in force now, `applyDelta` replaces only the customers that changed, and the Pelanggan table, the map tooltips and the Billing page (`withLiveStatuses` laid over the polled rows, read with `selectBillingStatuses`) all follow. Customers without an invoice never receive a status, and a failed sync changes nothing. `lastSuccessSlot` and `billingStatusAtSlot` in `billing.ts` are the mock schedule behind it; `e2e/billing-store.spec.ts` (logic: schedule, feed, store, overlay) and `e2e/billing-store-ui.spec.ts` (pages: the exact second, both pages, navigation without reload, failed sync, long clock jump) pin it. A test that reads badges right after load must wait for the first snapshot, because the first paint still shows the base statuses. Search and filters (`billing-filter.ts`: free text where every word must match over what the row shows, status, matching, router) write the number each option would leave (`billingFacetCounts`); keep `matches`, `filterBillingRows` and `billingFacetCounts` in step (a test compares 300 random states). The Lunas/Isolir badge is one component, `BillingStatusBadge` (`billing-status-badge.tsx`), drawn from the pure frozen model `billingBadge` (`billing-badge.ts`): Lunas (green, check), Isolir (red, ban) and a neutral grey "Belum ada data" (question mark) for a status that is missing or is neither of the two, which is never read as paid or unpaid; the legend under the Billing table ("Arti penanda status") shows all three. Text and icon shape tell them apart, colour only supports; the badge carries `data-testid="billing-badge"`, `data-status` and `data-tone`. `BillingBadge` in `status-badge.tsx` is the old name kept for the Pelanggan table and just renders the new component. The mismatch list ("Ketidakcocokan data billing", `billing-mismatch-list.tsx`, logic in `billing-mismatch.ts`; it replaced the older card that listed only unmatched invoices) shows both sides that do not meet: invoices nobody owns (`BillingUnmatched`) and customers without an invoice (`match: "none"`). It is derived on the client from the existing `rows` and `unmatched`, so the API contract is unchanged. `buildMismatches` merges an unknown invoice with a customer that has no invoice into one `pair` row ("Kemungkinan salah ketik", advice: make the PPPoE name in billing equal to the customer's) only when their normalized names are at most `MISMATCH_MAX_DISTANCE` (2) edits apart and each is the single nearest of the other, so a doubtful pair is never suggested; duplicate invoices list the customer already using the other invoice, ambiguous ones list every candidate, and every unmatched invoice and every customer without an invoice appears exactly once. Row keys and order do not depend on the input order (a test shuffles 200 random sets and caught an index in the first version of the key). `editDistance` is Levenshtein and stops early above a limit. Tests: `e2e/billing-mismatch.spec.ts` (logic: edit distance against a full-table reference, hand-built pairing cases, 400 random sets against a brute-force pairing, order independence) and `e2e/billing-mismatch-ui.spec.ts` (page: every row, the sentence, the kind filter with counts, keyboard and 390 px). The map tooltips (`CustomerLabel` in `customer-map.tsx`: the label on hover and the permanent one on the focus ring) end with the same badge, name then ODP then badge, drawn with `surface="light"`: Leaflet's tooltip box is white in both themes, and the dark-theme tokens are light greens and reds meant for dark backgrounds (about 1.7:1 on white), so on that surface the badge uses Tailwind palette colours (`green-800`, `red-700`, `neutral-100`) instead of theme tokens. Tests: `e2e/billing.spec.ts` (logic: hand-built matching cases, a differential test against a naive reference over 400 random sets, the mock's consistency, the schedule at every boundary, the filters), `e2e/billing-board.spec.ts` (page: every sync state, tiles, table, filters, history, agreement with the Pelanggan page) and `e2e/billing-live.spec.ts` (page: the countdown and the switch exactly at the hour, time zones, 390 and 1440 px, contrast in both themes in every sync state); `e2e/billing-badge.spec.ts` (the badge model) and `e2e/billing-badge-ui.spec.ts` (page: every badge on the Billing and Pelanggan pages, the legend, contrast in both themes, 390 and 1440 px) cover the badge; `e2e/billing-state.spec.ts` (the sync sentence and the refresh schedule) and `e2e/billing-chip.spec.ts` (page: the summary in every sync state, its agreement with the Billing card, the switch exactly at the hour, contrast, 390 px) cover the summary; `e2e/billing-map.spec.ts` (page: the badge in the focus-ring and hover tooltips, its order and agreement with the data, contrast on the white box in both themes, 390 px) covers the map; `e2e/billing-moments.ts` finds a moment for each sync state in the mock data. To step the fake clock through a refresh chain, move one second at a time (`clock.pauseAt`, then half-second offsets) and give React a moment between steps: one long `runFor` fires every due timer in a single burst before React renders, so the chain would not run. The "Sinkron Tagihan" button in the Pelanggan table is older placeholder code (it calls `alert()`) and is not connected to this page; the PRD has no manual sync.
 
 Authenticate at each server data boundary: use `requireSession()` for pages/actions, or `withApiSession(request, handler)` for APIs, which returns JSON 401 instead of redirecting. A protected layout alone does not protect actions or APIs. Filter every user-owned read/update/delete by the verified session's user ID; never trust a submitted owner ID. Keep secrets and database code server-only. Validate mutations server-side.
 
@@ -75,3 +84,309 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+<!-- ngodingpakeai:skill:start -->
+
+# NgodingPakeAI — Codebase Sync
+
+NgodingPakeAI is the **project-memory and codebase-context layer** for AI coding agents.
+It does NOT replace you — it gives you organized project memory and safe codebase
+context through its CLI. When the user asks to **connect, index, or sync** this
+repository with NgodingPakeAI, follow this skill.
+
+> The CLI is the security gate. It decides what may leave the machine. You operate
+> it; you never upload files yourself or call the HTTP API directly.
+
+## Prerequisites
+
+- Node.js available (the CLI runs via `npx ngodingpakeai …`).
+- Workspace ID: `694a3de9-0d29-4dc5-8fbe-a5d7423ac5dd`
+- An access token starting with `ngpk_`. Provide it via the `NGODINGPAKEAI_TOKEN`
+  environment variable (preferred) or the `--token` flag on `connect`.
+  Create one at https://www.ngodingpakeai.com/settings (API keys). Synced content is viewable at https://www.ngodingpakeai.com/workspace/694a3de9-0d29-4dc5-8fbe-a5d7423ac5dd.
+
+## How sync works (one mode — YOU write the summaries)
+
+NgodingPakeAI never uploads or stores raw source code. Instead **you**, the
+agent, write short natural-language summaries of the code — locally, where you
+already have file access — and the CLI uploads only file metadata + those
+summaries. The server embeds them for semantic search and codebase chat, then
+rolls them up into canonical repository/app/package docs. Every generated doc
+keeps the exact contributing file paths and commit as source metadata.
+
+## Existing codebase? The summary sync builds the pending plan for you
+
+There are two safe entry points for an existing codebase:
+
+- When this skill was installed from a Wiki/workspace page, the **Workspace ID
+  above is the exact target**. Connect this repo to that workspace and do not
+  choose a default workspace, create a new one, or follow another workspace
+  link.
+- When onboarding starts without a workspace target, the web app prepares an
+  empty workspace with one **pending baseline plan** before the agent connects.
+
+After the final summary sync, the
+server reads the docs it just built and works BACKWARDS to produce the planning
+documents — a PRD, then fitur and sub-fitur — describing the app **as it already
+is**. Those fitur are created with status `done` and **no tasks**, because the
+code for them already exists.
+
+This means a user with an existing project does NOT have to write a PRD by hand.
+They connect, sync once, and the workspace is populated.
+
+## Project started from a template (`ngodingpakeai create`)
+
+When the user began from a template in the web app, the copied prompt ran
+`npx ngodingpakeai create --token …`. That command already downloaded the
+source, made the first git commit, wrote `.ngodingpakeai/config.json`, and
+installed this skill. In that case:
+
+- **Skip `connect`.** The workspace, plan, and repo exist on the server and are
+  bound by the config file. Never create another workspace for this folder.
+- **Run the project's own setup first.** Templates ship their setup instructions
+  (`AGENTS.md` "first prompt" section and/or `.agents/skills/*/SKILL.md`, e.g.
+  `starter-setup`). Follow them to install dependencies, prepare the local
+  database, and start the dev server — before working any task. Explain each
+  step in plain language; the user may never have run a project before.
+- The forked plan already describes what the template contains (fitur marked
+  `done`). New work comes from the plan's planned fitur via `task next`.
+- Commit after each completed task so the user always has a known-good state
+  to return to. If something breaks, run `npm run doctor` (or the template's
+  equivalent) and the dev-server logs before changing code.
+
+## Reverse state transitions
+
+The server owns the reverse state. Advance it by completing the CLI sync flow;
+never edit the database, call the HTTP API directly, or invent a separate state
+command. The expected transitions are:
+
+- `waiting`: the prepared plan is waiting for the repository connection or first metadata pass.
+- `syncing`: the CLI has started a sync run; wait for `sync` to complete.
+- `awaiting_summaries`: `sync --plan` completed, but the agent still needs to write the requested summaries.
+- `building_wiki`: the final `sync` uploaded summaries successfully and the server is rebuilding repository documentation.
+- `running`: the wiki is ready and the server is generating the reverse PRD and feature inventory.
+- `done`: the reverse plan is populated; its features describe existing code and have no implementation tasks.
+- `error`: the server could not build the reverse plan; show the printed workspace/plan link and ask the user to retry from the web UI.
+
+For a prepared reverse plan, `sync --plan` moves the flow toward
+`awaiting_summaries`; writing `summaries.json` and running the final
+`sync` moves it toward `building_wiki`. The server then advances the state
+to `running` and `done` asynchronously. Run `status` after sync to confirm
+the upload and report the exact link printed by the CLI, but do not poll or
+manually mutate reverse state from the agent.
+
+What you must do about it:
+
+- The pending plan row exists before sync starts, but its CONTENTS take ~1–6
+  minutes (the server is writing the PRD and reading out the fitur). The CLI
+  prints the workspace link — **give that link to the user** and tell them the
+  plan is still being assembled. Do not wait/poll for it, and do not re-run sync
+  to "make it finish".
+- This reverse bootstrap happens ONLY for the prepared pending plan in its
+  reserved workspace. If the skill above contains a real Workspace ID from an
+  existing Wiki page, keep the sync in that exact workspace; do not redirect it
+  to the reserved/default workspace.
+- Never try to build the PRD or fitur yourself through the CLI. The server does
+  it from the summaries you already wrote.
+
+## Instructions — the sync loop
+
+1. `npx ngodingpakeai doctor` — check environment + connectivity.
+2. `npx ngodingpakeai connect --workspace 694a3de9-0d29-4dc5-8fbe-a5d7423ac5dd --token "$NGODINGPAKEAI_TOKEN"` — link this repo to the workspace (first time only).
+3. `npx ngodingpakeai sync --plan` — detects repository apps/packages, scans + uploads file METADATA (paths/hashes only), then writes `.ngodingpakeai/pending.json`: the list of new/changed files that need summaries (already curated — lockfiles/fixtures/barrels are excluded, so no wasted effort).
+4. **Write the summaries.** Read each file in `pending.json` and produce `.ngodingpakeai/summaries.json` (format below). Only files in the pending list — unchanged files keep their existing summaries.
+5. `npx ngodingpakeai sync` — validates and uploads summaries only. It FAILS with a list if any pending file is missing a summary (fix and re-run; `--allow-missing` skips them only if the user says so). **This final summary pass CLOSES the cycle** — run it only when every task is done (see hard rule 6). The earlier `sync --plan` metadata pass never closes a cycle.
+6. `npx ngodingpakeai status` — confirm; then report to the user: files indexed/summarized, warnings, and the exact plan link printed by the CLI. Its canonical shape is `/workspace/<workspaceId>?plan=<planId>`. Do not guess either id.
+
+## summaries.json format
+
+A FLAT JSON object keyed by file path — no wrapper, no `version`, no `files` array:
+
+```json
+{
+  "src/server/services/plan.service.ts": {
+    "summary": "Service layer untuk plan/PRD: CRUD, chat persistence, kompaksi riwayat.",
+    "sections": [
+      {
+        "symbol": "planService.createPlan",
+        "startLine": 1,
+        "endLine": 120,
+        "summary": "Membuat plan baru dari jawaban onboarding; alokasi slug unik."
+      }
+    ]
+  }
+}
+```
+
+Field names are exact: `summary`, `sections[]`, and inside a section `symbol` (NOT `symbolName`), `startLine`, `endLine`, `summary`. `sections` is optional.
+
+Rules for good summaries:
+
+- **Bahasa Indonesia**, 1–3 kalimat per summary. Sebut nama simbol, route, dan tabel yang relevan — itu yang membuat pencarian akurat.
+- Every summary (file-level AND section-level) must be **10–2000 characters**; the CLI rejects anything outside that before uploading.
+- Jelaskan peran file dalam app/package-nya serta interface yang dibentuk (route, API, event, export, worker) bila ada. Ringkasan ini menjadi bukti untuk dokumen kanonis, bukan dokumentasi per-folder.
+- `sections`: bagi file per fungsi/kelompok logis dengan rentang baris nyata. File kecil boleh tanpa `sections` sama sekali.
+- Do NOT put file hashes anywhere. The CLI computes them itself while scanning — they appear in neither `pending.json` nor `summaries.json`. If you edit a file after summarizing it, just run `sync --plan` again.
+- **NEVER paste code, credentials, connection strings, or API keys into a summary.** Describe behavior, don't quote source.
+
+`pending.json` (written by `sync --plan`) is `{ repo, generatedForCommit, files: [{ path, reason, language, size }] }` — `reason` is `new` | `changed` | `needs_summary`. Summarize exactly the paths it lists.
+
+## Hard rules — do not violate
+
+1. Use the CLI for everything. Do not upload files yourself or call the HTTP API directly.
+2. Raw source code must never leave the machine — the CLI only uploads metadata + your summaries, and the server rejects/strips anything else.
+3. Never put secrets in summaries. Never read or print `.env*` files.
+4. Respect `.gitignore` and `.ngodingpakeaiignore`. If the CLI blocks a file, do not bypass it.
+5. Always report the sync summary and https://www.ngodingpakeai.com/workspace/694a3de9-0d29-4dc5-8fbe-a5d7423ac5dd. Only pass on links the CLI actually printed — never assemble one from an id yourself.
+6. **For active implementation plans, run the final `sync` ONLY when every task is done — never mid-cycle.** The final summaries pass closes the cycle, rebuilds the wiki, and records a wiki version. `sync --plan` is metadata discovery only and is safe. A prepared reverse baseline plan has no tasks, so its first summary sync is the entry point.
+7. **Workspace targeting is fixed.** Use the exact Workspace ID embedded above and the repo's `.ngodingpakeai/config.json`. Never infer a workspace from a plan, account default, URL, or another agent session. If the server reports a workspace conflict or the target looks wrong, STOP and ask the user; never retry with another workspace ID.
+
+## Command reference
+
+| Command                                                       | Purpose                                                                                                                    |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `npx ngodingpakeai doctor`                                    | Verify environment, token, and connectivity.                                                                               |
+| `npx ngodingpakeai connect --workspace <id> --token <ngpk_…>` | Link the repo to a workspace.                                                                                              |
+| `npx ngodingpakeai status`                                    | Show connection + last sync state.                                                                                         |
+| `npx ngodingpakeai sync --plan`                               | Upload metadata + write `pending.json` (files needing summaries).                                                          |
+| `npx ngodingpakeai sync`                                      | Validate + upload `summaries.json`. Fails if pending summaries are missing.                                                |
+| `npx ngodingpakeai sync --if-changed`                         | Skip instantly when HEAD commit is already synced (cheap for loops/CI).                                                    |
+| `npx ngodingpakeai index`                                     | Local scan preview only (no upload).                                                                                       |
+| `npx ngodingpakeai plan get <planId>`                         | Print a plan's PRD (project context) before working its tasks.                                                             |
+| `npx ngodingpakeai task next --plan <planId>`                 | Serve the SINGLE next task to work (full prompt inline), page-ordered & frontend-first. The main loop; `--json` to script. |
+| `npx ngodingpakeai task get <ref>`                            | Fetch a task's title + plan/feature context (no per-task prompt or description; combine with the PRD + your code reading). |
+| `npx ngodingpakeai task start <ref>`                          | Mark a task in-progress (status: doing).                                                                                   |
+| `npx ngodingpakeai task complete <ref>`                       | Mark a task done.                                                                                                          |
+| `npx ngodingpakeai task fail <ref> "<reason>"`                | Report a task stuck/failed with a reason.                                                                                  |
+| `npx ngodingpakeai task reset <ref> "<reason>"`               | Put a task back to `todo`; a `done` task asks for confirmation. **Only when the user asks.**                               |
+| `npx ngodingpakeai disconnect`                                | Unlink the repo.                                                                                                           |
+
+> `<ref>` is a task reference: either the readable path `<plan>/<feature>/<task>`
+> (e.g. `tokoku/autentikasi/buat-form-login`, as shown by `task next`) or the
+> task's UUID. Both resolve to the same task — prefer the readable path.
+
+## What the workspace can do after sync
+
+- **A plan built from the code** (first sync of an empty workspace): PRD + fitur + sub-fitur describing what already exists, so the user can plan the NEXT change against it instead of starting from a blank page.
+- **Codebase chat**: the user asks questions about their codebase in the web app; answers cite `path:line` from your summaries.
+- **Canonical docs**: one repository overview, one overview per meaningful app/package, plus one interface/user-flow document for each app when applicable. They are rebuilt from summaries, with source paths + commit stored as metadata.
+- Semantic + symbol search over the whole index; feature → file mapping.
+- "Continue project" guidance based on what's already implemented.
+
+## Working on tasks (assigned via a `<task>` block)
+
+When the user hands you a task — usually by pasting a block like:
+
+```
+Work on NgodingPakeAI task:
+
+<task identifier="manajemen-konten/transaksi/buat-tabel-transaksi-migrasi">
+<title>Buat tabel transaksi & migrasi</title>
+<feature>Manajemen Konten</feature>
+</task>
+```
+
+Use the `identifier` as the `<ref>` below (readable path; the task's UUID also
+works). Drive it through the CLI — do NOT guess the work from the title alone:
+
+1. `npx ngodingpakeai task get <ref>` — read the task's `title` + its feature/plan
+   context. Figure out the work from the `title`, the PRD (`plan get`), and your
+   own reading of the codebase (there's no per-task prompt or description).
+2. `npx ngodingpakeai task start <ref>` — mark it in-progress before you begin.
+3. Do the work. First explore the existing code & conventions, then follow them.
+   Stay within the task's scope — don't invent files/libraries outside the stack.
+4. When done: `npx ngodingpakeai task complete <ref>`.
+
+### If you get stuck (don't go silent)
+
+If you can't finish — blocked, missing info, repeated failure — REPORT it instead
+of stalling:
+
+```
+npx ngodingpakeai task fail <ref> "alasan singkat: apa yang nge-block & sudah coba apa"
+```
+
+This flips the task to `failed` and records your reason so the human can unblock
+it. Reporting a clear blocker is success, not failure.
+
+### Putting a task back to `todo` (reset) — only when the USER asks
+
+A task can be sent back to `todo` so it can be picked up fresh later:
+
+```
+npx ngodingpakeai task reset <ref> "alasan singkat kenapa dibalikin"
+```
+
+This clears the "already pulled" mark and appends your reason to the task's log —
+the earlier log lines stay, so the history of what was tried is preserved.
+
+**Never reset a task on your own initiative.** Do it ONLY when the user explicitly
+asks (e.g. "balikin task ini ke todo", "reset task itu", "batalin yang lagi
+dikerjain"). Do not reset to escape a task you find hard — if you're blocked, use
+`task fail` and explain. Resetting a `done` task reopens finished work, so the CLI
+will show the task and require explicit user confirmation. Never answer that prompt
+on the user's behalf or add `--yes` unless the user has explicitly confirmed the
+completed-task reset.
+
+### Working through tasks — ONE task at a time via `task next` (the main loop)
+
+Never use `task list`; it is retired and does not return tasks. If the plan ID
+is missing, ask the user for the target plan before fetching any tasks.
+Do NOT pull the whole backlog and grind through it in one context — that's what makes
+output degrade. Instead let the server hand you ONE task at a time and give each its own
+clean focus. The backlog is ordered into **phases** (build order) and, within each phase,
+**layers** (`frontend` first, then `backend`), then by page (feature) and position. `task
+next` walks that order for you: it returns the SINGLE next task — the FIRST page's frontend
+tasks first, backend later.
+
+When the user says "kerjakan task" (or hands you a feature/plan instead of a single
+`<task>` block), read the PRD once, then loop:
+
+```
+npx ngodingpakeai plan get <planId>                    # PRD: project goal, features, tech stack (once)
+npx ngodingpakeai task next --plan <planId> --json     # THE single next task
+```
+
+The `task next` JSON is `{ done, task, progress }`:
+
+- `done: true` → no task left. **STOP and report to the user.** You're finished.
+- `task` → `{ ref, title, ... }` — work from the `title`, backed by the PRD and your own
+  reading of the codebase. There is no per-task `prompt` or `description` field; don't wait
+  for one.
+- `progress` → `{ page, phase: { current, total }, layer, remainingInPage, remainingInLayer }`
+  — mostly context, BUT track `layer` and `phase.current`: a change marks a **checkpoint**
+  where you stop for the user to verify (see below).
+
+**Checkpoints — stop at each layer/phase boundary.** Remember the `layer` and
+`phase.current` of the task you just finished. When `task next` returns a task whose
+`layer` differs (e.g. frontend→backend) OR whose `phase.current` is higher, do NOT
+`task start` it. STOP, report what's done (e.g. "✅ Frontend phase 1 done — click through
+it in the browser"), and WAIT for the user to say "lanjut"/"continue". Then resume
+`task next` and keep going to the next boundary. The FIRST task of a session (no previous
+task) is NOT a checkpoint — just start it.
+
+For each served task:
+
+1. Read the PRD FIRST (once, at the start) — it's the project's intent.
+2. **Checkpoint gate:** if this task's `layer`/`phase.current` crossed a boundary vs the
+   last one you finished, STOP and wait for the user (above) instead of starting.
+3. `task start <ref>` — mark it in-progress.
+4. Do ONLY this task, to completion: explore the existing code & conventions first, then
+   follow them. Do NOT read or start any other task while this one is open.
+5. `task complete <ref>` (or `task fail <ref> "alasan"` if blocked).
+6. Call `task next` again for the next one. Repeat until `done: true` (pausing at each
+   layer/phase boundary for the user to verify).
+
+**One task per loop = clean context = sharper output.** Trust the order — never batch
+several tasks into one context to "save round-trips"; that defeats the whole point.
+
+**Frontend-first:** `task next` serves `frontend` tasks before `backend`. A frontend task
+builds the UI on mock/stub data, ASSUMING the API contract; backend tasks come later and
+implement that contract. During a frontend task don't wait on backend — stub it. (If you
+ever pull a task by ref directly, `task get` on a locked future phase or the other layer
+returns **423 Locked** — that work isn't available yet; keep following `task next`.)
+
+---
+
+_Generated by NgodingPakeAI for AI coding agents. Source of truth: https://www.ngodingpakeai.com._
+<!-- ngodingpakeai:skill:end -->

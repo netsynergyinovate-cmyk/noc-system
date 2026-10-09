@@ -7,3 +7,8 @@ export const siteConfig = {
   description: starter.description,
   homePath: "/app",
 } as const;
+
+// Awalan nama cookie sesi Better Auth. Dipakai src/lib/auth.ts (menulis cookie)
+// dan src/proxy.ts (membacanya tanpa database); satu konstanta supaya keduanya
+// tidak bisa menyimpang.
+export const authCookiePrefix = `ngodingpakeai-${starter.id}`;

@@ -142,21 +142,21 @@ test("a granted role reaches every account, and losing it revokes access", async
 test("the admin page and its link appear only for a permitted role", async ({
   page,
 }) => {
-  const email = `roles-${randomUUID()}@example.com`;
-  await page.goto("/sign-up");
-  await page.getByLabel("Name").fill("Page Viewer");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("Roles-test-password-123!");
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByRole("heading", { name: /Welcome, / })).toBeVisible();
+  // Sign up through the API (the form is covered by auth.spec.ts) so the
+  // auth server's sign-up rate limit is handled by the shared retry.
+  const email = await signUp(page.request, "Page Viewer");
+  await page.goto("/app");
+  await expect(
+    page.getByRole("heading", { name: "Dashboard NOC" }),
+  ).toBeVisible();
 
-  await expect(page.getByRole("link", { name: "Open admin" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
   await page.goto("/admin");
   await expect(page.getByText("Every account’s notes")).toHaveCount(0);
 
   await setRole(email, "admin");
   await page.goto("/app");
-  await page.getByRole("link", { name: "Open admin" }).click();
+  await page.getByRole("link", { name: "Buka admin" }).click();
   await expect(
     page.getByRole("heading", { name: "Every account’s notes" }),
   ).toBeVisible();

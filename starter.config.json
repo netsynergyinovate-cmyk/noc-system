@@ -1,7 +1,7 @@
 {
   "id": "postgres",
-  "name": "Base Postgres",
-  "description": "An AI-friendly foundation with Drizzle and PostgreSQL.",
+  "name": "NOC ISP Dashboard",
+  "description": "Dashboard pemantauan jaringan ISP real-time untuk tim NOC.",
   "baseVersion": "0.1.0",
   "database": "postgresql"
 }

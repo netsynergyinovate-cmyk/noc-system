@@ -1,4 +1,50 @@
-import { expect, test } from "@playwright/test";
+import { setTimeout as delay } from "node:timers/promises";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
+
+// Auth server membatasi sign-up beruntun (per alamat, bukan per akun), dan
+// batas itu juga terkena oleh spesifikasi lain yang baru saja mendaftar. Tunggu
+// jendelanya sekali, seperti pembantu sign-up di spesifikasi lain.
+async function postSignUp(
+  request: APIRequestContext,
+  options: Parameters<APIRequestContext["post"]>[1],
+) {
+  let response = await request.post("/api/auth/sign-up/email", options);
+  if (response.status() === 429) {
+    const seconds = Number(response.headers()["retry-after"] || 10);
+    expect(Number.isFinite(seconds) && seconds >= 0 && seconds <= 10).toBe(
+      true,
+    );
+    await delay((seconds + 0.1) * 1000);
+    response = await request.post("/api/auth/sign-up/email", options);
+  }
+  return response;
+}
+
+// Sama untuk formulir: bila ditolak karena batas, tunggu jendelanya lalu kirim
+// lagi.
+async function submitSignUp(page: Page) {
+  const submit = page.getByRole("button", {
+    name: "Buat akun",
+    exact: true,
+  });
+  await submit.click();
+  const outcome = await Promise.race([
+    page.waitForURL(/\/app$/, { timeout: 10_000 }).then(() => "ok"),
+    page
+      .getByText("Terlalu banyak percobaan. Tunggu beberapa detik")
+      .waitFor({ timeout: 10_000 })
+      .then(() => "limited"),
+  ]).catch(() => "unknown");
+  if (outcome === "limited") {
+    await delay(10_500);
+    await submit.click();
+  }
+}
 
 test("anonymous visitors cannot access the protected app", async ({
   page,
@@ -7,7 +53,7 @@ test("anonymous visitors cannot access the protected app", async ({
   await page.goto("/app");
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(
-    page.getByRole("heading", { name: "Welcome back" }),
+    page.getByRole("heading", { name: "Masuk ke NOC ISP" }),
   ).toBeVisible();
   const session = await request.get("/api/auth/get-session");
   expect(await session.json()).toBeNull();
@@ -22,18 +68,16 @@ test("signup, persisted session, signout, rejected password, and signin work", a
   const email = `builder-${Date.now()}@example.com`;
   const password = "A-long-test-password-123!";
   await page.goto("/sign-up");
-  await page.getByLabel("Name", { exact: true }).fill("Ada Builder");
+  await page.getByLabel("Nama", { exact: true }).fill("Ada Builder");
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
+  await page.getByLabel("Kata sandi", { exact: true }).fill(password);
+  await submitSignUp(page);
   await expect(page).toHaveURL(/\/app$/);
   await expect(
-    page.getByRole("heading", { name: "Welcome, Ada Builder." }),
+    page.getByRole("heading", { name: "Dashboard NOC" }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByText(`Signed in as ${email}`)).toBeVisible();
+  await expect(page.getByText(`Masuk sebagai ${email}`)).toBeVisible();
   const cookies = await context.cookies();
   expect(
     cookies.some(
@@ -42,18 +86,25 @@ test("signup, persisted session, signout, rejected password, and signin work", a
   ).toBe(true);
   await page.goto("/sign-in");
   await expect(page).toHaveURL(/\/app$/);
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.getByRole("button", { name: "Keluar", exact: true }).click();
+  // Keluar memuat ulang halaman penuh ke halaman masuk dengan penegasan
+  // (e2e/signed-out-ui.spec.ts memeriksanya lebih lengkap).
+  await expect(page).toHaveURL(/\/sign-in\?keluar=1$/);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Anda sudah keluar." }),
+  ).toBeVisible();
   await page.goto("/app");
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByLabel("Kata sandi", { exact: true })
+    .fill("incorrect-password");
+  await page.getByRole("button", { name: "Masuk", exact: true }).click();
   await expect(
-    page.getByRole("alert").filter({ hasText: "We couldn't sign you in." }),
-  ).toContainText("Check your email and password");
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    page.getByRole("alert").filter({ hasText: "Email atau kata sandi salah" }),
+  ).toContainText("Periksa lalu coba lagi");
+  await page.getByLabel("Kata sandi", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Masuk", exact: true }).click();
   await expect(page).toHaveURL(/\/app$/);
   expect(errors).toEqual([]);
 });
@@ -61,7 +112,7 @@ test("signup, persisted session, signout, rejected password, and signin work", a
 test("auth rejects cross-origin requests and invalid signup data", async ({
   request,
 }) => {
-  const crossOrigin = await request.post("/api/auth/sign-up/email", {
+  const crossOrigin = await postSignUp(request, {
     headers: { Origin: "https://untrusted.example" },
     data: {
       name: "Test",
@@ -70,7 +121,7 @@ test("auth rejects cross-origin requests and invalid signup data", async ({
     },
   });
   expect(crossOrigin.status()).toBe(403);
-  const invalid = await request.post("/api/auth/sign-up/email", {
+  const invalid = await postSignUp(request, {
     headers: { Origin: "http://localhost:3101" },
     data: { name: "Test", email: "not-an-email", password: "short" },
   });
@@ -78,32 +129,21 @@ test("auth rejects cross-origin requests and invalid signup data", async ({
   expect(invalid.status()).toBeLessThan(500);
 });
 
-test("welcome and auth pages fit a narrow screen and prompt copying works", async ({
-  page,
-  context,
-}) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("halaman masuk dan daftar muat di layar sempit", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  // "/" hanya pengalih: pengunjung anonim berakhir di halaman masuk.
   await page.goto("/");
+  await expect(page).toHaveURL(/\/sign-in$/);
   await expect(
-    page.getByRole("heading", { name: "A small base. A world of ideas." }),
+    page.getByRole("heading", { name: "Masuk ke NOC ISP" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Copy prompt" }).click();
-  await expect(
-    page.getByRole("button", { name: "Copied", exact: true }),
-  ).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
-    "Read AGENTS.md",
-  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page
-    .getByRole("link", { name: "Create an account", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Buat akun", exact: true }).click();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(

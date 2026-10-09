@@ -8,3 +8,8 @@ playwright-report
 test-results
 *.tsbuildinfo
 .env*
+
+# Dikelola alat (skill, konfigurasi agen), bukan kode aplikasi.
+.claude
+.claude-flow
+.ngodingpakeai

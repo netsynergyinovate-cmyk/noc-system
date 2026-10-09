@@ -10,6 +10,7 @@ coverage
 *.tsbuildinfo
 
 # Local tooling and CI that the production image never runs.
+backend
 .git
 .github
 .vscode

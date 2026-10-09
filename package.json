@@ -29,14 +29,20 @@
     "db:down": "node scripts/database.mjs down",
     "db:status": "node scripts/database.mjs status",
     "db:logs": "node scripts/database.mjs logs",
-    "test:setup": "node scripts/test-setup.mjs"
+    "test:setup": "node scripts/test-setup.mjs",
+    "backend:dev": "node scripts/backend-dev.mjs",
+    "backend:build": "go -C backend build -o bin/ ./cmd/server",
+    "backend:test": "go -C backend test ./...",
+    "backend:check": "go -C backend vet ./... && go -C backend test ./..."
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@next/env": "16.3.4",
     "better-auth": "1.7.3",
     "class-variance-authority": "0.7.1",
     "cn": "0.2.6",
     "drizzle-orm": "0.45.2",
+    "leaflet": "1.9.4",
     "lucide-react": "1.42.0",
     "motion": "13.2.0",
     "next": "16.3.4",
@@ -44,12 +50,17 @@
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-hook-form": "^7.89.0",
+    "react-leaflet": "5.0.0",
     "server-only": "0.0.1",
-    "zod": "4.5.4"
+    "uplot": "1.6.32",
+    "zod": "4.5.4",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
+    "@types/leaflet": "1.9.22",
     "@types/node": "22.20.1",
     "@types/pg": "8.23.1",
     "@types/react": "19.2.18",

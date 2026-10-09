@@ -464,15 +464,15 @@ git commit -m "feat(map): upgrade customer map with satellite tiles, gps, odp ma
 - Verify banner displays cable distance to ODP.
 - Verify GPS button is rendered with accessible label.
 
-- [ ] **Step 1: Write `e2e/customer-map-upgrade.spec.ts`**
-- [ ] **Step 2: Run existing map e2e tests & verify they continue passing**
+- [x] **Step 1: Write `e2e/customer-map-upgrade.spec.ts`**
+- [x] **Step 2: Run existing map e2e tests & verify they continue passing**
 
 Run:
 ```bash
 npm run typecheck
 ```
 
-- [ ] **Step 3: Commit Task 4**
+- [x] **Step 3: Commit Task 4**
 
 ```bash
 git add e2e/customer-map-upgrade.spec.ts

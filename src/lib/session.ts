@@ -2,8 +2,10 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { authCookiePrefix } from "@/config/site";
 import { auth } from "@/lib/auth";
 import type { Permissions } from "@/lib/permissions";
+import { sessionRejectedUrl } from "@/lib/session-redirect";
 
 export const getSession = cache(async () =>
   auth.api.getSession({ headers: await headers() }),
@@ -12,7 +14,13 @@ export const getSession = cache(async () =>
 // Use at the data boundary too: a layout alone doesn't protect actions or APIs.
 export async function requireSession() {
   const session = await getSession();
-  if (!session) redirect("/sign-in");
+  if (!session) {
+    // Cookie basi atau sesi kedaluwarsa: proxy meloloskannya (ia hanya melihat
+    // ada tidaknya cookie), jadi di sini jalur semula ikut dibawa ke halaman
+    // masuk, dengan penanda "sesi berakhir" bila cookie-nya ada. Aturannya ada
+    // di sessionRejectedUrl supaya bisa diuji tanpa server.
+    redirect(sessionRejectedUrl(await headers(), authCookiePrefix));
+  }
   return session;
 }
 

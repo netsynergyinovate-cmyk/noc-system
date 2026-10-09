@@ -22,6 +22,27 @@
       "when": 1788950762062,
       "tag": "0002_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791365722595,
+      "tag": "0003_noc_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791372737920,
+      "tag": "0004_traffic_archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791377323595,
+      "tag": "0005_customer_odp",
+      "breakpoints": true
     }
   ]
 }

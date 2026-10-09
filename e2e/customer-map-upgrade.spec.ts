@@ -40,9 +40,9 @@ test.describe("Upgrade CustomerMap: Satelit, GPS, ODP & Rute Kabel", () => {
       attribution.locator('a[href*="google.com/maps"]'),
     ).toHaveCount(1);
 
-    // Memverifikasi tile satelit mt1.google.com dimuat
+    // Memverifikasi tile satelit google.com (mt0-mt3) dimuat
     const tileImages = map.locator(
-      '.leaflet-tile-pane img[src*="mt1.google.com"]',
+      '.leaflet-tile-pane img[src*="google.com"]',
     );
     await expect.poll(async () => await tileImages.count()).toBeGreaterThan(0);
 

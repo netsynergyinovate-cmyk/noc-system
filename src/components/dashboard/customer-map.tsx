@@ -19,6 +19,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Layers, Navigation } from "lucide-react";
+import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { BillingStatusBadge } from "./billing-status-badge";
 import { getCustomerHealth, healthLabels } from "@/lib/dashboard/health";
@@ -252,6 +253,10 @@ export function CustomerMap() {
   const [layerMode, setLayerMode] = useState<"satellite" | "streets">(
     "satellite",
   );
+  // Varian satelit Google: "hybrid" (dengan nama jalan & tempat) atau "pure" (satelit murni)
+  const [satelliteVariant, setSatelliteVariant] = useState<"hybrid" | "pure">(
+    "hybrid",
+  );
 
   // GPS Lokasi Pengguna
   const [userLocation, setUserLocation] = useState<{
@@ -398,15 +403,20 @@ export function CustomerMap() {
       >
         {layerMode === "satellite" ? (
           <TileLayer
+            key={`satellite-${satelliteVariant}`}
             attribution='&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a>'
-            url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+            url={`https://{s}.google.com/vt/lyrs=${satelliteVariant === "pure" ? "s" : "y"}&x={x}&y={y}&z={z}`}
+            subdomains={["mt0", "mt1", "mt2", "mt3"]}
             maxNativeZoom={20}
             maxZoom={20}
           />
         ) : (
           <TileLayer
+            key="streets"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxNativeZoom={19}
+            maxZoom={20}
           />
         )}
 
@@ -525,6 +535,41 @@ export function CustomerMap() {
           <Layers className="h-3.5 w-3.5" />
           <span>{layerMode === "satellite" ? "Satelit" : "Peta Jalan"}</span>
         </Button>
+        {layerMode === "satellite" && (
+          <div
+            className="inline-flex rounded-md border bg-card/95 p-0.5 shadow-sm text-[11px]"
+            data-testid="satellite-variant-switcher"
+          >
+            <button
+              type="button"
+              className={cn(
+                "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
+                satelliteVariant === "hybrid"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setSatelliteVariant("hybrid")}
+              data-testid="satellite-mode-hybrid"
+              title="Satelit dengan nama jalan dan label Google Maps"
+            >
+              Hybrid
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
+                satelliteVariant === "pure"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setSatelliteVariant("pure")}
+              data-testid="satellite-mode-pure"
+              title="Satelit murni tanpa teks/label jalan"
+            >
+              Murni
+            </button>
+          </div>
+        )}
         <Button
           type="button"
           variant="outline"

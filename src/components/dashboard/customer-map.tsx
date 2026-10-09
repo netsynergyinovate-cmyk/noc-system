@@ -91,7 +91,7 @@ const OdpMarker = memo(function OdpMarker({ odp }: { odp: OdpPoint }) {
       }}
     >
       <Tooltip>
-        <span className="block font-medium">
+        <span className="block font-medium" data-testid="odp-tooltip">
           {odp.name} · {odp.customerCount} pelanggan
         </span>
       </Tooltip>
@@ -310,6 +310,10 @@ export function CustomerMap() {
 
   useEffect(() => {
     if (!map) return;
+    const container = map.getContainer() as HTMLElement & {
+      _leaflet_map?: LeafletMap;
+    };
+    container._leaflet_map = map;
     const update = () => setZoom(map.getZoom());
     map.on("zoomend", update);
     // Dibaca sesudah pemasangan supaya tidak mengubah state saat render.
@@ -379,6 +383,9 @@ export function CustomerMap() {
       className="relative"
       data-testid="customer-map"
       data-zoom={zoom ?? undefined}
+      data-odp-count={odpList.length}
+      data-has-route={activeRoute ? "true" : undefined}
+      data-cable-distance={activeRoute?.distanceMeters ?? undefined}
     >
       <MapContainer
         ref={setMap}
@@ -524,6 +531,7 @@ export function CustomerMap() {
           size="sm"
           className="h-7 px-2 text-xs gap-1.5 bg-card/95 shadow-sm"
           data-testid="gps-button"
+          data-located={userLocation ? "true" : undefined}
           aria-label="Lokasi Saya"
           title="Lokasi Saya"
           onClick={handleLocateMe}
@@ -551,6 +559,20 @@ export function CustomerMap() {
               ? "Pelanggan tidak ditemukan di peta"
               : ""}
       </p>
+
+      {/* Daftar titik distribusi ODP untuk aksesibilitas & pengujian */}
+      <div className="sr-only" data-testid="odp-markers-container">
+        {odpList.map((odp) => (
+          <span
+            key={odp.id}
+            data-testid="odp-marker"
+            data-odp-name={odp.name}
+            data-customer-count={odp.customerCount}
+          >
+            {odp.name} · {odp.customerCount} pelanggan
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

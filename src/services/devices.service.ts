@@ -58,13 +58,31 @@ function listRouters() {
 }
 
 export async function listDevices() {
-  const [routerRows, oltRows] = await Promise.all([
+  const [routerRows, oltRows, ponCounts, onuCounts] = await Promise.all([
     listRouters(),
     db.select(publicOltColumns).from(olts).orderBy(asc(olts.name)),
+    // Jumlah port dan ONU dihitung dari hasil polling backend (olt_pon_ports, olt_onus),
+    // bukan angka bawaan.
+    db.select({ oltId: oltPonPorts.oltId, n: count() }).from(oltPonPorts).groupBy(oltPonPorts.oltId),
+    db
+      .select({
+        oltId: oltOnus.oltId,
+        total: count(),
+        online: sql<number>`count(*) filter (where ${oltOnus.status} = 'online')`.mapWith(Number),
+      })
+      .from(oltOnus)
+      .groupBy(oltOnus.oltId),
   ]);
+  const ponByOlt = new Map(ponCounts.map((r) => [r.oltId, r.n]));
+  const onuByOlt = new Map(onuCounts.map((r) => [r.oltId, r]));
   return {
     routers: routerRows,
-    olts: oltRows,
+    olts: oltRows.map((o) => ({
+      ...o,
+      ponPortCount: ponByOlt.get(o.id) ?? 0,
+      onuTotal: onuByOlt.get(o.id)?.total ?? 0,
+      onuOnline: onuByOlt.get(o.id)?.online ?? 0,
+    })),
     total: routerRows.length + oltRows.length,
   };
 }

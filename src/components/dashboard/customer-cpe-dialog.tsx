@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wifi, Laptop, Loader2, Settings2, CheckCircle2, Activity, Info, Power } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { DashboardCustomer } from "@/lib/dashboard/types";
-import { getCustomerOpticalInfo } from "@/lib/dashboard/onus";
+import {
+  apiOnuToCustomerOptical,
+  getCustomerOpticalInfo,
+  type CustomerOpticalInfo,
+  type LiveOnuItem,
+} from "@/lib/dashboard/onus";
+import { fetchCustomerOnu } from "@/lib/dashboard/olt-live";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import { formatLastSeen } from "@/lib/dashboard/onu-status";
 import type { CpeDevice, CpeHostClient } from "@/lib/dashboard/cpe-mock";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
@@ -61,12 +69,58 @@ export function CustomerCpeDialog({
   const [confirmReboot, setConfirmReboot] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [rebootMessage, setRebootMessage] = useState("");
-  const opticalInfo = getCustomerOpticalInfo(customer);
+  const isDemo = useSession(selectPreviewEnabled);
+  // Mode live: ONU pelanggan ini dari OLT (olt_onus); undefined = sedang dimuat,
+  // null = belum ada ONU yang dipetakan. Demo memakai data tiruan.
+  const [liveOnu, setLiveOnu] = useState<{ customerId: string; onu: LiveOnuItem | null } | "failed" | null>(null);
+  useEffect(() => {
+    if (isDemo || !isOpen) return;
+    let alive = true;
+    fetchCustomerOnu(customer.id).then(
+      (onu) => alive && setLiveOnu({ customerId: customer.id, onu }),
+      () => alive && setLiveOnu("failed"),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [isDemo, isOpen, customer.id]);
+  const liveReady = liveOnu !== null && liveOnu !== "failed" && liveOnu.customerId === customer.id;
+  const noOnuNote =
+    isDemo
+      ? null
+      : liveOnu === "failed"
+        ? "Data ONU belum bisa dimuat dari server."
+        : !liveReady
+          ? "Memuat data ONU dari OLT…"
+          : liveOnu.onu === null
+            ? "Belum ada ONU yang dipetakan ke pelanggan ini. Petakan di halaman OLT & Optik."
+            : null;
+  const emptyOptical: CustomerOpticalInfo = {
+    rxPowerDbm: null,
+    txPowerDbm: null,
+    attenuationDb: null,
+    oltName: "—",
+    ponPort: "—",
+    distanceMeters: null,
+    model: "—",
+    serialNumber: "—",
+    isOnline: customer.isOnline,
+  };
+  const opticalInfo: CustomerOpticalInfo = isDemo
+    ? getCustomerOpticalInfo(customer)
+    : liveReady && liveOnu.onu
+      ? apiOnuToCustomerOptical(liveOnu.onu, customer.isOnline)
+      : emptyOptical;
   const hosts = cpe?.hosts ?? fallbackHosts;
   const canManage = useCanDo("manageCpe");
 
   function doReboot() {
     setConfirmReboot(false);
+    if (!isDemo) {
+      // Reboot modem dikirim lewat GenieACS (TR-069), belum tersambung: jangan pura-pura terkirim.
+      setRebootMessage("Reboot modem butuh GenieACS yang belum tersambung. Tidak ada perintah yang dikirim.");
+      return;
+    }
     setRebooting(true);
     setRebootMessage("");
     setTimeout(() => {
@@ -195,6 +249,11 @@ export function CustomerCpeDialog({
             <CpeHostsManager hosts={hosts} canManage={canManage} />
           </TabsContent>
           <TabsContent value="optical" className="space-y-4 pt-4">
+            {noOnuNote && (
+              <p role="status" data-testid="optical-live-note" className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                {noOnuNote}
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Sinyal optik</span>
               <OpticalRx dbm={opticalInfo.rxPowerDbm} />
@@ -202,9 +261,9 @@ export function CustomerCpeDialog({
             <div className="grid grid-cols-2 gap-3">
               {[
                 ["Daya Terima (RX Power)", opticalInfo.rxPowerDbm != null ? `${opticalInfo.rxPowerDbm} dBm` : "Ã¢â‚¬â€"],
-                ["Daya Pancar (TX Power)", `${txDbm} dBm`],
+                ["Daya Pancar (TX Power)", txDbm != null ? `${txDbm} dBm` : "—"],
                 ["Redaman Total (Loss)", opticalInfo.attenuationDb != null ? `${opticalInfo.attenuationDb} dB` : "Ã¢â‚¬â€"],
-                ["Jarak Fiber", `${opticalInfo.distanceMeters.toLocaleString("id-ID")} m`],
+                ["Jarak Fiber", opticalInfo.distanceMeters === null ? "—" : `${opticalInfo.distanceMeters.toLocaleString("id-ID")} m`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md border p-3">
                   <div className="text-xs text-muted-foreground">{label}</div>

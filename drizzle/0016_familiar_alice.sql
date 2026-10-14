@@ -1,0 +1,2 @@
+ALTER TABLE "olt_onus" DROP CONSTRAINT "olt_onus_status_check";--> statement-breakpoint
+ALTER TABLE "olt_onus" ADD CONSTRAINT "olt_onus_status_check" CHECK ("olt_onus"."status" in ('online', 'offline', 'los'));

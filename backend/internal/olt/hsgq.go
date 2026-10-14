@@ -2,7 +2,6 @@ package olt
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,6 +30,10 @@ type hsgqDriver struct {
 
 func init() {
 	Register("hsgq", newHsgq)
+	// Nama lama yang sudah terlanjur disimpan di tabel olts (isian bebas di wizard
+	// versi sebelumnya); semuanya driver HSGQ yang sama.
+	Register("hsgq-gpon", newHsgq)
+	Register("hsgq-epon", newHsgq)
 }
 
 func newHsgq(cfg Config) (Driver, error) {
@@ -87,39 +90,32 @@ func (d *hsgqDriver) TestConnection(ctx context.Context) error {
 	return err
 }
 
-type hsgqPon struct {
-	ID        int      `json:"id"`
-	RxPower   *float64 `json:"rx_power"`
-	TxPower   *float64 `json:"tx_power"`
-	OnlineOnu int      `json:"online_onu"`
-}
-
-type hsgqOnu struct {
-	Pon         int      `json:"pon"`
-	ID          int      `json:"id"`
-	MAC         string   `json:"mac"`
-	Status      string   `json:"status"`
-	RxPower     *float64 `json:"rx_power"`
-	TxPower     *float64 `json:"tx_power"`
-	Attenuation *float64 `json:"attenuation"`
-}
-
 func (d *hsgqDriver) FetchPonPorts(ctx context.Context) ([]PonPortStats, error) {
 	b, err := d.get(ctx, hsgqPathPon)
 	if err != nil {
 		return nil, err
 	}
-	var doc struct {
-		Ports []hsgqPon `json:"ports"`
-	}
-	if err := json.Unmarshal(b, &doc); err != nil {
+	list, err := decodeObjects(b, "ports", "pon", "data")
+	if err != nil {
 		return nil, fmt.Errorf("olt/hsgq: JSON PON tidak valid: %w", err)
 	}
-	out := make([]PonPortStats, 0, len(doc.Ports))
-	for _, p := range doc.Ports {
-		s := PonPortStats{Index: p.ID, RxPowerDbm: p.RxPower, TxPowerDbm: p.TxPower, OnuOnlineCount: p.OnlineOnu}
-		if p.RxPower != nil && p.TxPower != nil {
-			s.AttenuationDb = f64(*p.TxPower - *p.RxPower)
+	out := make([]PonPortStats, 0, len(list))
+	for i, p := range list {
+		idx, ok := p.integer("ponIndex", "pon_index", "id", "pon")
+		if !ok {
+			return nil, fmt.Errorf("olt/hsgq: port ke-%d tanpa nomor PON", i+1)
+		}
+		online, _ := p.integer("onuOnlineCount", "online_onu", "onlineOnu", "onu_online")
+		s := PonPortStats{
+			Index:          idx,
+			RxPowerDbm:     p.float("rxPowerDbm", "rx_power", "rxPower"),
+			TxPowerDbm:     p.float("txPowerDbm", "tx_power", "txPower"),
+			AttenuationDb:  p.float("attenuationDb", "attenuation_db", "attenuation"),
+			OnuOnlineCount: online,
+		}
+		// Redaman dihitung dari selisih daya hanya bila OLT tidak melaporkannya.
+		if s.AttenuationDb == nil && s.RxPowerDbm != nil && s.TxPowerDbm != nil {
+			s.AttenuationDb = f64(*s.TxPowerDbm - *s.RxPowerDbm)
 		}
 		out = append(out, s)
 	}
@@ -131,22 +127,30 @@ func (d *hsgqDriver) FetchOnus(ctx context.Context) ([]OnuStats, error) {
 	if err != nil {
 		return nil, err
 	}
-	var doc struct {
-		Onus []hsgqOnu `json:"onus"`
-	}
-	if err := json.Unmarshal(b, &doc); err != nil {
+	list, err := decodeObjects(b, "onus", "onu", "data")
+	if err != nil {
 		return nil, fmt.Errorf("olt/hsgq: JSON ONU tidak valid: %w", err)
 	}
-	out := make([]OnuStats, 0, len(doc.Onus))
-	for _, o := range doc.Onus {
-		s := OnuStats{
-			PonIndex:   o.Pon,
-			OnuIndex:   o.ID,
-			MacAddress: strings.ToUpper(strings.TrimSpace(o.MAC)),
-			IsOnline:   strings.EqualFold(o.Status, "online"),
+	out := make([]OnuStats, 0, len(list))
+	for i, o := range list {
+		pon, okPon := o.integer("ponIndex", "pon_index", "pon")
+		onu, okOnu := o.integer("onuIndex", "onu_index", "id")
+		if !okPon || !okOnu {
+			return nil, fmt.Errorf("olt/hsgq: ONU ke-%d tanpa nomor PON atau ONU", i+1)
 		}
-		if s.IsOnline { // ONU offline tidak punya pembacaan optik
-			s.RxPowerDbm, s.TxPowerDbm, s.AttenuationDb = o.RxPower, o.TxPower, o.Attenuation
+		state := normalizeState(o.text("status", "state"))
+		s := OnuStats{
+			PonIndex:     pon,
+			OnuIndex:     onu,
+			MacAddress:   strings.ToUpper(o.text("macAddress", "mac")),
+			SerialNumber: strings.ToUpper(o.text("serialNumber", "serial_number", "sn")),
+			State:        state,
+			IsOnline:     state == "online",
+		}
+		if s.IsOnline { // ONU offline atau LOS tidak punya pembacaan optik yang berarti
+			s.RxPowerDbm = o.float("rxPowerDbm", "rx_power", "rxPower")
+			s.TxPowerDbm = o.float("txPowerDbm", "tx_power", "txPower")
+			s.AttenuationDb = o.float("attenuationDb", "attenuation_db", "attenuation")
 		}
 		out = append(out, s)
 	}

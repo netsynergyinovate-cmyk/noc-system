@@ -41,8 +41,9 @@ test("onboardingProgress skema terdefinisi dengan foreign key dan kolom status",
 test("Berkas migrasi SQL onboarding_steps dan onboarding_progress tersedia", () => {
   const drizzleDir = path.resolve("drizzle");
   const files = fs.readdirSync(drizzleDir).filter((f) => f.endsWith(".sql"));
-  const lastMigration = files[files.length - 1];
-  const sql = fs.readFileSync(path.join(drizzleDir, lastMigration), "utf-8");
+  // Tabel onboarding dibuat oleh salah satu migrasi (bukan harus yang terakhir:
+  // migrasi sesudahnya boleh mengubah tabel lain).
+  const sql = files.map((f) => fs.readFileSync(path.join(drizzleDir, f), "utf-8")).join("\n");
 
   assert.ok(
     sql.includes("CREATE TABLE \"onboarding_steps\"") ||

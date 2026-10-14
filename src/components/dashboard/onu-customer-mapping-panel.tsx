@@ -8,6 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockOnus } from "@/lib/dashboard/onus";
+import { mapOnuLive } from "@/lib/dashboard/olt-live";
+import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import {
   getOnuMappings,
@@ -17,7 +20,7 @@ import {
   type MappingSuggestion,
   type OnuMappingCandidate,
 } from "@/lib/dashboard/onu-mapping-logic";
-import { useSessionUser } from "@/components/session-provider";
+import { useSession, useSessionUser } from "@/components/session-provider";
 import { MetricCard } from "./metric-card";
 import { formatInteger } from "@/lib/dashboard/format";
 
@@ -25,6 +28,10 @@ export function OnuCustomerMappingPanel() {
   const customers = useDashboardStore((s) => s.customers);
   const user = useSessionUser();
   const operator = user?.name || user?.email || "operator";
+  // Mode live: ONU dari OLT dan pemetaan disimpan di database lewat API (dengan audit);
+  // demo memakai ONU dan penyimpanan tiruan di browser.
+  const isDemo = useSession(selectPreviewEnabled);
+  const live = useLiveOnus(!isDemo);
 
   const [query, setQuery] = useState("");
   // Override lokal (tiruan); undefined = pakai data bawaan ONU.
@@ -33,15 +40,15 @@ export function OnuCustomerMappingPanel() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    setOverrides(getOnuMappings());
-  }, []);
+    if (isDemo) setOverrides(getOnuMappings());
+  }, [isDemo]);
 
   const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
 
   const onuCandidates = useMemo<OnuMappingCandidate[]>(
     () =>
-      mockOnus.map((o) => {
-        const cid = o.id in overrides ? overrides[o.id] : o.customerId;
+      (isDemo ? mockOnus : (live.onus ?? [])).map((o) => {
+        const cid = isDemo && o.id in overrides ? overrides[o.id] : o.customerId;
         return {
           onuId: o.id,
           serialNumber: o.serialNumber,
@@ -52,7 +59,7 @@ export function OnuCustomerMappingPanel() {
           currentCustomerName: cid ? (customerById.get(cid)?.name ?? o.customerName) : null,
         };
       }),
-    [overrides, customerById],
+    [isDemo, live.onus, overrides, customerById],
   );
 
   const customerCandidates = useMemo<CustomerMappingCandidate[]>(() => {
@@ -80,7 +87,22 @@ export function OnuCustomerMappingPanel() {
       .includes(q);
   });
 
+  async function applyLive(onuId: string, customerId: string | null) {
+    const result = await mapOnuLive(onuId, customerId);
+    if (!result.ok) {
+      setMessage(result.message);
+      return;
+    }
+    await live.reload();
+    setSuggestions((prev) => prev?.filter((s) => s.onuId !== onuId && s.customerId !== customerId) ?? null);
+    setMessage(customerId ? "ONU dipetakan dan tersimpan di database." : "Pemetaan ONU dilepas.");
+  }
+
   function apply(onuId: string, customerId: string | null) {
+    if (!isDemo) {
+      void applyLive(onuId, customerId);
+      return;
+    }
     try {
       saveOnuMapping(onuId, customerId, operator);
     } catch (e) {
@@ -125,7 +147,11 @@ export function OnuCustomerMappingPanel() {
               variant="outline"
               className="w-fit border-warning/40 bg-warning/10 text-warning"
             >
-              Pemetaan Tiruan (Fase 2) · Wajib sinkronisasi DB di Fase 5
+              {isDemo
+                ? "Pemetaan Tiruan (Fase 2) · Wajib sinkronisasi DB di Fase 5"
+                : live.failed
+                  ? "Data ONU belum bisa dimuat dari server"
+                  : "Pemetaan tersimpan di database; ONU dari OLT"}
             </Badge>
           </div>
           <Button type="button" variant="outline" onClick={suggest} data-testid="auto-suggest-btn">

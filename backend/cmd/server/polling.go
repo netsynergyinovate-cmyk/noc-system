@@ -66,5 +66,11 @@ func startRouterPolling(
 	}
 	go collector.NewFleet(poller, load, logger).Run(ctx, fleetEvery)
 	go collector.NewImporter(load, pool, nil, logger).Run(ctx, 0)
+	// OLT: kondisi optik PON dan ONU dipoll dari tiap OLT aktif lalu disimpan ke
+	// olt_pon_ports dan olt_onus (dibaca halaman OLT & Optik).
+	loadOlts := func(ctx context.Context) ([]collector.OltTarget, error) {
+		return collector.LoadOltTargets(ctx, pool, deviceSecret, logger)
+	}
+	go collector.NewOltFleet(loadOlts, pool, 0, logger).Run(ctx, fleetEvery)
 	logger.Info("polling router, arsip traffic, dan impor pelanggan PPPoE aktif", "cek_router_tiap", fleetEvery.String())
 }

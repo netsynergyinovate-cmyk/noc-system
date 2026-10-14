@@ -28,13 +28,18 @@ type PonPortStats struct {
 
 // OnuStats adalah data optik satu ONU.
 type OnuStats struct {
-	PonIndex      int
-	OnuIndex      int
-	MacAddress    string
+	PonIndex   int
+	OnuIndex   int
+	MacAddress string
+	// SerialNumber kosong bila OLT hanya melaporkan MAC.
+	SerialNumber  string
 	RxPowerDbm    *float64
 	TxPowerDbm    *float64
 	AttenuationDb *float64
 	IsOnline      bool
+	// State: "online", "offline", atau "los" (kabel putus / tidak ada sinyal).
+	// Kosong dibaca dari IsOnline (driver lama).
+	State string
 }
 
 // Config adalah parameter koneksi ke satu OLT.

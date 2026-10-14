@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,10 @@ import {
   type PonPortFilter,
 } from "@/lib/dashboard/pon-port-table-data";
 import { formatInteger } from "@/lib/dashboard/format";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
+import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
+import { fetchLivePonOverview, type LivePonOverview } from "@/lib/dashboard/pon-port-live";
 import { selectClassName } from "./select-class";
 
 const OPTICAL_LABEL = { normal: "Normal", warning: "Peringatan", critical: "Kritis" } as const;
@@ -27,7 +31,34 @@ const OPTICAL_CLASS = {
 const dbm = (v: number | null) => (v == null ? "-" : `${v.toFixed(1)} dBm`);
 
 export function PonPortsTable() {
-  const all = useMemo(() => generateMockPonPortOverview(), []);
+  const isDemo = useSession(selectPreviewEnabled);
+  // Mode live: port dari hasil polling OLT (olt_pon_ports) + ONU nyata.
+  const liveOnus = useLiveOnus(!isDemo);
+  const [liveState, setLiveState] = useState<LivePonOverview | null>(null);
+  const [liveFailed, setLiveFailed] = useState(false);
+  const liveOnuList = liveOnus.onus;
+  useEffect(() => {
+    if (isDemo || liveOnuList === null) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const next = await fetchLivePonOverview(liveOnuList);
+        if (alive) {
+          setLiveState(next);
+          setLiveFailed(false);
+        }
+      } catch {
+        if (alive) setLiveFailed(true);
+      }
+    };
+    const first = setTimeout(() => void load(), 0);
+    return () => {
+      alive = false;
+      clearTimeout(first);
+    };
+  }, [isDemo, liveOnuList]);
+  const mockAll = useMemo(() => generateMockPonPortOverview(), []);
+  const all = useMemo(() => (isDemo ? mockAll : (liveState?.rows ?? [])), [isDemo, mockAll, liveState]);
   const [filter, setFilter] = useState<PonPortFilter>(EMPTY_PON_FILTER);
   const rows = useMemo(() => filterPonPorts(all, filter), [all, filter]);
   const summary = useMemo(() => computePonSummary(rows), [rows]);
@@ -51,7 +82,13 @@ export function PonPortsTable() {
             </CardDescription>
           </div>
           <Badge variant="outline" data-testid="pon-onu-mock-badge">
-            Data Tiruan PON (Fase 2) · Wajib beralih ke OLT nyata di Fase 5
+            {isDemo
+              ? "Data Tiruan PON (Fase 2) · Wajib beralih ke OLT nyata di Fase 5"
+              : liveFailed
+                ? "Data PON belum bisa dimuat dari server"
+                : liveState && liveState.failedOlts.length > 0
+                  ? `Data dari OLT · gagal dimuat: ${liveState.failedOlts.join(", ")}`
+                  : "Data dari OLT (hasil polling backend)"}
           </Badge>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

@@ -26,8 +26,13 @@ import { GenieacsTestDialog } from "./genieacs-test-dialog";
 import { MapOnuDialog } from "./map-onu-dialog";
 import { OnuCustomerMappingPanel } from "./onu-customer-mapping-panel";
 import { OltWizardDialog } from "./olt-wizard-dialog";
+import { LiveOntPanel } from "./live-ont-panel";
 import { PonPortsDialog } from "./pon-ports-dialog";
 import { useDashboardStore } from "@/lib/dashboard/store";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
+import { fetchLiveOlts, mapOnuLive } from "@/lib/dashboard/olt-live";
+import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
 import { formatInteger } from "@/lib/dashboard/format";
 import { selectClassName } from "./select-class";
 import { CustomerCpeDialog } from "./customer-cpe-dialog";
@@ -52,14 +57,30 @@ function OnuInventory() {
   const [oltId, setOltId] = useState("all");
 
   const customers = useDashboardStore((state) => state.customers);
-  const [onus, setOnus] = useState<readonly DashboardOnu[]>(mockOnus);
+  const isDemo = useSession(selectPreviewEnabled);
+  // Mode live: ONU dari OLT lewat database (polling backend Go); demo: data tiruan.
+  const live = useLiveOnus(!isDemo);
+  const [demoOnus, setDemoOnus] = useState<readonly DashboardOnu[]>(mockOnus);
+  const onus: readonly DashboardOnu[] = isDemo ? demoOnus : (live.onus ?? []);
   const [mappingId, setMappingId] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const mappingOnu = onus.find((o) => o.id === mappingId) ?? null;
 
-  const handleSaveMapping = (onuId: string, newCustomerId: string | null) => {
+  const handleSaveMapping = async (onuId: string, newCustomerId: string | null) => {
     const customer = newCustomerId ? customers.find((c) => c.id === newCustomerId) ?? null : null;
     if (newCustomerId && !customer) return;
-    setOnus((prev) => prev.map((o) => (o.id === onuId ? mapOnuToCustomer(o, customer) : o)));
+    if (isDemo) {
+      setDemoOnus((prev) => prev.map((o) => (o.id === onuId ? mapOnuToCustomer(o, customer) : o)));
+      setMappingId(null);
+      return;
+    }
+    const result = await mapOnuLive(onuId, newCustomerId);
+    if (!result.ok) {
+      setMapError(result.message);
+      return;
+    }
+    setMapError(null);
+    await live.reload();
     setMappingId(null);
   };
 
@@ -75,7 +96,11 @@ function OnuInventory() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Inventaris ONU</CardTitle>
-            <CardDescription>Data tiruan; belum terhubung ke OLT nyata.</CardDescription>
+            <CardDescription data-testid="onu-source-note">
+              {isDemo
+                ? "Data tiruan; belum terhubung ke OLT nyata."
+                : "Data dari OLT: hasil polling backend, diperbarui otomatis tiap 30 detik."}
+            </CardDescription>
           </div>
           <span className="text-xs text-muted-foreground tabular-nums" data-testid="onu-count">
             Menampilkan {formatInteger(rows.length)} dari {formatInteger(onus.length)} ONU
@@ -83,6 +108,21 @@ function OnuInventory() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!isDemo && live.failed && (
+          <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Data ONU belum bisa dimuat dari server. Daftar di bawah adalah yang terakhir berhasil dimuat.
+          </p>
+        )}
+        {!isDemo && live.truncated && (
+          <p role="status" className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
+            Hanya {formatInteger(onus.length)} dari {formatInteger(live.total)} ONU yang dimuat. Persempit dengan pencarian atau filter OLT.
+          </p>
+        )}
+        {mapError && (
+          <p role="alert" data-testid="onu-map-error" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {mapError}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[220px] max-w-sm flex-1">
             <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -142,7 +182,11 @@ function OnuInventory() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={10} className="h-28 text-center text-muted-foreground">
-                    Tidak ada ONU yang sesuai dengan filter.
+                    {!isDemo && onus.length === 0
+                      ? live.onus === null && !live.failed
+                        ? "Memuat ONU dari server…"
+                        : "Belum ada ONU. Daftarkan OLT di tab Daftar OLT; ONU muncul setelah backend berhasil memoll OLT."
+                      : "Tidak ada ONU yang sesuai dengan filter."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -156,7 +200,7 @@ function OnuInventory() {
                         <div className="text-sm">{o.oltName}</div>
                         <div className="font-mono text-xs text-muted-foreground">{o.ponPort}</div>
                       </TableCell>
-                      <TableCell className="tabular-nums">{formatInteger(o.distanceMeters)}</TableCell>
+                      <TableCell className="tabular-nums">{o.distanceMeters === null ? "-" : formatInteger(o.distanceMeters)}</TableCell>
                       <TableCell>
                         <OpticalRx dbm={o.status === "los" ? null : o.rxPowerDbm} />
                         <div className="mt-1 flex gap-3 text-muted-foreground">
@@ -218,13 +262,37 @@ export function CpeBoard() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline" | "weak" | "out">("all");
   const [routerFilter, setRouterFilter] = useState<string>("all");
-  const [olts, setOlts] = useState<readonly DashboardOlt[]>(mockOlts);
-  const [oltsFromApi, setOltsFromApi] = useState(false);
+  const isDemoMode = useSession(selectPreviewEnabled);
+  // Mode live: hanya OLT dari database; tidak pernah jatuh ke daftar tiruan.
+  const [olts, setOlts] = useState<readonly DashboardOlt[]>(isDemoMode ? mockOlts : []);
+  const [oltsFromApi, setOltsFromApi] = useState(!isDemoMode);
+  const [oltsFailed, setOltsFailed] = useState(false);
   const [selectedOltForPon, setSelectedOltForPon] = useState<DashboardOlt | null>(null);
 
   // OLT nyata dari GET /api/devices; gagal atau kosong -> tetap data tiruan.
   const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
+    if (!isDemoMode) {
+      let alive = true;
+      const load = async () => {
+        try {
+          const next = await fetchLiveOlts();
+          if (alive) {
+            setOlts(next);
+            setOltsFailed(false);
+          }
+        } catch {
+          if (alive) setOltsFailed(true);
+        }
+      };
+      const first = setTimeout(() => void load(), 0);
+      const timer = setInterval(() => void load(), 30_000);
+      return () => {
+        alive = false;
+        clearTimeout(first);
+        clearInterval(timer);
+      };
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -242,7 +310,7 @@ export function CpeBoard() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, isDemoMode]);
 
   // Data CPE tiruan deterministik per pelanggan (nanti dari GenieACS NBI).
   const cpeDevices = useMemo(() => generateMockCpeDevices(customers), [customers]);
@@ -289,7 +357,17 @@ export function CpeBoard() {
       </TabsList>
 
       <TabsContent value="diagnostics" className="flex flex-col gap-6">
-        <CpeDiagnosticsPanel key={diagCustomerId ?? "none"} presetCustomerId={diagCustomerId} />
+        {isDemoMode ? (
+          <CpeDiagnosticsPanel key={diagCustomerId ?? "none"} presetCustomerId={diagCustomerId} />
+        ) : (
+          <p
+            data-testid="diagnostics-live-note"
+            className="rounded-md border border-dashed p-6 text-sm text-muted-foreground"
+          >
+            Diagnostik CPE (ping, traceroute, reboot modem) dijalankan lewat GenieACS (TR-069), bukan OLT, dan belum
+            tersambung. Hasil tiruan tidak ditampilkan di mode live.
+          </p>
+        )}
       </TabsContent>
 
       <TabsContent value="mapping" className="flex flex-col gap-6">
@@ -337,7 +415,9 @@ export function CpeBoard() {
             <div className="flex flex-col gap-1.5">
               <CardTitle className="text-lg">Daftar OLT</CardTitle>
               <CardDescription>
-                {oltsFromApi ? "Data dari database." : "Data tiruan; belum ada OLT terdaftar."}
+                {oltsFromApi
+                  ? "Data dari database; jumlah port dan ONU dari hasil polling OLT oleh backend."
+                  : "Data tiruan; belum ada OLT terdaftar."}
               </CardDescription>
             </div>
             <OltWizardDialog onSaved={() => setReloadKey((k) => k + 1)} />
@@ -367,6 +447,15 @@ export function CpeBoard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {olts.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-28 text-center text-muted-foreground" data-testid="olt-empty">
+                        {oltsFailed
+                          ? "Daftar OLT belum bisa dimuat dari server."
+                          : "Belum ada OLT terdaftar. Klik Tambah OLT untuk mendaftarkan OLT pertama."}
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {olts.map((olt, index) => (
                     <TableRow key={olt.id}>
                       <TableCell>
@@ -375,7 +464,7 @@ export function CpeBoard() {
                           href={`/app/cpe/pon/${oltsFromApi ? `${olt.id}:1` : `olt-${index + 1}-pon-1`}`}
                           className="text-xs text-primary underline-offset-2 hover:underline"
                         >
-                          Lihat detail PON 1/1/1
+                          {oltsFromApi ? "Lihat detail PON 1" : "Lihat detail PON 1/1/1"}
                         </Link>
                         <div className="text-xs text-muted-foreground">{olt.brand}</div>
                       </TableCell>
@@ -440,6 +529,10 @@ export function CpeBoard() {
       </TabsContent>
 
       <TabsContent value="ont" className="flex flex-col gap-6">
+      {!isDemoMode ? (
+        <LiveOntPanel />
+      ) : (
+      <>
       {/* 1. Ringkasan Metrik KPI */}
       <section
         aria-label="Ringkasan Perangkat CPE & OLT"
@@ -665,6 +758,8 @@ export function CpeBoard() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
       </TabsContent>
     </Tabs>
   );

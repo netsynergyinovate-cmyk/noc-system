@@ -128,9 +128,13 @@ export interface ApiOlt {
   driver: string;
   status: "aktif" | "nonaktif";
   lastSeenAt: string | null;
+  // Dari hasil polling backend; kosong pada jawaban lama.
+  ponPortCount?: number;
+  onuTotal?: number;
+  onuOnline?: number;
 }
 
-/** Petakan OLT dari DB ke baris tabel. Jumlah port PON/ONU belum ada di DB: tampil default/0. */
+/** Petakan OLT dari DB ke baris tabel. Jumlah port dan ONU dari hasil polling (0 bila belum pernah dipoll). */
 export function apiOltToDashboard(o: ApiOlt): DashboardOlt {
   const seen = o.lastSeenAt ? Date.parse(o.lastSeenAt) : NaN;
   return {
@@ -140,8 +144,8 @@ export function apiOltToDashboard(o: ApiOlt): DashboardOlt {
     brand: o.brand,
     driver: o.driver,
     status: o.status,
-    totalPonPorts: 8,
-    activeOnus: 0,
+    totalPonPorts: o.ponPortCount ?? 0,
+    activeOnus: o.onuOnline ?? 0,
     temperatureC: null,
     uptime: "-",
     lastSeenAt: Number.isNaN(seen) ? null : Math.floor(seen / 1000),

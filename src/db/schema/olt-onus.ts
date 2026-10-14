@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm";
 import { customers } from "./customers";
 import { olts } from "./olts";
 
-export const onuStatuses = ["online", "offline"] as const;
+export const onuStatuses = ["online", "offline", "los"] as const;
 export type OnuStatus = (typeof onuStatuses)[number];
 
 // Kondisi optik terakhir tiap ONU. Satu baris per ONU (di-upsert). Satu
@@ -57,7 +57,7 @@ export const oltOnus = pgTable(
     index("olt_onus_olt_pon_idx").on(table.oltId, table.ponIndex),
     check(
       "olt_onus_status_check",
-      sql`${table.status} in ('online', 'offline')`,
+      sql`${table.status} in ('online', 'offline', 'los')`,
     ),
   ],
 );

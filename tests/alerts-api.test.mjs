@@ -112,16 +112,20 @@ const post = (path, body) =>
   });
 const ctx = (id) => ({ params: Promise.resolve({ id }) });
 
-async function signedIn(fn) {
+// canHandle: izin alert:handle (menandai alert ditangani butuh izin ini, bukan sekadar login).
+async function signedIn(fn, { canHandle = true } = {}) {
   const original = auth.api.getSession;
+  const originalPerm = auth.api.userHasPermission;
   auth.api.getSession = async () => ({
     session: { id: "s1" },
-    user: { id: "u1", name: "Budi", email: "b@x.id", role: "user" },
+    user: { id: "u1", name: "Budi", email: "b@x.id", role: canHandle ? "admin" : "user" },
   });
+  auth.api.userHasPermission = async () => ({ success: canHandle });
   try {
     await fn();
   } finally {
     auth.api.getSession = original;
+    auth.api.userHasPermission = originalPerm;
   }
 }
 
@@ -196,6 +200,20 @@ test("handle: aktif -> 200, lalu 409 not_active, audit tercatat", async () => {
     assert.equal(body.error, "not_active");
     assert.equal(body.message, "Alert sudah tidak aktif.");
   });
+});
+
+test("handle: akun hanya-lihat -> 403 dan alert tidak berubah", async () => {
+  row = mkRow();
+  audits.length = 0;
+  await signedIn(
+    async () => {
+      const res = await handle.POST(post(`/api/alerts/${ID}/handle`), ctx(ID));
+      assert.equal(res.status, 403);
+      assert.equal(row.status, "active");
+      assert.equal(audits.length, 0);
+    },
+    { canHandle: false },
+  );
 });
 
 test("handle: alert tidak ada -> 404", async () => {

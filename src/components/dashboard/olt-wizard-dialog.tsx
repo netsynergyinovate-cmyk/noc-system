@@ -26,9 +26,10 @@ const STEPS = ["Identitas & Model", "Kredensial", "Konfirmasi & Uji"] as const;
 const EMPTY: OltInput = {
   name: "",
   brand: "HSGQ",
-  driver: "",
+  driver: "hsgq",
   host: "",
-  port: 23,
+  // Web API HTTP OLT (bukan Telnet 23): backend membaca PON dan ONU lewat HTTP.
+  port: 80,
   username: "",
   password: "",
   totalPonPorts: 8,
@@ -83,7 +84,8 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          host: form.host.trim(),
+          // Port disimpan bersama host ("10.0.0.9:8080"); port 80 tidak perlu ditulis.
+          host: form.port === 80 ? form.host.trim() : `${form.host.trim()}:${form.port}`,
           brand: form.brand,
           driver: form.driver.trim(),
           username: form.username.trim(),
@@ -193,7 +195,14 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
                   ))}
                 </select>,
               )}
-              {field("driver", "Driver", <Input {...a11y("driver")} placeholder="hsgq-gpon" value={form.driver} onChange={(e) => set("driver", e.target.value)} />)}
+              {field(
+                "driver",
+                "Driver",
+                <select {...a11y("driver")} className={selectClassName} value={form.driver} onChange={(e) => set("driver", e.target.value)}>
+                  {/* Hanya driver yang benar-benar ada di backend. Merek lain butuh driver baru. */}
+                  <option value="hsgq">hsgq (web API HTTP/JSON)</option>
+                </select>,
+              )}
               {field("host", "Host IP", <Input {...a11y("host")} inputMode="decimal" placeholder="10.10.0.10" value={form.host} onChange={(e) => set("host", e.target.value)} />)}
               {field(
                 "totalPonPorts",

@@ -11,9 +11,11 @@ export interface DashboardOnu {
   customerId: string | null;
   customerName: string;
   pppoeUsername: string;
-  rxPowerDbm: number;
-  txPowerDbm: number;
-  distanceMeters: number;
+  // null = OLT tidak melaporkannya (ONU offline atau LOS), bukan 0.
+  rxPowerDbm: number | null;
+  txPowerDbm: number | null;
+  // OLT HSGQ belum melaporkan jarak ke database; null = tidak diketahui.
+  distanceMeters: number | null;
   status: "online" | "offline" | "los";
   /** Epoch detik. */
   lastSeenAt: number;
@@ -78,11 +80,11 @@ export const mockOnus: readonly DashboardOnu[] = Array.from({ length: 24 }, (_, 
 
 export interface CustomerOpticalInfo {
   rxPowerDbm: number | null;
-  txPowerDbm: number;
+  txPowerDbm: number | null;
   attenuationDb: number | null;
   oltName: string;
   ponPort: string;
-  distanceMeters: number;
+  distanceMeters: number | null;
   model: string;
   serialNumber: string;
   isOnline: boolean;
@@ -112,7 +114,7 @@ export function getCustomerOpticalInfo(customer: {
     return {
       rxPowerDbm: rx,
       txPowerDbm: onu.txPowerDbm,
-      attenuationDb: rx == null ? null : round1(onu.txPowerDbm - rx),
+      attenuationDb: rx == null || onu.txPowerDbm == null ? null : round1(onu.txPowerDbm - rx),
       oltName: onu.oltName,
       ponPort: onu.ponPort,
       distanceMeters: onu.distanceMeters,
@@ -159,7 +161,7 @@ export function filterOnus(
     if (status === "online" && o.status !== "online") return false;
     if (status === "offline" && o.status !== "offline") return false;
     if (status === "los" && o.status !== "los") return false;
-    if (status === "weak" && o.rxPowerDbm >= WEAK_RX_DBM) return false;
+    if (status === "weak" && (o.rxPowerDbm === null || o.rxPowerDbm >= WEAK_RX_DBM)) return false;
     if (status === "out" && !getOpticalSignalStatus(o.status === "los" ? null : o.rxPowerDbm).isOutOfThreshold) {
       return false;
     }
@@ -169,4 +171,72 @@ export function filterOnus(
       f.toLowerCase().includes(q),
     );
   });
+}
+
+// --- Mode live: ONU nyata dari tabel olt_onus (diisi polling OLT oleh backend Go) ---
+
+// Satu ONU dari GET /api/onus (services/devices.service.ts listOnus).
+export interface LiveOnuItem {
+  id: string;
+  oltId: string;
+  oltName: string;
+  ponIndex: number;
+  onuIndex: number;
+  description: string | null;
+  serialNumber: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  pppoeUsername: string | null;
+  rxPower: number | null;
+  txPower: number | null;
+  attenuation: number | null;
+  status: string;
+  capturedAt: string;
+}
+
+const toStatus = (s: string): DashboardOnu["status"] =>
+  s === "online" || s === "los" ? s : "offline";
+
+const toEpoch = (iso: string) => {
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? 0 : Math.floor(ms / 1000);
+};
+
+/** Port ditulis "PON 1:7" (nomor PON, nomor ONU) sebagaimana dilaporkan OLT. */
+export const formatPonPort = (ponIndex: number, onuIndex: number) =>
+  `PON ${ponIndex}:${onuIndex}`;
+
+// Model dan jarak kabel belum dilaporkan OLT ke database: "-" dan null, bukan karangan.
+export function apiOnuToDashboard(o: LiveOnuItem): DashboardOnu {
+  return {
+    id: o.id,
+    serialNumber: o.serialNumber ?? "-",
+    oltId: o.oltId,
+    oltName: o.oltName,
+    ponPort: formatPonPort(o.ponIndex, o.onuIndex),
+    model: "-",
+    customerId: o.customerId,
+    customerName: o.customerName ?? "Belum dipasangkan",
+    pppoeUsername: o.pppoeUsername ?? "-",
+    rxPowerDbm: o.rxPower,
+    txPowerDbm: o.txPower,
+    distanceMeters: null,
+    status: toStatus(o.status),
+    lastSeenAt: toEpoch(o.capturedAt),
+  };
+}
+
+export function apiOnuToCustomerOptical(o: LiveOnuItem, isOnline: boolean): CustomerOpticalInfo {
+  const online = o.status === "online";
+  return {
+    rxPowerDbm: online ? o.rxPower : null,
+    txPowerDbm: online ? o.txPower : null,
+    attenuationDb: online ? o.attenuation : null,
+    oltName: o.oltName,
+    ponPort: formatPonPort(o.ponIndex, o.onuIndex),
+    distanceMeters: null,
+    model: "-",
+    serialNumber: o.serialNumber ?? "-",
+    isOnline,
+  };
 }

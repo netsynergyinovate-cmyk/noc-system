@@ -12,7 +12,6 @@ import {
   Layers,
   LayoutDashboard,
   Network,
-  PlusCircle,
   Receipt,
   ScrollText,
   Settings,
@@ -59,7 +58,6 @@ const navCategories: NavCategory[] = [
     title: "Infrastruktur",
     items: [
       { label: "Router", href: "/app/router", Icon: Router },
-      { label: "Tambah Router", href: "/app/router/new", Icon: PlusCircle },
       { label: "Setup Wisaya", href: "/setup", Icon: Compass },
       { label: "OLT & Optik", href: "/app/cpe", Icon: Network },
       { label: "Integrasi Perangkat", href: "/app/pengaturan/perangkat", Icon: Server },

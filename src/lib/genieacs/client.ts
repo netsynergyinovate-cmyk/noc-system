@@ -214,6 +214,22 @@ function readTr098Wan(raw: Raw): string {
   return "";
 }
 
+/** Username PPPoE modem: TR-098 WANPPPConnection atau TR-181 PPP.Interface. Kosong bila tidak ada. */
+export function readPppoeUsername(raw: Raw): string {
+  const base = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice";
+  for (const i of indexes(raw, base)) {
+    for (const j of indexes(raw, `${base}.${i}.WANPPPConnection`)) {
+      const u = str(read(raw, `${base}.${i}.WANPPPConnection.${j}.Username`));
+      if (u) return u;
+    }
+  }
+  for (const i of indexes(raw, "Device.PPP.Interface")) {
+    const u = str(read(raw, `Device.PPP.Interface.${i}.Username`));
+    if (u) return u;
+  }
+  return "";
+}
+
 /**
  * Ubah dokumen device GenieACS (TR-098 `InternetGatewayDevice.*` atau TR-181
  * `Device.*`) menjadi CpeDevice. Parameter yang hilang menjadi nilai kosong, tidak melempar.
@@ -260,7 +276,8 @@ export function mapGenieAcsToCpe(
     deviceId,
     customerId: "",
     customerName: "",
-    pppoeUsername: "",
+    // Pencocokan ke pelanggan dilakukan pemanggil (mis. lewat username PPPoE ini).
+    pppoeUsername: readPppoeUsername(r),
     address: "",
     odpName: "",
     routerId: "",

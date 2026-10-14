@@ -43,6 +43,7 @@ services:
       ALLOW_EMPTY_DEVICES: "true"
       # Rahasia tiket realtime: sama dengan backend (disimpan di .env, bukan di git).
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
+      GENIEACS_NBI_URL: ${GENIEACS_NBI_URL:-http://genieacs:7557}
       # Alamat backend yang dibuka BROWSER (bukan alamat antar-kontainer).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
       PORT: 3000

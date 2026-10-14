@@ -31,6 +31,7 @@ import {
   type LiveOnuItem,
 } from "@/lib/dashboard/onus";
 import { fetchCustomerOnu } from "@/lib/dashboard/olt-live";
+import { fetchCpeByPppoe, rebootCpeLive } from "@/lib/dashboard/cpe-live";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { formatLastSeen } from "@/lib/dashboard/onu-status";
@@ -58,7 +59,7 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 
 export function CustomerCpeDialog({
   customer,
-  cpe,
+  cpe: cpeProp,
   onQuickDiagnostic,
 }: {
   customer: DashboardCustomer;
@@ -69,7 +70,39 @@ export function CustomerCpeDialog({
   const [confirmReboot, setConfirmReboot] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [rebootMessage, setRebootMessage] = useState("");
+  const [rebootFailed, setRebootFailed] = useState(false);
   const isDemo = useSession(selectPreviewEnabled);
+  // Mode live: modem pelanggan ini dari GenieACS (dicocokkan lewat username PPPoE);
+  // null = belum terdaftar di GenieACS. Demo memakai modem tiruan dari prop.
+  const [liveCpe, setLiveCpe] = useState<
+    { customerId: string; device: CpeDevice | null } | "failed" | null
+  >(null);
+  useEffect(() => {
+    if (isDemo || !isOpen) return;
+    let alive = true;
+    fetchCpeByPppoe(customer.pppoeUsername).then(
+      (device) => alive && setLiveCpe({ customerId: customer.id, device }),
+      () => alive && setLiveCpe("failed"),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [isDemo, isOpen, customer.id, customer.pppoeUsername]);
+  const liveCpeReady = liveCpe !== null && liveCpe !== "failed" && liveCpe.customerId === customer.id;
+  const cpe: CpeDevice | null | undefined = isDemo
+    ? cpeProp
+    : liveCpeReady
+      ? liveCpe.device
+      : null;
+  const cpeNote = isDemo
+    ? null
+    : liveCpe === "failed"
+      ? "Data modem belum bisa dimuat dari GenieACS."
+      : !liveCpeReady
+        ? "Memuat data modem dari GenieACS…"
+        : liveCpe.device === null
+          ? "Modem pelanggan ini belum terdaftar di GenieACS (belum pernah melapor lewat TR-069)."
+          : null;
   // Mode live: ONU pelanggan ini dari OLT (olt_onus); undefined = sedang dimuat,
   // null = belum ada ONU yang dipetakan. Demo memakai data tiruan.
   const [liveOnu, setLiveOnu] = useState<{ customerId: string; onu: LiveOnuItem | null } | "failed" | null>(null);
@@ -111,25 +144,36 @@ export function CustomerCpeDialog({
     : liveReady && liveOnu.onu
       ? apiOnuToCustomerOptical(liveOnu.onu, customer.isOnline)
       : emptyOptical;
-  const hosts = cpe?.hosts ?? fallbackHosts;
+  const hosts = isDemo ? (cpe?.hosts ?? fallbackHosts) : (cpe?.hosts ?? []);
   const canManage = useCanDo("manageCpe");
+
+  async function doRebootLive() {
+    setRebooting(true);
+    setRebootMessage("");
+    setRebootFailed(false);
+    const result = await rebootCpeLive(customer.id);
+    setRebooting(false);
+    setRebootFailed(!result.ok);
+    setRebootMessage(result.message);
+  }
 
   function doReboot() {
     setConfirmReboot(false);
     if (!isDemo) {
-      // Reboot modem dikirim lewat GenieACS (TR-069), belum tersambung: jangan pura-pura terkirim.
-      setRebootMessage("Reboot modem butuh GenieACS yang belum tersambung. Tidak ada perintah yang dikirim.");
+      void doRebootLive();
       return;
     }
     setRebooting(true);
     setRebootMessage("");
+    setRebootFailed(false);
     setTimeout(() => {
       setRebooting(false);
       setRebootMessage("Perintah reboot terkirim ke CPE (antrean GenieACS). Perangkat mati sekitar 1-2 menit.");
     }, 2000);
   }
 
-  const canReboot = (cpe?.isOnline ?? customer.isOnline) && !rebooting;
+  // Live: hanya bila modem benar-benar ada di GenieACS dan baru melapor.
+  const canReboot = (isDemo ? (cpe?.isOnline ?? customer.isOnline) : (cpe?.isOnline ?? false)) && !rebooting;
   const txDbm = opticalInfo.txPowerDbm;
 
   return (
@@ -170,19 +214,27 @@ export function CustomerCpeDialog({
 
           <TabsContent value="info" className="space-y-4 pt-4">
             <dl className="space-y-2 rounded-md border p-3 text-sm" data-testid="cpe-info">
-              <Row label="Manufacturer" value={cpe?.manufacturer ?? "Ã¢â‚¬â€"} />
+              <Row label="Manufacturer" value={cpe?.manufacturer ?? "—"} />
               <Row label="Model" value={cpe?.model ?? opticalInfo.model} />
               <Row label="Serial Number" value={cpe?.serialNumber ?? opticalInfo.serialNumber} mono />
-              <Row label="Device ID (GenieACS)" value={cpe?.deviceId ?? "Ã¢â‚¬â€"} mono />
-              <Row label="Uptime" value={cpe?.uptimeText ?? "Ã¢â‚¬â€"} />
-              <Row label="Software Version" value={cpe?.softwareVersion ?? "Ã¢â‚¬â€"} />
-              <Row label="IP WAN" value={cpe?.wanIp ?? "Ã¢â‚¬â€"} mono />
-              <Row label="IP LAN" value={cpe?.lanIp ?? "Ã¢â‚¬â€"} mono />
-              <Row label="Inform Terakhir" value={cpe ? formatLastSeen(cpe.lastInformAt) : "Ã¢â‚¬â€"} />
+              <Row label="Device ID (GenieACS)" value={cpe?.deviceId ?? "—"} mono />
+              <Row label="Uptime" value={cpe?.uptimeText ?? "—"} />
+              <Row label="Software Version" value={cpe?.softwareVersion ?? "—"} />
+              <Row label="IP WAN" value={cpe?.wanIp ?? "—"} mono />
+              <Row label="IP LAN" value={cpe?.lanIp ?? "—"} mono />
+              <Row label="Inform Terakhir" value={cpe ? formatLastSeen(cpe.lastInformAt) : "—"} />
             </dl>
 
+            {cpeNote && (
+              <p role="status" data-testid="cpe-live-note" className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                {cpeNote}
+              </p>
+            )}
             {rebootMessage && (
-              <div role="status" className="flex items-start gap-2 rounded-md bg-success/10 p-3 text-sm text-success">
+              <div
+                role={rebootFailed ? "alert" : "status"}
+                className={`flex items-start gap-2 rounded-md p-3 text-sm ${rebootFailed ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}
+              >
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                 <p>{rebootMessage}</p>
               </div>
@@ -234,8 +286,8 @@ export function CustomerCpeDialog({
           <TabsContent value="wifi" className="space-y-4 pt-4">
             <CpeWifiForm
               customerId={customer.id}
-              initialSsid={cpe?.wifi.ssid ?? "WIFI_" + customer.pppoeUsername}
-              isOnline={cpe?.isOnline ?? customer.isOnline}
+              initialSsid={cpe?.wifi.ssid ?? (isDemo ? "WIFI_" + customer.pppoeUsername : "")}
+              isOnline={isDemo ? (cpe?.isOnline ?? customer.isOnline) : (cpe?.isOnline ?? false)}
             />
             {cpe && (
               <p className="text-xs text-muted-foreground">
@@ -260,9 +312,9 @@ export function CustomerCpeDialog({
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                ["Daya Terima (RX Power)", opticalInfo.rxPowerDbm != null ? `${opticalInfo.rxPowerDbm} dBm` : "Ã¢â‚¬â€"],
+                ["Daya Terima (RX Power)", opticalInfo.rxPowerDbm != null ? `${opticalInfo.rxPowerDbm} dBm` : "—"],
                 ["Daya Pancar (TX Power)", txDbm != null ? `${txDbm} dBm` : "—"],
-                ["Redaman Total (Loss)", opticalInfo.attenuationDb != null ? `${opticalInfo.attenuationDb} dB` : "Ã¢â‚¬â€"],
+                ["Redaman Total (Loss)", opticalInfo.attenuationDb != null ? `${opticalInfo.attenuationDb} dB` : "—"],
                 ["Jarak Fiber", opticalInfo.distanceMeters === null ? "—" : `${opticalInfo.distanceMeters.toLocaleString("id-ID")} m`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md border p-3">
@@ -272,10 +324,10 @@ export function CustomerCpeDialog({
               ))}
             </div>
             <dl className="space-y-2 rounded-md border p-3 text-sm">
-              <Row label="OLT Induk & Port PON" value={`${opticalInfo.oltName} Ã‚Â· ${opticalInfo.ponPort}`} />
+              <Row label="OLT Induk & Port PON" value={`${opticalInfo.oltName} · ${opticalInfo.ponPort}`} />
               <Row label="Serial Number" value={opticalInfo.serialNumber} mono />
               <Row label="Model ONT" value={opticalInfo.model} />
-              <Row label="ODP / Titik Distribusi" value={customer.odpName || "Ã¢â‚¬â€"} />
+              <Row label="ODP / Titik Distribusi" value={customer.odpName || "—"} />
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Status Koneksi</dt>
                 <dd className={opticalInfo.isOnline ? "text-success" : "text-muted-foreground"}>

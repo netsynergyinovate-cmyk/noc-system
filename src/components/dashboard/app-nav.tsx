@@ -23,6 +23,7 @@ import {
   Server,
   ShieldCheck,
   Compass,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -60,6 +61,7 @@ const navCategories: NavCategory[] = [
       { label: "Router", href: "/app/router", Icon: Router },
       { label: "Setup Wisaya", href: "/setup", Icon: Compass },
       { label: "OLT & Optik", href: "/app/cpe", Icon: Network },
+      { label: "GenieACS (TR-069)", href: "/app/genieacs", Icon: Radio },
       { label: "Integrasi Perangkat", href: "/app/pengaturan/perangkat", Icon: Server },
     ],
   },

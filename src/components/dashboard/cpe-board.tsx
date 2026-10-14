@@ -364,8 +364,9 @@ export function CpeBoard() {
             data-testid="diagnostics-live-note"
             className="rounded-md border border-dashed p-6 text-sm text-muted-foreground"
           >
-            Diagnostik CPE (ping, traceroute, reboot modem) dijalankan lewat GenieACS (TR-069), bukan OLT, dan belum
-            tersambung. Hasil tiruan tidak ditampilkan di mode live.
+            Panel diagnostik massal (ping, traceroute) belum memakai data modem nyata, jadi tidak ditampilkan di mode
+            live. Reboot dan ubah Wi-Fi modem satu pelanggan sudah nyata: buka ikon pengaturan (roda gigi) pada baris
+            pelanggan di halaman Pelanggan.
           </p>
         )}
       </TabsContent>

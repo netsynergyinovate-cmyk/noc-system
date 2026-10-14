@@ -9,6 +9,7 @@ import { OnuStatusBadge } from "@/components/dashboard/onu-status-badge";
 import { formatInteger } from "@/lib/dashboard/format";
 import { WEAK_RX_DBM } from "@/lib/dashboard/onus";
 import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
+import { LiveCpeSection } from "./live-cpe-section";
 import { MetricCard } from "./metric-card";
 
 // Daftar yang paling perlu dilihat saja; seluruh ONU ada di tab Inventaris ONU.
@@ -152,12 +153,14 @@ export function LiveOntPanel() {
           >
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
-              Wi-Fi, klien terhubung, dan reboot modem berasal dari GenieACS (TR-069), bukan dari OLT, dan belum
-              tersambung. Fitur itu akan tampil setelah GenieACS diatur di Integrasi Perangkat.
+              Redaman optik di atas berasal dari OLT. Wi-Fi, klien terhubung, dan reboot modem berasal dari
+              GenieACS (TR-069); daftarnya ada di bawah.
             </span>
           </p>
         </CardContent>
       </Card>
+
+      <LiveCpeSection />
     </div>
   );
 }

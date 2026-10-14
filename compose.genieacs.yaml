@@ -1,0 +1,49 @@
+name: noc-genieacs
+
+services:
+  genieacs-mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    volumes:
+      - genieacs_mongo_data:/data/db
+    networks:
+      - nocsystem_default
+
+  genieacs:
+    build:
+      context: ./docker/genieacs
+      dockerfile: Dockerfile
+    image: nocsystem-genieacs:latest
+    restart: unless-stopped
+    depends_on:
+      - genieacs-mongo
+    ports:
+      # Hanya CWMP yang dibuka untuk modem pelanggan (TR-069).
+      - "7547:7547"
+      # NBI/FS/UI tanpa autentikasi bawaan: hanya loopback komputer ini. Aplikasi NOC
+      # mengakses NBI lewat jaringan Docker (http://genieacs:7557), bukan port ini.
+      - "127.0.0.1:7557:7557" # NBI: REST API
+      - "127.0.0.1:7567:7567" # FS: berkas firmware / config modem
+      - "127.0.0.1:7558:7558" # UI web GenieACS (http://localhost:7558)
+    environment:
+      GENIEACS_MONGODB_CONNECTION_URL: "mongodb://genieacs-mongo:27017/genieacs"
+      GENIEACS_UI_PORT: "7558"
+      GENIEACS_NBI_PORT: "7557"
+      GENIEACS_FS_PORT: "7567"
+      GENIEACS_CWMP_PORT: "7547"
+      # Rahasia sesi UI: dari file .env (tidak di-commit), tanpa nilai bawaan.
+      GENIEACS_UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?isi GENIEACS_JWT_SECRET di file .env}
+      UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?isi GENIEACS_JWT_SECRET di file .env}
+    volumes:
+      - genieacs_ext_data:/opt/genieacs/ext
+    networks:
+      - nocsystem_default
+
+volumes:
+  genieacs_mongo_data:
+  genieacs_ext_data:
+
+networks:
+  nocsystem_default:
+    external: true
+

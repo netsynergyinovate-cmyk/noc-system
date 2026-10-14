@@ -26,6 +26,7 @@ import (
 	"noc-isp/backend/internal/httpapi"
 	"noc-isp/backend/internal/hub"
 	"noc-isp/backend/internal/netflow"
+	"noc-isp/backend/internal/olt"
 	"noc-isp/backend/internal/state"
 	"noc-isp/backend/internal/wire"
 )
@@ -54,6 +55,15 @@ func run() error {
 	billingCfg, err := loadBillingSettings(os.Getenv)
 	if err != nil {
 		return fmt.Errorf("baca konfigurasi billing: %w", err)
+	}
+	// Dibaca sekali di sini (bukan di dalam startRouterPolling) karena dipakai
+	// DUA tempat: AutoBinder (pengikatan ONU baru) dan endpoint manual
+	// POST .../tr069-bind (profileID-nya harus sama).
+	bindCfg, err := olt.AutoBindConfigFromEnv(os.Getenv)
+	if err != nil {
+		// Tidak menghentikan backend: fitur ini opsional dan bawaannya mati;
+		// salah ketik di env hanya berarti fitur tetap mati, dicatat jelas.
+		fmt.Fprintln(os.Stderr, "peringatan: konfigurasi pengikatan TR-069 tidak valid, fitur dimatikan:", err)
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
@@ -126,7 +136,11 @@ func run() error {
 			notifyHub(c)
 			onlineWriter.Notify(c)
 		}
-		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger)
+		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger, bindCfg)
+		// Endpoint manual "Daftarkan ke GenieACS" (POST .../tr069-bind): sengaja
+		// tetap dipasang walau bindCfg.Mode == off, supaya operator bisa mengikat
+		// satu ONU lewat tombol tanpa menyalakan pengikatan otomatis untuk semua.
+		apiOptions.OltBind = httpapi.NewOltBindAPI(pool, cfg.DeviceSecret, bindCfg.ProfileID, olt.NewPGBindStore(pool), logger)
 		apiOptions.History = archive.NewPGStore(pool)
 		billingDB = pool
 		billingRead = pool

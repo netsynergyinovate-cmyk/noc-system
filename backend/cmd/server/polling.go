@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -41,6 +40,7 @@ func startRouterPolling(
 	manager *state.Manager,
 	notify func(state.Change),
 	logger *slog.Logger,
+	bindCfg olt.AutoBindConfig,
 ) {
 	if deviceSecret == "" {
 		logger.Warn("polling router dimatikan: isi DEVICE_SECRET (sama dengan aplikasi Next.js) agar backend bisa membuka kata sandi router")
@@ -85,11 +85,8 @@ func startRouterPolling(
 	loadOlts := func(ctx context.Context) ([]collector.OltTarget, error) {
 		return collector.LoadOltTargets(ctx, pool, deviceSecret, logger)
 	}
-	// Pengikatan profil TR-069 ke ONU baru: MATI kecuali OLT_TR069_AUTOBIND=new|all.
-	bindCfg, err := olt.AutoBindConfigFromEnv(os.Getenv)
-	if err != nil {
-		logger.Error("konfigurasi pengikatan TR-069 tidak valid", "error", err)
-	}
+	// Pengikatan profil TR-069 ke ONU baru: MATI kecuali OLT_TR069_AUTOBIND=new|all
+	// (bindCfg dibaca sekali di main.go, dipakai juga oleh endpoint manual).
 	go collector.NewOltFleet(loadOlts, pool, 0, logger).WithAutoBind(bindCfg).Run(ctx, fleetEvery)
 	logger.Info("polling router, arsip traffic, dan impor pelanggan PPPoE aktif", "cek_router_tiap", fleetEvery.String())
 }

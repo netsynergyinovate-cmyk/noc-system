@@ -315,3 +315,65 @@ func TestProfileExistsParsing(t *testing.T) {
 		t.Error("pesan galat bukan profil")
 	}
 }
+
+// --- BindOne (ikat manual satu ONU, lepas dari AutoBinder) ---
+
+func TestBindOneSuccessMarksStore(t *testing.T) {
+	st := &fakeBindStore{}
+	d := &fakeBinderDriver{results: okAll}
+	err := BindOne(context.Background(), d, st, "olt-1", OnuRef{1, 5}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st.bound) != 1 || st.bound[0] != (OnuRef{1, 5}) {
+		t.Errorf("harus tercatat terikat: %v", st.bound)
+	}
+	if len(d.asked) != 1 || len(d.asked[0]) != 1 || d.asked[0][0] != (OnuRef{1, 5}) {
+		t.Errorf("harus minta tepat ONU itu saja: %v", d.asked)
+	}
+}
+
+func TestBindOneRejectedDoesNotMark(t *testing.T) {
+	st := &fakeBindStore{}
+	d := &fakeBinderDriver{results: func(onus []OnuRef) ([]BindResult, error) {
+		return []BindResult{{Ref: onus[0], Err: ErrBindRejected}}, nil
+	}}
+	err := BindOne(context.Background(), d, st, "olt-1", OnuRef{1, 5}, 1)
+	if !errors.Is(err, ErrBindRejected) {
+		t.Fatalf("err=%v", err)
+	}
+	if len(st.bound) != 0 {
+		t.Errorf("ditolak tidak boleh tercatat: %v", st.bound)
+	}
+}
+
+func TestBindOneMissingProfilePropagates(t *testing.T) {
+	st := &fakeBindStore{}
+	d := &fakeBinderDriver{results: func([]OnuRef) ([]BindResult, error) { return nil, ErrTR069ProfileMissing }}
+	err := BindOne(context.Background(), d, st, "olt-1", OnuRef{1, 5}, 1)
+	if !errors.Is(err, ErrTR069ProfileMissing) {
+		t.Fatalf("err=%v", err)
+	}
+	if len(st.bound) != 0 {
+		t.Errorf("tidak boleh tercatat: %v", st.bound)
+	}
+}
+
+func TestBindOneUnsupportedDriver(t *testing.T) {
+	err := BindOne(context.Background(), plainDriver{}, &fakeBindStore{}, "olt-1", OnuRef{1, 5}, 1)
+	if !errors.Is(err, ErrNotSupported) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestBindOneAgainstFakeOltEndToEnd(t *testing.T) {
+	f := startFakeOlt(t, "NOCApp", "rahasia", bindReplies(profileTable("1           NOC           0")))
+	d := newTestDriver(t, f, "rahasia")
+	st := &fakeBindStore{}
+	if err := BindOne(context.Background(), d, st, "olt-1", OnuRef{1, 1}, 1); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.bound) != 1 {
+		t.Errorf("bound=%v", st.bound)
+	}
+}

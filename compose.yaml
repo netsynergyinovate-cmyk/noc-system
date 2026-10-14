@@ -68,8 +68,11 @@ services:
       DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
       DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
       # Ikat profil TR-069 ke ONU baru di OLT secara otomatis (backend MENULIS ke OLT).
-      # off = mati (bawaan), new = hanya ONU yang muncul sesudah dinyalakan, all = semua ONU online.
-      OLT_TR069_AUTOBIND: ${OLT_TR069_AUTOBIND:-off}
+      # new (bawaan) = hanya ONU yang muncul sesudah dinyalakan; all = semua ONU online;
+      # off = mati. Profil TR-069 (OLT_TR069_PROFILE_ID) harus SUDAH dibuat di OLT lewat
+      # CLI (onu-tr069-profile add ...) sebelum ini berguna; tanpa itu backend hanya
+      # mencatat peringatan, tidak menulis apa pun.
+      OLT_TR069_AUTOBIND: ${OLT_TR069_AUTOBIND:-new}
       OLT_TR069_PROFILE_ID: ${OLT_TR069_PROFILE_ID:-1}
       OLT_TR069_MAX_PER_ROUND: ${OLT_TR069_MAX_PER_ROUND:-5}
     healthcheck:

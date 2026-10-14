@@ -66,6 +66,43 @@ function OnuInventory() {
   const [mapError, setMapError] = useState<string | null>(null);
   const mappingOnu = onus.find((o) => o.id === mappingId) ?? null;
 
+  // "Daftarkan ke GenieACS": satu perintah tulis nyata ke OLT (bukan ke GenieACS
+  // langsung), lewat backend Go. Status per baris, tidak hilang sendiri, supaya
+  // operator sempat membaca hasilnya sebelum pindah ke ONU lain.
+  const [bindState, setBindState] = useState<
+    Record<string, { phase: "saving" | "done" | "failed"; message?: string }>
+  >({});
+  async function handleBindTr069(o: DashboardOnu) {
+    if (o.ponIndex === null || o.onuIndex === null || !o.oltId) return;
+    if (bindState[o.id]?.phase === "saving") return;
+    setBindState((s) => ({ ...s, [o.id]: { phase: "saving" } }));
+    try {
+      const res = await fetch(
+        `/api/olts/${o.oltId}/onus/${o.ponIndex}/${o.onuIndex}/tr069-bind`,
+        { method: "POST" },
+      );
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; message?: string; error?: { message?: string } }
+        | null;
+      if (res.ok && json?.ok) {
+        setBindState((s) => ({
+          ...s,
+          [o.id]: { phase: "done", message: json.message ?? "Berhasil diikat ke GenieACS." },
+        }));
+      } else {
+        setBindState((s) => ({
+          ...s,
+          [o.id]: { phase: "failed", message: json?.error?.message ?? "Gagal mengikat ONU ini." },
+        }));
+      }
+    } catch {
+      setBindState((s) => ({
+        ...s,
+        [o.id]: { phase: "failed", message: "Server aplikasi tidak terjangkau." },
+      }));
+    }
+  }
+
   const handleSaveMapping = async (onuId: string, newCustomerId: string | null) => {
     const customer = newCustomerId ? customers.find((c) => c.id === newCustomerId) ?? null : null;
     if (newCustomerId && !customer) return;
@@ -224,15 +261,44 @@ function OnuInventory() {
                         <div className="font-mono text-xs text-muted-foreground">{o.pppoeUsername}</div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          data-testid="btn-map-onu"
-                          onClick={() => setMappingId(o.id)}
-                        >
-                          {o.customerId === null ? "Petakan" : "Ubah"}
-                        </Button>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            data-testid="btn-map-onu"
+                            onClick={() => setMappingId(o.id)}
+                          >
+                            {o.customerId === null ? "Petakan" : "Ubah"}
+                          </Button>
+                          {!isDemo && o.ponIndex !== null && o.onuIndex !== null && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-testid="btn-bind-tr069"
+                                aria-disabled={bindState[o.id]?.phase === "saving"}
+                                onClick={() => {
+                                  if (bindState[o.id]?.phase !== "saving") void handleBindTr069(o);
+                                }}
+                              >
+                                {bindState[o.id]?.phase === "saving" ? "Mengikat…" : "Daftarkan ke GenieACS"}
+                              </Button>
+                              {bindState[o.id] && bindState[o.id].phase !== "saving" && (
+                                <p
+                                  role={bindState[o.id].phase === "failed" ? "alert" : "status"}
+                                  data-testid="bind-tr069-result"
+                                  className={`max-w-48 text-[11px] ${
+                                    bindState[o.id].phase === "failed" ? "text-destructive" : "text-success"
+                                  }`}
+                                >
+                                  {bindState[o.id].message}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

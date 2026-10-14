@@ -135,6 +135,29 @@ func (s pgBindStore) MarkBound(ctx context.Context, oltID string, ref OnuRef) er
 	return err
 }
 
+// BindOne mengikat SATU ONU ke profil TR-069, dipanggil langsung (mis. tombol
+// "Daftarkan ke GenieACS" di aplikasi). Independen dari AutoBinder/mode: jalan
+// walau pengikatan otomatis sedang mati, karena ini perintah eksplisit operator.
+// ErrTR069ProfileMissing dan ErrBindRejected dikembalikan apa adanya (pemanggil
+// yang menerjemahkan ke jawaban HTTP).
+func BindOne(ctx context.Context, drv Driver, store BindStore, oltID string, ref OnuRef, profileID int) error {
+	binder, ok := drv.(TR069Binder)
+	if !ok {
+		return fmt.Errorf("driver %q: %w", drv.Name(), ErrNotSupported)
+	}
+	results, err := binder.BindTR069(ctx, profileID, []OnuRef{ref})
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return fmt.Errorf("olt: hasil ikat tidak terduga (%d entri)", len(results))
+	}
+	if results[0].Err != nil {
+		return results[0].Err
+	}
+	return store.MarkBound(ctx, oltID, ref)
+}
+
 // AutoBinder mengikat profil TR-069 ke ONU baru, sehingga modem pelanggan baru
 // langsung tahu alamat ACS tanpa disentuh operator.
 type AutoBinder struct {

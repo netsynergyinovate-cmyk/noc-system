@@ -46,6 +46,11 @@ type Options struct {
 	// memenuhinya.
 	BillingTrigger BillingTrigger
 
+	// OltBind melayani POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/tr069-bind.
+	// Kosong (tanpa DATABASE_URL) berarti rute itu tidak terdaftar sama sekali,
+	// bukan menjawab error: 404 generik dari mux dashboard di belakangnya.
+	OltBind *OltBindAPI
+
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
 	// billing). Bawaannya time.Now; tes mengisinya agar jawabannya tetap. Pemeriksaan
 	// tiket tetap memakai jam sistem.
@@ -99,6 +104,9 @@ func NewHandler(opts Options) http.Handler {
 			billingAPI.now = opts.Now
 		}
 		billingAPI.register(api)
+		if opts.OltBind != nil {
+			opts.OltBind.register(api)
+		}
 		api.Handle("/", newDashboardMux(opts.Data, newHistoryAPI(opts.History, opts.Logger)))
 		// CORS paling luar agar preflight (yang tidak membawa tiket) bisa lewat.
 		mux.Handle("/api/v1/", withCORS(opts.AllowedOrigins, requireTicket(opts.Verifier, api)))

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mockOnus, filterOnus, mapOnuToCustomer } from "../src/lib/dashboard/onus.ts";
+import { mockOnus, filterOnus, mapOnuToCustomer, apiOnuToDashboard } from "../src/lib/dashboard/onus.ts";
 
 test("mockOnus is deterministic and realistic", () => {
   assert.ok(mockOnus.length >= 20 && mockOnus.length <= 25);
@@ -48,4 +48,20 @@ test("mapOnuToCustomer maps and unmaps without mutating", () => {
   assert.equal(freed.customerName, "Belum dipasangkan");
   assert.equal(freed.pppoeUsername, "-");
   assert.deepEqual(onu, before);
+});
+
+test("ponIndex/onuIndex: null di data tiruan, angka nyata dari apiOnuToDashboard", () => {
+  for (const o of mockOnus) {
+    assert.equal(o.ponIndex, null);
+    assert.equal(o.onuIndex, null);
+  }
+  const d = apiOnuToDashboard({
+    id: "x", oltId: "olt-1", oltName: "OLT-1", ponIndex: 3, onuIndex: 17,
+    description: null, model: null, serialNumber: null, customerId: null,
+    customerName: null, pppoeUsername: null, rxPower: null, txPower: null,
+    attenuation: null, status: "online", capturedAt: new Date().toISOString(),
+  });
+  assert.equal(d.ponIndex, 3);
+  assert.equal(d.onuIndex, 17);
+  assert.equal(d.ponPort, "PON 3:17");
 });

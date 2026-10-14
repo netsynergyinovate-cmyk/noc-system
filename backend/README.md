@@ -45,21 +45,24 @@ curl http://127.0.0.1:8080/healthz
 
 ### Pengikatan profil TR-069 otomatis (zero-touch modem)
 
-Polling OLT hanya membaca. Satu-satunya perintah TULIS yang bisa dikirim backend ke
-OLT adalah mengikat profil TR-069 ke ONU, supaya modem pelanggan baru langsung tahu
-alamat ACS (GenieACS) dan muncul di aplikasi tanpa disentuh. Fitur ini **mati
-kecuali dinyalakan**.
+Polling OLT hanya membaca. Dua jalan TULIS ke OLT, keduanya lewat `BindOne`
+(`internal/olt/autobind.go`, perintah OLT yang sama: `interface epon P` lalu
+`onu-tr069 N profile-id ID`): otomatis untuk ONU baru (AutoBinder, jalan dari
+polling), dan manual satu ONU lewat REST (tombol "Daftarkan ke GenieACS" di
+aplikasi, `POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/tr069-bind`).
 
 | Variabel                  | Default | Keterangan                                                                                                                   |
 | ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `OLT_TR069_AUTOBIND`      | `off`   | `off` mati. `new`: hanya ONU yang pertama terlihat SESUDAH fitur dinyalakan untuk OLT itu. `all`: semua ONU online yang belum terikat (sekali jalan). |
-| `OLT_TR069_PROFILE_ID`    | `1`     | Id profil di OLT (1-32). Profil harus SUDAH dibuat operator; backend tidak membuatnya.                                       |
-| `OLT_TR069_MAX_PER_ROUND` | `5`     | Batas ONU yang diikat per putaran polling (30 dtk) per OLT (1-20).                                                           |
+| `OLT_TR069_AUTOBIND`      | `off`   | Default di BINER Go. `off` mati. `new`: hanya ONU yang pertama terlihat SESUDAH fitur dinyalakan untuk OLT itu. `all`: semua ONU online yang belum terikat (sekali jalan). **`compose.yaml` proyek ini mengganti defaultnya ke `new`** — isi `OLT_TR069_AUTOBIND=off` di `.env` untuk mematikannya. |
+| `OLT_TR069_PROFILE_ID`    | `1`     | Id profil di OLT (1-32). Profil harus SUDAH dibuat operator; backend tidak membuatnya. Dipakai AutoBinder MAUPUN endpoint manual di bawah; satu nilai untuk keduanya. |
+| `OLT_TR069_MAX_PER_ROUND` | `5`     | Batas ONU yang diikat AutoBinder per putaran polling (30 dtk) per OLT (1-20). Tidak membatasi endpoint manual (satu ONU per permintaan). |
 
-Nilai tidak valid mematikan fitur dan dicatat sebagai galat. Aturan keselamatan:
+Nilai tidak valid mematikan AutoBinder dan dicatat sebagai galat (endpoint manual
+tetap jalan dengan `OLT_TR069_PROFILE_ID` bawaan). Aturan keselamatan:
 
 - Profil dibuat operator sekali: `onu-tr069-profile add profile-id 1 profile-name NOC url http://IP-ACS:7547`.
-  Bila profil belum ada, backend tidak mengirim apa pun dan hanya mencatat peringatan (maks. sekali per jam).
+  Bila profil belum ada, AutoBinder tidak mengirim apa pun dan hanya mencatat peringatan (maks. sekali per jam);
+  endpoint manual menjawab `409 {"error":"profile_missing"}`.
 - Perintah yang dikirim hanya `interface epon P` dan `onu-tr069 N profile-id ID` (lalu `end`, `configure`). Angka dicek rentangnya
   (PON 1-8, ONU 1-64, profil 1-32) sebelum masuk ke perintah. Penolakan OLT (`vty%`, `Error`) dibaca sebagai gagal.
 - ONU yang ditolak dicoba lagi paling cepat 10 menit kemudian. ONU hanya dicatat terikat (`olt_onus.tr069_bound_at`) setelah OLT menerima.
@@ -284,6 +287,31 @@ Saringan pelanggan berarti sama dengan tabel di dashboard. Parameter yang tidak
 dikenal atau diulang dijawab `400 {"error":"invalid_request","message":"..."}`
 (bukan diabaikan), supaya salah ketik tidak diam-diam menghasilkan data tanpa
 saringan. Bentuk pelanggan, router, dan traffic sama dengan di WebSocket. Tiap pelanggan membawa `odpName`, nama ODP atau lokasi tempatnya tersambung (teks bebas menurut penamaan ISP; **string kosong**, bukan null, bila belum diketahui). Dashboard menampilkannya di tooltip titik peta. Nilainya disimpan di kolom `customers.odp_name` (1-100 karakter atau kosong); belum ada yang mengisinya otomatis, jadi sementara diisi lewat database atau impor.
+
+### Mengikat TR-069 manual (`POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/tr069-bind`)
+
+Satu-satunya cara lain (selain AutoBinder, lihat "Pengikatan profil TR-069
+otomatis" di atas) backend menulis ke OLT: mengikat SATU ONU ke profil TR-069,
+dipicu tombol "Daftarkan ke GenieACS" di halaman OLT & Optik / GenieACS aplikasi.
+Butuh tiket dengan izin `cpe:manage` (bukan cukup tiket biasa; 403 tanpa izin,
+diperiksa sebelum apa pun dijalankan — lihat `internal/httpapi/olt.go`).
+`{oltId}` adalah UUID baris `olts`; `{pon}`/`{onu}` nomor bulat ≥1.
+
+| Status | Arti                                                                            |
+| ------ | -------------------------------------------------------------------------------- |
+| 200    | `{"ok":true,"message":"ONU P/O diikat ke profil TR-069"}`                        |
+| 400    | `oltId`/`pon`/`onu` tidak sah, atau driver OLT tidak terdaftar                    |
+| 404    | OLT tidak ditemukan atau nonaktif                                                 |
+| 409    | Profil `OLT_TR069_PROFILE_ID` belum dibuat di OLT (buat dulu lewat CLI)           |
+| 502    | OLT menolak perintah atau sesi telnet gagal (jaringan, kredensial, dsb.)          |
+
+Memakai kredensial OLT yang sama dengan polling (`olts.password_enc`, dibuka
+dengan `DEVICE_SECRET`), sesi telnet terpisah dari polling (dibuat per permintaan,
+ditutup sesudahnya), dibatasi 20 detik. Mengikat ulang ONU yang sudah terikat
+aman (OLT menerima nilai yang sama); `olt_onus.tr069_bound_at` ditulis ulang.
+Next.js meneruskannya lewat `src/app/api/olts/[id]/onus/[pon]/[onu]/tr069-bind/route.ts`
+(tiket sekali pakai diterbitkan HANYA setelah sesi dan izin `cpe:manage` Better
+Auth lolos, pola yang sama dengan sinkron billing manual).
 
 ### Histori traffic (`/api/v1/traffic/history`)
 

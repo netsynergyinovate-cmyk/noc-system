@@ -7,6 +7,10 @@ export interface DashboardOnu {
   oltId: string;
   oltName: string;
   ponPort: string;
+  // Nomor PON/ONU mentah (dipakai tombol "Daftarkan ke GenieACS"); null di mode
+  // demo (OLT tiruan tidak punya nomor nyata untuk ditulis ke perangkat).
+  ponIndex: number | null;
+  onuIndex: number | null;
   model: string;
   customerId: string | null;
   customerName: string;
@@ -64,6 +68,8 @@ function build(i: number): DashboardOnu {
     oltId: olt.id,
     oltName: olt.name,
     ponPort: `PON 1/1/${port}:${slot}`,
+    ponIndex: null,
+    onuIndex: null,
     model: olt.models[i % olt.models.length],
     customerId: hasCustomer ? `cust-${pad(i + 1, 3)}` : null,
     customerName: hasCustomer ? name : "Belum dipasangkan",
@@ -215,6 +221,8 @@ export function apiOnuToDashboard(o: LiveOnuItem): DashboardOnu {
     oltId: o.oltId,
     oltName: o.oltName,
     ponPort: formatPonPort(o.ponIndex, o.onuIndex),
+    ponIndex: o.ponIndex,
+    onuIndex: o.onuIndex,
     model: o.model ?? "-",
     customerId: o.customerId,
     customerName: o.customerName ?? "Belum dipasangkan",

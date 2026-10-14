@@ -1,0 +1,1 @@
+ALTER TABLE "olt_onus" ADD COLUMN "model" text;

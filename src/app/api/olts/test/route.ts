@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ApiError, readJson, withApiPermission } from "@/lib/api";
 import { DeviceConnectionError } from "@/lib/device-connection";
 import { HsgqClient } from "@/lib/olt/hsgq-client";
+import { HSGQ_TELNET_DRIVER, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testOltSchema } from "@/validators/devices";
@@ -14,6 +15,37 @@ export const POST = (request: Request) =>
     const parsed = testOltSchema.safeParse(await readJson(request));
     if (!parsed.success) {
       throw new ApiError(422, "VALIDATION_ERROR", "Periksa kembali data yang dikirim.");
+    }
+
+    // OLT yang hanya punya CLI telnet: uji login CLI, bukan HTTP.
+    if (parsed.data.driver === HSGQ_TELNET_DRIVER) {
+      const t = await testHsgqTelnetLogin({
+        host: parsed.data.host,
+        username: parsed.data.username,
+        password: parsed.data.password,
+      });
+      const redacted = {
+        ok: t.ok,
+        message: redactSecrets(t.message, { username: parsed.data.username, password: parsed.data.password }),
+        code: t.code,
+        latencyMs: t.latencyMs,
+        endpointTested: `TELNET ${parsed.data.host}`,
+      };
+      await recordClientTestResult({
+        type: "olt",
+        mode: "real",
+        raw: redacted,
+        host: parsed.data.host,
+        port: parsed.data.port,
+        username: parsed.data.username,
+        password: parsed.data.password,
+        testedBy: session.user.name || session.user.email,
+      });
+      return NextResponse.json({
+        success: true,
+        data: { ...redacted, status: t.ok ? "connected" : "error", timestamp: Math.floor(Date.now() / 1000) },
+        result: redacted,
+      });
     }
 
     let client: HsgqClient;

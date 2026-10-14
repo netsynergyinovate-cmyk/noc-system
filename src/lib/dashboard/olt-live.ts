@@ -81,3 +81,43 @@ export async function mapOnuLive(onuId: string, customerId: string | null): Prom
   if (res.status === 404) return { ok: false, message: "ONU tidak ditemukan; mungkin sudah dihapus dari OLT." };
   return { ok: false, message: `Server gagal menyimpan pemetaan (HTTP ${res.status}).` };
 }
+
+export interface AutoMatchSummary {
+  matched: number;
+  ambiguous: number;
+  unmatched: number;
+  namesFilled: number;
+}
+
+export type AutoMatchResult =
+  | { ok: true; summary: AutoMatchSummary }
+  | { ok: false; message: string };
+
+// Mencocokkan ONU ke pelanggan di semua OLT aktif (nomor PPPoE di nama ONU, kode
+// nama, dst). Hanya yang cocok tunggal yang dipetakan; hasilnya dijumlahkan.
+export async function autoMatchAllLive(): Promise<AutoMatchResult> {
+  let olts: Awaited<ReturnType<typeof fetchLiveOlts>>;
+  try {
+    olts = await fetchLiveOlts();
+  } catch {
+    return { ok: false, message: "Daftar OLT belum bisa dimuat dari server." };
+  }
+  if (olts.length === 0) return { ok: false, message: "Belum ada OLT terdaftar." };
+  const total: AutoMatchSummary = { matched: 0, ambiguous: 0, unmatched: 0, namesFilled: 0 };
+  for (const olt of olts) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/olts/${encodeURIComponent(olt.id)}/match`, { method: "POST" });
+    } catch {
+      return { ok: false, message: "Server aplikasi tidak terjangkau." };
+    }
+    if (res.status === 403) return { ok: false, message: "Akun Anda tidak punya izin mencocokkan ONU (butuh peran admin)." };
+    if (!res.ok) return { ok: false, message: `Server gagal mencocokkan ONU ${olt.name} (HTTP ${res.status}).` };
+    const json = (await res.json().catch(() => null)) as { data?: Partial<AutoMatchSummary> } | null;
+    total.matched += json?.data?.matched ?? 0;
+    total.ambiguous += json?.data?.ambiguous ?? 0;
+    total.unmatched += json?.data?.unmatched ?? 0;
+    total.namesFilled += json?.data?.namesFilled ?? 0;
+  }
+  return { ok: true, summary: total };
+}

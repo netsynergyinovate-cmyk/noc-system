@@ -31,6 +31,8 @@ export const oltOnus = pgTable(
     onuIndex: integer("onu_index").notNull(),
     // Deskripsi/nama ONU di OLT dan SN/MAC; bahan pencocokan otomatis ke pelanggan.
     description: text("description"),
+    // "Vendor tipe" ONU dari OLT (mis. "ZICG GM22"); kosong bila OLT tidak melaporkannya.
+    model: text("model"),
     serialNumber: text("serial_number"),
     customerId: uuid("customer_id").references(() => customers.id, {
       onDelete: "set null",

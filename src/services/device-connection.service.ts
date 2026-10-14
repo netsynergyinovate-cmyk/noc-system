@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ApiError } from "@/lib/api";
+import { HSGQ_TELNET_DRIVER, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
 import type { DeviceTarget } from "@/lib/mode-switch";
 import { getDeviceMode } from "@/services/mode-switch.service";
 import { saveDeviceTestResult } from "@/services/device-test-results.service";
@@ -82,8 +83,8 @@ export async function testMikrotikConnection(params: {
   };
 }
 
-// ponytail: OLT dites lewat HTTP saja (web UI/REST). SNMP/Telnet belum ada;
-// tambahkan per driver saat ada OLT nyata untuk diuji.
+// OLT dengan driver "hsgq-telnet" dites lewat login CLI telnet; selain itu lewat HTTP.
+// SNMP belum ada; tambahkan per driver saat ada OLT nyata untuk diuji.
 export async function testOltConnection(params: {
   host: string;
   brand: string;
@@ -91,6 +92,11 @@ export async function testOltConnection(params: {
   username: string;
   password: string;
 }): Promise<{ ok: boolean; info?: string }> {
+  if (params.driver === HSGQ_TELNET_DRIVER) {
+    const r = await testHsgqTelnetLogin(params);
+    if (!r.ok) throw new ApiError(400, r.code, r.message);
+    return { ok: true, info: r.message };
+  }
   await testOrThrow({
     type: "olt",
     mode: "real",

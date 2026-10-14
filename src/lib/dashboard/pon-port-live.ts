@@ -19,10 +19,13 @@ const ponOf = (ponPort: string): number | null => {
   return m ? Number(m[1]) : null;
 };
 
-// OLT yang belum punya pembacaan optik melaporkan 0 dBm (bukan null) untuk
-// port. Nol pada RX dan TX sekaligus bukan pembacaan nyata, jadi dianggap kosong.
-const reading = (rx: number, tx: number) =>
-  rx === 0 && tx === 0 ? { rx: null, tx: null } : { rx, tx };
+// API ringkasan port melaporkan 0 dBm (bukan null) untuk bacaan yang tidak ada.
+// Daya tepat 0 dBm bukan pembacaan nyata pada port PON, jadi nol dianggap kosong,
+// masing-masing: OLT HSGQ-telnet hanya punya Rx rata-rata, tanpa Tx.
+const reading = (rx: number, tx: number) => ({
+  rx: rx === 0 ? null : rx,
+  tx: tx === 0 ? null : tx,
+});
 
 // Murni: gabungkan port satu OLT dengan ONU-nya.
 export function buildPonRows(

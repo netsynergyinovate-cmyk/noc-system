@@ -31,6 +31,10 @@ type OnuStats struct {
 	PonIndex   int
 	OnuIndex   int
 	MacAddress string
+	// Name adalah nama ONU di OLT (mis. "1396-BUDI SANTOSO"), bahan pencocokan
+	// ke pelanggan. Model adalah "vendor tipe" ONU; kosong bila tidak dilaporkan.
+	Name  string
+	Model string
 	// SerialNumber kosong bila OLT hanya melaporkan MAC.
 	SerialNumber  string
 	RxPowerDbm    *float64

@@ -54,12 +54,10 @@ func TestUpsertOnuKeepsOperatorMappingAndCopiesOpticalToCustomer(t *testing.T) {
 		t.Fatalf("upsert ONU lalu salin ke pelanggan, got %d panggilan", len(db.calls))
 	}
 	upsert := db.calls[0].sql
-	for _, col := range []string{"customer_id", "description"} {
-		if strings.Contains(upsert[strings.Index(upsert, "DO UPDATE"):], col) {
-			t.Errorf("pemetaan petugas (%s) tidak boleh ditimpa polling", col)
-		}
+	if strings.Contains(upsert[strings.Index(upsert, "DO UPDATE"):], "customer_id") {
+		t.Error("pemetaan petugas (customer_id) tidak boleh ditimpa polling")
 	}
-	if db.calls[0].args[3] != "AA:BB" || db.calls[0].args[7] != "online" {
+	if db.calls[0].args[3] != "AA:BB" || db.calls[0].args[9] != "online" {
 		t.Errorf("argumen ONU salah: %v", db.calls[0].args)
 	}
 	if !strings.Contains(db.calls[1].sql, "UPDATE customers") {
@@ -73,7 +71,7 @@ func TestOfflineOnuWithoutReadingDoesNotOverwriteCustomerOptical(t *testing.T) {
 	if err != nil || len(db.calls) != 1 {
 		t.Fatalf("ONU offline tanpa bacaan: hanya upsert, tanpa menyentuh pelanggan; err=%v calls=%d", err, len(db.calls))
 	}
-	if db.calls[0].args[3] != nil || db.calls[0].args[7] != "offline" {
+	if db.calls[0].args[3] != nil || db.calls[0].args[4] != nil || db.calls[0].args[9] != "offline" {
 		t.Errorf("serial kosong harus NULL dan status offline: %v", db.calls[0].args)
 	}
 }

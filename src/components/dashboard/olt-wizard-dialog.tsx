@@ -26,10 +26,10 @@ const STEPS = ["Identitas & Model", "Kredensial", "Konfirmasi & Uji"] as const;
 const EMPTY: OltInput = {
   name: "",
   brand: "HSGQ",
-  driver: "hsgq",
+  driver: "hsgq-telnet",
   host: "",
-  // Web API HTTP OLT (bukan Telnet 23): backend membaca PON dan ONU lewat HTTP.
-  port: 80,
+  // Port bawaan mengikuti driver: telnet 23, web API HTTP 80.
+  port: 23,
   username: "",
   password: "",
   totalPonPorts: 8,
@@ -84,8 +84,8 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
-          // Port disimpan bersama host ("10.0.0.9:8080"); port 80 tidak perlu ditulis.
-          host: form.port === 80 ? form.host.trim() : `${form.host.trim()}:${form.port}`,
+          // Port disimpan bersama host ("10.0.0.9:2323"); port bawaan driver tidak perlu ditulis.
+          host: form.port === (form.driver === "hsgq-telnet" ? 23 : 80) ? form.host.trim() : `${form.host.trim()}:${form.port}`,
           brand: form.brand,
           driver: form.driver.trim(),
           username: form.username.trim(),
@@ -198,8 +198,14 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
               {field(
                 "driver",
                 "Driver",
-                <select {...a11y("driver")} className={selectClassName} value={form.driver} onChange={(e) => set("driver", e.target.value)}>
+                <select {...a11y("driver")} className={selectClassName} value={form.driver} onChange={(e) => {
+                    const next = e.target.value;
+                    set("driver", next);
+                    // Ganti port bawaan hanya bila masih memakai bawaan driver sebelumnya.
+                    if (form.port === 23 || form.port === 80) set("port", next === "hsgq-telnet" ? 23 : 80);
+                  }}>
                   {/* Hanya driver yang benar-benar ada di backend. Merek lain butuh driver baru. */}
+                  <option value="hsgq-telnet">hsgq-telnet (CLI telnet, seri XE EPON)</option>
                   <option value="hsgq">hsgq (web API HTTP/JSON)</option>
                 </select>,
               )}

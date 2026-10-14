@@ -21,11 +21,16 @@ ON CONFLICT (olt_id, pon_index) DO UPDATE SET
   rx_power = EXCLUDED.rx_power, tx_power = EXCLUDED.tx_power, attenuation = EXCLUDED.attenuation,
   onu_online_count = EXCLUDED.onu_online_count, captured_at = now()`
 
-// Deskripsi dan pemetaan pelanggan (customer_id) tidak ditimpa: itu isian petugas.
-const upsertOnuSQL = `INSERT INTO olt_onus (olt_id, pon_index, onu_index, serial_number, rx_power, tx_power, attenuation, status, captured_at)
-VALUES ($1::uuid, $2, $3, $4, $5::numeric, $6::numeric, $7::numeric, $8, now())
+// description dan model adalah data OLT (nama dan jenis ONU) dan ikut diperbarui;
+// yang tidak pernah ditimpa polling hanya customer_id (pemetaan oleh petugas).
+// Nama kosong tidak menghapus nama yang sudah ada.
+const upsertOnuSQL = `INSERT INTO olt_onus (olt_id, pon_index, onu_index, serial_number, description, model, rx_power, tx_power, attenuation, status, captured_at)
+VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10, now())
 ON CONFLICT (olt_id, pon_index, onu_index) DO UPDATE SET
-  serial_number = EXCLUDED.serial_number, rx_power = EXCLUDED.rx_power, tx_power = EXCLUDED.tx_power,
+  serial_number = EXCLUDED.serial_number,
+  description = COALESCE(EXCLUDED.description, olt_onus.description),
+  model = COALESCE(EXCLUDED.model, olt_onus.model),
+  rx_power = EXCLUDED.rx_power, tx_power = EXCLUDED.tx_power,
   attenuation = EXCLUDED.attenuation, status = EXCLUDED.status, captured_at = now()`
 
 // Daya optik ONU yang sudah dipetakan ke pelanggan disalin ke customers.optical_power,
@@ -43,6 +48,13 @@ type PGWriter struct{ db Execer }
 
 // NewPGWriter membuat penulis. db tidak boleh nil.
 func NewPGWriter(db Execer) *PGWriter { return &PGWriter{db: db} }
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
 
 func (w *PGWriter) UpsertPonPort(ctx context.Context, oltID string, s PonPortStats) error {
 	_, err := w.db.Exec(ctx, upsertPonSQL, oltID, s.Index, s.RxPowerDbm, s.TxPowerDbm, s.AttenuationDb, s.OnuOnlineCount)
@@ -68,7 +80,8 @@ func (w *PGWriter) UpsertOnu(ctx context.Context, oltID string, s OnuStats) erro
 	case s.MacAddress != "":
 		serial = s.MacAddress
 	}
-	if _, err := w.db.Exec(ctx, upsertOnuSQL, oltID, s.PonIndex, s.OnuIndex, serial, s.RxPowerDbm, s.TxPowerDbm, s.AttenuationDb, status); err != nil {
+	if _, err := w.db.Exec(ctx, upsertOnuSQL, oltID, s.PonIndex, s.OnuIndex, serial,
+		nullable(s.Name), nullable(s.Model), s.RxPowerDbm, s.TxPowerDbm, s.AttenuationDb, status); err != nil {
 		return fmt.Errorf("simpan ONU: %w", err)
 	}
 	if s.RxPowerDbm != nil {

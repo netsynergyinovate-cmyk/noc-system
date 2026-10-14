@@ -7,6 +7,7 @@ import { DeviceConnectionError } from "@/lib/device-connection";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
 import { HsgqClient } from "@/lib/olt/hsgq-client";
+import { HSGQ_TELNET_DRIVER, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
 import { recordAudit } from "@/services/audit.service";
 import { parseTarget } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
@@ -35,19 +36,32 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     }
 
     const target = parseTarget(olt.host);
-    const port = target?.port ?? 80;
-    let client: HsgqClient;
-    try {
-      client = new HsgqClient({ host: olt.host, port, username: olt.username, password, mode: "real" });
-    } catch (err) {
-      if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
-        throw new ApiError(422, "INVALID_HOST", err.message);
+    const isTelnet = olt.driver === HSGQ_TELNET_DRIVER;
+    const port = target?.port ?? (isTelnet ? 23 : 80);
+    let raw: Awaited<ReturnType<HsgqClient["testConnection"]>>;
+    if (isTelnet) {
+      // OLT yang hanya punya CLI telnet: uji login CLI.
+      const t = await testHsgqTelnetLogin({ host: olt.host, username: olt.username, password });
+      raw = {
+        ok: t.ok,
+        message: t.message,
+        code: t.code,
+        latencyMs: t.latencyMs,
+        endpointTested: `TELNET ${olt.host}`,
+      } as typeof raw;
+    } else {
+      let client: HsgqClient;
+      try {
+        client = new HsgqClient({ host: olt.host, port, username: olt.username, password, mode: "real" });
+      } catch (err) {
+        if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
+          throw new ApiError(422, "INVALID_HOST", err.message);
+        }
+        throw err;
       }
-      throw err;
+      // Gagal koneksi = HTTP 200 dengan ok=false; hasil tetap disimpan.
+      raw = await client.testConnection();
     }
-
-    // Gagal koneksi = HTTP 200 dengan ok=false; hasil tetap disimpan.
-    const raw = await client.testConnection();
     const result = await recordClientTestResult({
       type: "olt",
       mode: "real",

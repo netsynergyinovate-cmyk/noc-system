@@ -538,6 +538,13 @@ export async function testDeviceConnection(
       }
       default: {
         if (res.status >= 500) return httpFail(`OLT menjawab HTTP ${res.status}.`);
+        // 404 bukan "OLT menjawab": alamat itu tidak ada. Biasanya yang menjawab perangkat lain
+        // (mis. router yang meneruskan port 80) atau OLT ini hanya punya CLI telnet.
+        if (res.status === 404) {
+          return httpFail(
+            "Web API OLT tidak ditemukan (HTTP 404). Bila OLT hanya punya CLI telnet, pilih driver hsgq-telnet; bila bukan, periksa alamat dan port.",
+          );
+        }
         return success("Sukses: Web API OLT menjawab.", { info: "OLT terhubung" });
       }
     }

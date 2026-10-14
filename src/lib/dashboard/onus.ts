@@ -183,6 +183,7 @@ export interface LiveOnuItem {
   ponIndex: number;
   onuIndex: number;
   description: string | null;
+  model: string | null;
   serialNumber: string | null;
   customerId: string | null;
   customerName: string | null;
@@ -206,7 +207,7 @@ const toEpoch = (iso: string) => {
 export const formatPonPort = (ponIndex: number, onuIndex: number) =>
   `PON ${ponIndex}:${onuIndex}`;
 
-// Model dan jarak kabel belum dilaporkan OLT ke database: "-" dan null, bukan karangan.
+// Jarak kabel tidak dilaporkan OLT HSGQ: null. Model "-" bila OLT tidak melaporkannya.
 export function apiOnuToDashboard(o: LiveOnuItem): DashboardOnu {
   return {
     id: o.id,
@@ -214,7 +215,7 @@ export function apiOnuToDashboard(o: LiveOnuItem): DashboardOnu {
     oltId: o.oltId,
     oltName: o.oltName,
     ponPort: formatPonPort(o.ponIndex, o.onuIndex),
-    model: "-",
+    model: o.model ?? "-",
     customerId: o.customerId,
     customerName: o.customerName ?? "Belum dipasangkan",
     pppoeUsername: o.pppoeUsername ?? "-",
@@ -235,7 +236,7 @@ export function apiOnuToCustomerOptical(o: LiveOnuItem, isOnline: boolean): Cust
     oltName: o.oltName,
     ponPort: formatPonPort(o.ponIndex, o.onuIndex),
     distanceMeters: null,
-    model: "-",
+    model: o.model ?? "-",
     serialNumber: o.serialNumber ?? "-",
     isOnline,
   };

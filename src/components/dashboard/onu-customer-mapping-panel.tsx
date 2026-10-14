@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockOnus } from "@/lib/dashboard/onus";
-import { mapOnuLive } from "@/lib/dashboard/olt-live";
+import { autoMatchAllLive, mapOnuLive } from "@/lib/dashboard/olt-live";
 import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
@@ -114,7 +114,26 @@ export function OnuCustomerMappingPanel() {
     setMessage(customerId ? `ONU ${onuId} dipetakan.` : `Pemetaan ONU ${onuId} dilepas.`);
   }
 
+  async function matchLive() {
+    setMessage("Mencocokkan ONU dengan pelanggan…");
+    const r = await autoMatchAllLive();
+    if (!r.ok) {
+      setMessage(r.message);
+      return;
+    }
+    await live.reload();
+    const s = r.summary;
+    setMessage(
+      `${s.matched} ONU dipetakan, ${s.ambiguous} ambigu (dilewati), ${s.unmatched} tidak cocok.` +
+        (s.namesFilled > 0 ? ` Nama ${s.namesFilled} pelanggan dilengkapi dari nama ONU.` : ""),
+    );
+  }
+
   function suggest() {
+    if (!isDemo) {
+      void matchLive();
+      return;
+    }
     const result = suggestAutoMapping(onuCandidates, customerCandidates);
     setSuggestions(result);
     setMessage(result.length ? `${result.length} saran ditemukan.` : "Tidak ada saran pencocokan.");
@@ -156,7 +175,7 @@ export function OnuCustomerMappingPanel() {
           </div>
           <Button type="button" variant="outline" onClick={suggest} data-testid="auto-suggest-btn">
             <Sparkles aria-hidden="true" className="size-4" />
-            Saran Pencocokan Otomatis
+            {isDemo ? "Saran Pencocokan Otomatis" : "Cocokkan Otomatis dari Nama ONU"}
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

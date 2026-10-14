@@ -3,7 +3,8 @@ import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql, type 
 import { db } from "@/db";
 import { ApiError } from "@/lib/api";
 import { auditLog, customers, deviceTestResults, oltOnus, oltPonPorts, olts, routers } from "@/db/schema";
-import { matchOnuToCustomer } from "@/lib/dashboard/onu-matcher";
+import { matchOnuToCustomer, onuNameCode } from "@/lib/dashboard/onu-matcher";
+import { displayNameFromOnu } from "@/lib/dashboard/onu-name";
 import { classifyOnuTrouble, summarizeOnuTroubles, type OnuTroubleEvaluation } from "@/lib/dashboard/onu-trouble-classifier";
 import { env } from "@/lib/env";
 import { testMikrotikConnection } from "@/services/device-connection.service";
@@ -311,16 +312,29 @@ export async function autoMatchOnus(oltId: string, userId?: string | null) {
       .where(isNull(oltOnus.id)),
   ]);
 
-  const result = { matched: 0, ambiguous: 0, unmatched: 0 };
+  // Kode di awal nama ONU yang dipakai lebih dari satu ONU di OLT ini (seluruh ONU,
+  // termasuk yang sudah dipetakan) tidak bisa membedakan pelanggan.
+  const allNames = await db
+    .select({ description: oltOnus.description })
+    .from(oltOnus)
+    .where(eq(oltOnus.oltId, oltId));
+  const codeCount = new Map<string, number>();
+  for (const { description } of allNames) {
+    const code = onuNameCode(description);
+    if (code) codeCount.set(code, (codeCount.get(code) ?? 0) + 1);
+  }
+  const duplicateCodes = new Set([...codeCount].filter(([, n]) => n > 1).map(([code]) => code));
+
+  const result = { matched: 0, ambiguous: 0, unmatched: 0, namesFilled: 0 };
   const taken = new Set<string>();
-  const pairs: { onuId: string; customerId: string }[] = [];
+  const pairs: { onuId: string; customerId: string; onuName: string | null }[] = [];
   for (const onu of onus) {
-    const m = matchOnuToCustomer(onu, free.filter((c) => !taken.has(c.id)));
+    const m = matchOnuToCustomer(onu, free.filter((c) => !taken.has(c.id)), { duplicateCodes });
     if (m.status === "ambiguous") result.ambiguous++;
     else if (m.status === "unmatched") result.unmatched++;
     else {
       taken.add(m.customerId);
-      pairs.push({ onuId: onu.id, customerId: m.customerId });
+      pairs.push({ onuId: onu.id, customerId: m.customerId, onuName: onu.description });
       result.matched++;
     }
   }
@@ -328,6 +342,18 @@ export async function autoMatchOnus(oltId: string, userId?: string | null) {
   await db.transaction(async (tx) => {
     for (const p of pairs) {
       await tx.update(oltOnus).set({ customerId: p.customerId }).where(eq(oltOnus.id, p.onuId));
+      // Pelanggan hasil impor router bernama sama dengan username PPPoE-nya (router
+      // tidak menyimpan nama). Nama dari OLT menggantikannya, tetapi tidak pernah
+      // menimpa nama yang sudah diisi orang.
+      const real = displayNameFromOnu(p.onuName);
+      if (real) {
+        const updated = await tx
+          .update(customers)
+          .set({ name: real })
+          .where(and(eq(customers.id, p.customerId), eq(customers.name, customers.pppoeUsername)))
+          .returning({ id: customers.id });
+        result.namesFilled += updated.length;
+      }
     }
     await tx.insert(auditLog).values({
       userId: userId ?? null,
@@ -342,6 +368,7 @@ export async function autoMatchOnus(oltId: string, userId?: string | null) {
 // ---- Daftar & pemetaan ONU ----
 const onuColumns = {
   id: oltOnus.id,
+  model: oltOnus.model,
   oltId: oltOnus.oltId,
   oltName: olts.name,
   ponIndex: oltOnus.ponIndex,

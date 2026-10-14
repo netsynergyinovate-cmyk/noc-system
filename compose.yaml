@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: starter
+      POSTGRES_PASSWORD: starter_password
+      POSTGRES_DB: starter
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U starter -d starter']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  migrator:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-noc-system-secure-auth-secret-32-chars}
+      BETTER_AUTH_URL: http://localhost:3000
+      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
+      DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
+      DATA_MODE: ${DATA_MODE:-nyata}
+      ALLOW_EMPTY_DEVICES: "true"
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  db-ui:
+    image: sosedoff/pgweb:latest
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://starter:starter_password@postgres:5432/starter?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  studio:
+    build:
+      context: .
+      target: studio
+    ports:
+      - "4983:4983"
+    environment:
+      DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:

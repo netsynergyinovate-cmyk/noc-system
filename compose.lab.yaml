@@ -1,0 +1,70 @@
+# Lab uji banding stack lokal: PostgreSQL + simulator perangkat.
+# Pakai npm run lab:up. Data Postgres ada di volume noc_lab_postgres_data.
+name: noc-lab
+services:
+  postgres:
+    # Bawaan: postgres:17-alpine. Untuk uji hypertable TimescaleDB ganti dengan:
+    #   image: timescale/timescaledb-ha:pg17
+    # lalu set TIMESCALE_ENABLED=true dan jalankan npm run db:timescale.
+    image: postgres:17-alpine
+    environment:
+      TIMESCALE_ENABLED: ${TIMESCALE_ENABLED:-false}
+      POSTGRES_USER: noc_lab
+      POSTGRES_PASSWORD: noc_lab_password
+      POSTGRES_DB: noc_lab
+    ports:
+      - "127.0.0.1:${LAB_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - noc_lab_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  device-simulator:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "scripts/simulator-lab.mjs"]
+    environment:
+      SIMULATOR_HOST: 0.0.0.0
+    volumes:
+      - ./scripts/simulator-lab.mjs:/app/scripts/simulator-lab.mjs:ro
+    expose:
+      - "8081"
+      - "8082"
+      - "7557"
+      - "8083"
+      - "8080"
+    ports:
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:7557:7557"
+      - "127.0.0.1:8083:8083"
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # Opsional: docker compose -f compose.lab.yaml --profile backend up backend
+  backend:
+    profiles: ["backend"]
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    environment:
+      BACKEND_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgres://noc_lab:noc_lab_password@postgres:5432/noc_lab
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      device-simulator:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8090:8080"
+
+volumes:
+  noc_lab_postgres_data:

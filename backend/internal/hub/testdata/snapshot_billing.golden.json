@@ -1,0 +1,71 @@
+{
+  "type": "snapshot",
+  "time": 1699999999,
+  "routers": [
+    {
+      "id": "r1",
+      "name": "RTR-1",
+      "host": "10.0.0.1",
+      "active": true
+    }
+  ],
+  "customers": [
+    {
+      "id": "c1",
+      "name": "Budi",
+      "pppoeUsername": "budi",
+      "routerId": "r1",
+      "address": "",
+      "odpName": "",
+      "latitude": -6.9,
+      "longitude": 107.6,
+      "billingStatus": "lunas",
+      "opticalPowerDbm": -20.5,
+      "isOnline": true
+    },
+    {
+      "id": "c2",
+      "name": "Siti",
+      "pppoeUsername": "siti",
+      "routerId": "r1",
+      "address": "",
+      "odpName": "",
+      "latitude": null,
+      "longitude": null,
+      "billingStatus": "isolir",
+      "opticalPowerDbm": null,
+      "isOnline": false
+    },
+    {
+      "id": "c3",
+      "name": "Agus",
+      "pppoeUsername": "agus",
+      "routerId": "r1",
+      "address": "",
+      "odpName": "",
+      "latitude": -6.91,
+      "longitude": 107.61,
+      "billingStatus": "lunas",
+      "opticalPowerDbm": -22.25,
+      "isOnline": true
+    },
+    {
+      "id": "c4",
+      "name": "Dewi",
+      "pppoeUsername": "dewi",
+      "routerId": "r1",
+      "address": "",
+      "odpName": "",
+      "latitude": null,
+      "longitude": null,
+      "billingStatus": "isolir",
+      "opticalPowerDbm": null,
+      "isOnline": true
+    }
+  ],
+  "traffic": {
+    "times": [],
+    "rx": [],
+    "tx": []
+  }
+}

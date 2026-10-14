@@ -10,18 +10,48 @@ export const statement = {
   ...defaultStatements,
   notes: ["read-any", "delete-any"],
   cpe: ["manage"],
+  // Mengubah data jaringan. Peran hanya-lihat (`user`) tidak boleh satu pun:
+  // - router:manage  menambah router dan mencoba koneksinya (POST /api/routers
+  //   dan /api/routers/test; yang kedua membuat server menghubungi host yang
+  //   disebut pemanggil, jadi tidak boleh terbuka bagi akun biasa).
+  // - alert:handle   menandai alert ditangani. Izin ini ikut dalam tiket
+  //   realtime (`perms`) supaya backend Go bisa menolak POST dari peran
+  //   hanya-lihat tanpa menanyakan sesi Better Auth.
+  router: ["manage"],
+  alert: ["handle"],
+  // Mengubah ambang alert (PUT/DELETE /api/thresholds). Membaca terbuka bagi
+  // semua sesi login.
+  threshold: ["manage"],
+  // Membaca jejak aktivitas (GET /api/audit).
+  audit: ["read"],
+  // Mengatur kredensial scraper billing (URL portal, akun, kata sandi).
+  billing: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
 
 // A role is a subset of the statement. Keep `user` deliberately empty: the
-// signed-in default should be able to do nothing beyond its own records.
+// signed-in default should be able to do nothing beyond its own records, and
+// everything that changes data is a separate action it does not hold.
 export const roles = {
-  user: ac.newRole({ notes: [], cpe: [] }),
+  user: ac.newRole({
+    notes: [],
+    cpe: [],
+    router: [],
+    alert: [],
+    threshold: [],
+    billing: [],
+    audit: ["read"],
+  }),
   admin: ac.newRole({
     ...adminAc.statements,
     notes: ["read-any", "delete-any"],
     cpe: ["manage"],
+    router: ["manage"],
+    alert: ["handle"],
+    threshold: ["manage"],
+    billing: ["manage"],
+    audit: ["read"],
   }),
 } as const;
 

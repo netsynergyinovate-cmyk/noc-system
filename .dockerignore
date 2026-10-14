@@ -8,6 +8,7 @@ dist
 coverage
 .data
 *.tsbuildinfo
+*.local
 
 # Local tooling and CI that the production image never runs.
 backend
@@ -25,8 +26,10 @@ playwright-report
 playwright.config.ts
 compose.dev.yaml
 compose.test.yaml
-Dockerfile
+Dockerfile*
 .dockerignore
+.gitignore
+scripts/simulator-lab.mjs
 
 # Documentation and editor config.
 docs

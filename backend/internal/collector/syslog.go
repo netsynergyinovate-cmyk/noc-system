@@ -1,0 +1,217 @@
+package collector
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/netip"
+	"regexp"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"noc-isp/backend/internal/state"
+)
+
+const (
+	// maxSyslogPacket: pesan syslog lebih besar dari ini dibuang. RouterOS
+	// mengirim baris pendek; batas ini melindungi dari paket sampah.
+	maxSyslogPacket = 4096
+	routerCacheTTL  = 5 * time.Second
+)
+
+// pppLogLine mencocokkan baris log PPP dari RouterOS (topik ppp,info,account):
+//
+//	<134>Oct  7 16:55:12 MikroTik ppp,info,account budi logged in, 10.0.0.2 from AA:BB
+//	<134>Oct  7 16:58:01 MikroTik ppp,info,account budi logged out, 169 1200 3400
+//
+// Topik "ppp" wajib ada, karena login lain ("user admin logged in from ... via
+// winbox", topik system) memakai kata yang sama dan tidak boleh dianggap sesi
+// pelanggan.
+var (
+	pppTopic   = regexp.MustCompile(`(?:^|[\s:])(?:[\w-]+,)*ppp(?:,[\w-]+)*(?:[\s:]|$)`)
+	loggedLine = regexp.MustCompile(`(\S+) logged (in|out)\b`)
+)
+
+// ParseSyslog mengambil kejadian sesi PPP dari satu pesan syslog. Mengembalikan
+// false untuk pesan lain; hampir semua baris log router memang bukan kejadian
+// PPP.
+func ParseSyslog(message string) (PPPEvent, bool) {
+	topic := pppTopic.FindStringIndex(message)
+	if topic == nil {
+		return PPPEvent{}, false
+	}
+	// Username dicari setelah topik, supaya teks topik sendiri tidak terbaca
+	// sebagai username.
+	match := loggedLine.FindStringSubmatch(message[topic[1]:])
+	if match == nil {
+		return PPPEvent{}, false
+	}
+	user := strings.TrimSuffix(strings.TrimPrefix(match[1], "<pppoe-"), ">")
+	if !validUser(user) {
+		return PPPEvent{}, false
+	}
+	return PPPEvent{User: user, Online: match[2] == "in"}, true
+}
+
+// SyslogStats menghitung apa yang terjadi pada paket yang diterima.
+type SyslogStats struct {
+	Received      uint64 // semua paket
+	UnknownSource uint64 // bukan dari alamat router yang terdaftar
+	NotPPPEvent   uint64 // bukan kejadian sesi PPP
+	Rejected      uint64 // pelanggan tidak dikenal atau milik router lain
+	Applied       uint64 // diterapkan ke state (termasuk yang tidak mengubah status)
+}
+
+// SyslogListener menerima syslog UDP dari router dan mengubahnya menjadi status
+// online pelanggan. Hanya paket dari alamat router terdaftar yang diproses, dan
+// router hanya boleh mengubah pelanggannya sendiri.
+//
+// UDP tidak punya autentikasi dan alamat sumber bisa dipalsukan, jadi jalur ini
+// hanya layak dipakai di jaringan manajemen tepercaya. Webhook ber-token adalah
+// jalur utama; syslog dipakai sebagai cadangan.
+type SyslogListener struct {
+	conn     net.PacketConn
+	presence Presence
+	notify   func(state.Change)
+	logger   *slog.Logger
+
+	cacheMu     sync.Mutex
+	cached      map[netip.Addr]string // alamat router -> id router
+	cachedUntil time.Time
+
+	received, unknownSource, notPPP, rejected, applied atomic.Uint64
+}
+
+// ListenSyslog membuka soket UDP lebih dulu supaya alamat yang salah atau sudah
+// terpakai langsung ketahuan saat server start. Port di bawah 1024 (514) butuh
+// hak khusus di Linux; di pengembangan pakai port tinggi, mis. 5514.
+func ListenSyslog(addr string, presence Presence, notify func(state.Change), logger *slog.Logger) (*SyslogListener, error) {
+	if presence == nil || logger == nil {
+		return nil, errors.New("collector: Presence dan Logger wajib diisi")
+	}
+	conn, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("buka syslog UDP %s: %w", addr, err)
+	}
+	return &SyslogListener{conn: conn, presence: presence, notify: notify, logger: logger}, nil
+}
+
+// Addr adalah alamat yang sedang didengarkan.
+func (l *SyslogListener) Addr() net.Addr { return l.conn.LocalAddr() }
+
+// Stats memberi salinan hitungan paket.
+func (l *SyslogListener) Stats() SyslogStats {
+	return SyslogStats{
+		Received:      l.received.Load(),
+		UnknownSource: l.unknownSource.Load(),
+		NotPPPEvent:   l.notPPP.Load(),
+		Rejected:      l.rejected.Load(),
+		Applied:       l.applied.Load(),
+	}
+}
+
+// Serve membaca paket sampai ctx dibatalkan, lalu menutup soket. Mengembalikan
+// nil bila berhenti karena ctx.
+func (l *SyslogListener) Serve(ctx context.Context) error {
+	stopped := make(chan struct{})
+	defer close(stopped)
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = l.conn.Close()
+		case <-stopped:
+		}
+	}()
+
+	buf := make([]byte, maxSyslogPacket+1)
+	for {
+		n, from, err := l.conn.ReadFrom(buf)
+		if err != nil {
+			if ctx.Err() != nil || errors.Is(err, net.ErrClosed) {
+				return nil
+			}
+			return fmt.Errorf("baca syslog: %w", err)
+		}
+		if n > maxSyslogPacket {
+			continue // terlalu besar untuk baris log router
+		}
+		l.handle(from, string(buf[:n]))
+	}
+}
+
+func (l *SyslogListener) handle(from net.Addr, message string) {
+	l.received.Add(1)
+
+	routerID, ok := l.routerFor(from)
+	if !ok {
+		l.unknownSource.Add(1)
+		return
+	}
+	event, ok := ParseSyslog(message)
+	if !ok {
+		l.notPPP.Add(1)
+		return
+	}
+	change, result := applyPPPEvent(l.presence, l.notify, event, routerID)
+	if result != resultApplied {
+		l.rejected.Add(1)
+		l.logger.Debug("syslog PPP ditolak", "router", routerID, "alasan", rejectReason(result))
+		return
+	}
+	l.applied.Add(1)
+	if change.Changed() {
+		l.logger.Info("status pelanggan berubah lewat syslog", "user", event.User, "online", event.Online, "router", routerID)
+	}
+}
+
+func rejectReason(r applyResult) string {
+	if r == resultRouterMismatch {
+		return "pelanggan milik router lain"
+	}
+	return "pelanggan tidak dikenal"
+}
+
+// routerFor mencari router dari alamat IP pengirim.
+func (l *SyslogListener) routerFor(from net.Addr) (string, bool) {
+	udp, ok := from.(*net.UDPAddr)
+	if !ok {
+		return "", false
+	}
+	source := udp.AddrPort().Addr().Unmap()
+
+	l.cacheMu.Lock()
+	defer l.cacheMu.Unlock()
+	if now := time.Now(); now.After(l.cachedUntil) {
+		l.cached = make(map[netip.Addr]string)
+		for _, r := range l.presence.Routers() {
+			if addr, ok := routerAddr(r.Host); ok {
+				l.cached[addr] = r.ID
+			}
+		}
+		l.cachedUntil = now.Add(routerCacheTTL)
+	}
+	id, ok := l.cached[source]
+	return id, ok
+}
+
+// routerAddr mengambil alamat IP dari Host router, yang boleh berbentuk
+// "10.0.0.1", "10.0.0.1:8728", atau "https://10.0.0.1". Nama host tidak
+// diterjemahkan; pakai alamat IP agar syslog bisa dicocokkan.
+func routerAddr(host string) (netip.Addr, bool) {
+	if _, rest, found := strings.Cut(host, "://"); found {
+		host = rest
+	}
+	host = strings.TrimRight(host, "/")
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	addr, err := netip.ParseAddr(strings.Trim(host, "[]"))
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
+}

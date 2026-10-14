@@ -1,0 +1,275 @@
+// Command server menjalankan backend NOC ISP: pengumpul data, rule engine,
+// dan WebSocket hub untuk dashboard.
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"sync/atomic"
+	"syscall"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"noc-isp/backend/internal/archive"
+	"noc-isp/backend/internal/auth"
+	"noc-isp/backend/internal/billing"
+	"noc-isp/backend/internal/collector"
+	"noc-isp/backend/internal/config"
+	"noc-isp/backend/internal/engine"
+	"noc-isp/backend/internal/httpapi"
+	"noc-isp/backend/internal/hub"
+	"noc-isp/backend/internal/netflow"
+	"noc-isp/backend/internal/state"
+	"noc-isp/backend/internal/wire"
+)
+
+// version diisi saat build: go build -ldflags "-X main.version=1.0.0".
+var version = "dev"
+
+// shutdownGrace adalah batas waktu menunggu permintaan berjalan saat berhenti.
+const shutdownGrace = 10 * time.Second
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, "backend berhenti karena error:", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	cfg, err := config.Load(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("baca konfigurasi: %w", err)
+	}
+	// Konfigurasi billing diperiksa sekarang, sebelum ada yang berjalan, supaya
+	// setengah konfigurasi atau menit yang salah menghentikan backend dengan
+	// pesan yang jelas seperti kesalahan konfigurasi lainnya.
+	billingCfg, err := loadBillingSettings(os.Getenv)
+	if err != nil {
+		return fmt.Errorf("baca konfigurasi billing: %w", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: cfg.LogLevel}))
+	slog.SetDefault(logger)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Data jaringan di memori; collector mengisinya pada task berikutnya.
+	manager := state.NewManager()
+	apiOptions := httpapi.Options{Logger: logger, Version: version}
+	// notify memberi tahu hub bila status pelanggan berubah; tanpa hub (WebSocket
+	// mati) perubahan tetap tersimpan di state.
+	notify := func(state.Change) {}
+	// publishEvents mengirim gangguan yang mulai atau selesai ke dashboard.
+	publishEvents := func([]wire.Event) {}
+	if cfg.RealtimeSecret == "" {
+		logger.Warn("WebSocket dan REST /api/v1 dimatikan: isi REALTIME_TOKEN_SECRET untuk mengaktifkannya")
+	} else {
+		tokens, err := auth.NewTokens(cfg.RealtimeSecret)
+		if err != nil {
+			return fmt.Errorf("siapkan tiket login: %w", err)
+		}
+		dashboardHub := hub.New(manager, hub.Options{
+			Verifier:       tokens,
+			Logger:         logger,
+			AllowedOrigins: cfg.AllowedOrigins,
+			// Perubahan online/offline sampai ke dashboard dalam ~0,1 detik,
+			// tidak menunggu delta per detik.
+			StatusFlush: 100 * time.Millisecond,
+		})
+		go dashboardHub.Run(ctx)
+		notify = dashboardHub.NotifyChange
+		publishEvents = dashboardHub.PublishEvents
+		apiOptions.WebSocket = dashboardHub
+		apiOptions.Data = manager
+		apiOptions.Verifier = tokens
+		apiOptions.AllowedOrigins = cfg.AllowedOrigins
+	}
+
+	// Arsip traffic (histori). Koneksi dibuat saat dibutuhkan, jadi database yang
+	// belum siap tidak menghalangi backend naik; pemantauan real-time tidak
+	// bergantung padanya.
+	var (
+		billingDB   billing.DB     // nil bila DATABASE_URL kosong
+		billingRead billing.ReadDB // pool yang sama, untuk endpoint /api/v1/billing
+		thresholdDB engine.Querier // pool yang sama, untuk ambang alert
+	)
+	if cfg.DatabaseURL == "" {
+		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
+	} else {
+		pool, err := openArchivePool(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		if nR, nC, err := collector.SyncDatabaseState(ctx, pool, manager, logger); err != nil {
+			logger.Warn("gagal memuat data awal router dan pelanggan dari database", "error", err)
+		} else {
+			logger.Info("data awal router dan pelanggan dimuat ke memori", "routers", nR, "customers", nC)
+		}
+		go collector.StartDatabaseWatcher(ctx, pool, manager, 15*time.Second, logger)
+		apiOptions.History = archive.NewPGStore(pool)
+		billingDB = pool
+		billingRead = pool
+		thresholdDB = pool
+	}
+
+	// Sinkron billing per jam memakai pool yang sama. Penjadwalnya dihentikan dan
+	// ditunggu SEBELUM pool ditutup (defer berjalan terbalik): sinkron yang sedang
+	// berjalan perlu menulis catatan gagalnya ke database lebih dulu.
+	billingCtx, stopBilling := context.WithCancel(ctx)
+	var billingScheduler *billing.Scheduler
+	// Perubahan status Lunas/Isolir hasil sinkron masuk ke Manager (dan lewat hub ke
+	// dashboard) hanya sesudah database ter-commit.
+	waitBilling, err := startBillingWithSink(billingCtx, logger, billingCfg, billingDB,
+		billingStatusSink(manager, logger),
+		func(s *billing.Scheduler) { billingScheduler = s })
+	if err != nil {
+		stopBilling()
+		return err
+	}
+	attachBillingAPI(&apiOptions, billingRead, billingScheduler)
+	defer func() {
+		stopBilling()
+		waitBilling()
+	}()
+
+	// Rule engine: gangguan baru dikirim saat mulai dan saat selesai, tidak tiap
+	// detik. Aturan lain (traffic, CPU, sinyal optik, port) ditambahkan di sini.
+	// Ambang dibaca dari alert_thresholds sekali saat start (ubah ambang =
+	// restart backend). Tanpa database atau saat gagal dibaca: bawaan PRD.
+	thresholds := engine.DefaultThresholdConfig()
+	if thresholdDB != nil {
+		loaded, err := engine.LoadThresholdsFromDB(ctx, thresholdDB)
+		if err != nil {
+			logger.Warn("ambang alert dari database gagal dibaca, memakai bawaan", "error", err)
+		} else {
+			thresholds = loaded
+		}
+	}
+	alerts, err := engine.New(engine.Options{
+		Logger: logger,
+		Source: manager,
+		Rules:  engine.MakeRules(thresholds),
+		Sink:   func(events []engine.Event) { publishEvents(wire.NewEvents(events)) },
+	})
+	if err != nil {
+		return fmt.Errorf("siapkan rule engine: %w", err)
+	}
+	go alerts.Run(ctx)
+
+	if cfg.PPPWebhookToken == "" {
+		logger.Info("webhook PPP dimatikan: isi PPP_WEBHOOK_TOKEN untuk mengaktifkan /hooks/ppp")
+	} else {
+		webhook, err := collector.NewWebhookHandler(collector.WebhookOptions{
+			Token: cfg.PPPWebhookToken, Presence: manager, Notify: notify, Logger: logger,
+		})
+		if err != nil {
+			return fmt.Errorf("siapkan webhook PPP: %w", err)
+		}
+		apiOptions.PPPWebhook = webhook
+	}
+	if cfg.SyslogAddr != "" {
+		syslog, err := collector.ListenSyslog(cfg.SyslogAddr, manager, notify, logger)
+		if err != nil {
+			return err
+		}
+		logger.Info("syslog UDP mendengarkan", "addr", syslog.Addr().String())
+		go func() {
+			if err := syslog.Serve(ctx); err != nil {
+				logger.Error("listener syslog berhenti", "error", err)
+			}
+		}()
+	}
+
+	// NetFlow terisolasi: antrian terbatas + goroutine sendiri. Gagal bind atau
+	// berhenti tidak menjatuhkan monitoring utama.
+	if cfg.NetflowEnabled {
+		// ponytail: sink sementara hanya menghitung flow; ganti dengan agregator/penyimpanan saat ada.
+		var received atomic.Uint64
+		buffered := netflow.NewBufferedSink(netflow.FlowSinkFunc(func(_ context.Context, recs []netflow.Record) error {
+			received.Add(uint64(len(recs)))
+			return nil
+		}), netflow.DefaultBufferSize, logger)
+		netflowServer, err := netflow.NewServer(cfg.NetflowAddr, buffered, logger)
+		if err != nil {
+			logger.Error("kolektor NetFlow tidak bisa dibuka, dilewati", "addr", cfg.NetflowAddr, "error", err)
+		} else {
+			go buffered.Run(ctx)
+			go func() {
+				logger.Info("kolektor NetFlow aktif", "addr", netflowServer.Addr().String())
+				if err := netflowServer.ListenAndServe(ctx); err != nil && !errors.Is(err, context.Canceled) {
+					logger.Error("kolektor NetFlow berhenti", "err", err)
+				}
+			}()
+		}
+	}
+
+	srv := &http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           httpapi.NewHandler(apiOptions),
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
+	}
+
+	// Bind lebih dulu supaya alamat yang salah atau terpakai langsung gagal.
+	listener, err := net.Listen("tcp", cfg.HTTPAddr)
+	if err != nil {
+		return fmt.Errorf("buka alamat %s: %w", cfg.HTTPAddr, err)
+	}
+
+	logger.Info("subsistem aktif",
+		"collector", cfg.DatabaseURL != "" || cfg.PPPWebhookToken != "" || cfg.SyslogAddr != "" || cfg.NetflowEnabled,
+		"rule_engine", true,
+		"websocket_hub", cfg.RealtimeSecret != "")
+	logger.Info("backend mendengarkan", "addr", listener.Addr().String(), "version", version)
+	return serve(ctx, srv, listener, shutdownGrace)
+}
+
+// archiveMaxConns cukup untuk query histori bersamaan (httpapi membatasinya
+// empat) ditambah penulis arsip dan pembersihnya.
+const archiveMaxConns = 8
+
+// openArchivePool menyiapkan pool tanpa langsung terhubung ke database. Error
+// sengaja tidak memuat URL-nya karena membawa kata sandi.
+func openArchivePool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
+	poolConfig, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, errors.New("DATABASE_URL tidak bisa dibaca sebagai alamat PostgreSQL")
+	}
+	poolConfig.MaxConns = archiveMaxConns
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("siapkan koneksi arsip: %w", err)
+	}
+	return pool, nil
+}
+
+// serve menjalankan srv sampai ctx dibatalkan, lalu memberi permintaan yang
+// sedang berjalan waktu `grace` untuk selesai sebelum server ditutup.
+func serve(ctx context.Context, srv *http.Server, listener net.Listener, grace time.Duration) error {
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(listener) }()
+
+	select {
+	case err := <-serveErr:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), grace)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
+}

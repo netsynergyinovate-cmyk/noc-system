@@ -6,10 +6,11 @@
 #
 # Run the migrator once per release, then start the app. See docs/deployment.md.
 
-ARG NODE_VERSION=22-slim
+ARG NODE_VERSION=22-alpine
 
 # --- Build dependencies ------------------------------------------------------
 FROM node:${NODE_VERSION} AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
@@ -38,23 +39,32 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
-RUN mkdir .next && chown node:node .next
-COPY --from=builder --chown=node:node /app/.next/standalone ./
-COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs \
+ && mkdir .next && chown nextjs:nodejs .next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # --- Migrator: apply committed SQL once per release --------------------------
 # Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has
 # no runtime dependencies, and the standalone bundle already carries pg.
 FROM runtime AS migrator
-COPY --from=deps --chown=node:node /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
-COPY --chown=node:node drizzle ./drizzle
-COPY --chown=node:node scripts ./scripts
-USER node
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --chown=nextjs:nodejs drizzle ./drizzle
+COPY --chown=nextjs:nodejs scripts ./scripts
+USER nextjs
 CMD ["node", "scripts/migrate.mjs"]
+
+# --- Studio: Drizzle Studio container ----------------------------------------
+FROM deps AS studio
+WORKDIR /app
+COPY . .
+ENV PORT=4983
+EXPOSE 4983
+CMD ["npx", "drizzle-kit", "studio", "--port", "4983", "--host", "0.0.0.0"]
 
 # --- Runner: the app. Keep last so it stays the default build target ----------
 FROM runtime AS runner
-USER node
+USER nextjs
 EXPOSE 3000
 
 # Liveness only: a static asset, so a database outage does not restart the app.

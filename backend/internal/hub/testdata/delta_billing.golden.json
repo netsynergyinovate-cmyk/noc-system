@@ -1,0 +1,27 @@
+{
+  "type": "delta",
+  "time": 1700000000,
+  "traffic": {
+    "time": 1700000000,
+    "rx": 120.5,
+    "tx": 20
+  },
+  "statusChanges": [
+    {
+      "customerId": "c3",
+      "isOnline": false,
+      "status": "offline",
+      "opticalPowerDbm": -22.25
+    }
+  ],
+  "billingChanges": [
+    {
+      "customerId": "c1",
+      "status": "isolir"
+    },
+    {
+      "customerId": "c2",
+      "status": "lunas"
+    }
+  ]
+}

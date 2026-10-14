@@ -1,8 +1,12 @@
 import "server-only";
 import { ZodError } from "zod";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { env } from "@/lib/env";
 import type { Permissions } from "@/lib/permissions";
+import { roleCan } from "@/lib/roles";
 
 export class ApiError extends Error {
   constructor(
@@ -29,6 +33,21 @@ export async function withApiSession(
     });
     if (!session)
       throw new ApiError(401, "UNAUTHORIZED", "Sign in to continue.");
+
+    if (typeof session.user.role !== "string") {
+      try {
+        const [row] = await db
+          .select({ role: userTable.role })
+          .from(userTable)
+          .where(eq(userTable.id, session.user.id))
+          .limit(1);
+        if (row && typeof row.role === "string") {
+          session.user.role = row.role;
+        }
+      } catch {
+        // fallback ke role sesi jika query database terkendala
+      }
+    }
 
     // Better Auth protects its own endpoints. Custom cookie-authenticated mutations need this check too.
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
@@ -92,10 +111,21 @@ export function withApiPermission(
   handler: (session: Session) => Promise<Response>,
 ) {
   return withApiSession(request, async (session) => {
-    const { success } = await auth.api.userHasPermission({
-      body: { userId: session.user.id, permissions },
-    });
-    if (!success)
+    let allowed = false;
+    try {
+      const { success } = await auth.api.userHasPermission({
+        body: { userId: session.user.id, permissions },
+      });
+      allowed = success;
+    } catch {
+      // fallback ke evaluasi peran langsung
+    }
+
+    if (!allowed && session.user.role) {
+      allowed = roleCan(session.user.role, permissions);
+    }
+
+    if (!allowed)
       throw new ApiError(
         403,
         "FORBIDDEN",

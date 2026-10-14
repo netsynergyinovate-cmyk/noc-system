@@ -77,6 +77,10 @@ try {
     BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
     BETTER_AUTH_URL: "http://localhost:3101",
     REALTIME_TOKEN_SECRET: randomBytes(32).toString("hex"),
+    // Kunci AES-256 untuk kata sandi router (tepat 32 karakter). Tanpa ini
+    // menambah router gagal 500, dan hasil tes bergantung pada .env.local
+    // pengembang.
+    DEVICE_SECRET: randomBytes(16).toString("hex"),
     BACKEND_URL: "http://localhost:8180",
   };
   delete testEnv.__NEXT_PROCESSED_ENV;

@@ -289,9 +289,13 @@ test.describe("Upgrade CustomerMap: Satelit, GPS, ODP & Rute Kabel", () => {
   }) => {
     const { context, page, errors } = await contextFor(browser, cookies);
 
-    // Simulasikan kegagalan panggilan OSRM
+    // Simulasikan kegagalan kalkulasi rute OSRM (misal tidak ada jalan/NoRoute sehingga beralih ke fallback)
     await page.route("**/router.project-osrm.org/**", async (route) => {
-      await route.abort("failed");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "NoRoute", routes: [] }),
+      });
     });
 
     await page.goto(`/app?focus=${fallbackCustomer.id}`);

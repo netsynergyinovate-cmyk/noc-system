@@ -60,6 +60,14 @@ await check("PostgreSQL connection and authentication tables", async () => {
     await pool.end();
   }
 });
+await check("Startup configuration completeness", async () => {
+  const { runStartupValidation } = await import(
+    "../src/lib/startup-validator.ts"
+  );
+  const report = runStartupValidation(process.env);
+  for (const w of report.warnings) console.warn(`  ! ${w}`);
+  if (!report.canBoot) throw new Error(report.fatalErrors.join(" | "));
+});
 await check("Project instructions and skills", () => {
   for (const path of [
     "AGENTS.md",

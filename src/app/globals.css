@@ -94,10 +94,18 @@
   }
 }
 
-/* Tile peta hanya tersedia versi terang; di tema gelap warnanya dibalik. */
-.dark .leaflet-tile-pane {
+/* Tile peta jalan (OpenStreetMap) hanya tersedia versi terang; di tema gelap warnanya dibalik.
+   Tile foto satelit (Google / Esri) TIDAK BOLEH dibalik agar warna pepohonan, jalan, dan tanah tetap alami (true-color). */
+.dark [data-layer="streets"] .leaflet-tile-pane,
+.dark .leaflet-layer-streets .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
 }
+
+.dark [data-layer="satellite"] .leaflet-tile-pane,
+.dark .leaflet-layer-satellite .leaflet-tile-pane {
+  filter: none !important;
+}
+
 
 /* uPlot menggambar di canvas; hanya kotak info kursor yang perlu gaya. */
 .traffic-tip {

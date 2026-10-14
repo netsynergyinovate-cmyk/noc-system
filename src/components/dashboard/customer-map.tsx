@@ -253,14 +253,6 @@ export function CustomerMap() {
   const [layerMode, setLayerMode] = useState<"satellite" | "streets">(
     "satellite",
   );
-  // Provider satelit: "google" atau "esri" (Esri Maxar HD bebas awan)
-  const [satelliteProvider, setSatelliteProvider] = useState<"google" | "esri">(
-    "google",
-  );
-  // Varian satelit Google: "hybrid" (dengan nama jalan & tempat) atau "pure" (satelit murni)
-  const [satelliteVariant, setSatelliteVariant] = useState<"hybrid" | "pure">(
-    "hybrid",
-  );
 
   // GPS Lokasi Pengguna
   const [userLocation, setUserLocation] = useState<{
@@ -391,6 +383,7 @@ export function CustomerMap() {
     <div
       className="relative"
       data-testid="customer-map"
+      data-layer={layerMode}
       data-zoom={zoom ?? undefined}
       data-odp-count={odpList.length}
       data-has-route={activeRoute ? "true" : undefined}
@@ -403,35 +396,22 @@ export function CustomerMap() {
         preferCanvas
         maxZoom={20}
         scrollWheelZoom={false}
-        className="h-72 w-full rounded-lg"
+        className={cn(
+          "h-72 w-full rounded-lg",
+          layerMode === "satellite"
+            ? "leaflet-layer-satellite"
+            : "leaflet-layer-streets",
+        )}
       >
         {layerMode === "satellite" ? (
-          satelliteProvider === "esri" ? (
-            <>
-              <TileLayer
-                key="esri-imagery"
-                attribution='&copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri Maxar</a>'
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                maxNativeZoom={19}
-                maxZoom={20}
-              />
-              <TileLayer
-                key="esri-labels"
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
-                maxNativeZoom={19}
-                maxZoom={20}
-              />
-            </>
-          ) : (
-            <TileLayer
-              key={`satellite-${satelliteVariant}`}
-              attribution='&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a>'
-              url={`https://{s}.google.com/vt/lyrs=${satelliteVariant === "pure" ? "s" : "y"}&x={x}&y={y}&z={z}`}
-              subdomains={["mt0", "mt1", "mt2", "mt3"]}
-              maxNativeZoom={20}
-              maxZoom={20}
-            />
-          )
+          <TileLayer
+            key="satellite-google"
+            attribution='&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a>'
+            url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&hl=id"
+            subdomains={["mt0", "mt1", "mt2", "mt3"]}
+            maxNativeZoom={19}
+            maxZoom={20}
+          />
         ) : (
           <TileLayer
             key="streets"
@@ -538,13 +518,13 @@ export function CustomerMap() {
         </div>
       )}
 
-      {/* Kontrol Layer Switcher & GPS Teknisi */}
+      {/* Kontrol Layer Switcher & GPS Teknisi (Minimalis) */}
       <div className="absolute bottom-2 left-2 z-[1000] flex items-center gap-1.5">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 px-2 text-xs gap-1.5 bg-card/95 shadow-sm"
+          className="h-7 px-2.5 text-xs gap-1.5 bg-card/95 shadow-sm font-medium"
           data-testid="layer-switcher"
           data-layer={layerMode}
           title={
@@ -557,84 +537,11 @@ export function CustomerMap() {
           <Layers className="h-3.5 w-3.5" />
           <span>{layerMode === "satellite" ? "Satelit" : "Peta Jalan"}</span>
         </Button>
-        {layerMode === "satellite" && (
-          <>
-            <div
-              className="inline-flex rounded-md border bg-card/95 p-0.5 shadow-sm text-[11px]"
-              data-testid="satellite-provider-switcher"
-            >
-              <button
-                type="button"
-                className={cn(
-                  "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
-                  satelliteProvider === "google"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setSatelliteProvider("google")}
-                data-testid="satellite-provider-google"
-                title="Satelit Google Maps"
-              >
-                Google
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
-                  satelliteProvider === "esri"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                onClick={() => setSatelliteProvider("esri")}
-                data-testid="satellite-provider-esri"
-                title="Satelit Esri Maxar HD (Bebas Awan Putih / Cloud-Free)"
-              >
-                Esri (Bebas Awan)
-              </button>
-            </div>
-
-            {satelliteProvider === "google" && (
-              <div
-                className="inline-flex rounded-md border bg-card/95 p-0.5 shadow-sm text-[11px]"
-                data-testid="satellite-variant-switcher"
-              >
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
-                    satelliteVariant === "hybrid"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => setSatelliteVariant("hybrid")}
-                  data-testid="satellite-mode-hybrid"
-                  title="Satelit dengan nama jalan dan label Google Maps"
-                >
-                  Hybrid
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded px-1.5 py-0.5 font-medium transition-colors cursor-pointer",
-                    satelliteVariant === "pure"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => setSatelliteVariant("pure")}
-                  data-testid="satellite-mode-pure"
-                  title="Satelit murni tanpa teks/label jalan"
-                >
-                  Murni
-                </button>
-              </div>
-            )}
-          </>
-        )}
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 px-2 text-xs gap-1.5 bg-card/95 shadow-sm"
+          className="h-7 px-2.5 text-xs gap-1.5 bg-card/95 shadow-sm font-medium"
           data-testid="gps-button"
           data-located={userLocation ? "true" : undefined}
           aria-label="Lokasi Saya"

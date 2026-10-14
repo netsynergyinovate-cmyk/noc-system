@@ -1,0 +1,526 @@
+import "server-only";
+import { and, desc, eq, gte, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  customers as customersTable,
+  networkLogs,
+  routers as routersTable,
+  type NetworkLog,
+  type NetworkLogSeverity,
+  type NetworkLogType,
+} from "@/db/schema";
+import { ApiError } from "@/lib/api";
+import { env } from "@/lib/env";
+import {
+  anomalyRules,
+  sortAnomalies,
+  type Anomaly,
+  type AnomalyRule,
+} from "@/lib/dashboard/anomalies";
+import { loadAnomalies } from "@/lib/dashboard/anomaly-feed";
+import { loneImpact, mockDirectory } from "@/lib/dashboard/incident-root";
+import type { IncidentKind, IncidentSeverity } from "@/lib/dashboard/types";
+import {
+  getAnomalyTroubleshootingSteps,
+  isAnomalyReviewed,
+  markAnomalyReviewed,
+  type TroubleshootingGuide,
+} from "@/lib/dashboard/anomaly-detail-logic";
+import type {
+  AnomalyQuery,
+  CreateAnomalyInput,
+  UpdateAnomalyStatusInput,
+} from "@/validators/anomalies";
+
+export interface AnomalyItem extends Anomaly {
+  routerName?: string;
+  customerName?: string;
+}
+
+export interface AnomalyListResult {
+  anomalies: AnomalyItem[];
+  total: number;
+  activeCount: number;
+  resolvedCount: number;
+  rules: AnomalyRule[];
+  sourceStatus: "nyata" | "dummy";
+}
+
+export interface DetectAnomaliesResult {
+  detected: number;
+  activeAnomalies: Anomaly[];
+  rulesEvaluated: number;
+  sourceStatus: "nyata" | "dummy";
+}
+
+function mapLogToAnomaly(
+  row: NetworkLog & { routerName?: string | null; customerName?: string | null },
+): AnomalyItem {
+  const detail = (row.detail ?? {}) as Record<string, unknown>;
+  const kind = row.type as IncidentKind;
+  const severity = row.severity as IncidentSeverity;
+  const startedAt = Math.floor(row.startedAt.getTime() / 1000);
+  const endedAt = row.endedAt ? Math.floor(row.endedAt.getTime() / 1000) : null;
+  const interfaceName = (detail.interfaceName as string) ?? null;
+  const measured = typeof detail.measured === "number" ? detail.measured : null;
+
+  const defaultImpact = loneImpact(
+    { routerId: row.routerId, customerId: row.customerId },
+    {
+      customerName: (id) => row.customerName ?? mockDirectory.customerName(id),
+      routerName: (id) => row.routerName ?? mockDirectory.routerName(id),
+      customersOnRouter: (id) => mockDirectory.customersOnRouter(id),
+      customersOnOdp: (r, o) => mockDirectory.customersOnOdp(r, o),
+    },
+  );
+
+  const rootSource = (detail.rootSource as typeof defaultImpact.rootSource) ?? defaultImpact.rootSource;
+  const affectedCustomers =
+    typeof detail.affectedCustomers === "number"
+      ? detail.affectedCustomers
+      : defaultImpact.affectedCustomers;
+  const servedCustomers =
+    typeof detail.servedCustomers === "number"
+      ? detail.servedCustomers
+      : defaultImpact.servedCustomers;
+  const correlationId = (detail.correlationId as string | null) ?? defaultImpact.correlationId;
+
+  return {
+    id: row.id,
+    kind,
+    severity,
+    startedAt,
+    endedAt,
+    routerId: row.routerId,
+    customerId: row.customerId,
+    interfaceName,
+    measured,
+    rootSource,
+    affectedCustomers,
+    servedCustomers,
+    correlationId,
+    routerName: row.routerName ?? undefined,
+    customerName: row.customerName ?? undefined,
+  };
+}
+
+/**
+ * Mengambil daftar anomali dari basis data network_logs, atau fallback ke mock bila di mode demo.
+ */
+export async function getAnomaliesList(
+  query: AnomalyQuery,
+): Promise<AnomalyListResult> {
+  const kind = query.kind ?? query.type;
+
+  if (env.DASHBOARD_DATA === "demo") {
+    let mockList = await loadAnomalies();
+    if (query.status === "active") mockList = mockList.filter((a) => a.endedAt === null);
+    if (query.status === "resolved") mockList = mockList.filter((a) => a.endedAt !== null);
+    if (kind) mockList = mockList.filter((a) => a.kind === kind);
+    if (query.severity) mockList = mockList.filter((a) => a.severity === query.severity);
+    if (query.routerId) mockList = mockList.filter((a) => a.routerId === query.routerId);
+    if (query.customerId) mockList = mockList.filter((a) => a.customerId === query.customerId);
+    if (query.from) mockList = mockList.filter((a) => a.startedAt >= query.from!);
+    if (query.to) mockList = mockList.filter((a) => a.startedAt <= query.to!);
+
+    const total = mockList.length;
+    const paged = mockList.slice(query.offset, query.offset + query.limit);
+    return {
+      anomalies: paged,
+      total,
+      activeCount: mockList.filter((a) => a.endedAt === null).length,
+      resolvedCount: mockList.filter((a) => a.endedAt !== null).length,
+      rules: anomalyRules,
+      sourceStatus: "dummy",
+    };
+  }
+
+  const conditions: SQL[] = [];
+
+  if (query.status === "active") {
+    conditions.push(isNull(networkLogs.endedAt));
+  } else if (query.status === "resolved") {
+    conditions.push(isNotNull(networkLogs.endedAt));
+  }
+
+  if (kind) {
+    conditions.push(eq(networkLogs.type, kind as NetworkLogType));
+  }
+  if (query.severity) {
+    conditions.push(eq(networkLogs.severity, query.severity as NetworkLogSeverity));
+  }
+  if (query.routerId) {
+    conditions.push(eq(networkLogs.routerId, query.routerId));
+  }
+  if (query.customerId) {
+    conditions.push(eq(networkLogs.customerId, query.customerId));
+  }
+  if (query.from) {
+    conditions.push(gte(networkLogs.startedAt, new Date(query.from * 1000)));
+  }
+  if (query.to) {
+    conditions.push(lte(networkLogs.startedAt, new Date(query.to * 1000)));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const rows = await db
+    .select({
+      id: networkLogs.id,
+      routerId: networkLogs.routerId,
+      customerId: networkLogs.customerId,
+      type: networkLogs.type,
+      severity: networkLogs.severity,
+      startedAt: networkLogs.startedAt,
+      endedAt: networkLogs.endedAt,
+      detail: networkLogs.detail,
+      routerName: routersTable.name,
+      customerName: customersTable.name,
+    })
+    .from(networkLogs)
+    .leftJoin(routersTable, eq(networkLogs.routerId, routersTable.id))
+    .leftJoin(customersTable, eq(networkLogs.customerId, customersTable.id))
+    .where(whereClause)
+    .orderBy(desc(networkLogs.startedAt))
+    .limit(query.limit)
+    .offset(query.offset);
+
+  if (rows.length === 0) {
+    // Jika di DB belum ada data nyata, fallback ke mock
+    const mockList = await loadAnomalies();
+    return {
+      anomalies: mockList.slice(query.offset, query.offset + query.limit),
+      total: mockList.length,
+      activeCount: mockList.filter((a) => a.endedAt === null).length,
+      resolvedCount: mockList.filter((a) => a.endedAt !== null).length,
+      rules: anomalyRules,
+      sourceStatus: "dummy",
+    };
+  }
+
+  const items = rows.map((r) =>
+    mapLogToAnomaly({
+      ...r,
+      detail: (r.detail ?? {}) as Record<string, unknown>,
+    }),
+  );
+
+  return {
+    anomalies: items,
+    total: items.length,
+    activeCount: items.filter((a) => a.endedAt === null).length,
+    resolvedCount: items.filter((a) => a.endedAt !== null).length,
+    rules: anomalyRules,
+    sourceStatus: "nyata",
+  };
+}
+
+/**
+ * Membuat catatan anomali baru di tabel network_logs.
+ */
+export async function createAnomaly(
+  input: CreateAnomalyInput,
+): Promise<AnomalyItem> {
+  const [created] = await db
+    .insert(networkLogs)
+    .values({
+      routerId: input.routerId,
+      customerId: input.customerId ?? null,
+      type: input.type,
+      severity: input.severity,
+      startedAt: input.startedAt ?? new Date(),
+      endedAt: input.endedAt ?? null,
+      detail: {
+        interfaceName: input.interfaceName ?? null,
+        measured: input.measured ?? null,
+        ...(input.detail ?? {}),
+      },
+    })
+    .returning();
+
+  if (!created) {
+    throw new ApiError(500, "CREATE_ANOMALY_FAILED", "Gagal menyimpan anomali.");
+  }
+
+  return mapLogToAnomaly(created);
+}
+
+/**
+ * Menyelesaikan catatan anomali dengan mengisi ended_at.
+ */
+export async function resolveAnomaly(
+  id: string,
+  endedAt = new Date(),
+): Promise<AnomalyItem | null> {
+  const [updated] = await db
+    .update(networkLogs)
+    .set({ endedAt })
+    .where(eq(networkLogs.id, id))
+    .returning();
+
+  if (!updated) return null;
+  return mapLogToAnomaly(updated);
+}
+
+/**
+ * Mengevaluasi aturan anomali pada metrik perangkat dan pelanggan aktif.
+ */
+export async function detectAnomalies(options: {
+  routerId?: string;
+  persist?: boolean;
+} = {}): Promise<DetectAnomaliesResult> {
+  if (env.DASHBOARD_DATA === "demo") {
+    const list = await loadAnomalies();
+    const active = list.filter((a) => a.endedAt === null);
+    return {
+      detected: active.length,
+      activeAnomalies: active,
+      rulesEvaluated: anomalyRules.length,
+      sourceStatus: "dummy",
+    };
+  }
+
+  const queryRouter = db
+    .select({
+      id: routersTable.id,
+      name: routersTable.name,
+      status: routersTable.status,
+    })
+    .from(routersTable);
+
+  const targetRouters = options.routerId
+    ? await queryRouter.where(eq(routersTable.id, options.routerId))
+    : await queryRouter.where(eq(routersTable.status, "aktif"));
+
+  const detectedItems: AnomalyItem[] = [];
+
+  for (const r of targetRouters) {
+    if (r.status !== "aktif") continue;
+
+    // Evaluasi aturan anomali offline untuk pelanggan yang offline
+    const offlineCusts = await db
+      .select({ id: customersTable.id, name: customersTable.name })
+      .from(customersTable)
+      .where(and(eq(customersTable.routerId, r.id), eq(customersTable.isOnline, false)))
+      .limit(5);
+
+    for (const c of offlineCusts) {
+      if (options.persist !== false) {
+        // Cek apakah sudah ada log aktif
+        const existing = await db
+          .select({ id: networkLogs.id })
+          .from(networkLogs)
+          .where(
+            and(
+              eq(networkLogs.routerId, r.id),
+              eq(networkLogs.customerId, c.id),
+              eq(networkLogs.type, "offline"),
+              isNull(networkLogs.endedAt),
+            ),
+          )
+          .limit(1);
+
+        if (existing.length === 0) {
+          const item = await createAnomaly({
+            routerId: r.id,
+            customerId: c.id,
+            type: "offline",
+            severity: "critical",
+            detail: {
+              reason: "Pelanggan offline",
+              ruleTitle: "Pelanggan Offline",
+            },
+          });
+          detectedItems.push(item);
+        }
+      }
+    }
+  }
+
+  const activeLogs = await getAnomaliesList({ status: "active", limit: 50, offset: 0 });
+
+  return {
+    detected: detectedItems.length,
+    activeAnomalies: activeLogs.anomalies,
+    rulesEvaluated: anomalyRules.length,
+    sourceStatus: "nyata",
+  };
+}
+
+export interface AnomalyDetailResult {
+  anomaly: AnomalyItem;
+  troubleshooting: TroubleshootingGuide;
+  reviewed: boolean;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  note: string | null;
+  sourceStatus: "nyata" | "dummy";
+}
+
+/**
+ * Mengambil detail satu anomali lengkap dengan panduan troubleshooting dan status review.
+ */
+export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
+  if (env.DASHBOARD_DATA !== "demo") {
+    try {
+      const [row] = await db
+        .select({
+          id: networkLogs.id,
+          routerId: networkLogs.routerId,
+          customerId: networkLogs.customerId,
+          type: networkLogs.type,
+          severity: networkLogs.severity,
+          startedAt: networkLogs.startedAt,
+          endedAt: networkLogs.endedAt,
+          detail: networkLogs.detail,
+          routerName: routersTable.name,
+          customerName: customersTable.name,
+        })
+        .from(networkLogs)
+        .leftJoin(routersTable, eq(networkLogs.routerId, routersTable.id))
+        .leftJoin(customersTable, eq(networkLogs.customerId, customersTable.id))
+        .where(eq(networkLogs.id, id))
+        .limit(1);
+
+      if (row) {
+        const item = mapLogToAnomaly({
+          ...row,
+          detail: (row.detail ?? {}) as Record<string, unknown>,
+        });
+        const detail = (row.detail ?? {}) as Record<string, unknown>;
+        const reviewed = Boolean(detail.reviewed) || isAnomalyReviewed(id);
+        const reviewedBy = (detail.reviewedBy as string | null) ?? null;
+        const reviewedAt = (detail.reviewedAt as string | null) ?? null;
+        const note = (detail.note as string | null) ?? null;
+
+        return {
+          anomaly: item,
+          troubleshooting: getAnomalyTroubleshootingSteps(item),
+          reviewed,
+          reviewedBy,
+          reviewedAt,
+          note,
+          sourceStatus: "nyata",
+        };
+      }
+    } catch {
+      // Fallback ke mock bila database tidak terjangkau
+    }
+  }
+
+  // Fallback ke mock data
+  const mockList = await loadAnomalies();
+  const found = mockList.find((a) => a.id === id);
+  if (!found) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
+
+  const reviewed = isAnomalyReviewed(id);
+  return {
+    anomaly: found,
+    troubleshooting: getAnomalyTroubleshootingSteps(found),
+    reviewed,
+    reviewedBy: null,
+    reviewedAt: null,
+    note: null,
+    sourceStatus: "dummy",
+  };
+}
+
+/**
+ * Memperbarui status, keparahan, tinjauan, atau catatan anomali.
+ */
+export async function updateAnomalyStatus(
+  id: string,
+  update: UpdateAnomalyStatusInput,
+): Promise<AnomalyDetailResult> {
+  if (env.DASHBOARD_DATA !== "demo") {
+    try {
+      const [existing] = await db
+        .select()
+        .from(networkLogs)
+        .where(eq(networkLogs.id, id))
+        .limit(1);
+
+      if (existing) {
+        const currentDetail = (existing.detail ?? {}) as Record<string, unknown>;
+        const newDetail = { ...currentDetail };
+
+        if (update.note !== undefined) {
+          newDetail.note = update.note;
+        }
+
+        if (update.reviewed === true || update.status === "reviewed") {
+          newDetail.reviewed = true;
+          newDetail.reviewedBy = update.operator ?? "Operator NOC";
+          newDetail.reviewedAt = new Date().toISOString();
+          markAnomalyReviewed(id, update.operator ?? "Operator NOC");
+        } else if (update.reviewed === false) {
+          newDetail.reviewed = false;
+          newDetail.reviewedBy = null;
+          newDetail.reviewedAt = null;
+        }
+
+        const setValues: {
+          endedAt?: Date | null;
+          severity?: NetworkLogSeverity;
+          detail?: Record<string, unknown>;
+        } = { detail: newDetail };
+
+        if (update.status === "resolved") {
+          setValues.endedAt = update.endedAt ?? new Date();
+        } else if (update.status === "active") {
+          setValues.endedAt = null;
+        } else if (update.endedAt !== undefined) {
+          setValues.endedAt = update.endedAt;
+        }
+
+        if (update.severity) {
+          setValues.severity = update.severity;
+        }
+
+        await db
+          .update(networkLogs)
+          .set(setValues)
+          .where(eq(networkLogs.id, id));
+
+        return getAnomalyById(id);
+      }
+    } catch {
+      // Fallback ke mock bila database tidak terjangkau
+    }
+  }
+
+  // Fallback mode mock
+  const mockList = await loadAnomalies();
+  const found = mockList.find((a) => a.id === id);
+  if (!found) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
+
+  if (update.reviewed || update.status === "reviewed") {
+    markAnomalyReviewed(id, update.operator ?? "Operator NOC");
+  }
+
+  const updatedMock: AnomalyItem = {
+    ...found,
+    severity: (update.severity as IncidentSeverity) ?? found.severity,
+    endedAt:
+      update.status === "resolved"
+        ? Math.floor(Date.now() / 1000)
+        : update.status === "active"
+          ? null
+          : found.endedAt,
+  };
+
+  return {
+    anomaly: updatedMock,
+    troubleshooting: getAnomalyTroubleshootingSteps(updatedMock),
+    reviewed: Boolean(update.reviewed || isAnomalyReviewed(id)),
+    reviewedBy: update.operator ?? null,
+    reviewedAt: new Date().toISOString(),
+    note: update.note ?? null,
+    sourceStatus: "dummy",
+  };
+}
+

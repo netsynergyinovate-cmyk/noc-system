@@ -52,7 +52,7 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
     setTestResult(null);
   };
 
-  // Isian ala "103.167.70.136:2024" atau "https://host" dipecah saat keluar dari kolom host
+  // Isian ala "203.0.113.10:2024" atau "https://host" dipecah saat keluar dari kolom host
   // (bukan saat mengetik, supaya "…:2" tidak langsung memotong "2024").
   const normalizeHostField = () => {
     const parsed = splitHostInput(form.host);

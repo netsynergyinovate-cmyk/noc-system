@@ -1,0 +1,458 @@
+// Klien baca GenieACS NBI. Dua mode: "real" (HTTP ke NBI) dan "simulator"
+// (data tiruan deterministik). Murni (tanpa alias path) agar bisa diuji dengan node --test.
+
+import { createMockCustomers } from "../dashboard/mock-data.ts";
+import { formatUptime, generateMockCpeDevices } from "../dashboard/cpe-mock.ts";
+import type { CpeDevice, CpeHostClient, CpeInterfaceType } from "../dashboard/cpe-mock.ts";
+import { getGenieacsConfig } from "./config.ts";
+import type { GenieAcsConfig } from "./config.ts";
+
+export const SIMULATOR_DEVICE_COUNT = 4;
+export const SIMULATOR_LATENCY_MS = 15;
+/** Perangkat dianggap online bila inform terakhir tidak lebih lama dari ini. */
+export const ONLINE_WINDOW_SECONDS = 15 * 60;
+
+export class GenieAcsError extends Error {
+  readonly status: number | null;
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.name = "GenieAcsError";
+    this.status = status;
+  }
+}
+
+function simulatorDevices(): CpeDevice[] {
+  return generateMockCpeDevices(createMockCustomers().slice(0, SIMULATOR_DEVICE_COUNT));
+}
+
+type Fetcher = typeof fetch;
+type Raw = Record<string, unknown>;
+
+// ---------- parser TR-098 / TR-181 ----------
+
+const ROOTS = ["InternetGatewayDevice", "Device"] as const;
+
+function isObj(v: unknown): v is Raw {
+  return typeof v === "object" && v !== null;
+}
+
+/** Nilai parameter GenieACS: `{ _value }`, nilai polos, atau undefined. */
+function unwrap(v: unknown): unknown {
+  if (isObj(v)) return "_value" in v ? v._value : undefined;
+  return v;
+}
+
+/** Baca path bertitik, baik dari objek bersarang maupun kunci datar ("A.B.C"). */
+function read(raw: Raw, path: string): unknown {
+  if (path in raw) return unwrap(raw[path]);
+  let node: unknown = raw;
+  for (const seg of path.split(".")) {
+    if (!isObj(node) || !(seg in node)) return undefined;
+    node = node[seg];
+  }
+  return unwrap(node);
+}
+
+/** Pembaca pertama yang ada nilainya di antara akar TR-098 dan TR-181. */
+function readAny(raw: Raw, ...paths: string[]): unknown {
+  for (const p of paths) {
+    for (const root of ROOTS) {
+      const v = read(raw, `${root}.${p}`);
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+  }
+  return undefined;
+}
+
+/** Indeks numerik anak dari sebuah prefix, urut naik. */
+function indexes(raw: Raw, prefix: string): number[] {
+  const set = new Set<number>();
+  if (isObj(raw)) {
+    let node: unknown = raw;
+    for (const seg of prefix.split(".")) node = isObj(node) ? node[seg] : undefined;
+    if (isObj(node)) for (const k of Object.keys(node)) if (/^\d+$/.test(k)) set.add(Number(k));
+    const flat = `${prefix}.`;
+    for (const k of Object.keys(raw)) {
+      if (k.startsWith(flat)) {
+        const m = /^(\d+)(\.|$)/.exec(k.slice(flat.length));
+        if (m) set.add(Number(m[1]));
+      }
+    }
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+function str(v: unknown): string {
+  return v === undefined || v === null ? "" : String(v).trim();
+}
+
+function num(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function bool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  const s = str(v).toLowerCase();
+  return s === "true" || s === "1" || s === "up" || s === "enabled";
+}
+
+function toEpochSeconds(v: unknown): number {
+  if (v === undefined || v === null || v === "") return 0;
+  if (typeof v === "number") return Math.floor(v > 1e11 ? v / 1000 : v);
+  const t = Date.parse(String(v));
+  return Number.isNaN(t) ? 0 : Math.floor(t / 1000);
+}
+
+function hostInterface(type: string, layer1: string): CpeInterfaceType {
+  const t = `${type} ${layer1}`.toLowerCase();
+  if (t.includes("802.11") || t.includes("wifi") || t.includes("wlan") || t.includes("ssid")) {
+    return t.includes("5g") || t.includes("5ghz") ? "wifi_5g" : "wifi_2.4g";
+  }
+  return "ethernet";
+}
+
+function parseHosts(raw: Raw): CpeHostClient[] {
+  const hosts: CpeHostClient[] = [];
+  const bases = [
+    "InternetGatewayDevice.LANDevice.1.Hosts.Host",
+    "Device.Hosts.Host",
+  ];
+  for (const base of bases) {
+    for (const i of indexes(raw, base)) {
+      const p = `${base}.${i}`;
+      const ip = str(read(raw, `${p}.IPAddress`));
+      const mac = str(read(raw, `${p}.PhysAddress`));
+      if (!ip && !mac) continue;
+      const activeRaw = read(raw, `${p}.Active`);
+      hosts.push({
+        hostname: str(read(raw, `${p}.HostName`)) || "(tanpa nama)",
+        ip,
+        mac,
+        interfaceType: hostInterface(
+          str(read(raw, `${p}.InterfaceType`)),
+          str(read(raw, `${p}.Layer1Interface`)),
+        ),
+        // Tanpa field Active, host yang terdaftar dianggap aktif.
+        active: activeRaw === undefined ? true : bool(activeRaw),
+      });
+    }
+  }
+  return hosts;
+}
+
+function parseWifi(raw: Raw, hostCount: number): CpeDevice["wifi"] {
+  const wifi: CpeDevice["wifi"] = {
+    ssid: "",
+    enabled: false,
+    channel: 0,
+    security: "",
+    radioFrequency: "2.4GHz",
+    clientCount: hostCount,
+  };
+
+  // TR-098: WLANConfiguration.N (N >= 5 lazimnya radio 5GHz).
+  const tr098 = "InternetGatewayDevice.LANDevice.1.WLANConfiguration";
+  const wlan = indexes(raw, tr098).find((i) => str(read(raw, `${tr098}.${i}.SSID`)) !== "");
+  if (wlan !== undefined) {
+    const p = `${tr098}.${wlan}`;
+    wifi.ssid = str(read(raw, `${p}.SSID`));
+    wifi.enabled = bool(read(raw, `${p}.Enable`));
+    wifi.channel = num(read(raw, `${p}.Channel`)) ?? 0;
+    wifi.security = str(read(raw, `${p}.BeaconType`)) || str(read(raw, `${p}.WPAAuthenticationMode`));
+    const band = str(read(raw, `${p}.OperatingFrequencyBand`));
+    wifi.radioFrequency = band.startsWith("5") || wlan >= 5 ? "5GHz" : "2.4GHz";
+    return wifi;
+  }
+
+  // TR-181: WiFi.SSID.N + WiFi.Radio.N.
+  const ssidIdx = indexes(raw, "Device.WiFi.SSID").find(
+    (i) => str(read(raw, `Device.WiFi.SSID.${i}.SSID`)) !== "",
+  );
+  if (ssidIdx !== undefined) {
+    wifi.ssid = str(read(raw, `Device.WiFi.SSID.${ssidIdx}.SSID`));
+    wifi.enabled = bool(read(raw, `Device.WiFi.SSID.${ssidIdx}.Enable`));
+    const radio = indexes(raw, "Device.WiFi.Radio")[0];
+    if (radio !== undefined) {
+      const r = `Device.WiFi.Radio.${radio}`;
+      wifi.channel = num(read(raw, `${r}.Channel`)) ?? 0;
+      wifi.radioFrequency = str(read(raw, `${r}.OperatingFrequencyBand`)).startsWith("5")
+        ? "5GHz"
+        : "2.4GHz";
+    }
+    const ap = indexes(raw, "Device.WiFi.AccessPoint")[0];
+    if (ap !== undefined) {
+      wifi.security = str(read(raw, `Device.WiFi.AccessPoint.${ap}.Security.ModeEnabled`));
+    }
+  }
+  return wifi;
+}
+
+function firstWanIp(raw: Raw): string {
+  const tr098 = readTr098Wan(raw);
+  if (tr098) return tr098;
+  for (const i of indexes(raw, "Device.IP.Interface")) {
+    for (const j of indexes(raw, `Device.IP.Interface.${i}.IPv4Address`)) {
+      const ip = str(read(raw, `Device.IP.Interface.${i}.IPv4Address.${j}.IPAddress`));
+      if (ip && !ip.startsWith("127.") && !ip.startsWith("192.168.")) return ip;
+    }
+  }
+  return "";
+}
+
+function readTr098Wan(raw: Raw): string {
+  const base = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice";
+  for (const i of indexes(raw, base)) {
+    for (const kind of ["WANPPPConnection", "WANIPConnection"]) {
+      for (const j of indexes(raw, `${base}.${i}.${kind}`)) {
+        const ip = str(read(raw, `${base}.${i}.${kind}.${j}.ExternalIPAddress`));
+        if (ip && ip !== "0.0.0.0") return ip;
+      }
+    }
+  }
+  return "";
+}
+
+/**
+ * Ubah dokumen device GenieACS (TR-098 `InternetGatewayDevice.*` atau TR-181
+ * `Device.*`) menjadi CpeDevice. Parameter yang hilang menjadi nilai kosong, tidak melempar.
+ * `nowSeconds` hanya untuk menentukan online/offline.
+ */
+export function mapGenieAcsToCpe(
+  raw: unknown,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
+): CpeDevice {
+  const r: Raw = isObj(raw) ? raw : {};
+  const idObj: Raw = isObj(r._deviceId) ? r._deviceId : {};
+  const deviceId = str(r._id);
+
+  // _id GenieACS: OUI-ProductClass-Serial (bagian dapat di-URL-encode).
+  let idParts: string[] = [];
+  try {
+    idParts = decodeURIComponent(deviceId).split("-");
+  } catch {
+    idParts = deviceId.split("-");
+  }
+  const oui = str(idObj._OUI) || (idParts.length >= 3 ? idParts[0] : "");
+  const productClass = str(idObj._ProductClass) || (idParts.length >= 3 ? idParts.slice(1, -1).join("-") : "");
+  const serialNumber =
+    str(readAny(r, "DeviceInfo.SerialNumber")) ||
+    str(idObj._SerialNumber) ||
+    (idParts.length >= 3 ? idParts[idParts.length - 1] : "");
+
+  const manufacturer = str(readAny(r, "DeviceInfo.Manufacturer")) || str(idObj._Manufacturer);
+  const model =
+    str(readAny(r, "DeviceInfo.ModelName")) || str(readAny(r, "DeviceInfo.ProductClass")) || productClass;
+
+  const uptimeSeconds = Math.max(0, Math.floor(num(readAny(r, "DeviceInfo.UpTime")) ?? 0));
+  const lastInformAt = toEpochSeconds(r._lastInform ?? readAny(r, "ManagementServer.LastInform"));
+  const isOnline = lastInformAt > 0 && nowSeconds - lastInformAt <= ONLINE_WINDOW_SECONDS;
+
+  const hosts = parseHosts(r);
+  const wanIp = firstWanIp(r);
+  const lanIp =
+    str(read(r, "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress")) ||
+    str(read(r, "Device.IP.Interface.1.IPv4Address.1.IPAddress"));
+
+  return {
+    id: deviceId ? `cpe-${deviceId}` : "",
+    deviceId,
+    customerId: "",
+    customerName: "",
+    pppoeUsername: "",
+    address: "",
+    odpName: "",
+    routerId: "",
+    model,
+    manufacturer,
+    oui,
+    productClass,
+    serialNumber,
+    hardwareVersion: str(readAny(r, "DeviceInfo.HardwareVersion")),
+    softwareVersion: str(readAny(r, "DeviceInfo.SoftwareVersion")),
+    uptimeSeconds,
+    uptimeText: uptimeSeconds > 0 ? formatUptime(uptimeSeconds) : "—",
+    wanIp,
+    lanIp,
+    isOnline,
+    lastInformAt,
+    // Redaman optik tidak ada di model TR-069 standar; diisi dari sumber lain bila ada.
+    opticalPowerDbm: num(readAny(r, "WANDevice.1.X_GponInterafceConfig.RXPower")) ?? 0,
+    wifi: parseWifi(r, hosts.filter((h) => h.active).length),
+    hosts,
+  };
+}
+
+// ---------- klien ----------
+
+export class GenieAcsClient {
+  private readonly config: GenieAcsConfig;
+  private readonly fetchImpl?: Fetcher;
+
+  constructor(config: GenieAcsConfig = getGenieacsConfig(), fetchImpl?: Fetcher) {
+    this.config = config;
+    this.fetchImpl = fetchImpl;
+  }
+
+  private async request(path: string): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (this.config.authHeader) headers.Authorization = this.config.authHeader;
+    try {
+      return await (this.fetchImpl ?? globalThis.fetch)(`${this.config.url}${path}`, {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        throw new GenieAcsError(`GenieACS tidak menjawab dalam ${this.config.timeoutMs} ms`);
+      }
+      throw new GenieAcsError(err instanceof Error ? err.message : "Gagal terhubung ke GenieACS");
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async fetchArray(path: string): Promise<unknown[] | null> {
+    const res = await this.request(path);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new GenieAcsError(
+        res.status === 401 || res.status === 403
+          ? `GenieACS menolak kredensial (HTTP ${res.status})`
+          : `GenieACS membalas HTTP ${res.status}`,
+        res.status,
+      );
+    }
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      throw new GenieAcsError("Balasan GenieACS bukan JSON yang valid", res.status);
+    }
+    if (!Array.isArray(body)) throw new GenieAcsError("Balasan GenieACS bukan array", res.status);
+    return body;
+  }
+
+  async testConnection(): Promise<{ ok: boolean; latencyMs: number; error?: string; deviceCount?: number }> {
+    if (this.config.mode === "simulator") {
+      return { ok: true, latencyMs: SIMULATOR_LATENCY_MS, deviceCount: SIMULATOR_DEVICE_COUNT };
+    }
+    const started = Date.now();
+    try {
+      const items = await this.fetchArray("/devices/?query=%7B%7D&projection=_id");
+      const latencyMs = Date.now() - started;
+      if (items === null) return { ok: false, latencyMs, error: "Endpoint /devices/ tidak ditemukan (HTTP 404)" };
+      return { ok: true, latencyMs, deviceCount: items.length };
+    } catch (err) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        error: err instanceof Error ? err.message : "Gagal terhubung ke GenieACS",
+      };
+    }
+  }
+
+  async getDevice(deviceId: string): Promise<CpeDevice | null> {
+    if (this.config.mode === "simulator") {
+      return simulatorDevices().find((d) => d.deviceId === deviceId || d.id === deviceId) ?? null;
+    }
+    const query = encodeURIComponent(JSON.stringify({ _id: deviceId }));
+    const items = await this.fetchArray(`/devices/?query=${query}`);
+    if (!items || items.length === 0) return null;
+    return mapGenieAcsToCpe(items[0]);
+  }
+
+  async listDevices(): Promise<CpeDevice[]> {
+    if (this.config.mode === "simulator") return simulatorDevices();
+    const items = await this.fetchArray("/devices/");
+    if (items === null) throw new GenieAcsError("Endpoint /devices/ tidak ditemukan (HTTP 404)", 404);
+    return items.map((item) => mapGenieAcsToCpe(item));
+  }
+
+  /** Cari _id perangkat dari username PPPoE (TR-098 WANPPPConnection.1). Null bila tak ketemu. */
+  async findDeviceIdByPppoe(username: string): Promise<string | null> {
+    if (this.config.mode === "simulator") {
+      return simulatorDevices().find((d) => d.pppoeUsername === username)?.deviceId ?? null;
+    }
+    const key = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username._value";
+    const query = encodeURIComponent(JSON.stringify({ [key]: username }));
+    const items = await this.fetchArray(`/devices/?query=${query}&projection=_id`);
+    const id = items?.[0];
+    return isObj(id) && typeof id._id === "string" ? id._id : null;
+  }
+
+  /**
+   * Dorong task ke NBI. Pesan error sengaja tetap/generik: isi task (bisa memuat kata sandi)
+   * dan badan balasan tidak boleh ikut masuk ke pesan.
+   */
+  async postTask(
+    deviceId: string,
+    task: Record<string, unknown>,
+    connectionRequest = true,
+  ): Promise<{ ok: boolean; taskId?: string; error?: string; status?: number }> {
+    if (this.config.mode === "simulator") return { ok: true, taskId: `sim-task-${Date.now()}` };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.config.authHeader) headers.Authorization = this.config.authHeader;
+    const url = `${this.config.url}/devices/${encodeURIComponent(deviceId)}/tasks${connectionRequest ? "?connection_request" : ""}`;
+    try {
+      const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(task),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (res.ok) {
+        let taskId: string | undefined;
+        try {
+          const body: unknown = await res.json();
+          if (isObj(body) && typeof body._id === "string") taskId = body._id;
+        } catch {
+          // Badan kosong / bukan JSON: task tetap diterima.
+        }
+        return { ok: true, taskId, status: res.status };
+      }
+      const error =
+        res.status === 404
+          ? "Perangkat tidak ditemukan di GenieACS (HTTP 404)"
+          : res.status === 409
+            ? "Konflik: task bentrok dengan task lain di GenieACS (HTTP 409)"
+            : res.status === 504
+              ? "Perangkat tidak menjawab connection request, mungkin offline (HTTP 504)"
+              : res.status === 401 || res.status === 403
+                ? `GenieACS menolak kredensial (HTTP ${res.status})`
+                : `GenieACS membalas HTTP ${res.status}`;
+      return { ok: false, error, status: res.status };
+    } catch {
+      return {
+        ok: false,
+        error: controller.signal.aborted
+          ? `GenieACS tidak menjawab dalam ${this.config.timeoutMs} ms`
+          : "Gagal terhubung ke GenieACS",
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Ubah SSID (dan kata sandi bila diberikan) WLAN 1 lewat setParameterValues TR-098. */
+  async setWifiConfig(
+    deviceId: string,
+    options: { ssid: string; password?: string },
+  ): Promise<{ ok: boolean; taskId?: string; error?: string; status?: number }> {
+    const base = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1";
+    const parameterValues: [string, string, string][] = [[`${base}.SSID`, options.ssid, "xsd:string"]];
+    if (options.password) {
+      parameterValues.push([`${base}.PreSharedKey.1.PreSharedKey`, options.password, "xsd:string"]);
+    }
+    return this.postTask(deviceId, { name: "setParameterValues", parameterValues });
+  }
+}

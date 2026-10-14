@@ -4,6 +4,11 @@ out/
 dist/
 .env*
 !.env.example
+!.env.server.example
+# Sertifikat dan kunci TLS/kriptografi: jangan pernah masuk git.
+*.pem
+*.key
+*.crt
 .data/
 *.db
 *.db-shm
@@ -23,3 +28,14 @@ coverage/
 
 # Hasil build backend Go.
 backend/bin/
+
+# Status alat bantu AI dan hasil turunan: dibuat ulang, bukan kode.
+.claude-flow/
+**/.claude-flow/
+graphify-out/
+*.tmp
+*.exe
+
+# Skrip coba-coba lokal (memuat IP router dan kredensial dev).
+/probe-winbox-m2.mjs
+/check-session-db.mjs

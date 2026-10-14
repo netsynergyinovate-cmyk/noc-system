@@ -1,0 +1,2 @@
+ALTER TABLE "customers" ADD COLUMN "odp_name" text;--> statement-breakpoint
+ALTER TABLE "customers" ADD CONSTRAINT "customers_odp_name_check" CHECK ("customers"."odp_name" is null or char_length(btrim("customers"."odp_name")) between 1 and 100);

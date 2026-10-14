@@ -1,0 +1,499 @@
+{
+  "data": {
+    "sync": {
+      "intervalSeconds": 3600,
+      "running": {
+        "startedAt": 1777629900
+      },
+      "nextRunAt": 1777633500,
+      "runs": [
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000001",
+          "startedAt": 1777626300,
+          "finishedAt": 1777626311,
+          "status": "failed",
+          "result": null,
+          "error": "Sistem billing tidak dapat dihubungi (jaringan terputus atau layanan mati). Status lama dipertahankan."
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000002",
+          "startedAt": 1777622700,
+          "finishedAt": 1777622718,
+          "status": "failed",
+          "result": null,
+          "error": "Tampilan sistem billing berubah; selektor profil perlu disesuaikan. Status lama dipertahankan."
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000003",
+          "startedAt": 1777619100,
+          "finishedAt": 1777619125,
+          "status": "success",
+          "result": {
+            "invoices": 13,
+            "matched": 8,
+            "unmatched": 5,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000004",
+          "startedAt": 1777615500,
+          "finishedAt": 1777615506,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 7,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000005",
+          "startedAt": 1777611900,
+          "finishedAt": 1777611913,
+          "status": "success",
+          "result": {
+            "invoices": 11,
+            "matched": 9,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000006",
+          "startedAt": 1777608300,
+          "finishedAt": 1777608320,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 6,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000007",
+          "startedAt": 1777604700,
+          "finishedAt": 1777604727,
+          "status": "failed",
+          "result": null,
+          "error": "Sinkron melewati batas waktu."
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000008",
+          "startedAt": 1777601100,
+          "finishedAt": 1777601108,
+          "status": "success",
+          "result": {
+            "invoices": 9,
+            "matched": 8,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000009",
+          "startedAt": 1777597500,
+          "finishedAt": 1777597515,
+          "status": "success",
+          "result": {
+            "invoices": 10,
+            "matched": 7,
+            "unmatched": 3,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000a",
+          "startedAt": 1777593900,
+          "finishedAt": 1777593922,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 7,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000b",
+          "startedAt": 1777590300,
+          "finishedAt": 1777590329,
+          "status": "success",
+          "result": {
+            "invoices": 11,
+            "matched": 9,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000c",
+          "startedAt": 1777586700,
+          "finishedAt": 1777586710,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 6,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000d",
+          "startedAt": 1777583100,
+          "finishedAt": 1777583117,
+          "status": "success",
+          "result": {
+            "invoices": 10,
+            "matched": 8,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000e",
+          "startedAt": 1777579500,
+          "finishedAt": 1777579524,
+          "status": "failed",
+          "result": null,
+          "error": "Tampilan sistem billing berubah; selektor profil perlu disesuaikan. Status lama dipertahankan."
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-00000000000f",
+          "startedAt": 1777575900,
+          "finishedAt": 1777575905,
+          "status": "success",
+          "result": {
+            "invoices": 10,
+            "matched": 7,
+            "unmatched": 3,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000010",
+          "startedAt": 1777572300,
+          "finishedAt": 1777572312,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 7,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000011",
+          "startedAt": 1777568700,
+          "finishedAt": 1777568719,
+          "status": "success",
+          "result": {
+            "invoices": 11,
+            "matched": 9,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000012",
+          "startedAt": 1777565100,
+          "finishedAt": 1777565126,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 6,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000013",
+          "startedAt": 1777561500,
+          "finishedAt": 1777561507,
+          "status": "success",
+          "result": {
+            "invoices": 10,
+            "matched": 8,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000014",
+          "startedAt": 1777557900,
+          "finishedAt": 1777557914,
+          "status": "success",
+          "result": {
+            "invoices": 9,
+            "matched": 8,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000015",
+          "startedAt": 1777554300,
+          "finishedAt": 1777554321,
+          "status": "failed",
+          "result": null,
+          "error": "Sistem billing tidak dapat dihubungi (jaringan terputus atau layanan mati). Status lama dipertahankan."
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000016",
+          "startedAt": 1777550700,
+          "finishedAt": 1777550728,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 7,
+            "unmatched": 1,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000017",
+          "startedAt": 1777547100,
+          "finishedAt": 1777547109,
+          "status": "success",
+          "result": {
+            "invoices": 11,
+            "matched": 9,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        },
+        {
+          "id": "5a5a5a5a-0000-4000-8000-000000000018",
+          "startedAt": 1777543500,
+          "finishedAt": 1777543516,
+          "status": "success",
+          "result": {
+            "invoices": 8,
+            "matched": 6,
+            "unmatched": 2,
+            "withoutInvoice": 7
+          },
+          "error": null
+        }
+      ]
+    },
+    "rows": [
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000002",
+        "name": "agus firmansyah",
+        "pppoeUsername": "agus.firmansyah015",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000002",
+        "routerName": "RTR-Timur-01",
+        "status": "isolir",
+        "match": "normalized",
+        "invoiceRef": "INV-10015",
+        "billingName": "AGUS.FIRMANSYAH015"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000001",
+        "name": "Agus Firmansyah",
+        "pppoeUsername": "agus.firmansyah014",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": "INV-10014",
+        "billingName": "agus.firmansyah014"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000004",
+        "name": "Budi 2",
+        "pppoeUsername": "budi.2",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000002",
+        "routerName": "RTR-Timur-01",
+        "status": "isolir",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000003",
+        "name": "Budi 10",
+        "pppoeUsername": "budi.10",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": "INV-10016",
+        "billingName": "budi.10"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-00000000000a",
+        "name": "Citra",
+        "pppoeUsername": "citra01",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000003",
+        "routerName": "RTR-Utara-03",
+        "status": "isolir",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000009",
+        "name": "Citra",
+        "pppoeUsername": "Citra01",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000003",
+        "routerName": "RTR-Utara-03",
+        "status": "lunas",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000005",
+        "name": "Dewi Lestari",
+        "pppoeUsername": "dewi.lestari01",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "isolir",
+        "match": "exact",
+        "invoiceRef": "INV-10005",
+        "billingName": "dewi.lestari01"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000006",
+        "name": "Dewi Lestari",
+        "pppoeUsername": "dewi.lestari02",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000003",
+        "routerName": "RTR-Utara-03",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": "INV-10006",
+        "billingName": "dewi.lestari02"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000008",
+        "name": "Eka Putri",
+        "pppoeUsername": "eka.putri.2",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000002",
+        "routerName": "RTR-Timur-01",
+        "status": "lunas",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-000000000007",
+        "name": "\u00c9ka Putri",
+        "pppoeUsername": "eka.putri",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": "INV-10007",
+        "billingName": "eka.putri"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-00000000000b",
+        "name": "Hendra Kusuma",
+        "pppoeUsername": "hendra.k",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "isolir",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-00000000000d",
+        "name": "Wati",
+        "pppoeUsername": "wati.07",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000002",
+        "routerName": "RTR-Timur-01",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": "INV-10013",
+        "billingName": "wati.07"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-00000000000c",
+        "name": "Zaki",
+        "pppoeUsername": "zaki.01",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000003",
+        "routerName": "RTR-Utara-03",
+        "status": "lunas",
+        "match": "exact",
+        "invoiceRef": null,
+        "billingName": "zaki.01"
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-0000000000f1",
+        "name": "Zoe\u0308 Kusuma",
+        "pppoeUsername": "zoe\u0308.kusuma",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "lunas",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      },
+      {
+        "customerId": "c0c0c0c0-0000-4000-8000-0000000000f2",
+        "name": "Zo\u00eb Kusuma",
+        "pppoeUsername": "zo\u00eb.kusuma",
+        "routerId": "a0a0a0a0-0000-4000-8000-000000000001",
+        "routerName": "RTR-Barat-02",
+        "status": "lunas",
+        "match": "none",
+        "invoiceRef": null,
+        "billingName": null
+      }
+    ],
+    "unmatched": [
+      {
+        "invoiceRef": "",
+        "pppoeUsername": "pelanggan.baru02",
+        "status": "lunas",
+        "reason": "unknown"
+      },
+      {
+        "invoiceRef": "INV-9005",
+        "pppoeUsername": "tanpa.pemilik",
+        "status": "lunas",
+        "reason": "unknown"
+      },
+      {
+        "invoiceRef": "INV-10016-B",
+        "pppoeUsername": "budi.10",
+        "status": "isolir",
+        "reason": "duplicate"
+      },
+      {
+        "invoiceRef": "INV-10099",
+        "pppoeUsername": "CITRA01",
+        "status": "lunas",
+        "reason": "ambiguous"
+      },
+      {
+        "invoiceRef": "INV-90001",
+        "pppoeUsername": "mantan.pelanggan01",
+        "status": "isolir",
+        "reason": "unknown"
+      }
+    ]
+  }
+}

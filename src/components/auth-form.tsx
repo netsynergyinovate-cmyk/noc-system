@@ -77,6 +77,9 @@ async function send(
   }
 }
 
+// Penjelasan statis (tanpa angka) untuk tombol yang sedang menunggu.
+const WAIT_NOTE_ID = "auth-wait-note";
+
 // Hitung mundur sesudah dibatasi laju. Berdasar JAM DINDING: yang disimpan
 // adalah saat selesai (Date.now() + detik), dan angka yang tampil dihitung dari
 // selisihnya pada tiap denyut, bukan dikurangi satu per denyut. Tab yang tertidur
@@ -367,47 +370,64 @@ export function AuthForm({
               aria-disabled, BUKAN disabled: tombol yang disabled kehilangan
               fokus, dan fokus harus tetap di sini supaya Enter bekerja lagi
               begitu hitungan habis. Klik dan Enter selama menunggu diabaikan
-              onSubmit. Nama aksesibelnya tetap "Masuk"/"Buat akun" (aria-label);
-              angka yang berkurang disembunyikan dari pembaca layar, dan selesainya
-              diumumkan SEKALI lewat wilayah status di bawah. Tanda "tidak aktif":
-              garis putus-putus, latar redup, kursor terlarang, dan ikon jam
-              (bukan opasitas, supaya teksnya tetap terbaca). */}
-          <Button
-            ref={submitRef}
-            className="w-full motion-reduce:transition-none aria-disabled:cursor-not-allowed aria-disabled:border aria-disabled:border-dashed aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted"
-            type="submit"
-            size="lg"
-            disabled={pending}
-            aria-disabled={wait.waiting ? true : undefined}
-            aria-label={wait.waiting ? actionName : undefined}
-          >
-            {pending ? (
-              <LoaderCircle
-                className="animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            ) : wait.waiting ? (
-              <Clock aria-hidden="true" />
-            ) : null}
-            {pending ? (
-              signingUp ? (
-                "Membuat akun…"
-              ) : (
-                "Memeriksa…"
-              )
-            ) : wait.waiting ? (
-              <span>
-                Coba lagi dalam{" "}
-                <span aria-hidden="true" className="tabular-nums">
-                  {wait.left}
-                </span>{" "}
-                dtk
-              </span>
-            ) : (
-              actionName
-            )}
-            {!pending && !wait.waiting && <ArrowRight aria-hidden="true" />}
-          </Button>
+              onSubmit. Teks tombol TIDAK berubah ("Masuk"/"Buat akun"), jadi
+              nama aksesibelnya sama dengan teks yang terlihat (WCAG 2.5.3); tak
+              ada aria-label khusus menunggu. Hitung mundur ada di baris terpisah
+              di bawah tombol, tersembunyi dari pembaca layar (angkanya berubah
+              tiap detik); sebagai gantinya tombol dijelaskan satu kalimat statis
+              tanpa angka lewat aria-describedby, dan selesainya diumumkan SEKALI
+              lewat wilayah status di bawah. Tanda "tidak aktif": garis
+              putus-putus, latar redup, kursor terlarang, dan panah hilang (bukan
+              opasitas, supaya teksnya tetap terbaca). Baris hitung mundur
+              memakai ruang tetap (min-h-5, selalu ada) supaya tata letak tidak
+              bergeser saat hitungan muncul dan hilang. */}
+          <div>
+            <Button
+              ref={submitRef}
+              className="w-full motion-reduce:transition-none aria-disabled:cursor-not-allowed aria-disabled:border aria-disabled:border-dashed aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted"
+              type="submit"
+              size="lg"
+              disabled={pending}
+              aria-disabled={wait.waiting ? true : undefined}
+              aria-describedby={wait.waiting ? WAIT_NOTE_ID : undefined}
+            >
+              {pending && (
+                <LoaderCircle
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              )}
+              {pending
+                ? signingUp
+                  ? "Membuat akun…"
+                  : "Memeriksa…"
+                : actionName}
+              {!pending && !wait.waiting && <ArrowRight aria-hidden="true" />}
+            </Button>
+            <div className="mt-2 min-h-5">
+              {wait.waiting && (
+                <>
+                  <p
+                    data-testid="retry-countdown"
+                    aria-hidden="true"
+                    className="flex items-center justify-center gap-1.5 text-sm leading-5 text-muted-foreground"
+                  >
+                    <Clock className="size-4 shrink-0" aria-hidden="true" />
+                    <span>
+                      Bisa mencoba lagi dalam{" "}
+                      <span aria-hidden="true" className="tabular-nums">
+                        {wait.left}
+                      </span>{" "}
+                      dtk
+                    </span>
+                  </p>
+                  <span id={WAIT_NOTE_ID} className="sr-only">
+                    Batas percobaan tercapai; tunggu beberapa detik.
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
           {/* Selalu terpasang (kosong dulu) supaya isinya diumumkan ketika
               muncul. Hanya satu kali, saat hitungan habis; angka yang berkurang
               tidak diumumkan. */}

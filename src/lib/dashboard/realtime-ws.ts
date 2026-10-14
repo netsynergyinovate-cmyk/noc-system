@@ -1,0 +1,157 @@
+import type { AlertsMessage } from "./alert-sync";
+import type { IncidentCard } from "./incident-cards";
+import type {
+  ConnectionStatus,
+  DashboardDelta,
+  DashboardSnapshot,
+} from "./types";
+
+export const RECONNECT_MS = 3000;
+
+export interface RealtimeWsOptions {
+  onSnapshot: (snapshot: DashboardSnapshot, time: number) => void;
+  onDelta: (delta: DashboardDelta, time: number) => void;
+  onAlerts?: (alerts: AlertsMessage, time: number) => void;
+  onIncidents?: (cards: IncidentCard[], time: number) => void;
+  onStatusChange: (status: ConnectionStatus) => void;
+  // Dipanggil saat tiket gagal diambil, supaya pemanggil bisa memakai data tiruan.
+  fallbackToMock?: () => void;
+}
+
+export const authPayload = (token: string) =>
+  JSON.stringify({ type: "auth", token });
+
+// Mengubah satu pesan hub menjadi panggilan callback. Mengembalikan true bila
+// pesan membuat koneksi dianggap hidup. Pesan rusak/tak dikenal diabaikan.
+export function handleRealtimeMessage(
+  raw: unknown,
+  opts: Pick<
+    RealtimeWsOptions,
+    "onSnapshot" | "onDelta" | "onAlerts" | "onIncidents"
+  >,
+): boolean {
+  let msg: any;
+  try {
+    msg = JSON.parse(String(raw));
+  } catch {
+    return false;
+  }
+  if (!msg || typeof msg !== "object" || typeof msg.time !== "number")
+    return false;
+  if (msg.type === "snapshot") {
+    opts.onSnapshot(msg, msg.time);
+    return true;
+  }
+  if (msg.type === "delta") {
+    if (msg.traffic || msg.statusChanges) {
+      opts.onDelta(
+        {
+          traffic: msg.traffic ?? null,
+          statusChanges: msg.statusChanges ?? [],
+          ...(msg.billingChanges ? { billingChanges: msg.billingChanges } : {}),
+        },
+        msg.time,
+      );
+    }
+    return true;
+  }
+  if (msg.type === "alerts") {
+    opts.onAlerts?.(
+      { active: msg.active ?? [], ended: msg.ended ?? [] },
+      msg.time,
+    );
+    return true;
+  }
+  if (msg.type === "incidents") {
+    opts.onIncidents?.(msg.cards ?? msg.incidents ?? [], msg.time);
+    return true;
+  }
+  if (msg.type === "status") {
+    opts.onDelta(
+      { traffic: null, statusChanges: msg.statusChanges ?? [] },
+      msg.time,
+    );
+    return true;
+  }
+  return false;
+}
+
+export function connectRealtimeWs(opts: RealtimeWsOptions): {
+  close: () => void;
+} {
+  let closed = false;
+  let ws: WebSocket | null = null;
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  let status: ConnectionStatus | null = null;
+
+  const setStatus = (next: ConnectionStatus) => {
+    if (next === status) return;
+    status = next;
+    opts.onStatusChange(next);
+  };
+
+  const scheduleReconnect = () => {
+    if (closed || retry) return;
+    retry = setTimeout(() => {
+      retry = null;
+      void connect();
+    }, RECONNECT_MS);
+  };
+
+  const fail = () => {
+    if (closed) return;
+    setStatus("disconnected");
+    scheduleReconnect();
+  };
+
+  async function connect() {
+    if (closed) return;
+    setStatus("connecting");
+    let data: { token: string; wsUrl: string };
+    try {
+      const res = await fetch("/api/realtime/ticket", { method: "POST" });
+      if (!res.ok) throw new Error(`ticket ${res.status}`);
+      data = (await res.json()).data;
+      if (!data?.token || !data?.wsUrl) throw new Error("ticket invalid");
+    } catch {
+      if (closed) return;
+      fail();
+      opts.fallbackToMock?.();
+      return;
+    }
+    if (closed) return;
+    const socket = new WebSocket(data.wsUrl);
+    ws = socket;
+    // Event dari soket lama (sudah diganti/ditutup) diabaikan.
+    const current = () => !closed && ws === socket;
+    socket.onopen = () => {
+      if (current()) socket.send(authPayload(data.token));
+    };
+    socket.onmessage = (event) => {
+      if (!current()) return;
+      if (handleRealtimeMessage(event.data, opts)) setStatus("live");
+    };
+    const onEnd = () => {
+      if (!current()) return;
+      ws = null;
+      fail();
+    };
+    socket.onclose = onEnd;
+    socket.onerror = onEnd;
+  }
+
+  void connect();
+
+  return {
+    close() {
+      closed = true;
+      if (retry) clearTimeout(retry);
+      retry = null;
+      const socket = ws;
+      ws = null;
+      try {
+        socket?.close();
+      } catch {}
+    },
+  };
+}

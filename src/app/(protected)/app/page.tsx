@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { CustomerTable } from "@/components/dashboard/customer-table";
 import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
+import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
 import { DistributionPanel } from "@/components/dashboard/distribution-panel";
 import { LiveStatus } from "@/components/dashboard/live-status";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { MapFocusFromUrl } from "@/components/dashboard/map-focus-from-url";
-import { MetricCards } from "@/components/dashboard/metric-cards";
+import { DashboardMetricBoard } from "@/components/dashboard/dashboard-metric-board";
+import { StreamDisconnectedBanner } from "@/components/dashboard/stream-disconnected-banner";
 import { TrafficPanel } from "@/components/dashboard/traffic-panel";
 import { readFocusId } from "@/lib/dashboard/map-focus";
 import { requireSession } from "@/lib/session";
@@ -33,11 +35,13 @@ export default async function DashboardPage({
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <LiveStatus />
+          <DashboardAutoRefresh />
           <AnomalyBadge />
           <MockDataNotice />
         </div>
       </div>
-      <MetricCards />
+      <StreamDisconnectedBanner />
+      <DashboardMetricBoard />
       <div className="grid gap-6 lg:grid-cols-3">
         <TrafficPanel className="lg:col-span-2" />
         <DistributionPanel />

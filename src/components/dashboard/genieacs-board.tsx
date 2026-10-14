@@ -10,7 +10,6 @@ import {
   Search,
   Settings,
   Terminal,
-  Power,
   Copy,
   Check,
 } from "lucide-react";
@@ -21,6 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
+import { useDashboardStore } from "@/lib/dashboard/store";
+import { CustomerCpeDialog } from "@/components/dashboard/customer-cpe-dialog";
+import { formatDbm, formatInteger } from "@/lib/dashboard/format";
 
 interface NbiStatus {
   ok: boolean;
@@ -38,7 +40,13 @@ export function GenieacsBoard() {
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  // Pencocokan ke pelanggan dilakukan di sini (seperti live-cpe-section.tsx): service
+  // GenieACS tidak tahu tentang tabel customers, cuma lapor username PPPoE.
+  const customers = useDashboardStore((s) => s.customers);
+  const byPppoe = useMemo(
+    () => new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])),
+    [customers],
+  );
 
   // Cek koneksi NBI GenieACS
   const checkNbiConnection = async () => {
@@ -134,19 +142,21 @@ export function GenieacsBoard() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Filter perangkat CPE
+  // Filter perangkat CPE. d.customerName selalu kosong (service tidak tahu tabel
+  // customers), jadi cari lewat nama pelanggan hasil pencocokan PPPoE di byPppoe.
   const filteredDevices = useMemo(() => {
     if (!searchQuery.trim()) return devices;
     const q = searchQuery.toLowerCase();
     return devices.filter(
       (d) =>
         d.serialNumber.toLowerCase().includes(q) ||
-        d.customerName.toLowerCase().includes(q) ||
+        (byPppoe.get(d.pppoeUsername.trim().toLowerCase())?.name ?? "").toLowerCase().includes(q) ||
         d.pppoeUsername.toLowerCase().includes(q) ||
         d.model.toLowerCase().includes(q) ||
+        d.macAddress.toLowerCase().includes(q) ||
         d.wanIp.toLowerCase().includes(q),
     );
-  }, [devices, searchQuery]);
+  }, [devices, searchQuery, byPppoe]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,16 +195,6 @@ export function GenieacsBoard() {
           </Button>
         </div>
       </div>
-
-      {/* Banner Notifikasi Aksi */}
-      {actionNotice && (
-        <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs">
-          <span>{actionNotice}</span>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setActionNotice(null)}>
-            Tutup
-          </Button>
-        </div>
-      )}
 
       {/* 4 Kartu Pilar Status Port & Layanan */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -371,59 +371,86 @@ export function GenieacsBoard() {
                       <TableRow>
                         <TableHead>Serial Number</TableHead>
                         <TableHead>Pelanggan</TableHead>
-                        <TableHead>Model / Tipe</TableHead>
+                        <TableHead>Model / Software</TableHead>
+                        <TableHead>MAC</TableHead>
                         <TableHead>IP WAN</TableHead>
-                        <TableHead>Redaman RX</TableHead>
+                        <TableHead>RX / TX Modem</TableHead>
+                        <TableHead>CPU / Suhu</TableHead>
                         <TableHead>Wi-Fi SSID</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDevices.map((d) => (
-                        <TableRow key={d.deviceId}>
-                          <TableCell className="font-mono text-xs font-semibold">{d.serialNumber}</TableCell>
-                          <TableCell>
-                            <div className="font-medium text-xs">{d.customerName}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">{d.pppoeUsername}</div>
-                          </TableCell>
-                          <TableCell className="text-xs">{d.model}</TableCell>
-                          <TableCell className="font-mono text-xs">{d.wanIp}</TableCell>
-                          <TableCell>
-                            <span
-                              className={`font-mono text-xs font-semibold ${
-                                d.opticalPowerDbm >= -24
-                                  ? "text-emerald-500"
-                                  : d.opticalPowerDbm >= -27
-                                    ? "text-amber-500"
-                                    : "text-rose-500"
-                              }`}
-                            >
-                              {d.opticalPowerDbm.toFixed(1)} dBm
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-xs">{d.wifi?.ssid || "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant={d.isOnline ? "default" : "secondary"} className="text-[10px]">
-                              {d.isOnline ? "Online" : "Offline"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right space-x-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => {
-                                setActionNotice(`Instruksi reboot dikirimkan untuk modem ${d.serialNumber}`);
-                                setTimeout(() => setActionNotice(null), 3500);
-                              }}
-                            >
-                              <Power className="size-3.5 mr-1" />
-                              Reboot
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredDevices.map((d) => {
+                        const matched = byPppoe.get(d.pppoeUsername.trim().toLowerCase());
+                        const rxDbm = d.optical.rxDbm;
+                        return (
+                          <TableRow key={d.deviceId}>
+                            <TableCell className="font-mono text-xs font-semibold">{d.serialNumber}</TableCell>
+                            <TableCell>
+                              {matched ? (
+                                <>
+                                  <div className="font-medium text-xs">{matched.name}</div>
+                                  <div className="text-[11px] text-muted-foreground font-mono">{matched.pppoeUsername}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-xs text-muted-foreground">Belum terpetakan ke pelanggan</div>
+                                  {d.pppoeUsername && (
+                                    <div className="text-[11px] text-muted-foreground font-mono">{d.pppoeUsername}</div>
+                                  )}
+                                </>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {[d.manufacturer, d.model].filter(Boolean).join(" ") || "—"}
+                              <div className="text-[11px] text-muted-foreground">{d.softwareVersion || ""}</div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{d.macAddress || "—"}</TableCell>
+                            <TableCell className="font-mono text-xs">{d.wanIp || "—"}</TableCell>
+                            <TableCell className="font-mono text-xs">
+                              <span
+                                className={
+                                  rxDbm == null
+                                    ? "text-muted-foreground"
+                                    : rxDbm >= -24
+                                      ? "text-emerald-500"
+                                      : rxDbm >= -27
+                                        ? "text-amber-500"
+                                        : "text-rose-500"
+                                }
+                              >
+                                {rxDbm != null ? formatDbm(rxDbm) : "—"}
+                              </span>
+                              <div className="text-muted-foreground">
+                                {d.optical.txDbm != null ? formatDbm(d.optical.txDbm) : "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {d.health.cpuPercent != null ? `${formatInteger(d.health.cpuPercent)}%` : "—"}
+                              <div className="text-[11px] text-muted-foreground">
+                                {d.health.temperatures.length > 0
+                                  ? d.health.temperatures.map((t) => `${t.name} ${formatInteger(t.celsius)}°C`).join(", ")
+                                  : "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">{d.wifi?.ssid || "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant={d.isOnline ? "default" : "secondary"} className="text-[10px]">
+                                {d.isOnline ? "Online" : "Offline"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {matched ? (
+                                <CustomerCpeDialog customer={matched} />
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

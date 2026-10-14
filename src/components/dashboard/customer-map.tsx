@@ -186,7 +186,20 @@ function readStyles(): MapStyles {
   };
 }
 
+// Pelanggan hasil impor dari router belum punya koordinat (backend mengirim
+// null). Tanpa titik yang sah, Leaflet melempar "Invalid LatLng" dan halaman
+// jatuh, jadi hanya pelanggan bertitik yang digambar; sisanya tetap ada di tabel.
+const hasPoint = (customer: DashboardCustomer) =>
+  Number.isFinite(customer.latitude) && Number.isFinite(customer.longitude);
+
+// Tampilan awal bila belum ada satu pun titik: seluruh Indonesia.
+const DEFAULT_BOUNDS: LatLngBoundsExpression = [
+  [-11, 95],
+  [6, 141],
+];
+
 function getBounds(customers: DashboardCustomer[]): LatLngBoundsExpression {
+  if (customers.length === 0) return DEFAULT_BOUNDS;
   const lats = customers.map((customer) => customer.latitude);
   const lngs = customers.map((customer) => customer.longitude);
   return [
@@ -244,8 +257,10 @@ export function CustomerMap() {
     (): ResolvedTheme => "light",
   );
   const styles = getStyles(theme);
-  // Posisi pelanggan tetap, jadi batas peta cukup dihitung sekali.
-  const [bounds] = useState(() => getBounds(customers));
+  // Hanya pelanggan bertitik yang masuk peta; `customers` utuh tetap dipakai tabel.
+  const located = useMemo(() => customers.filter(hasPoint), [customers]);
+  const unlocatedCount = customers.length - located.length;
+  const bounds = useMemo(() => getBounds(located), [located]);
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
 
@@ -264,16 +279,28 @@ export function CustomerMap() {
   const [isLocating, setIsLocating] = useState(false);
 
   // Titik ODP terdistribusi
-  const odpList = useMemo(() => getOdpList(customers), [customers]);
+  const odpList = useMemo(() => getOdpList(located), [located]);
 
   const focused = useMemo(
     () =>
       mapFocus
-        ? (customers.find((customer) => customer.id === mapFocus.customerId) ??
+        ? (located.find((customer) => customer.id === mapFocus.customerId) ??
           null)
         : null,
-    [mapFocus, customers],
+    [mapFocus, located],
   );
+
+  // Snapshot sering datang setelah peta terpasang: begitu titik pertama ada,
+  // arahkan peta ke sana (sekali), bukan tetap di tampilan awal.
+  const fitted = useRef(located.length > 0);
+  useEffect(() => {
+    if (!map || fitted.current || located.length === 0) return;
+    fitted.current = true;
+    map.fitBounds(getBounds(located), {
+      padding: BOUNDS_PADDING,
+      animate: false,
+    });
+  }, [map, located]);
   useFlyToFocus(map, mapFocus?.seq, focused);
 
   // Rute kabel mengikuti jalan (OSRM) dari ODP ke pelanggan yang disorot
@@ -436,7 +463,7 @@ export function CustomerMap() {
         ))}
 
         {/* Titik pelanggan */}
-        {customers.map((customer) => (
+        {located.map((customer) => (
           <CustomerMarker
             key={customer.id}
             customer={customer}
@@ -485,6 +512,18 @@ export function CustomerMap() {
           />
         )}
       </MapContainer>
+
+      {unlocatedCount > 0 && (
+        <p
+          className="mt-2 text-xs text-muted-foreground"
+          data-testid="map-unlocated-notice"
+        >
+          {located.length === 0
+            ? `${unlocatedCount} pelanggan belum punya koordinat, jadi belum tampil di peta.`
+            : `${unlocatedCount} dari ${customers.length} pelanggan belum punya koordinat dan tidak tampil di peta.`}{" "}
+          Lengkapi latitude dan longitude pelanggan agar muncul.
+        </p>
+      )}
 
       {mapFocus && (
         <div className="absolute top-2 right-2 z-[1000] flex max-w-[calc(100%-4rem)] items-center gap-2 rounded-md border bg-card/95 py-1 pr-1 pl-2.5 text-xs shadow-sm">

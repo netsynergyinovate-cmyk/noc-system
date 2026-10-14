@@ -35,7 +35,7 @@ export function POST(request: Request, context: Context) {
       const onu = ponIndexSchema.parse(raw.onu);
       target = `olt:${oltId} onu:${pon}/${onu}`;
 
-      if (!env.BACKEND_URL || !env.REALTIME_TOKEN_SECRET) {
+      if (!env.BACKEND_INTERNAL_URL || !env.REALTIME_TOKEN_SECRET) {
         return Response.json(
           {
             error: {
@@ -56,7 +56,7 @@ export function POST(request: Request, context: Context) {
       let res: Response;
       try {
         res = await fetch(
-          `${env.BACKEND_URL}/api/v1/olts/${encodeURIComponent(oltId)}/onus/${pon}/${onu}/tr069-bind`,
+          `${env.BACKEND_INTERNAL_URL}/api/v1/olts/${encodeURIComponent(oltId)}/onus/${pon}/${onu}/tr069-bind`,
           {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` },

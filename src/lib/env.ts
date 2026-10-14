@@ -45,7 +45,9 @@ const schema = z.object({
     .string()
     .length(32, "DEVICE_SECRET harus persis 32 karakter.")
     .optional(),
-  // Alamat backend Go (origin saja).
+  // Alamat backend Go YANG DIBUKA BROWSER (WebSocket dan panggilan REST langsung
+  // dari klien). Di Docker ini port yang di-map ke host (mis. localhost:8080),
+  // BUKAN alamat antar-kontainer: browser tidak tahu nama layanan Docker.
   BACKEND_URL: z
     .url()
     .refine((value) => {
@@ -60,6 +62,27 @@ const schema = z.object({
       );
     }, "Use an origin, e.g. http://localhost:8080.")
     .default("http://localhost:8080"),
+  // Alamat backend Go dipanggil dari SERVER Next.js sendiri (route handler ke
+  // route handler, bukan browser): sinkron billing manual, histori billing,
+  // ikat TR-069. Di Docker ini nama layanan Compose (mis. http://backend:8080),
+  // beda dari BACKEND_URL karena app dan backend ada di jaringan kontainer yang
+  // sama tapi BUKAN localhost satu sama lain. Kosong berarti dianggap sama
+  // dengan BACKEND_URL (benar untuk `npm run dev` di luar Docker, di mana
+  // keduanya memang satu host); isi eksplisit hanya di Docker.
+  BACKEND_INTERNAL_URL: z
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        url.pathname === "/" &&
+        !url.search &&
+        !url.hash &&
+        !url.username &&
+        !url.password
+      );
+    }, "Use an origin, e.g. http://backend:8080.")
+    .optional(),
   // Proxy di depan aplikasi yang dipercaya meneruskan alamat klien lewat
   // X-Forwarded-For (daftar alamat IP atau rentang CIDR dipisah koma). Alamat
   // klien menjadi kunci batas laju login; tanpa daftar ini semua header
@@ -97,6 +120,7 @@ const parsedEnv = schema.parse({
   REALTIME_TOKEN_SECRET: blankToUndefined(process.env.REALTIME_TOKEN_SECRET),
   DEVICE_SECRET: blankToUndefined(process.env.DEVICE_SECRET),
   BACKEND_URL: blankToUndefined(process.env.BACKEND_URL),
+  BACKEND_INTERNAL_URL: blankToUndefined(process.env.BACKEND_INTERNAL_URL),
   DASHBOARD_DATA: blankToUndefined(process.env.DASHBOARD_DATA),
   TRUSTED_PROXIES: blankToUndefined(process.env.TRUSTED_PROXIES),
   MIKROTIK_REST_HOST: blankToUndefined(process.env.MIKROTIK_REST_HOST),
@@ -118,7 +142,11 @@ const parsedEnv = schema.parse({
   TARGET_DATABASE_URL: blankToUndefined(process.env.TARGET_DATABASE_URL),
 });
 
-export const env: typeof parsedEnv = new Proxy(parsedEnv, {
+// BACKEND_INTERNAL_URL selalu terisi lewat Proxy di bawah (jatuh ke BACKEND_URL
+// bila kosong), jadi tipenya di sini bukan opsional seperti hasil parse zod.
+export const env: Omit<typeof parsedEnv, "BACKEND_INTERNAL_URL"> & {
+  BACKEND_INTERNAL_URL: string;
+} = new Proxy(parsedEnv, {
   get(target, prop, receiver) {
     if (prop === "DASHBOARD_DATA") {
       const mode = process.env.DASHBOARD_DATA || process.env.DATA_MODE;
@@ -126,6 +154,12 @@ export const env: typeof parsedEnv = new Proxy(parsedEnv, {
       if (mode === "demo" || mode === "dummy") return "demo";
       return target.DASHBOARD_DATA;
     }
+    // Tanpa BACKEND_INTERNAL_URL eksplisit, server memakai BACKEND_URL (benar
+    // di luar Docker); kode server-ke-server HARUS memakai properti ini, tidak
+    // pernah BACKEND_URL langsung (itu alamat untuk BROWSER).
+    if (prop === "BACKEND_INTERNAL_URL") {
+      return target.BACKEND_INTERNAL_URL ?? target.BACKEND_URL;
+    }
     return Reflect.get(target, prop, receiver);
   },
-});
+}) as typeof parsedEnv & { BACKEND_INTERNAL_URL: string };

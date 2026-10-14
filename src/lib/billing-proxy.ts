@@ -15,7 +15,7 @@ const MANUAL_SYNC_TIMEOUT_MS = 11 * 60_000;
 export async function postBillingSync(userId: string) {
   if (
     env.DASHBOARD_DATA !== "live" ||
-    !env.BACKEND_URL ||
+    !env.BACKEND_INTERNAL_URL ||
     !env.REALTIME_TOKEN_SECRET
   )
     return Response.json({
@@ -29,7 +29,7 @@ export async function postBillingSync(userId: string) {
   });
   let res: Response;
   try {
-    res = await fetch(`${env.BACKEND_URL}/api/v1/billing/sync`, {
+    res = await fetch(`${env.BACKEND_INTERNAL_URL}/api/v1/billing/sync`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
@@ -92,14 +92,14 @@ export function proxyBilling<T>(
       return Response.json(mark(mock(nowSec), "mock"));
     };
 
-    if (env.DASHBOARD_DATA !== "live" || !env.BACKEND_URL) return fallback();
+    if (env.DASHBOARD_DATA !== "live" || !env.BACKEND_INTERNAL_URL) return fallback();
     if (!env.REALTIME_TOKEN_SECRET) return fallback();
     try {
       const { token } = issueRealtimeTicket({
         userId: session.user.id,
         secret: env.REALTIME_TOKEN_SECRET,
       });
-      const res = await fetch(`${env.BACKEND_URL}${path}`, {
+      const res = await fetch(`${env.BACKEND_INTERNAL_URL}${path}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
         signal: AbortSignal.timeout(TIMEOUT_MS),

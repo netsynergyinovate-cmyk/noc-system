@@ -46,6 +46,10 @@ services:
       GENIEACS_NBI_URL: ${GENIEACS_NBI_URL:-http://genieacs:7557}
       # Alamat backend yang dibuka BROWSER (bukan alamat antar-kontainer).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
+      # Alamat backend dipanggil dari SERVER Next.js sendiri (sinkron billing,
+      # ikat TR-069, dll): nama layanan Compose, BUKAN localhost (app dan
+      # backend adalah kontainer berbeda; localhost di dalam app = app sendiri).
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
       PORT: 3000
     depends_on:
       postgres:

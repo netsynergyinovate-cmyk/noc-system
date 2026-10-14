@@ -51,7 +51,7 @@ export function GET(request: Request) {
 
     if (
       env.DASHBOARD_DATA !== "live" ||
-      !env.BACKEND_URL ||
+      !env.BACKEND_INTERNAL_URL ||
       !env.REALTIME_TOKEN_SECRET
     )
       return mock();
@@ -61,7 +61,7 @@ export function GET(request: Request) {
         secret: env.REALTIME_TOKEN_SECRET,
       });
       const res = await fetch(
-        `${env.BACKEND_URL}/api/v1/billing/history?limit=${limit}&offset=${offset}`,
+        `${env.BACKEND_INTERNAL_URL}/api/v1/billing/history?limit=${limit}&offset=${offset}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",

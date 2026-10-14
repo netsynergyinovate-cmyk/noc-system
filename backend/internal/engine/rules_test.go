@@ -156,7 +156,7 @@ func TestDefaultThresholdConfigAndMakeRules(t *testing.T) {
 		t.Fatalf("default = %+v", cfg)
 	}
 	rules := MakeRules(cfg)
-	want := []string{"offline", "queue", "cpu", "optical", "port", "billing_mismatch"}
+	want := []string{"offline", "router_unreachable", "queue", "cpu", "optical", "port", "billing_mismatch"}
 	if len(rules) != len(want) {
 		t.Fatalf("rules = %d, want %d", len(rules), len(want))
 	}

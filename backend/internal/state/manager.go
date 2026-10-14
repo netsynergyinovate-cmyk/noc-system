@@ -88,6 +88,7 @@ func (m *Manager) UpsertRouter(r Router) error {
 		r.LastError = existing.Router.LastError
 		r.LastErrorAt = existing.Router.LastErrorAt
 		r.ConsecutiveFailures = existing.Router.ConsecutiveFailures
+		r.LastOKAt = existing.Router.LastOKAt
 		existing.Router = r
 		return nil
 	}
@@ -277,6 +278,17 @@ func (m *Manager) SetRouterReachability(routerID string, reachable bool, lastErr
 	}
 	router.LastError, router.LastErrorAt = lastErr, at
 	router.ConsecutiveFailures++
+}
+
+// NoteRouterSuccess mencatat bahwa satu pembacaan dari router berhasil pada waktu
+// at (detik unix). Tidak mengubah status keterjangkauan; itu urusan pelacak
+// kegagalan. Router tak dikenal diabaikan.
+func (m *Manager) NoteRouterSuccess(routerID string, at int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if router, ok := m.routers[routerID]; ok && at > router.LastOKAt {
+		router.LastOKAt = at
+	}
 }
 
 // RouterReachability mengembalikan status keterjangkauan sumber data router.

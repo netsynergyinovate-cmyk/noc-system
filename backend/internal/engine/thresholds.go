@@ -52,6 +52,7 @@ func DefaultThresholdConfig() ThresholdConfig {
 func MakeRules(cfg ThresholdConfig) []Rule {
 	return []Rule{
 		OfflineRule{After: cfg.OfflineAfter},
+		RouterUnreachableRule{},
 		QueueRule{ThresholdRatio: cfg.QueueRatio, After: cfg.QueueAfter},
 		CpuRule{ThresholdPercent: cfg.CpuPercent, After: cfg.CpuAfter},
 		OpticalRule{ThresholdDbm: cfg.OpticalDbm, After: cfg.OpticalAfter},

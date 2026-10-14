@@ -33,7 +33,7 @@ import {
 } from "@/lib/dashboard/alerts";
 import { formatInteger } from "@/lib/dashboard/format";
 import {
-  incidentLabels,
+  alertKindLabel,
   incidentSeverityLabels,
 } from "@/lib/dashboard/incidents";
 import { AlertPlace } from "./alert-place";
@@ -147,7 +147,7 @@ export function AlertTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-medium">
-                    {incidentLabels[alert.kind]}
+                    {alertKindLabel(alert)}
                   </div>
                   <div className="mt-1">
                     <SeverityBadge severity={alert.severity} />
@@ -163,7 +163,7 @@ export function AlertTable({
                       // mana (jenis, subjek, dan waktu mulai sampai detik, supaya dua
                       // alert sejenis pada subjek yang sama tetap bisa dibedakan):
                       // tombol yang sama muncul di setiap baris.
-                      aria-label={`Tandai ditangani: ${incidentLabels[alert.kind]}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
+                      aria-label={`Tandai ditangani: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
                       onClick={() => onHandle(alert)}
                     >
                       <CircleCheckBig aria-hidden="true" />
@@ -177,7 +177,7 @@ export function AlertTable({
                       size="sm"
                       className="mt-2 ml-2"
                       data-testid="respond-alert"
-                      aria-label={`Tanggapi tiket: ${incidentLabels[alert.kind]}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
+                      aria-label={`Tanggapi tiket: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
                       onClick={() => onRespond(alert)}
                     >
                       <MessageSquarePlus aria-hidden="true" />

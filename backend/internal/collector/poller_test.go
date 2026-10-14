@@ -355,3 +355,69 @@ func TestBackoffGrowsAndIsCapped(t *testing.T) {
 		t.Errorf("backoff untuk kegagalan sangat banyak = %s, want %s", got, maxBackoff)
 	}
 }
+
+// OnResult adalah satu-satunya cara dunia luar tahu router terjangkau atau tidak:
+// harus dipanggil untuk tiap putaran (gagal dan berhasil), tidak untuk putaran yang
+// dibatalkan, dan dengan galat yang sama persis dengan yang dicatat di Status.
+func TestPollerReportsEveryRoundToOnResultAndDrivesReachability(t *testing.T) {
+	var calls atomic.Int32
+	server := fakeRouter(t, func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) <= 4 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		okHandler(queueJSON)(w, r)
+	})
+	mgr := state.NewManager()
+	if err := mgr.UpsertRouter(state.Router{ID: "r1", Name: "Core", Active: true}); err != nil {
+		t.Fatal(err)
+	}
+	tracker := NewSourceFailureTracker()
+	var oks, fails atomic.Int32
+	rec := &fakeRecorder{}
+	p := newPoller(rec, func(o *PollerOptions) {
+		o.OnResult = func(routerID, job string, err error) {
+			if job != JobQueue || routerID != "r1" {
+				t.Errorf("job/router salah: %s %s", routerID, job)
+			}
+			if err != nil {
+				fails.Add(1)
+				tracker.RecordFailure(routerID, err, time.Now().Unix(), mgr, nil)
+				return
+			}
+			oks.Add(1)
+			mgr.NoteRouterSuccess(routerID, time.Now().Unix())
+			tracker.RecordSuccess(routerID, time.Now().Unix(), mgr, nil)
+		}
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := p.Start(ctx, target(server)); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "router ditandai tidak terjangkau", func() bool {
+		reachable, failures, last := mgr.RouterReachability("r1")
+		return !reachable && failures >= 1 && last != ""
+	})
+	waitUntil(t, "pulih", func() bool {
+		reachable, failures, last := mgr.RouterReachability("r1")
+		return reachable && failures == 0 && last == ""
+	})
+	if oks.Load() == 0 || fails.Load() < DefaultUnreachableThreshold {
+		t.Errorf("ok=%d gagal=%d", oks.Load(), fails.Load())
+	}
+	var okAt int64
+	for _, r := range mgr.Routers() {
+		okAt = r.LastOKAt
+	}
+	if okAt == 0 {
+		t.Error("LastOKAt harus terisi setelah pembacaan berhasil")
+	}
+	stopAndWait(t, p, cancel)
+
+	// Setelah dihentikan, putaran yang terpotong tidak boleh dihitung sebagai kegagalan.
+	before := fails.Load()
+	time.Sleep(120 * time.Millisecond)
+	if fails.Load() != before {
+		t.Errorf("pembatalan dihitung sebagai kegagalan: %d -> %d", before, fails.Load())
+	}
+}

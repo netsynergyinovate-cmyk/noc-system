@@ -4,6 +4,7 @@ import { AppShell } from "@/components/dashboard/app-shell";
 import { AlertSoundController } from "@/components/dashboard/alert-sound-controller";
 import { ConfigurationGateBanner } from "@/components/dashboard/configuration-gate-banner";
 import { DashboardFeed } from "@/components/dashboard/dashboard-feed";
+import { RouterHealthBanner } from "@/components/dashboard/router-health-banner";
 import { env } from "@/lib/env";
 import { evaluateOnboardingGate, isPathExemptFromGate } from "@/lib/dashboard/onboarding-gate";
 import { NEXT_PATH_HEADER } from "@/lib/route-guard";
@@ -37,6 +38,8 @@ export default async function DashboardLayout({
       <DashboardFeed />
       {/* Bunyi gangguan baru, terdengar di halaman mana pun yang dibuka. */}
       <AlertSoundController />
+      {/* Router tidak terbaca = data beku; harus terlihat di halaman mana pun. */}
+      <RouterHealthBanner />
       {gateState.isLocked && (
         <div className="mb-6">
           <ConfigurationGateBanner reason={gateState.reason} />

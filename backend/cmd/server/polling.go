@@ -52,9 +52,21 @@ func startRouterPolling(
 		Manager: manager,
 		archive: archive.Recorder{Next: manager, Writer: writer},
 	}
+	// Keterjangkauan router: 3 kegagalan berturut-turut = tidak terjangkau (alert
+	// tingkat router dan banner di dasbor); satu keberhasilan = pulih.
+	tracker := collector.NewSourceFailureTracker()
 	poller := collector.NewPoller(recorder, collector.PollerOptions{
 		Logger:     logger,
 		HTTPClient: collector.DefaultHTTPClient(),
+		OnResult: func(routerID, _ string, err error) {
+			now := time.Now().Unix()
+			if err != nil {
+				tracker.RecordFailure(routerID, err, now, manager, logger)
+				return
+			}
+			manager.NoteRouterSuccess(routerID, now)
+			tracker.RecordSuccess(routerID, now, manager, logger)
+		},
 		Backup: &collector.BackupOptions{
 			Store:    manager,
 			Presence: manager,

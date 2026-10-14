@@ -99,6 +99,10 @@ func (w *AlertWriter) Record(ctx context.Context, events []Event) {
 }
 
 func (w *AlertWriter) start(ctx context.Context, e Event, title string) error {
+	// "offline" tanpa pelanggan adalah alert tingkat router (router tidak terjangkau).
+	if e.Kind == "offline" && e.CustomerID == "" {
+		title = "Router tidak terjangkau"
+	}
 	tag, err := w.db.Exec(ctx, touchActiveSQL, e.Kind, nullable(e.RouterID), nullable(e.CustomerID), e.Severity)
 	if err != nil {
 		return err

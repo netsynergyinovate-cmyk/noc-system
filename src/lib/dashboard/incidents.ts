@@ -39,3 +39,11 @@ export function sortIncidents(incidents: Incident[]) {
     (a, b) => a.startedAt - b.startedAt || a.id.localeCompare(b.id),
   );
 }
+
+// "offline" tanpa pelanggan adalah gangguan tingkat router: backend tidak bisa
+// membaca routernya. Label "Pelanggan offline" akan menyesatkan.
+export function alertKindLabel(alert: { kind: IncidentKind; customerId: string | null }): string {
+  return alert.kind === "offline" && alert.customerId === null
+    ? "Router tidak terjangkau"
+    : incidentLabels[alert.kind];
+}

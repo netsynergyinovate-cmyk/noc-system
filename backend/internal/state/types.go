@@ -32,6 +32,9 @@ type Router struct {
 	LastError           string // pesan galat terakhir yang sudah disanitasi
 	LastErrorAt         int64  // detik unix galat terakhir
 	ConsecutiveFailures int
+	// LastOKAt adalah detik unix terakhir sebuah pembacaan dari router berhasil;
+	// 0 bila belum pernah. Dasar pesan "data terakhir diperbarui ...".
+	LastOKAt int64
 
 	HasResource bool
 	Resource    Resource

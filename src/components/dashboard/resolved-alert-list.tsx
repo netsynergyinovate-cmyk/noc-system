@@ -21,7 +21,7 @@ import {
   formatInteger,
   isoDuration,
 } from "@/lib/dashboard/format";
-import { incidentLabels } from "@/lib/dashboard/incidents";
+import { alertKindLabel } from "@/lib/dashboard/incidents";
 import { paginate } from "@/lib/dashboard/paging";
 import {
   defaultResolvedFilters,
@@ -121,7 +121,7 @@ function ResolvedAlertTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="font-medium">
-                    {incidentLabels[alert.kind]}
+                    {alertKindLabel(alert)}
                   </div>
                   <div className="mt-1">
                     <SeverityBadge severity={alert.severity} />

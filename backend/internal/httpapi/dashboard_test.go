@@ -468,3 +468,35 @@ func TestCORSHeadersOnAllowedOriginAndNoneWithoutOrigin(t *testing.T) {
 		t.Errorf("tanpa Origin: status = %d, Allow-Origin = %q, want 200 tanpa header CORS", without.Code, without.Header().Get("Access-Control-Allow-Origin"))
 	}
 }
+
+func TestRoutersHealthReportsReachabilityWithoutChangingTheRoutersShape(t *testing.T) {
+	h := newAPIHarness(t)
+	h.mgr.SetRouterReachability("r1", false, "hubungi router: EOF", 1_790_000_100)
+	h.mgr.NoteRouterSuccess("r1", 1_790_000_000)
+	body := decode[struct {
+		Data []struct {
+			RouterID    string `json:"routerId"`
+			Reachable   bool   `json:"reachable"`
+			Failures    int    `json:"failures"`
+			LastError   string `json:"lastError"`
+			LastErrorAt *int64 `json:"lastErrorAt"`
+			LastOkAt    *int64 `json:"lastOkAt"`
+		} `json:"data"`
+	}](t, h.get("/api/v1/routers/health"))
+	if len(body.Data) != 2 {
+		t.Fatalf("data = %+v", body.Data)
+	}
+	r1, r2 := body.Data[0], body.Data[1]
+	if r1.RouterID != "r1" || r1.Reachable || r1.Failures != 1 || r1.LastError != "hubungi router: EOF" ||
+		r1.LastErrorAt == nil || *r1.LastErrorAt != 1_790_000_100 || r1.LastOkAt == nil || *r1.LastOkAt != 1_790_000_000 {
+		t.Errorf("r1 = %+v", r1)
+	}
+	if !r2.Reachable || r2.LastErrorAt != nil || r2.LastOkAt != nil || r2.LastError != "" {
+		t.Errorf("router tanpa riwayat: waktu harus null, bukan 0: %+v", r2)
+	}
+	// Bentuk /api/v1/routers (dan snapshot WebSocket) tidak boleh berubah.
+	raw := h.get("/api/v1/routers").Body.String()
+	if strings.Contains(raw, "reachable") || strings.Contains(raw, "lastError") {
+		t.Errorf("kontrak /routers berubah: %s", raw)
+	}
+}

@@ -42,6 +42,7 @@ func newDashboardMux(data DashboardData, history *historyAPI) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/summary", readOnly(api.summary))
 	mux.Handle("/api/v1/routers", readOnly(api.routers))
+	mux.Handle("/api/v1/routers/health", readOnly(api.routersHealth))
 	mux.Handle("/api/v1/customers", readOnly(api.customers))
 	mux.Handle("/api/v1/traffic", readOnly(api.traffic))
 	mux.Handle("/api/v1/billing/service-mismatches", readOnly(api.billingServiceMismatches))
@@ -101,6 +102,17 @@ func (a *dashboardAPI) routers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, dataResponse[[]wire.Router]{Data: wire.NewRouters(a.data.Routers())})
+}
+
+// routersHealth melaporkan apakah backend bisa membaca tiap router. Berguna saat
+// data di dasbor berhenti bergerak: router mati, alamat berubah, atau IP server
+// tidak lagi diizinkan di router.
+func (a *dashboardAPI) routersHealth(w http.ResponseWriter, r *http.Request) {
+	if _, err := parseQuery(r); err != nil {
+		badRequest(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, dataResponse[[]wire.RouterHealth]{Data: wire.NewRoutersHealth(a.data.Routers())})
 }
 
 // customers mendukung saringan yang sama dengan tabel di dashboard: status,

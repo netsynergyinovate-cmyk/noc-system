@@ -77,6 +77,10 @@ type PollerOptions struct {
 	RequestTimeout time.Duration
 	// Backup mengaktifkan jalur cadangan; nil berarti hanya polling queue.
 	Backup *BackupOptions
+	// OnResult dipanggil setelah tiap putaran job selesai (err nil = berhasil), dari
+	// goroutine job. Dipakai untuk melacak keterjangkauan router. Tidak dipanggil
+	// untuk putaran yang dibatalkan karena router dihentikan. Boleh nil.
+	OnResult func(routerID, job string, err error)
 	Now    func() time.Time
 }
 
@@ -303,6 +307,9 @@ func (p *Poller) execute(ctx context.Context, w *worker, j job) error {
 
 	items, err := j.run(reqCtx, w, started)
 	elapsed := p.opts.Now().Sub(started)
+	if p.opts.OnResult != nil && ctx.Err() == nil {
+		defer func() { p.opts.OnResult(w.routerID, j.name, err) }()
+	}
 	if err == nil {
 		w.update(j.name, func(s *Status) {
 			s.LastSuccess = started

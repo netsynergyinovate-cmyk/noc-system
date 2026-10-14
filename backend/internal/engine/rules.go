@@ -216,3 +216,53 @@ func (r BillingMismatchRule) Evaluate(obs Observation, now time.Time) []Conditio
 	}
 	return conds
 }
+// DefaultRouterUnreachableAfter: poller sudah menunggu beberapa kegagalan berturut-turut
+// (anti-flapping) sebelum menandai router tidak terjangkau; ini jeda tambahan kecil.
+const DefaultRouterUnreachableAfter = 15 * time.Second
+
+// RouterUnreachableRule menandai router aktif yang tidak bisa dibaca backend (alamat
+// berubah, IP server tidak diizinkan, router mati, jaringan putus). Tanpa aturan ini
+// dasbor diam-diam menampilkan data lama: status pelanggan membeku dan alert lain
+// tidak mungkin berubah. Berjenis "offline" tanpa pelanggan (alert tingkat router).
+type RouterUnreachableRule struct {
+	After time.Duration // <= 0 memakai DefaultRouterUnreachableAfter
+}
+
+func (RouterUnreachableRule) Name() string { return "router_unreachable" }
+
+func (r RouterUnreachableRule) Evaluate(obs Observation, now time.Time) []Condition {
+	after := r.After
+	if after <= 0 {
+		after = DefaultRouterUnreachableAfter
+	}
+	var conds []Condition
+	for _, rt := range obs.Routers {
+		if !rt.Active || rt.Reachable {
+			continue
+		}
+		detail := map[string]any{
+			"name":        rt.Name,
+			"host":        rt.Host,
+			"failures":    rt.ConsecutiveFailures,
+			"lastError":   rt.LastError,
+			"routerAlert": true,
+		}
+		if rt.LastOKAt > 0 {
+			detail["lastOkAt"] = rt.LastOKAt
+		}
+		cond := Condition{
+			Key:      "router-unreachable:" + rt.ID,
+			Kind:     "offline",
+			Severity: "critical",
+			RouterID: rt.ID,
+			For:      after,
+			Detail:   detail,
+		}
+		// Mulai dihitung dari pembacaan terakhir yang berhasil, bila diketahui.
+		if rt.LastOKAt > 0 {
+			cond.Since = time.Unix(rt.LastOKAt, 0)
+		}
+		conds = append(conds, cond)
+	}
+	return conds
+}

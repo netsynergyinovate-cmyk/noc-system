@@ -16,6 +16,48 @@ type Router struct {
 	Active bool   `json:"active"`
 }
 
+// RouterHealth adalah keterjangkauan sumber data satu router (GET /api/v1/routers/health).
+// Dipisah dari Router supaya bentuk snapshot WebSocket tidak berubah. Waktu yang tidak
+// diketahui dikirim null, bukan 0.
+type RouterHealth struct {
+	RouterID  string `json:"routerId"`
+	Name      string `json:"name"`
+	Host      string `json:"host"`
+	Active    bool   `json:"active"`
+	Reachable bool   `json:"reachable"`
+	Failures  int    `json:"failures"`
+	// LastError sudah disanitasi (tanpa kata sandi/token); kosong bila terjangkau.
+	LastError   string `json:"lastError"`
+	LastErrorAt *int64 `json:"lastErrorAt"`
+	// LastOkAt: pembacaan terakhir yang berhasil; null bila belum pernah sejak backend menyala.
+	LastOkAt *int64 `json:"lastOkAt"`
+}
+
+func unixOrNil(sec int64) *int64 {
+	if sec <= 0 {
+		return nil
+	}
+	return &sec
+}
+
+// NewRouterHealth mengubah router state menjadi bentuk JSON.
+func NewRouterHealth(r state.Router) RouterHealth {
+	return RouterHealth{
+		RouterID: r.ID, Name: r.Name, Host: r.Host, Active: r.Active,
+		Reachable: r.Reachable, Failures: r.ConsecutiveFailures,
+		LastError: r.LastError, LastErrorAt: unixOrNil(r.LastErrorAt), LastOkAt: unixOrNil(r.LastOKAt),
+	}
+}
+
+// NewRoutersHealth: hasilnya tidak pernah nil.
+func NewRoutersHealth(routers []state.Router) []RouterHealth {
+	out := make([]RouterHealth, 0, len(routers))
+	for _, r := range routers {
+		out = append(out, NewRouterHealth(r))
+	}
+	return out
+}
+
 // Customer adalah pelanggan PPPoE. Data yang belum ada dikirim sebagai null,
 // bukan 0, supaya tidak terbaca sebagai koordinat atau sinyal sungguhan.
 type Customer struct {

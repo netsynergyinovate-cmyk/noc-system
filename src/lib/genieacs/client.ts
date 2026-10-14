@@ -3,7 +3,14 @@
 
 import { createMockCustomers } from "../dashboard/mock-data.ts";
 import { formatUptime, generateMockCpeDevices } from "../dashboard/cpe-mock.ts";
-import type { CpeDevice, CpeHostClient, CpeInterfaceType } from "../dashboard/cpe-mock.ts";
+import type {
+  CpeDevice,
+  CpeHealth,
+  CpeHostClient,
+  CpeInterfaceType,
+  CpeOptical,
+  CpeTemperatureSensor,
+} from "../dashboard/cpe-mock.ts";
 import { getGenieacsConfig } from "./config.ts";
 import type { GenieAcsConfig } from "./config.ts";
 
@@ -230,6 +237,84 @@ export function readPppoeUsername(raw: Raw): string {
   return "";
 }
 
+/** Angka dari teks yang mungkin berekor satuan ("-20.457575  dBm", "11.800000 mA"). */
+function numWithUnit(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const m = /-?\d+(?:\.\d+)?/.exec(String(v));
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Bacaan optik dari MODEM (GenieACS), bukan dari OLT. Hanya dikenali untuk merek
+ * yang parameternya sudah diverifikasi di perangkat nyata (CDTC `X_ALU_OntOpticalParam`,
+ * terbukti kembar dengan pembacaan OLT). Merek lain: semua null, bukan karangan.
+ */
+function parseOptical(raw: Raw): CpeOptical {
+  const empty: CpeOptical = { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null };
+  for (const root of ROOTS) {
+    const p = `${root}.X_ALU_OntOpticalParam`;
+    const rx = numWithUnit(read(raw, `${p}.RXPower`));
+    if (rx === null) continue;
+    return {
+      rxDbm: rx,
+      txDbm: numWithUnit(read(raw, `${p}.TXPower`)),
+      biasMa: numWithUnit(read(raw, `${p}.BiasCurrent`)),
+      voltageV: numWithUnit(read(raw, `${p}.SupplyVottage`)),
+      temperatureC: numWithUnit(read(raw, `${p}.TransceiverTemperature`)),
+    };
+  }
+  // Cadangan: beberapa firmware yang sama hanya melaporkan RX/TX di sini (tanpa bias/tegangan).
+  for (const root of ROOTS) {
+    const p = `${root}.DeviceInfo.XponInterface`;
+    const rx = numWithUnit(read(raw, `${p}.RXPower`));
+    if (rx === null) continue;
+    return {
+      ...empty,
+      rxDbm: rx,
+      txDbm: numWithUnit(read(raw, `${p}.TXPower`)),
+      temperatureC: numWithUnit(read(raw, `${p}.TransceiverTemperature`)),
+    };
+  }
+  return empty;
+}
+
+/** Kesehatan modem dari parameter TR-098 baseline (lebih mungkin lintas-merek). */
+function parseHealth(raw: Raw): CpeHealth {
+  const cpuPercent = num(readAny(raw, "DeviceInfo.ProcessStatus.CPUUsage"));
+  const memoryFreeKb = num(readAny(raw, "DeviceInfo.MemoryStatus.Free"));
+  const memoryTotalKb = num(readAny(raw, "DeviceInfo.MemoryStatus.Total"));
+  const temperatures: CpeTemperatureSensor[] = [];
+  for (const root of ROOTS) {
+    const base = `${root}.DeviceInfo.TemperatureStatus.TemperatureSensor`;
+    for (const i of indexes(raw, base)) {
+      const celsius = num(read(raw, `${base}.${i}.Value`));
+      if (celsius === null) continue;
+      const name = str(read(raw, `${base}.${i}.Name`)) || `Sensor ${i}`;
+      temperatures.push({ name, celsius });
+    }
+    if (temperatures.length > 0) break; // satu root sudah cukup, hindari dobel
+  }
+  return { cpuPercent, memoryFreeKb, memoryTotalKb, temperatures };
+}
+
+/** MAC modem: ManagementServer (vendor) atau antarmuka WAN PPP sebagai cadangan. */
+function readMac(raw: Raw): string {
+  const mgmt = str(readAny(raw, "ManagementServer.mac"));
+  if (mgmt) return mgmt;
+  const base = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice";
+  for (const i of indexes(raw, base)) {
+    for (const kind of ["WANPPPConnection", "WANIPConnection"]) {
+      for (const j of indexes(raw, `${base}.${i}.${kind}`)) {
+        const mac = str(read(raw, `${base}.${i}.${kind}.${j}.MACAddress`));
+        if (mac) return mac;
+      }
+    }
+  }
+  return "";
+}
+
 /**
  * Ubah dokumen device GenieACS (TR-098 `InternetGatewayDevice.*` atau TR-181
  * `Device.*`) menjadi CpeDevice. Parameter yang hilang menjadi nilai kosong, tidak melempar.
@@ -270,6 +355,7 @@ export function mapGenieAcsToCpe(
   const lanIp =
     str(read(r, "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress")) ||
     str(read(r, "Device.IP.Interface.1.IPv4Address.1.IPAddress"));
+  const optical = parseOptical(r);
 
   return {
     id: deviceId ? `cpe-${deviceId}` : "",
@@ -292,10 +378,14 @@ export function mapGenieAcsToCpe(
     uptimeText: uptimeSeconds > 0 ? formatUptime(uptimeSeconds) : "—",
     wanIp,
     lanIp,
+    macAddress: readMac(r),
     isOnline,
     lastInformAt,
-    // Redaman optik tidak ada di model TR-069 standar; diisi dari sumber lain bila ada.
-    opticalPowerDbm: num(readAny(r, "WANDevice.1.X_GponInterafceConfig.RXPower")) ?? 0,
+    // Dipakai luas di aplikasi untuk status sinyal; sama dengan optical.rxDbm, 0 bila
+    // tidak diketahui (konsisten dengan pemakai lama field ini).
+    opticalPowerDbm: optical.rxDbm ?? 0,
+    optical,
+    health: parseHealth(r),
     wifi: parseWifi(r, hosts.filter((h) => h.active).length),
     hosts,
   };

@@ -223,6 +223,10 @@ func collectHsgq(ctx context.Context, c cliConn) (*cliSnapshot, error) {
 		}
 		if rd, ok := optical[k]; ok && o.IsOnline {
 			o.RxPowerDbm, o.TxPowerDbm = rd.RxDbm, rd.TxDbm
+			if rd.RxDbm != nil && rd.TxDbm != nil {
+				loss := *rd.TxDbm - *rd.RxDbm
+				o.AttenuationDb = &loss // redaman total = daya pancar - daya terima
+			}
 			if o.Name == "" {
 				o.Name = rd.Name
 			}

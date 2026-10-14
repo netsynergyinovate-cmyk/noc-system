@@ -198,3 +198,106 @@ test("real: error jaringan dan JSON rusak dilaporkan, tidak crash", async () => 
   const bad = await new GenieAcsClient(real, mockFetch(200, "<html>")).testConnection();
   assert.equal(bad.ok, false);
 });
+
+// --- Kesehatan modem & optik lewat GenieACS (tr098/tr181 di atas tidak punya ini: harus null/kosong) ---
+
+test("mapGenieAcsToCpe: tanpa parameter vendor/baseline -> optical dan health kosong, bukan 0 palsu", () => {
+  const d = mapGenieAcsToCpe(tr098, NOW);
+  assert.deepEqual(d.optical, { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null });
+  assert.deepEqual(d.health, { cpuPercent: null, memoryFreeKb: null, memoryTotalKb: null, temperatures: [] });
+  assert.equal(d.opticalPowerDbm, 0); // dipakai luas sbg sentinel "tidak ada", konsisten dgn kode lama
+  assert.equal(d.macAddress, "");
+});
+
+// Bentuk dokumen nyata yang diverifikasi di perangkat (modem CDTC FD511GW di lapangan,
+// lewat GenieACS NBI, 2026-10-14): membuktikan parser membaca nilai berekor satuan
+// ("-20.457575  dBm") dan beberapa sensor suhu sekaligus.
+const realCdtc = {
+  _id: "D05FAF-FD511GW-DF77%2D2511025540",
+  _lastInform: new Date((NOW - 10) * 1000).toISOString(),
+  InternetGatewayDevice: {
+    DeviceInfo: {
+      Manufacturer: v("CDTC"),
+      ModelName: v("FD511GW"),
+      SerialNumber: v("DF77-2511025540"),
+      SoftwareVersion: v("V4.3.12_P378001"),
+      UpTime: v(393004),
+      ProcessStatus: { CPUUsage: v(5) },
+      MemoryStatus: { Free: v(52228), Total: v(103984) },
+      TemperatureStatus: {
+        TemperatureSensor: {
+          1: { Name: v("SoC"), Value: v(69), Enable: v(true) },
+          2: { Name: v("Optical Module"), Value: v(35), Enable: v(true) },
+        },
+      },
+    },
+    ManagementServer: { mac: v("d0:5f:af:d3:7c:1d") },
+    WANDevice: {
+      1: {
+        WANConnectionDevice: {
+          1: {
+            WANPPPConnection: {
+              1: {
+                Username: v("17060001092@runsnet.id"),
+                ExternalIPAddress: v("172.16.15.248"),
+                MACAddress: v("d0:5f:af:d3:7c:1f"),
+              },
+            },
+          },
+        },
+      },
+    },
+    X_ALU_OntOpticalParam: {
+      RXPower: v("-20.457575"),
+      TXPower: v("2.147133"),
+      BiasCurrent: v("5925.000000"),
+      SupplyVottage: v("3.268200"),
+      TransceiverTemperature: v("35.519531"),
+    },
+  },
+};
+
+test("mapGenieAcsToCpe: data nyata CDTC FD511GW (GenieACS) -> optical + health lengkap", () => {
+  const d = mapGenieAcsToCpe(realCdtc, NOW);
+  assert.equal(d.pppoeUsername, "17060001092@runsnet.id");
+  assert.equal(d.macAddress, "d0:5f:af:d3:7c:1d"); // ManagementServer.mac diutamakan atas WAN MAC
+  assert.equal(d.optical.rxDbm, -20.457575);
+  assert.equal(d.optical.txDbm, 2.147133);
+  assert.equal(d.optical.biasMa, 5925);
+  assert.equal(d.optical.voltageV, 3.2682);
+  assert.equal(d.optical.temperatureC, 35.519531);
+  assert.equal(d.opticalPowerDbm, -20.457575); // field lama tetap terisi dari sumber baru
+  assert.equal(d.health.cpuPercent, 5);
+  assert.equal(d.health.memoryFreeKb, 52228);
+  assert.equal(d.health.memoryTotalKb, 103984);
+  assert.deepEqual(d.health.temperatures, [
+    { name: "SoC", celsius: 69 },
+    { name: "Optical Module", celsius: 35 },
+  ]);
+});
+
+test("mapGenieAcsToCpe: optik cadangan dari DeviceInfo.XponInterface bila X_ALU tidak ada", () => {
+  const doc = {
+    _id: "A-B-C",
+    InternetGatewayDevice: {
+      DeviceInfo: {
+        XponInterface: { RXPower: v("-18.2  dBm"), TXPower: v("1.9  dBm"), TransceiverTemperature: v("40.0") },
+      },
+    },
+  };
+  const d = mapGenieAcsToCpe(doc, NOW);
+  assert.equal(d.optical.rxDbm, -18.2);
+  assert.equal(d.optical.txDbm, 1.9);
+  assert.equal(d.optical.temperatureC, 40);
+  assert.equal(d.optical.biasMa, null); // cadangan ini tidak melaporkan bias/tegangan; jangan dikarang
+});
+
+test("mapGenieAcsToCpe: MAC cadangan dari WAN bila ManagementServer.mac tidak ada", () => {
+  const doc = {
+    _id: "A-B-C",
+    InternetGatewayDevice: {
+      WANDevice: { 1: { WANConnectionDevice: { 1: { WANIPConnection: { 1: { MACAddress: v("11:22:33:44:55:66") } } } } } },
+    },
+  };
+  assert.equal(mapGenieAcsToCpe(doc, NOW).macAddress, "11:22:33:44:55:66");
+});

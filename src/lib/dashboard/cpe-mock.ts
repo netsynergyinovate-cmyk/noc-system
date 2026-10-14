@@ -22,6 +22,34 @@ export interface CpeWifi {
   clientCount: number;
 }
 
+// Bacaan optik yang dilaporkan MODEM sendiri (lewat GenieACS), bukan dari OLT.
+// Berbeda dari `CpeDevice.opticalPowerDbm` (RX, dipakai luas di aplikasi untuk status
+// sinyal): field ini pelengkap untuk ditampilkan apa adanya, termasuk saat OLT
+// gagal membaca ONU ini. Hanya terisi untuk merek modem yang parameternya sudah
+// dikenali; `null` berarti belum/tidak bisa dibaca, bukan nol.
+export interface CpeOptical {
+  rxDbm: number | null;
+  txDbm: number | null;
+  biasMa: number | null;
+  voltageV: number | null;
+  temperatureC: number | null;
+}
+
+export interface CpeTemperatureSensor {
+  name: string;
+  celsius: number;
+}
+
+// Kesehatan modem dari parameter TR-069 baseline standar (DeviceInfo.ProcessStatus,
+// MemoryStatus, TemperatureStatus). Lebih mungkin tersedia lintas merek daripada
+// parameter optik vendor, tapi tetap tidak dijamin ada di semua modem.
+export interface CpeHealth {
+  cpuPercent: number | null;
+  memoryFreeKb: number | null;
+  memoryTotalKb: number | null;
+  temperatures: CpeTemperatureSensor[];
+}
+
 export interface CpeDevice {
   id: string;
   // Format GenieACS: OUI-ProductClass-SerialNumber
@@ -43,10 +71,14 @@ export interface CpeDevice {
   uptimeText: string;
   wanIp: string;
   lanIp: string;
+  // MAC modem (ManagementServer atau antarmuka WAN); kosong bila tidak dilaporkan.
+  macAddress: string;
   isOnline: boolean;
   // Detik epoch (bilangan bulat).
   lastInformAt: number;
   opticalPowerDbm: number;
+  optical: CpeOptical;
+  health: CpeHealth;
   wifi: CpeWifi;
   hosts: CpeHostClient[];
 }
@@ -220,9 +252,27 @@ export function generateMockCpeDevices(customers: readonly DashboardCustomer[]):
       uptimeText: customer.isOnline ? formatUptime(uptimeSeconds) : "—",
       wanIp: customer.isOnline ? `10.${20 + (h % 40)}.${(h >>> 8) % 250}.${2 + ((h >>> 16) % 250)}` : "—",
       lanIp: "192.168.1.1",
+      macAddress: `${spec.oui.slice(0, 2)}:${spec.oui.slice(2, 4)}:${spec.oui.slice(4, 6)}:${hex(h, 6).slice(0, 2)}:${hex(h, 6).slice(2, 4)}:${hex(h, 6).slice(4, 6)}`,
       isOnline: customer.isOnline,
       lastInformAt,
       opticalPowerDbm: customer.opticalPowerDbm,
+      optical: customer.isOnline
+        ? {
+            rxDbm: customer.opticalPowerDbm,
+            txDbm: Math.round((2 + (h % 10) * 0.1) * 100) / 100,
+            biasMa: 5 + (h % 20),
+            voltageV: Math.round((3.2 + (h % 10) * 0.01) * 100) / 100,
+            temperatureC: 30 + (h % 25),
+          }
+        : { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null },
+      health: customer.isOnline
+        ? {
+            cpuPercent: h % 60,
+            memoryFreeKb: 20_000 + (h % 60_000),
+            memoryTotalKb: 128_000,
+            temperatures: [{ name: "SoC", celsius: 40 + (h % 35) }],
+          }
+        : { cpuPercent: null, memoryFreeKb: null, memoryTotalKb: null, temperatures: [] },
       wifi: {
         ssid: `WIFI_${customer.pppoeUsername}`,
         enabled: customer.isOnline,

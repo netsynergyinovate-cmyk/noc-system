@@ -35,6 +35,7 @@ import { fetchCpeByPppoe, rebootCpeLive } from "@/lib/dashboard/cpe-live";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { formatLastSeen } from "@/lib/dashboard/onu-status";
+import { formatDbm, formatInteger } from "@/lib/dashboard/format";
 import type { CpeDevice, CpeHostClient } from "@/lib/dashboard/cpe-mock";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
 import { CpeWifiForm } from "@/components/dashboard/cpe-wifi-form";
@@ -223,6 +224,32 @@ export function CustomerCpeDialog({
               <Row label="IP WAN" value={cpe?.wanIp ?? "—"} mono />
               <Row label="IP LAN" value={cpe?.lanIp ?? "—"} mono />
               <Row label="Inform Terakhir" value={cpe ? formatLastSeen(cpe.lastInformAt) : "—"} />
+              <Row label="MAC Modem" value={cpe?.macAddress || "—"} mono />
+            </dl>
+
+            <dl className="space-y-2 rounded-md border p-3 text-sm" data-testid="cpe-health">
+              <div className="pb-1 text-xs font-medium text-muted-foreground">
+                Kesehatan &amp; Optik Modem (lewat GenieACS, bukan OLT)
+              </div>
+              <Row label="CPU" value={cpe?.health.cpuPercent != null ? `${formatInteger(cpe.health.cpuPercent)}%` : "—"} />
+              <Row
+                label="Memori Bebas"
+                value={
+                  cpe?.health.memoryFreeKb != null && cpe.health.memoryTotalKb != null
+                    ? `${formatInteger(cpe.health.memoryFreeKb)} / ${formatInteger(cpe.health.memoryTotalKb)} KB`
+                    : "—"
+                }
+              />
+              <Row
+                label="Suhu"
+                value={
+                  cpe && cpe.health.temperatures.length > 0
+                    ? cpe.health.temperatures.map((t) => `${t.name} ${formatInteger(t.celsius)}°C`).join(", ")
+                    : "—"
+                }
+              />
+              <Row label="RX Modem" value={cpe?.optical.rxDbm != null ? formatDbm(cpe.optical.rxDbm) : "—"} />
+              <Row label="TX Modem" value={cpe?.optical.txDbm != null ? formatDbm(cpe.optical.txDbm) : "—"} />
             </dl>
 
             {cpeNote && (

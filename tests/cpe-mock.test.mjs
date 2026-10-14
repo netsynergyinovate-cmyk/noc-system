@@ -61,3 +61,18 @@ test("summarizeCpeMetrics", () => {
   assert.equal(m.totalClients, devices.reduce((s, d) => s + d.hosts.filter((h) => h.active).length, 0));
   assert.deepEqual(summarizeCpeMetrics([]), { total: 0, online: 0, offline: 0, weakSignal: 0, totalClients: 0 });
 });
+
+test("macAddress valid, optical/health terisi hanya saat online", () => {
+  for (const d of generateMockCpeDevices(customers)) {
+    assert.match(d.macAddress, /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i);
+    if (d.isOnline) {
+      assert.equal(d.optical.rxDbm, d.opticalPowerDbm);
+      assert.ok(d.optical.txDbm !== null && d.optical.biasMa !== null && d.optical.voltageV !== null && d.optical.temperatureC !== null);
+      assert.ok(d.health.cpuPercent !== null && d.health.memoryFreeKb !== null && d.health.memoryTotalKb !== null);
+      assert.ok(d.health.temperatures.length >= 1);
+    } else {
+      assert.deepEqual(d.optical, { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null });
+      assert.deepEqual(d.health, { cpuPercent: null, memoryFreeKb: null, memoryTotalKb: null, temperatures: [] });
+    }
+  }
+});

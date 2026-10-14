@@ -190,11 +190,15 @@ func TestHsgqTelnetFetchesPonsAndOnusFromRealisticSession(t *testing.T) {
 		a.Name != "1396-BUDI SANTOSO" || a.Model != "MTKc 245H" || a.RxPowerDbm == nil || *a.RxPowerDbm != -15.9688 || *a.TxPowerDbm != 1.9645 {
 		t.Errorf("ONU 1/1: %+v", a)
 	}
-	if b.State != "offline" || b.IsOnline || b.RxPowerDbm != nil || b.Name != "1773-SITI" || b.Model != "" {
-		t.Errorf("ONU 1/2 (Initial) harus offline tanpa optik dan tanpa model karangan: %+v", b)
+	// Redaman = daya pancar - daya terima; hanya untuk ONU online dengan bacaan optik.
+	if a.AttenuationDb == nil || *a.AttenuationDb != 1.9645-(-15.9688) {
+		t.Errorf("ONU 1/1: redaman harus dihitung dari tx-rx, got %+v", a.AttenuationDb)
 	}
-	if c.PonIndex != 2 || *c.RxPowerDbm != -21.5 {
-		t.Errorf("ONU 2/1: %+v", c)
+	if b.State != "offline" || b.IsOnline || b.RxPowerDbm != nil || b.Name != "1773-SITI" || b.Model != "" || b.AttenuationDb != nil {
+		t.Errorf("ONU 1/2 (Initial) harus offline tanpa optik, tanpa model karangan, tanpa redaman: %+v", b)
+	}
+	if c.PonIndex != 2 || *c.RxPowerDbm != -21.5 || c.AttenuationDb == nil || *c.AttenuationDb != 2.1-(-21.5) {
+		t.Errorf("ONU 2/1: %+v (redaman=%v)", c, c.AttenuationDb)
 	}
 
 	ports, err := d.FetchPonPorts(ctx) // dari snapshot yang sama

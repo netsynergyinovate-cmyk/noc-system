@@ -1,5 +1,6 @@
 import { withApiSession } from "@/lib/api";
 import { mockAuditLog } from "@/lib/dashboard/audit";
+import { env } from "@/lib/env";
 import { getAuditEntries } from "@/services/audit.service";
 
 export const runtime = "nodejs";
@@ -39,8 +40,11 @@ export async function GET(request: Request) {
       nowSec,
     });
 
+    // Catatan tiruan hanya untuk mode demo; di mode live daftar kosong tetap kosong.
     const entries =
-      realEntries.length > 0 ? realEntries : mockAuditLog(nowSec).slice(0, limit);
+      realEntries.length > 0 || env.DASHBOARD_DATA !== "demo"
+        ? realEntries
+        : mockAuditLog(nowSec).slice(0, limit);
 
     return Response.json({
       ok: true,

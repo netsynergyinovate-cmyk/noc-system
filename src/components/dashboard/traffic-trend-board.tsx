@@ -1,17 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
   Database,
   FlaskConical,
+  Radio,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrafficEmptyState } from "@/components/dashboard/traffic-empty-state";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import {
   formatBandwidthRate,
   formatDataVolume,
@@ -23,6 +26,7 @@ import {
   getMockInterfaceSamples,
   loadTrafficTrendOverview,
   type TrafficInterfaceSample,
+  type TrafficOverviewStats,
   type TrafficTimeRange,
   type TrafficTrendPoint,
 } from "@/lib/dashboard/traffic-trend-data";
@@ -148,13 +152,64 @@ function TrendChart({ series }: { series: TrafficTrendPoint[] }) {
   );
 }
 
+interface LiveTrend {
+  overview: TrafficOverviewStats;
+  series: TrafficTrendPoint[];
+  interfaces: TrafficInterfaceSample[];
+  sourceStatus: "nyata" | "dummy" | "kosong";
+}
+
+type LiveState =
+  | { range: TrafficTimeRange; status: "ready"; data: LiveTrend }
+  | { range: TrafficTimeRange; status: "error" };
+
+const emptyStats = (range: TrafficTimeRange): TrafficOverviewStats => ({
+  currentDownloadMbps: 0,
+  currentUploadMbps: 0,
+  peakMbps: 0,
+  avgMbps: 0,
+  totalVolumeGb: 0,
+  activeInterfacesCount: 0,
+  range,
+  sourceStatus: "kosong",
+  lastSampledAt: "",
+});
+
+// Mode live: arsip traffic_samples dan sampel interface router lewat
+// /api/traffic/trend. Hasil untuk rentang yang sudah ditinggalkan dibuang.
+function useLiveTrend(range: TrafficTimeRange, enabled: boolean) {
+  const [state, setState] = useState<LiveState | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    const ctrl = new AbortController();
+    fetch(`/api/traffic/trend?range=${range}`, { signal: ctrl.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((json: { data: LiveTrend }) => setState({ range, status: "ready", data: json.data }))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setState({ range, status: "error" });
+      });
+    return () => ctrl.abort();
+  }, [range, enabled]);
+  const current = state?.range === range ? state : null;
+  return {
+    loading: enabled && current === null,
+    failed: current?.status === "error",
+    data: current?.status === "ready" ? current.data : null,
+  };
+}
+
 export function TrafficTrendBoard({ nowSec }: { nowSec?: number }) {
   const [range, setRange] = useState<TrafficTimeRange>("24h");
   // nowSec dari server dipakai agar render server dan klien identik.
   const [now] = useState(() => nowSec ?? Math.floor(Date.now() / 1000));
-  const series = useMemo(() => generateTrafficTrendSeries(range, now), [range, now]);
-  const stats = useMemo(() => loadTrafficTrendOverview(range, now), [range, now]);
-  const interfaces = useMemo(() => getMockInterfaceSamples(), []);
+  const isDemo = useSession(selectPreviewEnabled);
+  const live = useLiveTrend(range, !isDemo);
+  const mockSeries = useMemo(() => generateTrafficTrendSeries(range, now), [range, now]);
+  const mockStats = useMemo(() => loadTrafficTrendOverview(range, now), [range, now]);
+  const mockInterfaces = useMemo(() => getMockInterfaceSamples(), []);
+  const series = isDemo ? mockSeries : (live.data?.series ?? []);
+  const stats = isDemo ? mockStats : (live.data?.overview ?? emptyStats(range));
+  const interfaces = isDemo ? mockInterfaces : (live.data?.interfaces ?? []);
   const [query, setQuery] = useState("");
   const visible = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -168,13 +223,30 @@ export function TrafficTrendBoard({ nowSec }: { nowSec?: number }) {
   return (
     <section data-testid="traffic-trend-board" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p
-          data-testid="traffic-mock-badge"
-          className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
-        >
-          <FlaskConical className="size-3.5" aria-hidden="true" />
-          Data Tiruan Trafik (Fase 2) · Wajib beralih ke SNMP/REST MikroTik nyata di Fase 5
-        </p>
+        {isDemo ? (
+          <p
+            data-testid="traffic-mock-badge"
+            className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
+          >
+            <FlaskConical className="size-3.5" aria-hidden="true" />
+            Data Tiruan Trafik (mode demo)
+          </p>
+        ) : (
+          <p
+            data-testid="traffic-live-badge"
+            data-state={live.failed ? "error" : live.loading ? "loading" : (live.data?.sourceStatus ?? "kosong")}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+          >
+            <Radio className="size-3.5" aria-hidden="true" />
+            {live.failed
+              ? "Gagal memuat data dari server"
+              : live.loading
+                ? "Memuat data nyata…"
+                : live.data?.sourceStatus === "nyata"
+                  ? "Data nyata dari router (arsip traffic)"
+                  : "Belum ada histori traffic; backend baru mulai merekam"}
+          </p>
+        )}
         <div
           role="group"
           aria-label="Rentang waktu"

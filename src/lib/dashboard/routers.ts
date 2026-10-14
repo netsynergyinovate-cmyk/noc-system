@@ -109,6 +109,84 @@ export function buildRouterDetails(
   });
 }
 
+// RouterOS menulis uptime seperti "3w2d4h5m6s". Diubah menjadi teks Indonesia
+// yang ringkas: dua satuan terbesar yang tidak nol ("23 hari 4 jam").
+export function formatRouterOsUptime(raw: string): string {
+  const units: Record<string, [number, string]> = {
+    w: [604800, "minggu"],
+    d: [86400, "hari"],
+    h: [3600, "jam"],
+    m: [60, "menit"],
+    s: [1, "detik"],
+  };
+  let seconds = 0;
+  let matched = false;
+  for (const m of raw.matchAll(/(\d+)([wdhms])/g)) {
+    seconds += Number(m[1]) * units[m[2]][0];
+    matched = true;
+  }
+  if (!matched) return raw || "-";
+  const parts: string[] = [];
+  let rest = seconds;
+  // Minggu dipecah ke hari supaya "23 hari" lebih mudah dibaca daripada "3 minggu 2 hari".
+  for (const [size, label] of [
+    [86400, "hari"],
+    [3600, "jam"],
+    [60, "menit"],
+    [1, "detik"],
+  ] as const) {
+    const n = Math.floor(rest / size);
+    rest -= n * size;
+    if (n > 0) parts.push(`${n} ${label}`);
+    if (parts.length === 2) break;
+  }
+  return parts.length > 0 ? parts.join(" ") : "0 detik";
+}
+
+// Mode live: rincian router HANYA dari yang dibaca server dari router
+// (/api/routers/resources). Router yang belum terbaca (jawaban belum datang atau
+// router tidak menjawab) ditampilkan apa adanya dengan nilai kosong, tidak diisi
+// angka karangan. `active` mengikuti store (status dari polling backend Go) dan
+// `pppoeCount` dari hitungan pelanggan.
+export function buildLiveRouterDetails(
+  routers: readonly DashboardRouter[],
+  items: readonly MockRouterDetail[] | null,
+  sessionCounts: Readonly<Record<string, number>> = {},
+): MockRouterDetail[] {
+  const byId = new Map((items ?? []).map((item) => [item.id, item]));
+  return routers.map((router) => {
+    const item = byId.get(router.id);
+    const detail: MockRouterDetail = item
+      ? { ...item }
+      : {
+          id: router.id,
+          name: router.name,
+          host: router.host,
+          boardModel: "-",
+          rosVersion: "-",
+          role: "Gateway",
+          cpuLoad: 0,
+          memoryUsage: 0,
+          uptime: "-",
+          active: router.active,
+          queueCount: 0,
+          temperature: 0,
+          pppoeCount: 0,
+        };
+    detail.name = router.name;
+    detail.host = router.host;
+    detail.active = router.active && (item ? item.active : true);
+    detail.pppoeCount = sessionCounts[router.id] ?? 0;
+    if (!detail.active) {
+      detail.cpuLoad = 0;
+      detail.memoryUsage = 0;
+      detail.temperature = 0;
+      detail.uptime = "Offline";
+    }
+    return detail;
+  });
+}
+
 export function isCpuWarning(router: Pick<MockRouterDetail, "cpuLoad" | "active">): boolean {
   return router.active && router.cpuLoad > CPU_WARNING_THRESHOLD;
 }

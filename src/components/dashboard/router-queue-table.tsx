@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +26,50 @@ import {
   formatBitrate,
   formatBytes,
   generateMockSimpleQueues,
+  type MockSimpleQueue,
   type QueueStatusFilter,
 } from "@/lib/dashboard/routers";
+
+const QUEUE_REFRESH_MS = 15_000;
+
+// Mode live: daftar simple queue dibaca server langsung dari router
+// (GET /api/routers/{id}/queues), disegarkan berkala.
+function useLiveQueues(routerId: string, enabled: boolean) {
+  const [queues, setQueues] = useState<MockSimpleQueue[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const alive = useRef(true);
+
+  const load = useCallback(async (): Promise<boolean> => {
+    if (!enabled) return true;
+    try {
+      const res = await fetch(`/api/routers/${encodeURIComponent(routerId)}/queues`);
+      if (!res.ok) throw new Error(String(res.status));
+      const json = (await res.json()) as { data?: MockSimpleQueue[] };
+      if (alive.current) {
+        setQueues(json.data ?? []);
+        setFailed(false);
+      }
+      return true;
+    } catch {
+      if (alive.current) setFailed(true);
+      return false;
+    }
+  }, [routerId, enabled]);
+
+  useEffect(() => {
+    alive.current = true;
+    if (!enabled) return;
+    const first = setTimeout(() => void load(), 0);
+    const timer = setInterval(() => void load(), QUEUE_REFRESH_MS);
+    return () => {
+      alive.current = false;
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [enabled, load]);
+
+  return { queues, failed, refresh: load };
+}
 
 function pct(rate: number, max: number): number {
   return max > 0 ? Math.min(100, Math.round((rate / max) * 100)) : 0;
@@ -39,6 +83,8 @@ export function RouterQueueTable({
   routerName: string;
 }) {
   const customers = useDashboardStore((s) => s.customers);
+  const isDemo = useSession(selectPreviewEnabled);
+  const live = useLiveQueues(routerId, !isDemo);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<QueueStatusFilter>("all");
   const [refresh, dispatch] = useReducer(refreshReducer, initialRefresh);
@@ -48,14 +94,19 @@ export function RouterQueueTable({
     if (isRefreshing) return;
     dispatch({ type: "start" });
     try {
-      await mockRefresh(navigator.onLine);
+      if (isDemo) {
+        await mockRefresh(navigator.onLine);
+      } else if (!(await live.refresh())) {
+        throw new Error("Server tidak bisa membaca queue dari router. Coba lagi sebentar.");
+      }
       dispatch({ type: "success" });
     } catch (e) {
       dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan queue." });
     }
   }
 
-  const queues = useMemo(() => generateMockSimpleQueues(routerId, customers), [routerId, customers]);
+  const mockQueues = useMemo(() => generateMockSimpleQueues(routerId, customers), [routerId, customers]);
+  const queues = isDemo ? mockQueues : (live.queues ?? []);
   const visible = useMemo(() => filterSimpleQueues(queues, query, status), [queues, query, status]);
 
   return (

@@ -19,7 +19,7 @@ export default async function AnomalyPage() {
             error port, sinyal optik lemah, dan pelanggan offline.
           </p>
         </div>
-        <MockDataNotice />
+        <MockDataNotice real />
       </div>
       <AnomalyBoard />
     </div>

@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { withApiSession } from "@/lib/api";
+import { withApiPermission } from "@/lib/api";
 import { markAlertHandled } from "@/services/alerts.service";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
 
+// Menandai alert ditangani mengubah data bersama: butuh izin alert:handle
+// (peran hanya-lihat mendapat 403), bukan sekadar login.
 export function POST(request: Request, context: Context) {
-  return withApiSession(request, async (session) => {
+  return withApiPermission(request, { alert: ["handle"] }, async (session) => {
     const { id } = await context.params;
     const result = await markAlertHandled(
       id,

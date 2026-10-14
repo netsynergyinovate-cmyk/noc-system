@@ -13,7 +13,11 @@ import {
   type HandledMap,
   type HandledRecord,
 } from "./handled-registry.ts";
-import { groupImpact, mockDirectory } from "./incident-root.ts";
+import {
+  groupImpact,
+  mockDirectory,
+  type ServiceDirectory,
+} from "./incident-root.ts";
 import { createMockCustomers, mockRouters } from "./mock-data.ts";
 import { hashString, unit } from "./mock-random.ts";
 import type { IncidentKind, IncidentSeverity } from "./types.ts";
@@ -336,12 +340,15 @@ export function mockResolvedAlerts(
 
 // Melengkapi tiap alert dengan sumber akar dan jumlah terdampak dari kelompok
 // korelasinya.
-export function withCorrelation(alerts: ActiveAlert[]): ActiveAlert[] {
+export function withCorrelation(
+  alerts: ActiveAlert[],
+  directory: ServiceDirectory = mockDirectory,
+): ActiveAlert[] {
   const impactById = new Map<string, ReturnType<typeof groupImpact>>();
   for (const group of correlateAlerts(alerts, {
-    routerName: mockDirectory.routerName,
+    routerName: directory.routerName,
   })) {
-    const impact = groupImpact(group, mockDirectory);
+    const impact = groupImpact(group, directory);
     for (const alert of group.alerts) impactById.set(alert.id, impact);
   }
   return alerts.map((alert) => ({ ...alert, ...impactById.get(alert.id)! }));

@@ -48,7 +48,7 @@ export default async function RouterPage() {
       </div>
 
       <div>
-        <MockDataNotice source="REST API RouterOS v7" />
+        <MockDataNotice source="REST API RouterOS v7" real />
       </div>
 
       <UnreachableDeviceBanner scope="router" />

@@ -250,6 +250,19 @@ export class MikrotikRestClient {
     return toResource(d && typeof d === "object" ? d : {});
   }
 
+  // Suhu board dalam derajat Celsius dari /system/health; 0 bila router tidak punya
+  // sensor atau jawabannya tidak dikenali. RouterOS 7.14+ mengirim daftar
+  // {name, value}; versi lebih lama mengirim satu objek {temperature: "43"}.
+  async getTemperature(): Promise<number> {
+    if (this.simulated) return 41;
+    const data = await this.request("/rest/system/health");
+    const rows = Array.isArray(data) ? (data as Raw[]) : [];
+    const fromRows = rows.find((r) => /^(cpu-)?temperature$/.test(str(r["name"])));
+    const raw = fromRows ? fromRows["value"] : (data as Raw | null)?.["temperature"];
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  }
+
   async getQueues(): Promise<MikrotikSimpleQueue[]> {
     if (this.simulated) {
       const fail = this.simulatorFailure();

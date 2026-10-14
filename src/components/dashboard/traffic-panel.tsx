@@ -15,6 +15,9 @@ import {
   loadTrafficHistory,
   type TrafficHistory,
 } from "@/lib/dashboard/history";
+import { loadLiveTrafficHistory } from "@/lib/dashboard/history-live";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import {
   DEFAULT_RANGE,
   getRange,
@@ -139,14 +142,18 @@ type HistoryState =
 // Memuat histori untuk rentang yang dipilih. Hasil untuk rentang yang sudah
 // ditinggalkan dibuang, jadi berpindah rentang dengan cepat tidak menampilkan
 // grafik yang salah.
-function useTrafficHistory(range: TrafficRangeId) {
+function useTrafficHistory(range: TrafficRangeId, demo: boolean) {
   const [state, setState] = useState<HistoryState | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (range === DEFAULT_RANGE) return;
     let cancelled = false;
-    loadTrafficHistory(range)
+    // Mode demo memakai data tiruan; mode live membaca arsip nyata dari backend Go.
+    (demo
+      ? loadTrafficHistory(range)
+      : loadLiveTrafficHistory(range as Exclude<TrafficRangeId, "live">)
+    )
       .then((data) => {
         if (!cancelled) setState({ range, status: "ready", data });
       })
@@ -156,7 +163,7 @@ function useTrafficHistory(range: TrafficRangeId) {
     return () => {
       cancelled = true;
     };
-  }, [range, attempt]);
+  }, [range, attempt, demo]);
 
   const current = state?.range === range ? state : null;
   return {
@@ -171,13 +178,15 @@ function useTrafficHistory(range: TrafficRangeId) {
 }
 
 // Insiden pada jendela 5 menit terakhir, disegarkan berkala.
-function useLiveIncidents(active: boolean) {
+// Mode live belum punya sumber insiden nyata di sini (menunggu langkah Alert), jadi
+// tidak memuat apa pun: data tiruan tidak boleh tampil sebagai kejadian jaringan.
+function useLiveIncidents(active: boolean, demo: boolean) {
   const [state, setState] = useState<{ incidents: Incident[]; now: number }>({
     incidents: [],
     now: 0,
   });
   useEffect(() => {
-    if (!active) return;
+    if (!active || !demo) return;
     let cancelled = false;
     const refresh = () => {
       const now = Math.floor(Date.now() / 1000);
@@ -194,7 +203,7 @@ function useLiveIncidents(active: boolean) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [active]);
+  }, [active, demo]);
   return state;
 }
 
@@ -213,8 +222,9 @@ function describe(range: TrafficRangeId) {
 
 export function TrafficPanel({ className }: { className?: string }) {
   const [range, setRange] = useState<TrafficRangeId>(DEFAULT_RANGE);
-  const history = useTrafficHistory(range);
-  const live = useLiveIncidents(range === DEFAULT_RANGE);
+  const isDemo = useSession(selectPreviewEnabled);
+  const history = useTrafficHistory(range, isDemo);
+  const live = useLiveIncidents(range === DEFAULT_RANGE, isDemo);
 
   const historyWindow = useMemo(
     () =>
@@ -268,6 +278,18 @@ export function TrafficPanel({ className }: { className?: string }) {
             aria-label="Memuat histori traffic"
             className="min-h-64 flex-1 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
           />
+        ) : !isLive && history.data && history.data.series.times.length === 0 ? (
+          <div
+            role="status"
+            data-testid="traffic-history-empty"
+            className="flex min-h-64 flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed p-6 text-center"
+          >
+            <p className="text-sm font-medium">Belum ada histori untuk rentang ini</p>
+            <p className="text-sm text-muted-foreground">
+              Backend merekam traffic setiap detik sejak router terhubung. Grafik
+              terisi bertahap; coba rentang yang lebih pendek.
+            </p>
+          </div>
         ) : (
           <TrafficChart
             rangeId={range}

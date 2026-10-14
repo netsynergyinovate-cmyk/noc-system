@@ -396,7 +396,7 @@ export async function getTrafficTrendData(query: {
   overview: TrafficOverviewStats;
   series: TrafficTrendPoint[];
   interfaces: TrafficInterfaceSample[];
-  sourceStatus: "nyata" | "dummy";
+  sourceStatus: "nyata" | "dummy" | "kosong";
 }> {
   const range = query.range ?? "24h";
   const nowSec = query.now ?? Math.floor(Date.now() / 1000);
@@ -469,14 +469,21 @@ export async function getTrafficTrendData(query: {
     // Fallback bila query gagal
   }
 
-  const series = generateTrafficTrendSeries(range, nowSec);
-  const overview = loadTrafficTrendOverview(range, nowSec);
-  const interfaces = await getDeviceInterfaceSamples(query.routerId).catch(() => getMockInterfaceSamples());
-  return {
-    overview: { ...overview, sourceStatus: "dummy" },
-    series,
-    interfaces: interfaces.length > 0 ? interfaces : getMockInterfaceSamples(),
-    sourceStatus: "dummy",
+  // Mode live tanpa histori (backend baru mulai merekam, atau database gagal
+  // dibaca): jawab kosong dan jujur. Data tiruan tidak boleh menyamar jadi data
+  // router. Sampel interface tetap dibaca langsung dari router bila bisa.
+  const interfaces = await getDeviceInterfaceSamples(query.routerId).catch(() => []);
+  const overview: TrafficOverviewStats = {
+    currentDownloadMbps: 0,
+    currentUploadMbps: 0,
+    peakMbps: 0,
+    avgMbps: 0,
+    totalVolumeGb: 0,
+    activeInterfacesCount: interfaces.filter((i) => i.status === "up").length,
+    range,
+    sourceStatus: "kosong",
+    lastSampledAt: new Date(nowSec * 1000).toISOString(),
   };
+  return { overview, series: [], interfaces, sourceStatus: "kosong" };
 }
 

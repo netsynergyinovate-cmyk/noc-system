@@ -60,6 +60,9 @@ import {
 import { formatInteger } from "@/lib/dashboard/format";
 import { useNowMinute } from "@/lib/dashboard/use-now";
 import { usePolled } from "@/lib/dashboard/use-polled";
+import { loadLiveAudit } from "@/lib/dashboard/audit-live";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import {
   AuditFilterBar,
   AuditFilterResult,
@@ -91,6 +94,7 @@ const groupStyles: Record<AuditGroup, string> = {
 
 // Fungsi modul yang tetap, seperti yang diminta usePolled.
 const loadWindow = (nowSec: number) => loadAudit({ nowSec });
+const loadLiveWindow = (nowSec: number) => loadLiveAudit(nowSec);
 
 function Skeleton({ className }: { className: string }) {
   return (
@@ -442,7 +446,12 @@ function AuditLog({ entries, now }: { entries: AuditEntry[]; now: number }) {
 // kapan. Data dimuat lewat loadAudit (tiruan sekarang, GET /api/v1/audit nanti)
 // dan disegarkan berkala; gagal memuat tidak menghapus data terakhir.
 export function AuditBoard() {
-  const { state, failed, retry } = usePolled(loadWindow, AUDIT_REFRESH_MS);
+  // Mode live membaca tabel audit_log; demo memakai catatan tiruan.
+  const isDemo = useSession(selectPreviewEnabled);
+  const { state, failed, retry } = usePolled(
+    isDemo ? loadWindow : loadLiveWindow,
+    AUDIT_REFRESH_MS,
+  );
   const entries = state?.data ?? null;
   const now = state?.now ?? 0;
   const view = auditView(entries, failed);

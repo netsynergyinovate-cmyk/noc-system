@@ -34,7 +34,7 @@ export interface TrafficOverviewStats {
   totalVolumeGb: number;
   activeInterfacesCount: number;
   range: TrafficTimeRange;
-  sourceStatus: "dummy" | "nyata";
+  sourceStatus: "dummy" | "nyata" | "kosong";
   lastSampledAt: string;
 }
 

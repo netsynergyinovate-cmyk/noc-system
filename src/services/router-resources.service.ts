@@ -6,6 +6,7 @@ import { decryptAES256GCM } from "@/lib/encryption";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import {
   defaultRouterDetails,
+  formatRouterOsUptime,
   summarizeRouterResources,
   type MockRouterDetail,
   type RouterResourceSummary,
@@ -39,17 +40,28 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       status: routersTable.status,
     })
     .from(routersTable);
-  if (rows.length === 0) return mock();
+  // Mode live tanpa router terdaftar: kosong, bukan contoh tiruan.
+  if (rows.length === 0) return pack([]);
 
+  // Sumber sekunder (jumlah queue, suhu) boleh gagal tanpa menjatuhkan kartu router:
+  // router tanpa sensor atau tanpa hak baca queue tetap menampilkan CPU dan memori.
+  const extras = new Map<string, { queueCount: number; temperature: number }>();
   const results = await Promise.allSettled(
-    rows.map((r) => {
-      if (r.status !== "aktif") return Promise.reject(new Error("nonaktif"));
-      return new MikrotikRestClient({
+    rows.map(async (r) => {
+      if (r.status !== "aktif") throw new Error("nonaktif");
+      const client = new MikrotikRestClient({
         host: r.host,
         username: r.username,
         password: decryptAES256GCM(r.passwordEnc),
         mode: "real",
-      }).getResource();
+      });
+      const resource = await client.getResource();
+      const [queues, temperature] = await Promise.all([
+        client.getQueues().then((q) => q.length, () => 0),
+        client.getTemperature().catch(() => 0),
+      ]);
+      extras.set(r.id, { queueCount: queues, temperature });
+      return resource;
     }),
   );
 
@@ -76,13 +88,16 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       };
     }
     const m = res.value;
+    const extra = extras.get(r.id);
     return {
       ...base,
+      queueCount: extra?.queueCount ?? 0,
+      temperature: extra?.temperature ?? 0,
       boardModel: m.boardName,
       rosVersion: m.version,
       cpuLoad: clampPct(m.cpuLoad),
       memoryUsage: m.totalMemory > 0 ? clampPct(((m.totalMemory - m.freeMemory) / m.totalMemory) * 100) : 0,
-      uptime: m.uptime,
+      uptime: formatRouterOsUptime(m.uptime),
       active: true,
     };
   });

@@ -37,7 +37,7 @@ export default async function DashboardPage({
           <LiveStatus />
           <DashboardAutoRefresh />
           <AnomalyBadge />
-          <MockDataNotice />
+          <MockDataNotice real />
         </div>
       </div>
       <StreamDisconnectedBanner />

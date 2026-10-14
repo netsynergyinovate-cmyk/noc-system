@@ -20,7 +20,7 @@ export default async function AuditPage() {
             terakhir.
           </p>
         </div>
-        <MockDataNotice source="log audit di backend" />
+        <MockDataNotice source="log audit di backend" real />
       </div>
       <AuditBoard />
     </div>

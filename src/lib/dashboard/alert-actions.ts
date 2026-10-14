@@ -27,7 +27,9 @@ export type HandleAlertFailure =
   // Server tidak terjangkau; belum ada yang berubah, boleh dicoba lagi.
   | "offline"
   // Alert sudah tidak aktif; tidak ada yang perlu ditandai.
-  | "not-active";
+  | "not-active"
+  // Akun tidak punya izin menandai alert (peran hanya-lihat).
+  | "forbidden";
 
 export type HandleAlertResult =
   | { ok: true; alert: ResolvedAlert }
@@ -42,6 +44,8 @@ export const handleFailureMessages: Record<HandleAlertFailure, string> = {
     "Tidak ada koneksi ke server, jadi alert belum ditandai. Coba lagi setelah tersambung.",
   "not-active":
     "Alert ini sudah tidak aktif: selesai sendiri atau sudah ditandai petugas lain. Lihat di riwayat alert selesai.",
+  forbidden:
+    "Akun Anda tidak punya izin menandai alert ditangani. Minta peran admin atau petugas.",
 };
 
 export interface MockAlertActionsOptions {

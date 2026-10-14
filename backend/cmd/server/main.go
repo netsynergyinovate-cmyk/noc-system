@@ -101,6 +101,7 @@ func run() error {
 		billingDB   billing.DB     // nil bila DATABASE_URL kosong
 		billingRead billing.ReadDB // pool yang sama, untuk endpoint /api/v1/billing
 		thresholdDB engine.Querier // pool yang sama, untuk ambang alert
+		alertDB     engine.Execer  // pool yang sama, untuk menyimpan alert engine
 	)
 	if cfg.DatabaseURL == "" {
 		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
@@ -116,11 +117,21 @@ func run() error {
 			logger.Info("data awal router dan pelanggan dimuat ke memori", "routers", nR, "customers", nC)
 		}
 		go collector.StartDatabaseWatcher(ctx, pool, manager, 15*time.Second, logger)
+		// Status online dari polling, webhook, dan syslog ikut ditulis ke
+		// customers.is_online; hub tetap menerima perubahan yang sama.
+		onlineWriter := collector.NewOnlineWriter(pool, logger)
+		go onlineWriter.Run(ctx)
+		notifyHub := notify
+		notify = func(c state.Change) {
+			notifyHub(c)
+			onlineWriter.Notify(c)
+		}
 		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger)
 		apiOptions.History = archive.NewPGStore(pool)
 		billingDB = pool
 		billingRead = pool
 		thresholdDB = pool
+		alertDB = pool
 	}
 
 	// Sinkron billing per jam memakai pool yang sama. Penjadwalnya dihentikan dan
@@ -156,11 +167,28 @@ func run() error {
 			thresholds = loaded
 		}
 	}
+	// Event dikirim ke dashboard lebih dulu (WebSocket), baru disimpan ke tabel
+	// alerts yang dibaca halaman Alert dan Deteksi Anomali. Tanpa database,
+	// alert hanya hidup di WebSocket.
+	var alertWriter *engine.AlertWriter
+	if alertDB != nil {
+		alertWriter = engine.NewAlertWriter(alertDB, logger)
+		// Durasi aturan terpanjang 3 menit (CPU); 6 menit cukup bagi kondisi yang
+		// masih berlangsung untuk terdeteksi ulang sebelum yang basi ditutup.
+		alertWriter.StartStaleCleanup(ctx, time.Now(), 6*time.Minute)
+	}
 	alerts, err := engine.New(engine.Options{
 		Logger: logger,
 		Source: manager,
 		Rules:  engine.MakeRules(thresholds),
-		Sink:   func(events []engine.Event) { publishEvents(wire.NewEvents(events)) },
+		Sink: func(events []engine.Event) {
+			publishEvents(wire.NewEvents(events))
+			if alertWriter != nil {
+				saveCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+				alertWriter.Record(saveCtx, events)
+			}
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("siapkan rule engine: %w", err)

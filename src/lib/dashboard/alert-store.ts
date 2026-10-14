@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { alertActions, type HandleAlertResult } from "./alert-actions";
+import { alertActions, type AlertActions, type HandleAlertResult } from "./alert-actions";
 import {
   emptyAlertState,
   handledState,
@@ -36,6 +36,13 @@ interface AlertStore extends AlertState {
   reset: () => void;
 }
 
+// Mode demo memakai server tiruan; mode live memasang tindakan nyata
+// (alert-actions-live.ts) lewat configureAlertActions.
+let actions: AlertActions = alertActions;
+export function configureAlertActions(next: AlertActions) {
+  actions = next;
+}
+
 export const useAlertStore = create<AlertStore>()((set) => ({
   ...emptyAlertState,
 
@@ -53,7 +60,7 @@ export const useAlertStore = create<AlertStore>()((set) => ({
     }),
 
   markHandled: async (alertId, operator) => {
-    const result = await alertActions.handle(alertId, operator);
+    const result = await actions.handle(alertId, operator);
     if (result.ok) {
       const nowSec = Math.floor(Date.now() / 1000);
       set((state) => handledState(state, result.alert, nowSec));

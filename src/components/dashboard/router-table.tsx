@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useReducer, useState } from "react";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
+import { useRouterResources } from "@/lib/dashboard/use-router-resources";
 import {
   initialRefresh,
   mockRefresh,
@@ -43,6 +46,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
+  buildLiveRouterDetails,
   buildRouterDetails,
   filterRouterDetails,
   isCpuWarning,
@@ -53,6 +57,9 @@ import {
 export function RouterTable() {
   const routers = useDashboardStore((state) => state.routers);
   const customers = useDashboardStore((state) => state.customers);
+  const isDemo = useSession(selectPreviewEnabled);
+  // Mode live: detail dibaca server langsung dari tiap router (bukan data tiruan).
+  const resources = useRouterResources(!isDemo);
 
   const [selectedRouter, setSelectedRouter] = useState<MockRouterDetail | null>(null);
   const [query, setQuery] = useState("");
@@ -67,7 +74,11 @@ export function RouterTable() {
     if (isRefreshing) return;
     dispatch({ type: "start" });
     try {
-      await mockRefresh(navigator.onLine);
+      if (isDemo) {
+        await mockRefresh(navigator.onLine);
+      } else if (!(await resources.refresh())) {
+        throw new Error("Server tidak bisa membaca detail router. Coba lagi sebentar.");
+      }
       dispatch({ type: "success" });
     } catch (e) {
       dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan data router." });
@@ -84,8 +95,11 @@ export function RouterTable() {
   }, [customers]);
 
   const details = useMemo(
-    () => buildRouterDetails(routers, sessionCounts),
-    [routers, sessionCounts],
+    () =>
+      isDemo
+        ? buildRouterDetails(routers, sessionCounts)
+        : buildLiveRouterDetails(routers, resources.items, sessionCounts),
+    [isDemo, routers, sessionCounts, resources.items],
   );
   const visible = useMemo(
     () => filterRouterDetails(details, query, statusFilter),
@@ -94,6 +108,10 @@ export function RouterTable() {
 
   function handleOpenDetail(router: MockRouterDetail) {
     setSelectedRouter(router);
+    if (!isDemo) {
+      setPingLog([`Tekan "Uji Koneksi" untuk menguji REST API ${router.host}.`]);
+      return;
+    }
     setPingLog([
       `PING ${router.host} (${router.host}) 56(84) bytes of data.`,
       `64 bytes from ${router.host}: icmp_seq=1 ttl=64 time=1.42 ms`,
@@ -103,8 +121,38 @@ export function RouterTable() {
     ]);
   }
 
+  // Mode live: uji koneksi REST sungguhan lewat server (butuh izin router:manage).
+  async function handleLiveTest(router: MockRouterDetail) {
+    setPingRunning(true);
+    const stamp = new Date().toLocaleTimeString();
+    try {
+      const res = await fetch(`/api/routers/${router.id}/test`, { method: "POST" });
+      const json = (await res.json().catch(() => null)) as {
+        data?: { ok?: boolean; message?: string; latencyMs?: number; code?: string };
+        error?: { message?: string };
+      } | null;
+      const line =
+        res.status === 403
+          ? "Akun Anda tidak punya izin menguji router (butuh peran admin)."
+          : !res.ok || !json?.data
+            ? (json?.error?.message ?? `Uji koneksi gagal (HTTP ${res.status}).`)
+            : json.data.ok
+              ? `OK: REST API menjawab dalam ${json.data.latencyMs ?? "?"} ms. ${json.data.message ?? ""}`.trim()
+              : `GAGAL${json.data.code ? ` [${json.data.code}]` : ""}: ${json.data.message ?? "router tidak menjawab."}`;
+      setPingLog((prev) => [...prev, `[${stamp}] ${router.host}: ${line}`]);
+    } catch {
+      setPingLog((prev) => [...prev, `[${stamp}] Server aplikasi tidak menjawab permintaan uji.`]);
+    } finally {
+      setPingRunning(false);
+    }
+  }
+
   function handleRunPing() {
     if (!selectedRouter) return;
+    if (!isDemo) {
+      void handleLiveTest(selectedRouter);
+      return;
+    }
     setPingRunning(true);
     setTimeout(() => {
       setPingRunning(false);
@@ -117,6 +165,17 @@ export function RouterTable() {
 
   return (
     <>
+      {!isDemo && resources.failed && (
+        <p
+          role="alert"
+          data-testid="router-resources-error"
+          className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          Server tidak bisa membaca detail router saat ini. Nilai CPU, RAM, dan uptime
+          dikosongkan sampai berhasil; status online tetap dari backend.
+        </p>
+      )}
+
       <RouterResourceCards routers={details} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -411,7 +470,9 @@ export function RouterTable() {
               <TabsContent value="ping" className="space-y-3 pt-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
-                    Verifikasi latensi ICMP ke host {selectedRouter.host}
+                    {isDemo
+                      ? `Verifikasi latensi ICMP ke host ${selectedRouter.host}`
+                      : `Uji koneksi REST API ke host ${selectedRouter.host}`}
                   </span>
                   <Button
                     size="sm"
@@ -420,7 +481,7 @@ export function RouterTable() {
                     disabled={pingRunning}
                     className="h-7 text-xs"
                   >
-                    {pingRunning ? "Memeriksa…" : "Jalankan Ping"}
+                    {pingRunning ? "Memeriksa…" : isDemo ? "Jalankan Ping" : "Uji Koneksi"}
                   </Button>
                 </div>
                 <div className="rounded-md bg-zinc-950 p-3 font-mono text-xs text-zinc-200">

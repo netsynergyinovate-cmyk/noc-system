@@ -6,6 +6,7 @@ import { useSession } from "@/components/session-provider";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { useRealtimeFeed } from "@/lib/dashboard/use-realtime-feed";
 import { selectPreviewEnabled } from "@/lib/session-store";
+import { LiveAlertSync } from "@/components/dashboard/live-alert-sync";
 
 // Menyambungkan sumber data ke store lewat `useRealtimeFeed`: WebSocket backend
 // (mode live, atau NEXT_PUBLIC_REALTIME_WS=true) dengan data tiruan sebagai
@@ -58,5 +59,6 @@ export function DashboardFeed() {
       .setConnection(connectionStatus, isMockFallback, latencyMs);
   }, [connectionStatus, isMockFallback, latencyMs]);
 
-  return null;
+  // Mode live: alert dari database (rule engine Go), bukan hub tiruan.
+  return isDemo ? null : <LiveAlertSync />;
 }

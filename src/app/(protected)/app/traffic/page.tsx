@@ -20,7 +20,7 @@ export default async function TrafficPage() {
         </p>
       </div>
       <div>
-        <MockDataNotice source="sampel trafik MikroTik" />
+        <MockDataNotice source="sampel trafik MikroTik" real />
       </div>
       <TrafficTrendBoard nowSec={Math.floor(Date.now() / 1000)} />
     </div>

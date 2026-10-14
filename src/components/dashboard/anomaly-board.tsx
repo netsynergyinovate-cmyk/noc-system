@@ -53,7 +53,9 @@ import {
   markAnomalyReviewed,
   type ReviewedEntry,
 } from "@/lib/dashboard/anomaly-detail-logic";
-import { useSessionUser } from "@/components/session-provider";
+import { useSession, useSessionUser } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
+import { loadLiveAnomalies } from "@/lib/dashboard/anomaly-feed-live";
 import { usePolled } from "@/lib/dashboard/use-polled";
 import type { IncidentKind } from "@/lib/dashboard/types";
 import { AnomalyFilterBar } from "./anomaly-filters";
@@ -87,7 +89,12 @@ interface Loaded {
 // Memuat daftar anomali dan menyegarkannya berkala, supaya anomali yang baru
 // muncul dan lamanya yang masih berjalan ikut bertambah.
 function useAnomalies() {
-  const { state, failed, retry } = usePolled(loadAnomalies, REFRESH_MS);
+  // Mode live membaca tabel alerts (rule engine Go); demo memakai data tiruan.
+  const isDemo = useSession(selectPreviewEnabled);
+  const { state, failed, retry } = usePolled(
+    isDemo ? loadAnomalies : loadLiveAnomalies,
+    REFRESH_MS,
+  );
   const loaded: Loaded | null = state
     ? { anomalies: state.data, now: state.now }
     : null;

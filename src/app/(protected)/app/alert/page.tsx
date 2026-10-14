@@ -21,7 +21,7 @@ export default async function AlertsPage() {
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <MockDataNotice />
+          <MockDataNotice real />
           <Link
             href="/app/alert/whatsapp"
             className="text-sm text-primary underline-offset-4 hover:underline"

@@ -8,6 +8,9 @@ import type {
 
 export const RECONNECT_MS = 3000;
 
+// Nama sinyal window yang dikirim saat pesan "events" tiba dari hub.
+export const ALERT_EVENTS_SIGNAL = "noc:alert-events";
+
 export interface RealtimeWsOptions {
   onSnapshot: (snapshot: DashboardSnapshot, time: number) => void;
   onDelta: (delta: DashboardDelta, time: number) => void;
@@ -35,6 +38,14 @@ export function handleRealtimeMessage(
     msg = JSON.parse(String(raw));
   } catch {
     return false;
+  }
+  // Gangguan mulai atau selesai di rule engine Go. Pesan ini TIDAK membawa `time`
+  // (hanya daftar event), jadi diperiksa sebelum syarat itu. Isinya tidak dipakai
+  // langsung: daftar alert dibaca ulang dari database (yang sudah memuat event
+  // ini), jadi cukup memberi tahu penyinkron alert agar segera memuat.
+  if (msg && typeof msg === "object" && msg.type === "events") {
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
+    return true;
   }
   if (!msg || typeof msg !== "object" || typeof msg.time !== "number")
     return false;

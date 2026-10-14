@@ -11,6 +11,7 @@ import {
   isNetworkMockActive,
 } from "@/lib/dashboard/network-mock-data";
 import { formatInteger } from "@/lib/dashboard/format";
+import { useRouterResources } from "@/lib/dashboard/use-router-resources";
 import { MetricCard } from "./metric-card";
 
 const CPU_WARN_PERCENT = 80;
@@ -20,24 +21,31 @@ const HEALTH_OK_SCORE = 90;
 export function NetworkOverviewPanel() {
   const isDemo = useSession(selectPreviewEnabled);
   const routers = useDashboardStore((s) => s.routers);
+  const customers = useDashboardStore((s) => s.customers);
+  // Mode live: CPU rata-rata dari yang dibaca server langsung dari router.
+  const resources = useRouterResources(!isDemo);
 
   const { overview, avgCpu } = useMemo(() => {
     if (!isDemo) {
       // Live Mode: hitung dari router riil di store
       const activeCount = routers.filter((r) => r.active).length;
+      const readable = (resources.items ?? []).filter((item) => item.active);
+      const liveCpu = readable.length
+        ? Math.round(readable.reduce((n, item) => n + item.cpuLoad, 0) / readable.length)
+        : 0;
       return {
         overview: {
           totalRouters: routers.length,
           activeRouters: activeCount,
           offlineRouters: routers.length - activeCount,
           totalInterfaces: 0,
-          totalQueues: 0,
-          totalActivePppoe: 0,
+          totalQueues: (resources.items ?? []).reduce((n, item) => n + item.queueCount, 0),
+          totalActivePppoe: customers.filter((c) => c.isOnline).length,
           networkHealthScore: routers.length > 0 ? Math.round((activeCount / routers.length) * 100) : 0,
           sourceStatus: "nyata" as const,
           lastScannedAt: new Date().toISOString(),
         },
-        avgCpu: 0,
+        avgCpu: liveCpu,
       };
     }
     const items = getMockRouterItems();
@@ -46,7 +54,7 @@ export function NetworkOverviewPanel() {
       ? Math.round(live.reduce((n, r) => n + r.cpuPercent, 0) / live.length)
       : 0;
     return { overview: getMockNetworkOverview(items), avgCpu: cpu };
-  }, [isDemo, routers]);
+  }, [isDemo, routers, customers, resources.items]);
 
   return (
     <section

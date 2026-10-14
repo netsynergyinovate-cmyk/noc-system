@@ -258,12 +258,12 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
             Port REST (www 80 / www-ssl 443, kosong = bawaan)
           </label>
           <input
-            type="number"
-            min={1}
-            max={65535}
-            value={form.port > 0 ? form.port : ""}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={form.port > 0 ? String(form.port) : ""}
             onChange={(e) =>
-              handleFieldChange("port", parseInt(e.target.value, 10) || 0)
+              handleFieldChange("port", Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0)
             }
             placeholder={String(defaultRestPort(form.useTls))}
             className="rounded-lg border bg-background px-3 py-2 text-xs text-foreground shadow-xs transition-colors focus:border-primary focus:outline-hidden"

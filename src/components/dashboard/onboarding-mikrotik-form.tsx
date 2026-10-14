@@ -145,7 +145,9 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
           password: form.password,
           useSsl: useTls,
           mode: form.mode,
-          validateConnection: false,
+          // Tombol simpan hanya muncul setelah uji sukses; server menguji ulang dan
+          // mengisi last_seen_at, yang dibaca gerbang onboarding sebagai "terverifikasi".
+          validateConnection: true,
         }),
       });
 

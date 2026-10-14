@@ -49,6 +49,11 @@ type Config struct {
 	// NetflowAddr adalah alamat UDP kolektor, bawaan ":2055".
 	NetflowAddr string
 
+	// DeviceSecret adalah kunci yang sama dengan DEVICE_SECRET aplikasi Next.js
+	// (cadangan: ROUTER_SECRET_KEY), untuk membuka kata sandi router di database.
+	// Kosong berarti polling router dari database dimatikan.
+	DeviceSecret string
+
 	// DashboardMode dibaca dari DASHBOARD_DATA: "demo" (bawaan) atau "live".
 	DashboardMode string
 	// Mikrotik dan OLT nil bila variabel perangkatnya tidak disetel sama sekali.
@@ -193,7 +198,13 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 
+	deviceSecret := strings.TrimSpace(getenv("DEVICE_SECRET"))
+	if deviceSecret == "" {
+		deviceSecret = strings.TrimSpace(getenv("ROUTER_SECRET_KEY"))
+	}
+
 	return Config{
+		DeviceSecret:    deviceSecret,
 		DashboardMode:   mode,
 		Mikrotik:        mikrotik,
 		OLT:             olt,

@@ -134,7 +134,13 @@ export class MikrotikRestClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const url = sanitizeHost(options.host, options.port);
     // Eksplisit menang; bila tidak disebut, baca dari skema/port (443, 8443).
-    if (options.useSsl ?? impliesTls(url)) url.protocol = "https:";
+    if (options.useSsl ?? impliesTls(url)) {
+      // Port 80 pada HTTP tidak tercatat di URL (port bawaan), jadi ambil dari opsi:
+      // mengganti skema tanpa ini mengubah "80 + TLS" diam-diam menjadi 443.
+      const port = url.port || (options.port !== undefined ? String(options.port) : "");
+      url.protocol = "https:";
+      if (port) url.port = port;
+    }
     this.url = url;
   }
 

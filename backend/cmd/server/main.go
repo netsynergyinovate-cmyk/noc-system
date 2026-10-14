@@ -116,6 +116,7 @@ func run() error {
 			logger.Info("data awal router dan pelanggan dimuat ke memori", "routers", nR, "customers", nC)
 		}
 		go collector.StartDatabaseWatcher(ctx, pool, manager, 15*time.Second, logger)
+		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger)
 		apiOptions.History = archive.NewPGStore(pool)
 		billingDB = pool
 		billingRead = pool

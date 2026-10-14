@@ -41,12 +41,42 @@ services:
       DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
       DATA_MODE: ${DATA_MODE:-nyata}
       ALLOW_EMPTY_DEVICES: "true"
+      # Rahasia tiket realtime: sama dengan backend (disimpan di .env, bukan di git).
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
+      # Alamat backend yang dibuka BROWSER (bukan alamat antar-kontainer).
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
       PORT: 3000
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      # Hanya loopback: browser di komputer ini. Ubah sadar bila perlu diakses dari jaringan.
+      - "127.0.0.1:8080:8080"
+    environment:
+      BACKEND_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      # Kunci yang sama dengan aplikasi: membuka kata sandi router terenkripsi di database.
+      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
+      DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   db-ui:
     image: sosedoff/pgweb:latest

@@ -96,7 +96,9 @@ export default function NewRouterPage() {
           ...(sslOption && { useSsl: true }),
           username: values.username.trim(),
           password: values.password,
-          validateConnection: false,
+          // Sudah lulus uji di form: server menguji ulang dan mengisi last_seen_at
+          // (syarat gerbang onboarding). Belum diuji: simpan tanpa verifikasi.
+          validateConnection: verified,
         }),
       });
 

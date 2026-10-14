@@ -43,6 +43,30 @@ curl http://127.0.0.1:8080/healthz
 | `ALLOWED_ORIGINS`       | `http://localhost:3000` | Origin browser yang boleh membuka WebSocket dan memanggil REST, dipisah koma. `*` ditolak.                                                                                         |
 | `DATABASE_URL`          | kosong                  | Alamat PostgreSQL (`postgres://...`) untuk arsip traffic. **Kosong berarti `/api/v1/traffic/history` menjawab 503.** Pada `npm run backend:dev` nilainya dibaca dari `.env.local`. |
 
+### Pengikatan profil TR-069 otomatis (zero-touch modem)
+
+Polling OLT hanya membaca. Satu-satunya perintah TULIS yang bisa dikirim backend ke
+OLT adalah mengikat profil TR-069 ke ONU, supaya modem pelanggan baru langsung tahu
+alamat ACS (GenieACS) dan muncul di aplikasi tanpa disentuh. Fitur ini **mati
+kecuali dinyalakan**.
+
+| Variabel                  | Default | Keterangan                                                                                                                   |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `OLT_TR069_AUTOBIND`      | `off`   | `off` mati. `new`: hanya ONU yang pertama terlihat SESUDAH fitur dinyalakan untuk OLT itu. `all`: semua ONU online yang belum terikat (sekali jalan). |
+| `OLT_TR069_PROFILE_ID`    | `1`     | Id profil di OLT (1-32). Profil harus SUDAH dibuat operator; backend tidak membuatnya.                                       |
+| `OLT_TR069_MAX_PER_ROUND` | `5`     | Batas ONU yang diikat per putaran polling (30 dtk) per OLT (1-20).                                                           |
+
+Nilai tidak valid mematikan fitur dan dicatat sebagai galat. Aturan keselamatan:
+
+- Profil dibuat operator sekali: `onu-tr069-profile add profile-id 1 profile-name NOC url http://IP-ACS:7547`.
+  Bila profil belum ada, backend tidak mengirim apa pun dan hanya mencatat peringatan (maks. sekali per jam).
+- Perintah yang dikirim hanya `interface epon P` dan `onu-tr069 N profile-id ID` (lalu `end`, `configure`). Angka dicek rentangnya
+  (PON 1-8, ONU 1-64, profil 1-32) sebelum masuk ke perintah. Penolakan OLT (`vty%`, `Error`) dibaca sebagai gagal.
+- ONU yang ditolak dicoba lagi paling cepat 10 menit kemudian. ONU hanya dicatat terikat (`olt_onus.tr069_bound_at`) setelah OLT menerima.
+- Slot yang dipakai ONU lain (nomor seri berubah) dihitung ONU baru: `first_seen_at` dan `tr069_bound_at` direset.
+- Mode `new` memakai `olts.tr069_autobind_since` (diisi sekali saat pertama jalan): ONU lama tidak disentuh.
+- Tidak ada sesi telnet tambahan bila tidak ada ONU yang perlu diikat. Kegagalan pengikatan tidak membuat polling dianggap gagal.
+
 Sinkron billing (lihat "Sinkron billing (implementasi)" di bawah) memakai variabel
 berikut. **Billing hanya hidup bila `BILLING_URL`, `BILLING_USERNAME`, dan
 `BILLING_PASSWORD` terisi semuanya DAN `DATABASE_URL` ada**; ketiganya kosong

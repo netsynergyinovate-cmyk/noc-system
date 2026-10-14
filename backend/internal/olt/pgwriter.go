@@ -27,6 +27,9 @@ ON CONFLICT (olt_id, pon_index) DO UPDATE SET
 const upsertOnuSQL = `INSERT INTO olt_onus (olt_id, pon_index, onu_index, serial_number, description, model, rx_power, tx_power, attenuation, status, captured_at)
 VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10, now())
 ON CONFLICT (olt_id, pon_index, onu_index) DO UPDATE SET
+  -- Slot yang sama dipakai ONU lain (nomor seri berubah): dihitung ONU baru, belum terikat.
+  first_seen_at = CASE WHEN olt_onus.serial_number IS DISTINCT FROM EXCLUDED.serial_number THEN now() ELSE olt_onus.first_seen_at END,
+  tr069_bound_at = CASE WHEN olt_onus.serial_number IS DISTINCT FROM EXCLUDED.serial_number THEN NULL ELSE olt_onus.tr069_bound_at END,
   serial_number = EXCLUDED.serial_number,
   description = COALESCE(EXCLUDED.description, olt_onus.description),
   model = COALESCE(EXCLUDED.model, olt_onus.model),

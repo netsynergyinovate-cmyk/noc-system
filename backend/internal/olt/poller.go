@@ -24,6 +24,8 @@ type PollerOptions struct {
 	OltID     string
 	Writer    PonPortWriter
 	OnuWriter OnuWriter // opsional; nil = ONU tidak dipolling
+	// AutoBind (opsional) mengikat profil TR-069 ke ONU baru sesudah polling sukses.
+	AutoBind *AutoBinder
 	Logger    *slog.Logger
 	// Now bisa diisi untuk test; default time.Now.
 	Now func() time.Time
@@ -34,6 +36,7 @@ type Poller struct {
 	oltID     string
 	writer    PonPortWriter
 	onuWriter OnuWriter
+	autoBind  *AutoBinder
 	logger    *slog.Logger
 	now       func() time.Time
 }
@@ -48,7 +51,7 @@ func NewPoller(opts PollerOptions) (*Poller, error) {
 	if opts.Writer == nil {
 		return nil, errors.New("olt: poller butuh Writer")
 	}
-	p := &Poller{driver: opts.Driver, oltID: opts.OltID, writer: opts.Writer, onuWriter: opts.OnuWriter, logger: opts.Logger, now: opts.Now}
+	p := &Poller{driver: opts.Driver, oltID: opts.OltID, writer: opts.Writer, onuWriter: opts.OnuWriter, autoBind: opts.AutoBind, logger: opts.Logger, now: opts.Now}
 	if p.logger == nil {
 		p.logger = slog.Default()
 	}
@@ -91,6 +94,12 @@ func (p *Poller) PollOnce(ctx context.Context) error {
 	}
 	if err := p.writer.TouchOlt(ctx, p.oltID, p.now()); err != nil {
 		return fmt.Errorf("olt %s: update last_seen_at: %w", p.oltID, err)
+	}
+	// Pengikatan TR-069 adalah tambahan: gagal tidak membuat polling dianggap gagal.
+	if p.autoBind.Enabled() && p.onuWriter != nil {
+		if err := p.autoBind.Run(ctx, p.oltID, p.driver); err != nil && ctx.Err() == nil {
+			p.logger.Warn("pengikatan TR-069 otomatis gagal", "olt", p.oltID, "error", err)
+		}
 	}
 	return nil
 }

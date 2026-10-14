@@ -98,6 +98,8 @@ type OltFleet struct {
 	build   func(OltTarget) (oltRunner, error)
 	every   time.Duration
 	logger  *slog.Logger
+	db      olt.Execer
+	binder  *olt.AutoBinder
 	mu      sync.Mutex
 	workers map[string]*oltWorker
 }
@@ -108,8 +110,9 @@ func NewOltFleet(load OltTargetLoader, db olt.Execer, every time.Duration, logge
 		every = DefaultOltPollEvery
 	}
 	writer := olt.NewPGWriter(db)
-	return &OltFleet{
-		load: load, every: every, logger: logger, workers: make(map[string]*oltWorker),
+	var fl *OltFleet
+	fl = &OltFleet{
+		load: load, every: every, logger: logger, db: db, workers: make(map[string]*oltWorker),
 		build: func(t OltTarget) (oltRunner, error) {
 			drv, err := olt.Get(t.Driver, t.Config)
 			if err != nil {
@@ -117,6 +120,7 @@ func NewOltFleet(load OltTargetLoader, db olt.Execer, every time.Duration, logge
 			}
 			p, err := olt.NewPoller(olt.PollerOptions{
 				Driver: drv, OltID: t.ID, Writer: writer, OnuWriter: writer, Logger: logger,
+				AutoBind: fl.binder,
 			})
 			if err != nil {
 				_ = drv.Close()
@@ -125,6 +129,24 @@ func NewOltFleet(load OltTargetLoader, db olt.Execer, every time.Duration, logge
 			return pollerRunner{p: p, d: drv}, nil
 		},
 	}
+	return fl
+}
+
+// WithAutoBind menyalakan pengikatan profil TR-069 otomatis untuk ONU baru. Hanya
+// jalan bila mode bukan off dan db bisa membaca (pgxpool). Dipanggil sebelum Run.
+func (f *OltFleet) WithAutoBind(cfg olt.AutoBindConfig) *OltFleet {
+	if cfg.Mode == olt.AutoBindOff {
+		return f
+	}
+	db, ok := f.db.(olt.BindDB)
+	if !ok {
+		f.logger.Warn("pengikatan TR-069 dimatikan: koneksi database tidak mendukung query")
+		return f
+	}
+	f.binder = olt.NewAutoBinder(cfg, olt.NewPGBindStore(db), f.logger)
+	f.logger.Warn("pengikatan profil TR-069 otomatis AKTIF: backend akan MENULIS ke OLT (hanya perintah ikat profil)",
+		"mode", string(cfg.Mode), "profil", cfg.ProfileID, "maks_per_putaran", cfg.MaxPerRound)
+	return f
 }
 
 type pollerRunner struct {

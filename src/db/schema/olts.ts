@@ -20,6 +20,10 @@ export const olts = pgTable(
     passwordEnc: text("password_enc").notNull(),
     status: text("status").$type<DeviceStatus>().default("aktif").notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    // Saat pengikatan TR-069 otomatis pertama dinyalakan untuk OLT ini. Hanya ONU
+    // yang pertama terlihat sesudah saat ini yang diikat (mode "new"); ONU yang
+    // sudah ada tidak disentuh.
+    tr069AutobindSince: timestamp("tr069_autobind_since", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

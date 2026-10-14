@@ -67,6 +67,11 @@ services:
       # Kunci yang sama dengan aplikasi: membuka kata sandi router terenkripsi di database.
       DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
       DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
+      # Ikat profil TR-069 ke ONU baru di OLT secara otomatis (backend MENULIS ke OLT).
+      # off = mati (bawaan), new = hanya ONU yang muncul sesudah dinyalakan, all = semua ONU online.
+      OLT_TR069_AUTOBIND: ${OLT_TR069_AUTOBIND:-off}
+      OLT_TR069_PROFILE_ID: ${OLT_TR069_PROFILE_ID:-1}
+      OLT_TR069_MAX_PER_ROUND: ${OLT_TR069_MAX_PER_ROUND:-5}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
       interval: 5s

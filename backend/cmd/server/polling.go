@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"noc-isp/backend/internal/archive"
 	"noc-isp/backend/internal/collector"
+	"noc-isp/backend/internal/olt"
 	"noc-isp/backend/internal/state"
 )
 
@@ -83,6 +85,11 @@ func startRouterPolling(
 	loadOlts := func(ctx context.Context) ([]collector.OltTarget, error) {
 		return collector.LoadOltTargets(ctx, pool, deviceSecret, logger)
 	}
-	go collector.NewOltFleet(loadOlts, pool, 0, logger).Run(ctx, fleetEvery)
+	// Pengikatan profil TR-069 ke ONU baru: MATI kecuali OLT_TR069_AUTOBIND=new|all.
+	bindCfg, err := olt.AutoBindConfigFromEnv(os.Getenv)
+	if err != nil {
+		logger.Error("konfigurasi pengikatan TR-069 tidak valid", "error", err)
+	}
+	go collector.NewOltFleet(loadOlts, pool, 0, logger).WithAutoBind(bindCfg).Run(ctx, fleetEvery)
 	logger.Info("polling router, arsip traffic, dan impor pelanggan PPPoE aktif", "cek_router_tiap", fleetEvery.String())
 }

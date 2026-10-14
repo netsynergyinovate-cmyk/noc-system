@@ -48,6 +48,13 @@ export const oltOnus = pgTable(
     capturedAt: timestamp("captured_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+    // Pertama kali backend melihat ONU ini (diganti bila slot yang sama dipakai
+    // ONU lain). Penentu "ONU baru" untuk pengikatan profil TR-069 otomatis.
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    // Kapan backend mengikat profil TR-069 ke ONU ini; kosong = belum.
+    tr069BoundAt: timestamp("tr069_bound_at", { withTimezone: true }),
   },
   (table) => [
     unique("olt_onus_olt_pon_onu_unique").on(

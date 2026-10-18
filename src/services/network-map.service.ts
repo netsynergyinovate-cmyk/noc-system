@@ -126,30 +126,32 @@ export async function getNetworkMapData(options?: {
   // 3. Bangun titik infrastruktur
   const infrastructure: NetworkInfrastructurePoint[] = [];
 
-  // Core Router
+  // Core Router — hanya tampilkan jika koordinat sudah diisi
   for (const r of rawRouters) {
+    if (r.latitude === null || r.longitude === null) continue;
     infrastructure.push({
       id: `router-${r.id}`,
       name: r.name,
       type: "router",
       host: r.host,
       status: r.status,
-      latitude: r.latitude !== null ? Number(r.latitude) : DEFAULT_CENTER_LAT,
-      longitude: r.longitude !== null ? Number(r.longitude) : DEFAULT_CENTER_LNG,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
       details: { role: "Core Gateway BGP/PPPoE" },
     });
   }
 
-  // OLT
+  // OLT — hanya tampilkan jika koordinat sudah diisi
   for (const o of rawOlts) {
+    if (o.latitude === null || o.longitude === null) continue;
     infrastructure.push({
       id: `olt-${o.id}`,
       name: o.name,
       type: "olt",
       host: o.host,
       status: o.status,
-      latitude: o.latitude !== null ? Number(o.latitude) : DEFAULT_CENTER_LAT + 0.0015,
-      longitude: o.longitude !== null ? Number(o.longitude) : DEFAULT_CENTER_LNG + 0.0018,
+      latitude: Number(o.latitude),
+      longitude: Number(o.longitude),
       details: { brand: o.brand },
     });
   }

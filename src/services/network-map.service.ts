@@ -156,29 +156,13 @@ export async function getNetworkMapData(options?: {
     });
   }
 
-  // ODPs yang teridentifikasi
+  // Hitung ODP unik dari data pelanggan untuk summary saja
+  // (tidak lagi auto-generate titik peta dengan koordinat palsu)
   const odpMap = new Map<string, number>();
   for (const c of rawCustomers) {
     if (c.odpName) {
       odpMap.set(c.odpName, (odpMap.get(c.odpName) ?? 0) + 1);
     }
-  }
-
-  // Buat koordinat ODP terdistribusi di sekitar sentral
-  let odpIdx = 0;
-  for (const [odpName, count] of odpMap.entries()) {
-    const angle = (odpIdx / Math.max(1, odpMap.size)) * 2 * Math.PI;
-    const distance = 0.005 + (odpIdx % 3) * 0.003;
-    infrastructure.push({
-      id: `odp-${odpName}`,
-      name: odpName,
-      type: "odp",
-      status: "active",
-      latitude: DEFAULT_CENTER_LAT + Math.sin(angle) * distance,
-      longitude: DEFAULT_CENTER_LNG + Math.cos(angle) * distance,
-      details: { connectedCustomers: count },
-    });
-    odpIdx++;
   }
 
   // 3b. Muat titik infrastruktur riil (ODC, ODP, Tiang, dsb.) dari tabel network_infrastructure

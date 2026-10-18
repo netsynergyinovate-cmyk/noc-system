@@ -47,7 +47,7 @@ export default async function PetaInfrastrukturPage({
 
   return (
     <div
-      className="relative w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+3rem)] -mx-4 -my-5 sm:-mx-6 sm:-my-6 lg:-mx-6 lg:-my-6 h-[calc(100dvh-4.5rem)] lg:h-[100dvh] overflow-hidden bg-background"
+      className="relative flex flex-col w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+3rem)] -mx-4 -my-5 sm:-mx-6 sm:-my-6 lg:-mx-6 lg:-my-6 h-[calc(100dvh-4.5rem)] lg:h-[100dvh] overflow-hidden bg-background"
       data-testid="peta-infrastruktur-page"
     >
       <RealtimeNetworkMapBoard

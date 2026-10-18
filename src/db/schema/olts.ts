@@ -1,4 +1,4 @@
-import { check, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { DeviceStatus } from "./routers";
 
@@ -19,6 +19,8 @@ export const olts = pgTable(
     // Hasil enkripsi AES-256-GCM, seperti routers.password_enc.
     passwordEnc: text("password_enc").notNull(),
     status: text("status").$type<DeviceStatus>().default("aktif").notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     // Saat pengikatan TR-069 otomatis pertama dinyalakan untuk OLT ini. Hanya ONU
     // yang pertama terlihat sesudah saat ini yang diikat (mode "new"); ONU yang

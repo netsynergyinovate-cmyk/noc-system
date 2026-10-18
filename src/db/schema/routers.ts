@@ -1,4 +1,4 @@
-import { check, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const deviceStatuses = ["aktif", "nonaktif"] as const;
@@ -18,6 +18,8 @@ export const routers = pgTable(
     // kata sandi asli di kolom ini.
     passwordEnc: text("password_enc").notNull(),
     status: text("status").$type<DeviceStatus>().default("aktif").notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

@@ -349,6 +349,7 @@ export function NetworkMap({
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [dragPinIcon, setDragPinIcon] = useState<DivIcon | null>(null);
+  const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
 
   // Mode Penentuan / Plotting Titik Pelanggan Baru & Inspeksi Koordinat
   const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
@@ -1163,6 +1164,50 @@ export function NetworkMap({
       setIsDeletingInfra(false);
     }
   }, [selectedInfra]);
+
+  const handleDeleteCustomer = useCallback(async () => {
+    if (!selectedCustomer) return;
+    setIsDeletingCustomer(true);
+
+    try {
+      const res = await fetch(`/api/customers/${selectedCustomer.id}/location`, {
+        method: "DELETE",
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Gagal menghapus titik koordinat pelanggan.");
+      }
+
+      const deletedId = selectedCustomer.id;
+
+      setFetchedData((prev) => {
+        if (!prev) return prev;
+        const updatedCustomers = prev.customers.map((c) =>
+          c.id === deletedId ? { ...c, latitude: null, longitude: null } : c,
+        );
+        const geocodedCustomers = updatedCustomers.filter(
+          (c) => c.latitude !== null && c.longitude !== null,
+        );
+        return {
+          ...prev,
+          customers: updatedCustomers,
+          summary: {
+            ...prev.summary,
+            geocodedCustomers: geocodedCustomers.length,
+            unmappedCustomers: updatedCustomers.length - geocodedCustomers.length,
+          },
+        };
+      });
+
+      setSelectedCustomer(null);
+      handleSelectCustomer(null);
+    } catch (err) {
+      console.error("[DELETE CUSTOMER LOCATION]", err);
+    } finally {
+      setIsDeletingCustomer(false);
+    }
+  }, [selectedCustomer, handleSelectCustomer]);
 
   useEffect(() => {
     let active = true;
@@ -3458,6 +3503,8 @@ export function NetworkMap({
         onToggleCustomerEdit={handleToggleEditLocation}
         onSaveCustomerLocation={handleSaveLocation}
         onCancelCustomerEdit={handleCancelEditLocation}
+        onDeleteCustomer={handleDeleteCustomer}
+        isDeletingCustomer={isDeletingCustomer}
         onCloseInfra={() => {
           handleSelectInfra(null);
           setIsMovingInfra(false);

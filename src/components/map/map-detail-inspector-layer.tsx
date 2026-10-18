@@ -26,6 +26,8 @@ export interface MapDetailInspectorLayerProps {
   onToggleCustomerEdit: () => void;
   onSaveCustomerLocation: () => Promise<void> | void;
   onCancelCustomerEdit: () => void;
+  onDeleteCustomer?: () => Promise<void> | void;
+  isDeletingCustomer?: boolean;
   // Aksi Infrastruktur
   onCloseInfra: () => void;
   onStartInfraMove: () => void;
@@ -49,6 +51,8 @@ export function MapDetailInspectorLayer({
   onToggleCustomerEdit,
   onSaveCustomerLocation,
   onCancelCustomerEdit,
+  onDeleteCustomer,
+  isDeletingCustomer,
   onCloseInfra,
   onStartInfraMove,
   onCancelInfraMove,
@@ -109,6 +113,8 @@ export function MapDetailInspectorLayer({
             saveErrorMessage={customerEdit.errorMessage}
             onClose={onCloseCustomer}
             onFocus={handleFocus}
+            onDelete={onDeleteCustomer}
+            isDeleting={isDeletingCustomer}
           />
         </div>
       )}

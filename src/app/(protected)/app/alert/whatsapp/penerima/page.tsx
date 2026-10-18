@@ -10,26 +10,26 @@ export default async function WhatsappRecipientsPage() {
   await requireSession();
   const back = "text-sm text-muted-foreground hover:text-foreground";
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <Link href="/app/alert/whatsapp" className={back}>
-              ← Riwayat Notifikasi WhatsApp
-            </Link>
-            <Link href="/app/alert" className={back}>
-              ← Alert
-            </Link>
-          </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/app/alert/whatsapp" className={back}>
+            ← Riwayat Notifikasi WhatsApp
+          </Link>
+          <Link href="/app/alert" className={back}>
+            ← Alert
+          </Link>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Kelola Penerima Notifikasi WhatsApp
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Daftar nomor telepon operator dan ID grup WhatsApp yang menerima pemberitahuan otomatis
-            saat terjadi alert gangguan jaringan.
-          </p>
+          <MockDataNotice source="pengaturan notifikasi WhatsApp" />
         </div>
-        <MockDataNotice source="pengaturan notifikasi WhatsApp" />
+        <p className="text-sm text-muted-foreground">
+          Daftar nomor telepon operator dan ID grup WhatsApp yang menerima pemberitahuan otomatis
+          saat terjadi alert gangguan jaringan.
+        </p>
       </div>
       <WhatsappRecipientsManager />
     </div>

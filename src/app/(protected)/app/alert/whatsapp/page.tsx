@@ -9,26 +9,26 @@ export const metadata: Metadata = { title: "Riwayat Notifikasi WhatsApp" };
 export default async function WhatsappLogPage() {
   await requireSession();
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link
-            href="/app/alert"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Kembali ke Alert
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Link
+          href="/app/alert"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Kembali ke Alert
+        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Riwayat Notifikasi WhatsApp
           </h1>
-          <Link
-            href="/app/alert/whatsapp/penerima"
-            className="mt-2 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Kelola Penerima Notifikasi WhatsApp →
-          </Link>
+          <MockDataNotice source="gateway log WhatsApp di backend" />
         </div>
-        <MockDataNotice source="gateway log WhatsApp di backend" />
+        <Link
+          href="/app/alert/whatsapp/penerima"
+          className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Kelola Penerima Notifikasi WhatsApp →
+        </Link>
       </div>
       <WhatsappLogBoard />
     </div>

@@ -89,7 +89,7 @@ export function RouterTrafficCard({
           </Badge>
         ) : (
           <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
-            REST Live (Mock)
+            {initialStats ? "REST Live Telemetri" : "REST Live (Mock)"}
           </Badge>
         )}
       </CardHeader>

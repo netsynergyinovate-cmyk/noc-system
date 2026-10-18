@@ -162,6 +162,7 @@ func TestHistoryRangePicksTheAutomaticStepTheDashboardUses(t *testing.T) {
 		maxPts int
 		minPts int
 	}{
+		{"5m", 5 * time.Minute, 1, 300, 300},
 		{"1h", time.Hour, 10, 360, 360},
 		{"6h", 6 * time.Hour, 60, 360, 360},
 		{"24h", 24 * time.Hour, 300, 288, 288},

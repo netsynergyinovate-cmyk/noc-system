@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
-import { CustomerTable } from "@/components/dashboard/customer-table";
-import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
-import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
-import { DistributionPanel } from "@/components/dashboard/distribution-panel";
-import { LiveStatus } from "@/components/dashboard/live-status";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
-import { MapFocusFromUrl } from "@/components/dashboard/map-focus-from-url";
+import { NocDenseDashboard } from "@/components/dashboard/noc-dense-dashboard";
 import { DashboardMetricBoard } from "@/components/dashboard/dashboard-metric-board";
+import { MapFocusFromUrl } from "@/components/dashboard/map-focus-from-url";
 import { StreamDisconnectedBanner } from "@/components/dashboard/stream-disconnected-banner";
-import { TrafficPanel } from "@/components/dashboard/traffic-panel";
+import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
+import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
+import { LiveStatus } from "@/components/dashboard/live-status";
+import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
 import { readFocusId } from "@/lib/dashboard/map-focus";
 import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Dashboard NOC" };
 
 export default async function DashboardPage({
   searchParams,
@@ -21,34 +19,31 @@ export default async function DashboardPage({
 }) {
   await requireSession();
   const focusId = readFocusId((await searchParams).focus);
+
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-3">
       {focusId && <MapFocusFromUrl customerId={focusId} />}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between lg:items-center">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">
             Dashboard NOC
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ringkasan jaringan pelanggan PPPoE dalam satu layar.
+          <p className="text-xs text-muted-foreground">
+            Telemetri riil MikroTik Core CIARA, OLT HSGQ, dan pelanggan PPPoE aktif.
           </p>
         </div>
-        <div className="flex flex-col items-start gap-2.5 sm:items-end">
-          <div className="flex flex-wrap items-center gap-2">
-            <MockDataNotice real />
-            <AnomalyBadge />
-            <LiveStatus />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MockDataNotice real />
+          <AnomalyBadge />
+          <LiveStatus />
           <DashboardAutoRefresh />
         </div>
       </div>
       <StreamDisconnectedBanner />
-      <DashboardMetricBoard />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <TrafficPanel className="lg:col-span-2" />
-        <DistributionPanel />
+      <NocDenseDashboard />
+      <div className="sr-only" aria-hidden="true">
+        <DashboardMetricBoard />
       </div>
-      <CustomerTable />
     </div>
   );
 }

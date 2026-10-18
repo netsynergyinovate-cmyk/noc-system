@@ -7,12 +7,12 @@ export const metadata: Metadata = { title: "Hasil Uji Banding Stack - NOC ISP" }
 export default async function StackBenchmarkPage() {
   await requireSession();
   return (
-    <div data-testid="stack-benchmark-page" className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div>
+    <div data-testid="stack-benchmark-page" className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Hasil Uji Banding Stack
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Perbandingan Go daemon dan Next.js di lab lokal, beserta keputusan arsitektur.
         </p>
       </div>

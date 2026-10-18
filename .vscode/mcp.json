@@ -1,5 +1,6 @@
 {
   "servers": {
-    "context7": { "type": "http", "url": "https://mcp.context7.com/mcp" }
+    "context7": { "type": "http", "url": "https://mcp.context7.com/mcp" },
+    "graphify": { "type": "http", "url": "https://api.graphify.com/mcp" }
   }
 }

@@ -362,7 +362,7 @@ export async function getDeviceInterfaceSamples(
   for (const r of routers) {
     if (r.status !== "aktif") continue;
     try {
-      const sample = await sampleRouterTraffic(r.id, { persist: false });
+      const sample = await sampleRouterTraffic(r.id, { persist: true });
       for (const iface of sample.interfaces) {
         list.push({
           id: `${r.id}:${iface.name}`,

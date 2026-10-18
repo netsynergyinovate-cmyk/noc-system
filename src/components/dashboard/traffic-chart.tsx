@@ -112,10 +112,19 @@ function incidentBandsPlugin(
 
 // Kotak info yang mengikuti kursor. Diisi langsung ke DOM (bukan state React)
 // dan hanya memakai textContent. Bila kursor berada pada insiden, namanya
+export interface InspectedTrafficPoint {
+  time: number;
+  rx: number;
+  tx: number;
+}
+
+// Kotak info yang mengikuti kursor. Diisi langsung ke DOM (bukan state React)
+// dan hanya memakai textContent. Bila kursor berada pada insiden, namanya
 // ditampilkan juga.
 function tooltipPlugin(
   rangeSeconds: number,
   getIncidents: () => Incident[],
+  onInspect?: (point: InspectedTrafficPoint | null) => void,
 ): uPlot.Plugin {
   let tip: HTMLDivElement;
   const lines = (["time", "rx", "tx", "incident"] as const).map(() =>
@@ -130,19 +139,27 @@ function tooltipPlugin(
         tip.hidden = true;
         tip.append(...lines);
         u.over.appendChild(tip);
+
+        u.over.addEventListener("mouseleave", () => {
+          tip.hidden = true;
+          onInspect?.(null);
+        });
       },
       setCursor: (u) => {
         const { idx, left, top } = u.cursor;
         if (idx == null || left == null || top == null || left < 0) {
           tip.hidden = true;
+          onInspect?.(null);
           return;
         }
         const [times, rx, tx] = u.data;
-        lines[0].textContent = timeFormat.format(
-          new Date((times[idx] ?? 0) * 1000),
-        );
-        lines[1].textContent = `Unduh ${mbpsFormat.format(rx[idx] ?? 0)} Mbps`;
-        lines[2].textContent = `Unggah ${mbpsFormat.format(tx[idx] ?? 0)} Mbps`;
+        const t = times[idx] ?? 0;
+        const r = rx[idx] ?? 0;
+        const x = tx[idx] ?? 0;
+
+        lines[0].textContent = `${timeFormat.format(new Date(t * 1000))} WIB`;
+        lines[1].textContent = `Unduh ${mbpsFormat.format(r)} Mbps`;
+        lines[2].textContent = `Unggah ${mbpsFormat.format(x)} Mbps`;
 
         // Toleransi 4 px supaya insiden yang sangat singkat tetap bisa ditunjuk.
         const min = u.scales.x.min ?? 0;
@@ -167,6 +184,8 @@ function tooltipPlugin(
           0,
           Math.min(top - 12, u.over.clientHeight - tip.offsetHeight),
         )}px`;
+
+        onInspect?.({ time: t, rx: r, tx: x });
       },
     },
   };
@@ -179,14 +198,22 @@ export function TrafficChart({
   rangeId,
   history,
   incidents,
+  onInspect,
 }: {
   rangeId: TrafficRangeId;
   history?: HistoryWindow;
   incidents: Incident[];
+  onInspect?: (point: InspectedTrafficPoint | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
   const incidentsRef = useRef<Incident[]>(incidents);
+  const historyRef = useRef<HistoryWindow | undefined>(history);
+  const onInspectRef = useRef(onInspect);
+  useEffect(() => {
+    onInspectRef.current = onInspect;
+  });
+
   // Warna canvas dibaca saat grafik dibuat, jadi grafik dibuat ulang saat tema berganti.
   const theme = useSyncExternalStore(
     subscribeTheme,
@@ -200,10 +227,23 @@ export function TrafficChart({
     chartRef.current?.redraw(false);
   }, [incidents]);
 
+  // Saat histori diperbarui (mis. auto-refresh berkala), perbarui data kanvas tanpa merusak uPlot
+  useEffect(() => {
+    historyRef.current = history;
+    if (history && chartRef.current) {
+      chartRef.current.setData([
+        history.series.times,
+        history.series.rx,
+        history.series.tx,
+      ]);
+    }
+  }, [history]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const rangeSeconds = getRange(rangeId).seconds;
+    historyRef.current = history;
     let disposed = false;
     let cleanup = () => {};
 
@@ -236,12 +276,15 @@ export function TrafficChart({
               warning: token("--warning"),
               critical: token("--destructive"),
             }),
-            tooltipPlugin(rangeSeconds, getIncidents),
+            tooltipPlugin(rangeSeconds, getIncidents, (p) => onInspectRef.current?.(p)),
           ],
           scales: {
             x: {
               range: history
-                ? () => [history.from, history.to]
+                ? () => [
+                    historyRef.current?.from ?? history.from,
+                    historyRef.current?.to ?? history.to,
+                  ]
                 : // Jendela tetap 5 menit yang bergerak.
                   (_u, _min, max) =>
                     Number.isFinite(max)
@@ -291,15 +334,55 @@ export function TrafficChart({
       chartRef.current = chart;
 
       let frame = 0;
-      const unsubscribe = history
-        ? () => {}
-        : useDashboardStore.subscribe((state, previous) => {
-            if (state.traffic === previous.traffic || frame) return;
-            frame = requestAnimationFrame(() => {
-              frame = 0;
-              chart.setData(readLiveData());
-            });
-          });
+      const unsubscribe = useDashboardStore.subscribe((state, previous) => {
+        if (state.traffic === previous.traffic || frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (!chartRef.current) return;
+          const currentHist = historyRef.current;
+          if (currentHist) {
+            // Mode histori (1h, 6h, dst): saat ada titik live baru tiba,
+            // perbarui titik ujung kanan grafik agar grafik terus bergerak per detik
+            const live = state.traffic;
+            const hTimes = currentHist.series.times;
+            if (live.times.length > 0 && hTimes.length > 0) {
+              const liveTime = live.times[live.times.length - 1];
+              const liveRx = live.rx[live.rx.length - 1];
+              const liveTx = live.tx[live.tx.length - 1];
+              const lastHistTime = hTimes[hTimes.length - 1];
+
+              if (liveTime > lastHistTime) {
+                const step = getRange(rangeId).stepSeconds || 10;
+                const times = [...hTimes];
+                const rx = [...currentHist.series.rx];
+                const tx = [...currentHist.series.tx];
+
+                if (liveTime - lastHistTime >= step) {
+                  times.push(liveTime);
+                  rx.push(liveRx);
+                  tx.push(liveTx);
+                  if (times.length > 400) {
+                    times.shift();
+                    rx.shift();
+                    tx.shift();
+                  }
+                  currentHist.from = times[0];
+                  currentHist.to = liveTime;
+                } else {
+                  times[times.length - 1] = liveTime;
+                  rx[rx.length - 1] = liveRx;
+                  tx[tx.length - 1] = liveTx;
+                  currentHist.to = liveTime;
+                }
+                currentHist.series = { times, rx, tx };
+                chartRef.current.setData([times, rx, tx]);
+              }
+            }
+          } else {
+            chartRef.current.setData(readLiveData());
+          }
+        });
+      });
 
       let { clientWidth: width, clientHeight: height } = container;
       const observer = new ResizeObserver(() => {
@@ -328,7 +411,9 @@ export function TrafficChart({
       disposed = true;
       cleanup();
     };
-  }, [theme, rangeId, history]);
+    // Grafik hanya dibuat ulang saat rangeId atau tema berganti; pembaruan history ditangani secara terpisah oleh useEffect setData tanpa merusak canvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme, rangeId]);
 
   // Grafik diletakkan absolut di dalam kotak yang tingginya ikut kartu, supaya
   // ukuran grafik tidak memengaruhi ukuran kotaknya (tidak ada umpan balik).

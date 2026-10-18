@@ -6,8 +6,8 @@ import { env } from "@/lib/env";
 import { impliesTls, sanitizeHost, storedRouterHost } from "@/lib/device-connection";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { routers } from "@/db/schema";
-import { CreateRouterInput } from "@/validators/routers";
-import { encryptAES256GCM } from "@/lib/encryption";
+import { CreateRouterInput, UpdateRouterInput } from "@/validators/routers";
+import { encryptAES256GCM, decryptAES256GCM } from "@/lib/encryption";
 
 // Kolom router yang boleh sampai ke klien. `passwordEnc` (kata sandi router
 // yang dienkripsi) sengaja tidak ada: ia tidak boleh keluar dari server,
@@ -22,6 +22,18 @@ const publicRouterColumns = {
   lastSeenAt: routers.lastSeenAt,
   createdAt: routers.createdAt,
 };
+
+export async function getRouterById(id: string) {
+  const [router] = await db
+    .select(publicRouterColumns)
+    .from(routers)
+    .where(eq(routers.id, id))
+    .limit(1);
+  if (!router) {
+    throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
+  }
+  return router;
+}
 
 export async function createRouter(input: CreateRouterInput) {
   let normalizedHost: string;
@@ -67,4 +79,98 @@ export async function createRouter(input: CreateRouterInput) {
     .returning(publicRouterColumns);
 
   return router;
+}
+
+export async function updateRouter(id: string, input: UpdateRouterInput) {
+  const [existing] = await db
+    .select({
+      id: routers.id,
+      name: routers.name,
+      host: routers.host,
+      username: routers.username,
+      passwordEnc: routers.passwordEnc,
+      status: routers.status,
+    })
+    .from(routers)
+    .where(eq(routers.id, id))
+    .limit(1);
+
+  if (!existing) {
+    throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
+  }
+
+  const updates: Partial<{
+    name: string;
+    host: string;
+    username: string;
+    passwordEnc: string;
+    status: "aktif" | "nonaktif";
+    lastSeenAt: Date | null;
+  }> = {};
+
+  if (input.name) updates.name = input.name;
+  if (input.status) updates.status = input.status;
+  if (input.username) updates.username = input.username;
+
+  let targetHost = existing.host;
+  if (input.host) {
+    try {
+      const url = sanitizeHost(input.host, input.port);
+      targetHost = storedRouterHost(url, input.useSsl ?? impliesTls(url));
+      updates.host = targetHost;
+    } catch (e) {
+      throw new ApiError(422, "INVALID_HOST", (e as Error).message);
+    }
+
+    if (targetHost !== existing.host) {
+      const [dup] = await db
+        .select({ id: routers.id })
+        .from(routers)
+        .where(eq(routers.host, targetHost))
+        .limit(1);
+      if (dup && dup.id !== id) {
+        throw new ApiError(409, "DUPLICATE_HOST", "Router dengan host ini sudah terdaftar.");
+      }
+    }
+  }
+
+  let targetPassword = decryptAES256GCM(existing.passwordEnc);
+  if (input.password) {
+    targetPassword = input.password;
+    updates.passwordEnc = encryptAES256GCM(input.password);
+  }
+
+  const targetUsername = input.username ?? existing.username;
+
+  if (input.validateConnection) {
+    const result = await new MikrotikRestClient({
+      host: targetHost,
+      username: targetUsername,
+      password: targetPassword,
+      mode: input.mode ?? (env.DASHBOARD_DATA === "demo" ? "simulator" : "real"),
+    }).testConnection();
+    if (!result.ok) {
+      throw new ApiError(400, result.code ?? "CONNECTION_FAILED", result.message);
+    }
+    updates.lastSeenAt = new Date();
+  }
+
+  const [updated] = await db
+    .update(routers)
+    .set(updates)
+    .where(eq(routers.id, id))
+    .returning(publicRouterColumns);
+
+  return updated;
+}
+
+export async function deleteRouter(id: string) {
+  const [deleted] = await db
+    .delete(routers)
+    .where(eq(routers.id, id))
+    .returning({ id: routers.id });
+  if (!deleted) {
+    throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
+  }
+  return { ok: true, id: deleted.id };
 }

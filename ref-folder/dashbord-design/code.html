@@ -1,0 +1,677 @@
+<!DOCTYPE html><html class="dark" lang="id" style=""><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Dashboard NOC - Network Operations Center</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Custom Configuration -->
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          noc: {
+            base: '#090a0d',
+            card: '#111317',
+            cardHover: '#15181e',
+            border: '#1e222a',
+            borderLight: '#282d37',
+            textMain: '#f1f5f9',
+            textMuted: '#94a3b8',
+            textDim: '#64748b'
+          }
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
+        }
+      }
+    }
+  }
+</script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<!-- Custom Styles -->
+<style data-purpose="custom-scrollbars-and-canvas">
+  body {
+    background-color: #090a0d;
+    color: #f1f5f9;
+    overflow-x: hidden;
+  }
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090a0d;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e222a;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2e3442;
+  }
+  .noc-card {
+    background-color: #111317;
+    border: 1px solid #1e222a;
+    border-radius: 0.5rem;
+  }
+  .grid-bg-overlay {
+    background-size: 20px 20px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  }
+</style>
+</head>
+<body class="min-h-screen bg-[#090a0d] text-[#f1f5f9] font-sans antialiased text-[11px] selection:bg-zinc-700 selection:text-white">
+<!-- BEGIN: MainContainer -->
+<div class="max-w-[1880px] mx-auto p-2 space-y-2">
+<!-- BEGIN: TopHeader -->
+<header class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-1 px-2.5 noc-card" data-purpose="dashboard-header"><div class="flex flex-wrap items-center gap-2.5"><div class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg><h1 class="text-xs sm:text-sm font-bold tracking-tight text-white flex items-center gap-1.5">Dashboard NOC</h1></div><div class="flex flex-wrap items-center gap-1.5 text-xs"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-[10.5px]"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path></svg><span class="">Mode Live <span class="text-zinc-400 font-mono">(PostgreSQL)</span></span></span><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 text-[10.5px]"><svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg><span class="">4 anomali aktif</span></span><span class="inline-flex items-center gap-2 px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 font-mono text-[10.5px]"><span class="flex items-center gap-1 text-zinc-300"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Live</span><span class="text-zinc-600">|</span><span class="text-white font-medium" id="header-latency">1932 ms</span><span class="text-zinc-600">|</span><span class="">Diperbarui <span class="text-zinc-300" id="header-clock">09.19.53</span></span></span></div></div><div class="flex flex-wrap items-center gap-2 text-xs"><div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10.5px]"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" x2="12.01" y1="20" y2="20"></line></svg><span class="">WebSocket Connected</span></div><div class="relative"><select class="bg-zinc-900 border border-zinc-800 text-[10.5px] rounded px-2 py-0.5 text-zinc-200 focus:ring-1 focus:ring-zinc-500 focus:outline-none cursor-pointer"><option>1 dtk</option><option selected="">5 dtk</option><option>10 dtk</option><option>30 dtk</option></select></div><button class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-zinc-700 rounded transition-colors font-medium text-[10.5px] shadow-sm" id="btn-refresh"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="refresh-cw" aria-hidden="true" class="lucide lucide-refresh-cw w-3 h-3 text-zinc-300" id="refresh-icon"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg><span class="">Segarkan</span></button></div></header>
+<!-- END: TopHeader -->
+<!-- BEGIN: CompactTopSection (Telemetry & Hardware MikroTik / ZTE) -->
+<section class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2" data-purpose="top-kpi-and-telemetry"><!-- Pelanggan Online --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between"><span class="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Pelanggan Online</span><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><circle cx="12" cy="20" r="1"></circle></svg></div><div class="my-1 flex items-baseline justify-between"><div class="text-lg font-bold text-white tracking-tight" id="kpi-online">1.428</div><div class="text-[10px] text-zinc-400 font-mono">98.4% / 1.450</div></div><div class="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden"><div class="bg-zinc-400 h-1 rounded-full" style="width: 98.4%"></div></div></div><!-- Pelanggan Offline --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between"><span class="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Pelanggan Offline</span><svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><line x1="1" x2="23" y1="1" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" x2="12.01" y1="20" y2="20"></line></svg></div><div class="my-1 flex items-baseline justify-between"><div class="text-lg font-bold text-white tracking-tight" id="kpi-offline">18</div><div class="text-[10px] text-zinc-400 font-mono">1.2% total</div></div><div class="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden"><div class="bg-zinc-500 h-1 rounded-full" style="width: 1.2%"></div></div></div><!-- Sinyal Optik Lemah --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between"><span class="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Sinyal Lemah</span><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg></div><div class="my-1 flex items-baseline justify-between"><div class="text-lg font-bold text-white tracking-tight" id="kpi-weak-optics">4</div><div class="text-[10px] text-zinc-400 font-mono">Rx &lt; -25 dBm</div></div><div class="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden"><div class="bg-zinc-500 h-1 rounded-full" style="width: 4%"></div></div></div><!-- Router & OLT Aktif --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between"><span class="text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">Router &amp; OLT</span><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"></rect><rect width="20" height="8" x="2" y="14" rx="2" ry="2"></rect><line x1="6" x2="6.01" y1="6" y2="6"></line><line x1="6" x2="6.01" y1="18" y2="18"></line></svg></div><div class="my-1 flex items-baseline justify-between"><div class="text-lg font-bold text-white tracking-tight">2 / 2</div><div class="text-[10px] text-zinc-400 font-mono">100% UP</div></div><div class="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden"><div class="bg-zinc-400 h-1 rounded-full" style="width: 100%"></div></div></div><!-- MikroTik CCR2004 --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between pb-1 border-b border-zinc-800"><div class="flex items-center gap-1.5 truncate"><span class="text-[10px] font-bold text-white font-mono truncate">MikroTik CCR2004</span></div><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"></rect><rect width="6" height="6" x="9" y="9"></rect><line x1="9" x2="9" y1="1" y2="4"></line><line x1="15" x2="15" y1="1" y2="4"></line><line x1="9" x2="9" y1="20" y2="23"></line><line x1="15" x2="15" y1="20" y2="23"></line><line x1="20" x2="23" y1="9" y2="9"></line><line x1="20" x2="23" y1="14" y2="14"></line><line x1="1" x2="4" y1="9" y2="9"></line><line x1="1" x2="4" y1="14" y2="14"></line></svg></div><div class="grid grid-cols-3 gap-1 mt-1 text-center font-mono"><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">CPU</span><span class="text-[10px] font-bold text-white">26%</span></div><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">RAM</span><span class="text-[10px] font-bold text-white">1.3G</span></div><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">Suhu</span><span class="text-[10px] font-bold text-white">41°C</span></div></div></div><!-- ZTE C320 OLT --><div class="noc-card p-2 flex flex-col justify-between"><div class="flex items-center justify-between pb-1 border-b border-zinc-800"><div class="flex items-center gap-1.5 truncate"><span class="text-[10px] font-bold text-white font-mono truncate">ZTE C320 OLT</span></div><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 9.17 4.24-4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="m9.17 14.83-4.24 4.24"></path><circle cx="12" cy="12" r="4"></circle></svg></div><div class="grid grid-cols-3 gap-1 mt-1 text-center font-mono"><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">PON</span><span class="text-[10px] font-bold text-white">8/16</span></div><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">Tx Pwr</span><span class="text-[10px] font-bold text-white">+3.4</span></div><div class="bg-zinc-900/90 p-0.5 rounded border border-zinc-800"><span class="text-[8px] text-zinc-400 block">ONT</span><span class="text-[10px] font-bold text-white">1.446</span></div></div></div></section>
+<!-- END: CompactTopSection -->
+<!-- BEGIN: MainContentGrid (Dense Split: 8 Cols Left, 4 Cols Right) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2">
+<!-- LEFT SECTION (Traffic Chart, Ports, Traffic Load 24h, Top Consumers, Tickets & ODP) - 8 Cols -->
+<section class="lg:col-span-8 space-y-2">
+<!-- Live Traffic Chart Card -->
+<div class="noc-card p-2">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+<div class="flex items-center gap-2">
+<svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+<h2 class="text-xs sm:text-sm font-bold text-white">
+              Traffic Jaringan Real-Time
+            </h2>
+</div>
+<!-- Timeframe Tabs -->
+<div class="flex items-center bg-zinc-900 p-0.5 rounded border border-zinc-800 text-[10.5px] font-medium self-start sm:self-auto">
+<button class="px-2 py-0.5 rounded bg-zinc-800 text-white font-medium">5 menit</button>
+<button class="px-2 py-0.5 rounded text-zinc-400 hover:text-white transition-colors">1 jam</button>
+<button class="px-2 py-0.5 rounded text-zinc-400 hover:text-white transition-colors">6 jam</button>
+<button class="px-2 py-0.5 rounded text-zinc-400 hover:text-white transition-colors">24 jam</button>
+<button class="px-2 py-0.5 rounded text-zinc-400 hover:text-white transition-colors">7 hari</button>
+</div>
+</div>
+<!-- Speed Overview Numbers - Clean Monochrome -->
+<div class="grid grid-cols-2 gap-2 py-1 border-y border-zinc-800 mb-1.5 font-mono">
+<!-- Download -->
+<div class="flex items-center justify-between bg-zinc-900/60 px-2.5 py-1 rounded border border-zinc-800">
+<div>
+<div class="flex items-center gap-1.5 text-[10px] text-zinc-300">
+<span class="w-2.5 h-0.5 bg-sky-400 rounded-full"></span>
+<span class="">Unduh sekarang (Rx)</span>
+</div>
+<div class="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5" id="traffic-download-val">118,9 Mbps</div>
+</div>
+<div class="text-[9.5px] text-right text-zinc-400">
+<div class="">Puncak: <span class="text-white font-medium">174,5 Mbps</span></div>
+<div class="">Rata-rata: <span class="text-zinc-300">49,5 Mbps</span></div>
+</div>
+</div>
+<!-- Upload -->
+<div class="flex items-center justify-between bg-zinc-900/60 px-2.5 py-1 rounded border border-zinc-800">
+<div>
+<div class="flex items-center gap-1.5 text-[10px] text-zinc-300">
+<span class="w-2.5 h-0.5 bg-amber-400 rounded-full"></span>
+<span class="">Unggah sekarang (Tx)</span>
+</div>
+<div class="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5" id="traffic-upload-val">3,9 Mbps</div>
+</div>
+<div class="text-[9.5px] text-right text-zinc-400">
+<div class="">Puncak: <span class="text-white font-medium">15,4 Mbps</span></div>
+<div class="">Rata-rata: <span class="text-zinc-300">4,6 Mbps</span></div>
+</div>
+</div>
+</div>
+<!-- Canvas Graph Container -->
+<div class="relative w-full h-[145px] bg-[#0c0e12] rounded p-1 border border-zinc-800 overflow-hidden">
+<canvas class="w-full h-full block" height="135" id="trafficCanvas" width="812"></canvas>
+</div>
+<!-- Interface Ports Bar (Sparklines) -->
+<div class="mt-2 pt-1.5 border-t border-zinc-800"><div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><rect width="18" height="12" x="3" y="6" rx="2"></rect><path d="M7 12h.01"></path><path d="M12 12h.01"></path><path d="M17 12h.01"></path></svg><span class="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Status Port Gigabit &amp; Uplink</span></div></div><div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-1.5"><!-- Port 1 --><div class="bg-zinc-900/80 border border-zinc-800 p-1.5 rounded flex flex-col justify-between hover:border-zinc-700 transition-all"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] font-bold font-mono text-white">sfp-sfpplus1</span></div><span class="text-[8.5px] px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">SFP+</span></div><div class="text-[9px] text-zinc-400 truncate mt-0.5">Uplink IIX OpenIXP</div><div class="my-1 h-[32px] w-full bg-[#08090c] rounded border border-zinc-800/80 overflow-hidden relative"><canvas class="w-full h-full block" height="30" id="portCanvas-1" width="143"></canvas></div><div class="text-[9.5px] font-mono flex items-center justify-between border-t border-zinc-800 pt-0.5"><span class="text-white" id="port-1-rx">Rx 81.3M</span><span class="text-zinc-300" id="port-1-tx">Tx 5.5M</span></div><div class="flex justify-between items-center text-[8.5px] text-zinc-400 mt-0.5"><span class="">Util: <strong class="text-white">3.4%</strong></span><span class="font-mono">1 Gbps</span></div></div><!-- Port 2 --><div class="bg-zinc-900/80 border border-zinc-800 p-1.5 rounded flex flex-col justify-between hover:border-zinc-700 transition-all"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] font-bold font-mono text-white">sfp-sfpplus2</span></div><span class="text-[8.5px] px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">SFP+</span></div><div class="text-[9px] text-zinc-400 truncate mt-0.5">Telkom Astinet</div><div class="my-1 h-[32px] w-full bg-[#08090c] rounded border border-zinc-800/80 overflow-hidden relative"><canvas class="w-full h-full block" height="30" id="portCanvas-2" width="143"></canvas></div><div class="text-[9.5px] font-mono flex items-center justify-between border-t border-zinc-800 pt-0.5"><span class="text-white" id="port-2-rx">Rx 12.4M</span><span class="text-zinc-300" id="port-2-tx">Tx 1.6M</span></div><div class="flex justify-between items-center text-[8.5px] text-zinc-400 mt-0.5"><span class="">Util: <strong class="text-white">1.1%</strong></span><span class="font-mono">1 Gbps</span></div></div><!-- Port 3 --><div class="bg-zinc-900/80 border border-zinc-800 p-1.5 rounded flex flex-col justify-between hover:border-zinc-700 transition-all"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] font-bold font-mono text-white">ether1-OLT</span></div><span class="text-[8.5px] px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">Trunk</span></div><div class="text-[9px] text-zinc-400 truncate mt-0.5">Trunk GPON C320</div><div class="my-1 h-[32px] w-full bg-[#08090c] rounded border border-zinc-800/80 overflow-hidden relative"><canvas class="w-full h-full block" height="30" id="portCanvas-3" width="143"></canvas></div><div class="text-[9.5px] font-mono flex items-center justify-between border-t border-zinc-800 pt-0.5"><span class="text-white" id="port-3-rx">Rx 5.7M</span><span class="text-zinc-300" id="port-3-tx">Tx 55.4M</span></div><div class="flex justify-between items-center text-[8.5px] text-zinc-400 mt-0.5"><span class="">Util: <strong class="text-white">4.2%</strong></span><span class="font-mono">1 Gbps</span></div></div><!-- Port 4 --><div class="bg-zinc-900/80 border border-zinc-800 p-1.5 rounded flex flex-col justify-between hover:border-zinc-700 transition-all"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] font-bold font-mono text-white">ether2-Switch</span></div><span class="text-[8.5px] px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">MGMT</span></div><div class="text-[9px] text-zinc-400 truncate mt-0.5">Management VLAN</div><div class="my-1 h-[32px] w-full bg-[#08090c] rounded border border-zinc-800/80 overflow-hidden relative"><canvas class="w-full h-full block" height="30" id="portCanvas-4" width="143"></canvas></div><div class="text-[9.5px] font-mono flex items-center justify-between border-t border-zinc-800 pt-0.5"><span class="text-white" id="port-4-rx">Rx 73.4K</span><span class="text-zinc-300" id="port-4-tx">Tx 813.0K</span></div><div class="flex justify-between items-center text-[8.5px] text-zinc-400 mt-0.5"><span class="">Util: <strong class="text-white">&lt;1%</strong></span><span class="font-mono">1 Gbps</span></div></div><!-- Port 5 --><div class="bg-zinc-900/80 border border-zinc-800 p-1.5 rounded flex flex-col justify-between hover:border-zinc-700 transition-all"><div class="flex items-center justify-between"><div class="flex items-center gap-1"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] font-bold font-mono text-white">ether3-Server</span></div><span class="text-[8.5px] px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">RADIUS</span></div><div class="text-[9px] text-zinc-400 truncate mt-0.5">FreeRADIUS &amp; DB</div><div class="my-1 h-[32px] w-full bg-[#08090c] rounded border border-zinc-800/80 overflow-hidden relative"><canvas class="w-full h-full block" height="30" id="portCanvas-5" width="143"></canvas></div><div class="text-[9.5px] font-mono flex items-center justify-between border-t border-zinc-800 pt-0.5"><span class="text-white" id="port-5-rx">Rx 146.8K</span><span class="text-zinc-300" id="port-5-tx">Tx 50.3K</span></div><div class="flex justify-between items-center text-[8.5px] text-zinc-400 mt-0.5"><span class="">Util: <strong class="text-white">&lt;1%</strong></span><span class="font-mono">1 Gbps</span></div></div></div></div>
+</div>
+<!-- MONITORING TRAFIK LOAD (24 JAM BERJALAN) - Detailed Full-width Chart Module -->
+<div class="noc-card p-2">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1.5 border-b border-zinc-800"><div class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg><h3 class="text-[11px] font-bold uppercase tracking-wider text-white">Monitoring Trafik Load (24 Jam Berjalan)</h3><span class="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">Rolling 24h</span></div><div class="flex flex-wrap items-center gap-1.5 text-[9.5px] font-mono"><div class="px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-zinc-400">Puncak: <span class="text-white font-bold">174.5 Mbps</span> <span class="text-zinc-500">(20:15 WIB)</span></div><div class="px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-zinc-400">Terendah: <span class="text-zinc-300 font-semibold">28.2 Mbps</span> <span class="text-zinc-500">(04:30 WIB)</span></div><div class="px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-zinc-400">Rata-rata: <span class="text-white font-medium">98.4 Mbps</span></div><div class="px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-zinc-400 flex items-center gap-1.5">Load: <span class="text-white font-bold">82.3%</span><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div></div>
+<!-- Detailed SVG 24-Hour Load Area Graph -->
+<div class="mt-2 relative w-full h-[115px] bg-[#0c0e12] rounded p-1.5 border border-zinc-800/90">
+<svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 1000 130">
+<defs>
+<linearGradient id="load24Grad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"></stop>
+<stop offset="60%" stop-color="#38bdf8" stop-opacity="0.05"></stop>
+<stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"></stop>
+</linearGradient>
+<linearGradient id="peakLineGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#f59e0b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#f59e0b" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<!-- Horizontal Dash Gridlines -->
+<line stroke="#1e232c" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="1000" y1="18"></line>
+<line stroke="#1a1e27" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="1000" y1="46"></line>
+<line stroke="#1a1e27" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="1000" y1="74"></line>
+<line stroke="#1a1e27" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="1000" y1="102"></line>
+<!-- Grid Value Annotations Left -->
+<text fill="#52525b" font-family="JetBrains Mono, monospace" font-size="8" x="6" y="21">180M</text>
+<text fill="#52525b" font-family="JetBrains Mono, monospace" font-size="8" x="6" y="49">120M</text>
+<text fill="#52525b" font-family="JetBrains Mono, monospace" font-size="8" x="6" y="77">60M</text>
+<text fill="#52525b" font-family="JetBrains Mono, monospace" font-size="8" x="6" y="105">0M</text>
+<!-- Peak Hour Band Shadow (18:00 - 23:00) => x ~ 750 to 958 -->
+<rect fill="#ffffff" fill-opacity="0.015" height="92" width="208" x="750" y="10"></rect>
+<line stroke="#3f3f46" stroke-dasharray="2,2" stroke-width="1" x1="750" x2="750" y1="10" y2="102"></line>
+<line stroke="#3f3f46" stroke-dasharray="2,2" stroke-width="1" x1="958" x2="958" y1="10" y2="102"></line>
+<!-- Area Path for 24-hr traffic curve -->
+<path d="M 0,102 
+         L 0,82 
+         C 40,84 60,95 83,95 
+         C 125,95 145,90 166,92 
+         C 208,94 220,78 250,75 
+         C 291,72 312,58 333,56 
+         C 375,54 395,60 416,58 
+         C 458,56 479,52 500,50 
+         C 541,48 562,54 583,52 
+         C 625,50 645,44 666,41 
+         C 708,38 729,32 750,29 
+         C 791,24 812,20 833,18 
+         C 860,16 875,22 916,24 
+         C 958,26 975,45 1000,52 
+         L 1000,102 Z" fill="url(#load24Grad)"></path>
+<!-- Foreground smooth curve line -->
+<path d="M 0,82 
+         C 40,84 60,95 83,95 
+         C 125,95 145,90 166,92 
+         C 208,94 220,78 250,75 
+         C 291,72 312,58 333,56 
+         C 375,54 395,60 416,58 
+         C 458,56 479,52 500,50 
+         C 541,48 562,54 583,52 
+         C 625,50 645,44 666,41 
+         C 708,38 729,32 750,29 
+         C 791,24 812,20 833,18 
+         C 860,16 875,22 916,24 
+         C 958,26 975,45 1000,52" fill="none" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<!-- Peak Indicator Marker (at 20:15 / x=844, y=18) -->
+<line stroke="#f59e0b" stroke-dasharray="2,2" stroke-width="1" x1="844" x2="844" y1="18" y2="102"></line>
+<circle cx="844" cy="18" fill="#f59e0b" r="3.5" stroke="#111317" stroke-width="1.5"></circle>
+<!-- Off-Peak Minimum Marker (at 04:30 / x=187, y=94) -->
+<circle cx="187" cy="94" fill="#a1a1aa" r="2.5" stroke="#111317" stroke-width="1.2"></circle>
+</svg>
+</div>
+<!-- 24-Hour X-Axis Hourly Distribution Timeline & Legend -->
+<div class="mt-1 flex items-center justify-between text-[8px] font-mono text-zinc-500 px-1 border-b border-zinc-800/80 pb-1">
+<span class="">00:00</span>
+<span class="">02:00</span>
+<span class="text-zinc-400">04:00 (Min)</span>
+<span class="">06:00</span>
+<span class="">08:00</span>
+<span class="">10:00</span>
+<span class="">12:00</span>
+<span class="">14:00</span>
+<span class="">16:00</span>
+<span class="">18:00</span>
+<span class="text-amber-400 font-bold">20:00 (Peak)</span>
+<span class="">22:00</span>
+<span class="">23:59</span>
+</div>
+<!-- Hourly Utilization Breakdown Sub-strip -->
+<div class="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[9.5px] text-zinc-400">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1"><span class="w-2 h-0.5 bg-sky-400 rounded"></span><span class="text-zinc-300">Load Aggregate (Rx+Tx)</span></span>
+<span class="inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span class="text-zinc-400">Zona Jam Sibuk: <strong class="text-white">19:00 - 23:00</strong></span></span>
+<span class="inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span><span class="text-zinc-400">Off-Peak: <span class="text-zinc-300 font-mono">01:00 - 06:00</span></span></span>
+</div>
+<div class="text-[9.5px] font-mono text-zinc-400">
+Total Throughput 24 Jam: <span class="text-white font-semibold">1,062 TB</span>
+</div>
+</div>
+</div>
+<!-- ROW: Top Konsumen Pemakaian & Tiket/ODP -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+<!-- Top Bandwidth Consumers -->
+<div class="noc-card p-2 flex flex-col justify-between">
+<div class="flex items-center justify-between pb-1 border-b border-zinc-800">
+<div class="flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+<h3 class="text-[10.5px] font-bold uppercase tracking-wider text-white">Top Pelanggan Pemakaian Terbesar</h3>
+</div>
+<span class="text-[9px] font-mono text-zinc-400">Akumulasi 24 Jam</span>
+</div>
+<div class="mt-1 space-y-1">
+<!-- User 1 -->
+<div class="flex items-center justify-between p-1 rounded bg-zinc-900/80 border border-zinc-800 text-[10.5px]">
+<div class="flex items-center gap-1.5 truncate">
+<svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+<span class="font-semibold text-white truncate">user_pppoe_312</span>
+<span class="text-[9px] text-zinc-400 font-mono">10.10.4.52</span>
+</div>
+<div class="flex items-center gap-2 font-mono shrink-0">
+<span class="text-white font-semibold">18.4 Mbps</span>
+<span class="px-1 py-0.2 rounded bg-zinc-800 text-white text-[9.5px] border border-zinc-700">48.2 GB</span>
+</div>
+</div>
+<!-- User 2 -->
+<div class="flex items-center justify-between p-1 rounded bg-zinc-900/80 border border-zinc-800 text-[10.5px]">
+<div class="flex items-center gap-1.5 truncate">
+<svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+<span class="font-semibold text-white truncate">user_pppoe_891</span>
+<span class="text-[9px] text-zinc-400 font-mono">10.10.7.114</span>
+</div>
+<div class="flex items-center gap-2 font-mono shrink-0">
+<span class="text-white font-semibold">14.1 Mbps</span>
+<span class="px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 text-[9.5px] border border-zinc-700">34.6 GB</span>
+</div>
+</div>
+<!-- User 3 -->
+<div class="flex items-center justify-between p-1 rounded bg-zinc-900/80 border border-zinc-800 text-[10.5px]">
+<div class="flex items-center gap-1.5 truncate">
+<svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+<span class="font-semibold text-white truncate">user_pppoe_144</span>
+<span class="text-[9px] text-zinc-400 font-mono">10.10.2.89</span>
+</div>
+<div class="flex items-center gap-2 font-mono shrink-0">
+<span class="text-white font-semibold">11.8 Mbps</span>
+<span class="px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 text-[9.5px] border border-zinc-700">29.8 GB</span>
+</div>
+</div>
+<!-- User 4 -->
+<div class="flex items-center justify-between p-1 rounded bg-zinc-900/80 border border-zinc-800 text-[10.5px]">
+<div class="flex items-center gap-1.5 truncate">
+<svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+<span class="font-semibold text-white truncate">user_pppoe_963</span>
+<span class="text-[9px] text-zinc-400 font-mono">10.10.9.15</span>
+</div>
+<div class="flex items-center gap-2 font-mono shrink-0">
+<span class="text-white font-semibold">9.3 Mbps</span>
+<span class="px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 text-[9.5px] border border-zinc-700">26.1 GB</span>
+</div>
+</div>
+</div>
+</div><div class="noc-card p-2 flex flex-col justify-between" data-purpose="telemetry-distribution-summary"><div class="flex items-center justify-between pb-1 border-b border-zinc-800"><div class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg><h3 class="text-[10.5px] font-bold uppercase tracking-wider text-white">Ringkasan Telemetri &amp; Distribusi</h3></div><span class="text-[9px] font-mono text-zinc-400">Real-Time Snapshot</span></div><div class="grid grid-cols-3 gap-1.5 mt-1 pt-0.5"><!-- Chart Donat 1: Distribusi Redaman --><div class="bg-zinc-900/80 p-1.5 rounded border border-zinc-800 flex flex-col items-center justify-between"><span class="text-[9px] font-semibold text-zinc-300 uppercase tracking-wider text-center">Distribusi Redaman</span><div class="relative w-16 h-16 my-1 flex items-center justify-center"><svg class="w-full h-full -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#27272a" stroke-width="3.5"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#10b981" stroke-width="3.5" stroke-dasharray="87.5 88" stroke-dashoffset="0"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-dasharray="1 88" stroke-dashoffset="-87.5"></circle></svg><div class="absolute flex flex-col items-center justify-center text-center"><span class="text-[9px] font-bold font-mono text-white">1.428</span><span class="text-[7.5px] text-zinc-500 font-mono">ONT</span></div></div><div class="w-full space-y-0.5 text-[8px] font-mono border-t border-zinc-800/80 pt-1"><div class="flex items-center justify-between text-zinc-300"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>Normal</span><span class="font-bold text-white">1.424</span></div><div class="flex items-center justify-between text-zinc-400"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>Sedang</span><span class="font-semibold text-amber-400">4</span></div><div class="flex items-center justify-between text-zinc-500"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-zinc-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" x2="9" y1="9" y2="15"></line><line x1="9" x2="15" y1="9" y2="15"></line></svg>Kritis</span><span class="text-zinc-400">0</span></div></div></div><!-- Chart Donat 2: Penggunaan Data --><div class="bg-zinc-900/80 p-1.5 rounded border border-zinc-800 flex flex-col items-center justify-between"><span class="text-[9px] font-semibold text-zinc-300 uppercase tracking-wider text-center">Penggunaan Data</span><div class="relative w-16 h-16 my-1 flex items-center justify-center"><svg class="w-full h-full -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#27272a" stroke-width="3.5"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-dasharray="51 88" stroke-dashoffset="0"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#71717a" stroke-width="3.5" stroke-dasharray="24.6 88" stroke-dashoffset="-51"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#a855f7" stroke-width="3.5" stroke-dasharray="12.4 88" stroke-dashoffset="-75.6"></circle></svg><div class="absolute flex flex-col items-center justify-center text-center"><span class="text-[9px] font-bold font-mono text-white">58%</span><span class="text-[7.5px] text-zinc-500 font-mono">MID</span></div></div><div class="w-full space-y-0.5 text-[8px] font-mono border-t border-zinc-800/80 pt-1"><div class="flex items-center justify-between text-zinc-300"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>&gt;50 GB</span><span class="font-bold text-white">14%</span></div><div class="flex items-center justify-between text-zinc-300"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><line x1="5" x2="19" y1="12" y2="12"></line></svg>20-50 GB</span><span class="font-bold text-white">58%</span></div><div class="flex items-center justify-between text-zinc-400"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-zinc-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>&lt;20 GB</span><span class="text-zinc-300">28%</span></div></div></div><!-- Chart Donat 3: Trafik Load --><div class="bg-zinc-900/80 p-1.5 rounded border border-zinc-800 flex flex-col items-center justify-between"><span class="text-[9px] font-semibold text-zinc-300 uppercase tracking-wider text-center">Trafik Load</span><div class="relative w-16 h-16 my-1 flex items-center justify-center"><svg class="w-full h-full -rotate-90" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#27272a" stroke-width="3.5"></circle><circle cx="18" cy="18" r="14" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-dasharray="72.4 88" stroke-dashoffset="0"></circle></svg><div class="absolute flex flex-col items-center justify-center text-center"><span class="text-[9.5px] font-bold font-mono text-white">82.3%</span><span class="text-[7.5px] text-emerald-400 font-mono font-medium">OPTIMAL</span></div></div><div class="w-full space-y-0.5 text-[8px] font-mono border-t border-zinc-800/80 pt-1"><div class="flex items-center justify-between text-zinc-300"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>Utilisasi</span><span class="font-bold text-white">82.3%</span></div><div class="flex items-center justify-between text-zinc-400"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-zinc-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>Headroom</span><span class="text-zinc-300">17.7%</span></div><div class="flex items-center justify-between text-zinc-500"><span class="flex items-center gap-1"><svg class="w-2.5 h-2.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>Kapasitas</span><span class="text-zinc-400">1 Gbps</span></div></div></div></div></div>
+<!-- Modul Tiket Gangguan & Komplain Aktif -->
+
+</div>
+<!-- ADDITIONAL ROW: Kapasitas & Utilisasi ODP (Top Saturasi) -->
+
+</section>
+<!-- END: LeftSection -->
+<!-- RIGHT SECTION (Map, Gateway Latency, Social Media & CDN Ping, Optical DBm, Anomaly Feeds) - 4 Cols -->
+<section class="lg:col-span-4 space-y-2">
+<!-- Bandung Map Card -->
+<div class="noc-card p-2 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-1">
+<h2 class="text-xs font-bold text-white flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              Sebaran Pelanggan
+            </h2>
+<span class="text-[9.5px] font-mono text-zinc-300 bg-zinc-800 border border-zinc-700 px-1.5 py-0.2 rounded">Area Bandung Kota</span>
+</div>
+<!-- Map View Replica Container -->
+<div class="relative w-full h-[125px] rounded overflow-hidden border border-zinc-800 bg-[#0d0f13]">
+<div class="absolute inset-0 bg-[#0e1015] grid-bg-overlay opacity-80"></div>
+<div class="absolute inset-0 p-1.5 pointer-events-none select-none text-[9px] text-zinc-300 font-mono">
+<div class="absolute top-2 left-1/3 flex items-center gap-1 bg-[#090b0e]/90 px-1 py-0.2 rounded border border-zinc-800">
+<span class="w-1 h-1 rounded-full bg-emerald-400"></span> Gedung Sate
+              </div>
+<div class="absolute top-10 left-3 flex items-center gap-1 bg-[#090b0e]/90 px-1 py-0.2 rounded border border-zinc-800">
+<span class="w-1 h-1 rounded-full bg-emerald-400"></span> BIP Merdeka
+              </div>
+<div class="absolute bottom-8 right-3 flex items-center gap-1 bg-[#090b0e]/90 px-1 py-0.2 rounded border border-zinc-800">
+<span class="w-1 h-1 rounded-full bg-amber-400 animate-pulse"></span> TSB Gatsu
+              </div>
+<div class="absolute top-1/2 left-1/4 -translate-y-1/2 flex items-center gap-1 bg-[#090b0e]/95 px-1.5 py-0.5 rounded border border-zinc-600 shadow-md text-white font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-400"></span> Bandung Core
+              </div>
+<div class="absolute bottom-2 left-1/3 flex items-center gap-1 bg-[#090b0e]/90 px-1 py-0.2 rounded border border-zinc-800">
+<span class="w-1 h-1 rounded-full bg-emerald-400"></span> Tegalega
+              </div>
+</div>
+<!-- Dynamic Node Dots (Allowed functional color indicator) -->
+<div class="absolute top-[28%] left-[45%] w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+<div class="absolute top-[35%] left-[62%] w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+<div class="absolute top-[65%] left-[30%] w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+<div class="absolute top-[48%] left-[75%] w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+<div class="absolute top-[75%] left-[70%] w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
+<div class="absolute top-[42%] left-[38%] w-2 h-2 bg-sky-400 rounded-full shadow-[0_0_6px_rgba(56,189,248,0.8)]"></div>
+<div class="absolute bottom-[28%] right-[30%] w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+<div class="absolute top-[20%] right-[22%] w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
+<!-- Zoom controls -->
+<div class="absolute top-1 left-1 flex flex-col bg-zinc-900 border border-zinc-800 rounded">
+<button class="w-4 h-4 flex items-center justify-center text-zinc-300 hover:text-white border-b border-zinc-800 text-[9px] font-bold">+</button>
+<button class="w-4 h-4 flex items-center justify-center text-zinc-300 hover:text-white text-[9px] font-bold">-</button>
+</div>
+<div class="absolute bottom-1 right-1 bg-black/80 px-1 py-0.2 rounded text-[7.5px] text-zinc-400 font-mono">
+              Bandung Tile
+            </div>
+</div>
+</div>
+<!-- Node Legends - Pure Monochrome Text -->
+<div class="mt-1 pt-1 border-t border-zinc-800 flex items-center justify-between text-[10px] text-zinc-300"><div class="flex items-center gap-1.5"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="">Normal</span><span class="font-mono font-bold text-white">1.424</span></div><div class="flex items-center gap-1.5"><svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg><span class="">Lemah (-25~-28)</span><span class="font-mono font-bold text-white">4</span></div><div class="flex items-center gap-1.5"><svg class="w-3 h-3 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" x2="9" y1="9" y2="15"></line><line x1="9" x2="15" y1="9" y2="15"></line></svg><span class="">Offline / LOS</span><span class="font-mono font-bold text-white">18</span></div></div>
+</div>
+<!-- Latency Gateway Matrix -->
+<div class="noc-card p-2"><div class="flex items-center justify-between mb-1"><h3 class="text-[10.5px] font-bold uppercase tracking-wider text-white flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>Matriks Latensi Gateway</h3><span class="text-[9px] text-zinc-400 font-mono">ICMP Echo 10m</span></div><div class="space-y-1"><div class="grid grid-cols-2 gap-1.5 font-mono"><div class="flex items-center justify-between p-1 px-1.5 rounded bg-zinc-900/80 border border-zinc-800"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] text-zinc-300 truncate">OpenIXP</span></div><span class="text-[10px] text-white font-semibold shrink-0">3.2 ms</span></div><div class="flex items-center justify-between p-1 px-1.5 rounded bg-zinc-900/80 border border-zinc-800"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] text-zinc-300 truncate">Astinet</span></div><span class="text-[10px] text-white font-semibold shrink-0">5.8 ms</span></div><div class="flex items-center justify-between p-1 px-1.5 rounded bg-zinc-900/80 border border-zinc-800"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] text-zinc-300 truncate">Cloudflare</span></div><span class="text-[10px] text-white font-semibold shrink-0">8.6 ms</span></div><div class="flex items-center justify-between p-1 px-1.5 rounded bg-zinc-900/80 border border-zinc-800"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-[10px] text-zinc-300 truncate">Google DNS</span></div><span class="text-[10px] text-white font-semibold shrink-0">14.1 ms</span></div></div></div></div>
+<!-- NEW MODULE: Ping & Latensi Media Sosial & Popular Services -->
+<div class="noc-card p-2" data-purpose="social-media-ping-monitor"><div class="flex items-center justify-between mb-1 pb-0.5 border-b border-zinc-800"><div class="flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg><h3 class="text-[10px] font-bold uppercase tracking-wider text-white">Ping &amp; Latensi Media Sosial &amp; Popular Services</h3></div><span class="text-[8.5px] font-mono px-1 py-0.1 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">0% Loss</span></div><div class="grid grid-cols-2 gap-1 font-mono text-[10px]"><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">YouTube</span></div><span class="text-white font-semibold shrink-0">4.1 ms</span></div><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">Meta / WA</span></div><span class="text-white font-semibold shrink-0">8.4 ms</span></div><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">TikTok</span></div><span class="text-white font-semibold shrink-0">6.8 ms</span></div><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">X / Twitter</span></div><span class="text-white font-semibold shrink-0">18.2 ms</span></div><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">Cloudflare</span></div><span class="text-white font-semibold shrink-0">3.5 ms</span></div><div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-colors"><div class="flex items-center gap-1.5 truncate"><svg class="w-3 h-3 text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="text-zinc-300 font-medium truncate">Akamai / GGC</span></div><span class="text-white font-semibold shrink-0">2.9 ms</span></div></div></div>
+<!-- Deteksi Pelanggan Redaman Tinggi (Pure Monochrome Text) -->
+<div class="noc-card p-2"><div class="flex items-center justify-between mb-1"><h3 class="text-[10.5px] font-bold uppercase tracking-wider text-white flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg>Redaman Optik Kritis (Rx Buruk)</h3><span class="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 font-mono">Batas: -25 dBm</span></div><div class="space-y-1"><div class="p-1 rounded bg-zinc-900/80 border border-zinc-800 flex items-center justify-between"><div><div class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><span class="">user_pppoe_719</span><span class="text-[9px] text-zinc-400 font-mono font-normal">PON 1/2/4</span></div><div class="text-[9px] text-zinc-400">ODP-DGO-04 (Dago Atas)</div></div><div class="text-right"><div class="text-white font-bold font-mono text-[10.5px]">-27.8 dBm</div><span class="text-[8px] px-1 py-0.1 bg-zinc-800 text-zinc-300 rounded border border-zinc-700">Critical</span></div></div><div class="p-1 rounded bg-zinc-900/80 border border-zinc-800 flex items-center justify-between"><div><div class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><span class="">user_pppoe_102</span><span class="text-[9px] text-zinc-400 font-mono font-normal">PON 1/3/8</span></div><div class="text-[9px] text-zinc-400">ODP-ATP-11 (Antapani)</div></div><div class="text-right"><div class="text-white font-bold font-mono text-[10.5px]">-26.9 dBm</div><span class="text-[8px] px-1 py-0.1 bg-zinc-800 text-zinc-300 rounded border border-zinc-700">High Atten</span></div></div><div class="p-1 rounded bg-zinc-900/80 border border-zinc-800 flex items-center justify-between"><div><div class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><span class="">user_pppoe_482</span><span class="text-[9px] text-zinc-400 font-mono font-normal">PON 1/1/6</span></div><div class="text-[9px] text-zinc-400">ODP-CHL-02 (Cihampelas)</div></div><div class="text-right"><div class="text-white font-bold font-mono text-[10.5px]">-25.3 dBm</div><span class="text-[8px] px-1 py-0.1 bg-zinc-800 text-zinc-300 rounded border border-zinc-700">Degrading</span></div></div></div></div>
+<!-- Anomaly and Alarm Log Feed (Kompak & Monokrom) -->
+<div class="noc-card p-2"><div class="flex items-center justify-between mb-1"><h3 class="text-[10.5px] font-bold uppercase tracking-wider text-white flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Daftar Anomali &amp; Alarm</h3><span class="text-[9px] text-zinc-300 bg-zinc-800 border border-zinc-700 px-1.5 py-0.2 rounded font-mono font-medium">4 Perlu Dicek</span></div><div class="space-y-1"><!-- Log 1 --><div class="p-1.5 rounded bg-zinc-900/80 border border-zinc-800 text-xs"><div class="flex items-center justify-between"><span class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>user_pppoe_719 (Dago Atas)</span><span class="text-[9px] text-zinc-400 font-mono">00:01:14</span></div><p class="text-[9.5px] text-zinc-400 mt-0.5">Rx Optik turun ke <span class="text-white font-mono font-semibold">-26.8 dBm</span> (Konektor kotor/lekukan kabel)</p></div><!-- Log 2 --><div class="p-1.5 rounded bg-zinc-900/80 border border-zinc-800 text-xs"><div class="flex items-center justify-between"><span class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>user_pppoe_102 (Antapani)</span><span class="text-[9px] text-zinc-400 font-mono">23:58:40</span></div><p class="text-[9.5px] text-zinc-400 mt-0.5">Rx Optik <span class="text-white font-mono font-semibold">-25.9 dBm</span> mendekati batas ambang ONT</p></div><!-- Log 3 --><div class="p-1.5 rounded bg-zinc-900/80 border border-zinc-800 text-xs"><div class="flex items-center justify-between"><span class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-rose-500 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" x2="9" y1="9" y2="15"></line><line x1="9" x2="15" y1="9" y2="15"></line></svg>ODC-04 Buahbatu (Splitter 1:8)</span><span class="text-[9px] text-zinc-400 font-mono">23:45:10</span></div><p class="text-[9.5px] text-zinc-400 mt-0.5">2 ONT terputus (Dying Gasp / Listrik PLN Padam)</p></div><!-- Log 4 --><div class="p-1.5 rounded bg-zinc-900/80 border border-zinc-800 text-xs"><div class="flex items-center justify-between"><span class="font-semibold text-white text-[10.5px] flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>user_pppoe_482 (Cihampelas)</span><span class="text-[9px] text-zinc-400 font-mono">23:30:22</span></div><p class="text-[9.5px] text-zinc-400 mt-0.5">Rx Optik <span class="text-white font-mono font-semibold">-25.3 dBm</span> redaman terdeteksi bertahap 3 jam</p></div></div></div>
+</section>
+<!-- END: RightSection -->
+</div>
+<!-- END: MainContentGrid -->
+</div>
+<!-- END: MainContainer -->
+<!-- JavaScript: Realtime Main Canvas Graph & Sparklines -->
+<script data-purpose="traffic-canvas-chart">
+  (function initTrafficChart() {
+    const canvas = document.getElementById('trafficCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const maxPoints = 85;
+    const downloadHistory = [];
+    const uploadHistory = [];
+
+    for (let i = 0; i < maxPoints; i++) {
+      let downVal = 30 + Math.sin(i * 0.4) * 15 + Math.random() * 45;
+      if (i % 7 === 0) downVal += Math.random() * 70;
+      if (i % 13 === 0) downVal += Math.random() * 90;
+      let upVal = 3 + Math.random() * 4 + (Math.sin(i * 0.3) > 0.5 ? 4 : 0);
+
+      downloadHistory.push(Math.min(195, Math.max(10, downVal)));
+      uploadHistory.push(Math.min(25, Math.max(1.5, upVal)));
+    }
+
+    function drawChart() {
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      const paddingLeft = 32;
+      const paddingBottom = 20;
+      const paddingTop = 10;
+      const paddingRight = 10;
+
+      const graphW = width - paddingLeft - paddingRight;
+      const graphH = height - paddingTop - paddingBottom;
+      const maxScaleY = 200;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Y-axis grid & labels (Clean monochrome)
+      const ySteps = [0, 50, 100, 150, 200];
+      ctx.strokeStyle = '#1e222a';
+      ctx.fillStyle = '#71717a';
+      ctx.font = '9px JetBrains Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 1;
+
+      ySteps.forEach(val => {
+        const y = paddingTop + graphH - (val / maxScaleY) * graphH;
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, y);
+        ctx.lineTo(width - paddingRight, y);
+        ctx.stroke();
+        ctx.fillText(val.toString(), paddingLeft - 5, y);
+      });
+
+      // X-axis time labels
+      const timeLabels = ['23.58.30', '23.59.00', '23.59.30', '00.00.00', '00.00.30', '00.01.00', '00.01.30', '00.02.00', '00.02.30', '00.03.00'];
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const stepX = graphW / (timeLabels.length - 1);
+      timeLabels.forEach((label, idx) => {
+        const x = paddingLeft + idx * stepX;
+        ctx.beginPath();
+        ctx.strokeStyle = '#161920';
+        ctx.moveTo(x, paddingTop);
+        ctx.lineTo(x, paddingTop + graphH);
+        ctx.stroke();
+        ctx.fillText(label, x, paddingTop + graphH + 5);
+      });
+
+      function getCoords(dataArr) {
+        const pts = [];
+        const dx = graphW / (dataArr.length - 1);
+        for (let i = 0; i < dataArr.length; i++) {
+          const x = paddingLeft + i * dx;
+          const y = paddingTop + graphH - (dataArr[i] / maxScaleY) * graphH;
+          pts.push({ x, y });
+        }
+        return pts;
+      }
+
+      const downPoints = getCoords(downloadHistory);
+      const upPoints = getCoords(uploadHistory);
+
+      // Download Area & Line (Subtle Cyan for function)
+      if (downPoints.length > 1) {
+        const grad = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphH);
+        grad.addColorStop(0, 'rgba(56, 189, 248, 0.2)');
+        grad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+        ctx.beginPath();
+        ctx.moveTo(downPoints[0].x, paddingTop + graphH);
+        for (let i = 0; i < downPoints.length; i++) {
+          ctx.lineTo(downPoints[i].x, downPoints[i].y);
+        }
+        ctx.lineTo(downPoints[downPoints.length - 1].x, paddingTop + graphH);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(downPoints[0].x, downPoints[0].y);
+        for (let i = 1; i < downPoints.length; i++) {
+          ctx.lineTo(downPoints[i].x, downPoints[i].y);
+        }
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+
+      // Upload Area & Line (Subtle Amber/Orange)
+      if (upPoints.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(upPoints[0].x, upPoints[0].y);
+        for (let i = 1; i < upPoints.length; i++) {
+          ctx.lineTo(upPoints[i].x, upPoints[i].y);
+        }
+        ctx.strokeStyle = '#fb923c';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    }
+
+    function updateData() {
+      let lastDown = downloadHistory[downloadHistory.length - 1];
+      let delta = (Math.random() - 0.48) * 35;
+      let newDown = Math.min(178, Math.max(22, lastDown + delta));
+      if (Math.random() > 0.85) newDown = 110 + Math.random() * 60;
+      let newUp = 3.5 + Math.random() * 4.2;
+
+      downloadHistory.shift();
+      downloadHistory.push(newDown);
+
+      uploadHistory.shift();
+      uploadHistory.push(newUp);
+
+      const downElem = document.getElementById('traffic-download-val');
+      const upElem = document.getElementById('traffic-upload-val');
+
+      if (downElem) downElem.textContent = newDown.toFixed(1).replace('.', ',') + ' Mbps';
+      if (upElem) upElem.textContent = newUp.toFixed(1).replace('.', ',') + ' Mbps';
+
+      drawChart();
+    }
+
+    drawChart();
+    setInterval(updateData, 1200);
+
+    // Clock
+    setInterval(() => {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      const clockElem = document.getElementById('header-clock');
+      if (clockElem) clockElem.textContent = `${hrs}.${mins}.${secs}`;
+
+      const latencyElem = document.getElementById('header-latency');
+      if (latencyElem) {
+        const lat = Math.floor(1930 + Math.random() * 30);
+        latencyElem.textContent = `${lat} ms`;
+      }
+    }, 1000);
+
+    // Refresh Button
+    const btnRefresh = document.getElementById('btn-refresh');
+    const refreshIcon = document.getElementById('refresh-icon');
+    if (btnRefresh && refreshIcon) {
+      btnRefresh.addEventListener('click', () => {
+        refreshIcon.classList.add('animate-spin');
+        setTimeout(() => {
+          updateData();
+          refreshIcon.classList.remove('animate-spin');
+        }, 450);
+      });
+    }
+  })();
+
+  // Sparklines for 5 Interface Cards
+  (function initPortSparklines() {
+    const portConfigs = [
+      { id: 'portCanvas-1', rxElem: 'port-1-rx', txElem: 'port-1-tx', baseRx: 34.2, baseTx: 3.1, maxScale: 60, rxUnit: 'M', txUnit: 'M' },
+      { id: 'portCanvas-2', rxElem: 'port-2-rx', txElem: 'port-2-tx', baseRx: 11.2, baseTx: 1.6, maxScale: 25, rxUnit: 'M', txUnit: 'M' },
+      { id: 'portCanvas-3', rxElem: 'port-3-rx', txElem: 'port-3-tx', baseRx: 3.4, baseTx: 35.0, maxScale: 60, rxUnit: 'M', txUnit: 'M' },
+      { id: 'portCanvas-4', rxElem: 'port-4-rx', txElem: 'port-4-tx', baseRx: 126, baseTx: 344, maxScale: 550, rxUnit: 'K', txUnit: 'K' },
+      { id: 'portCanvas-5', rxElem: 'port-5-rx', txElem: 'port-5-tx', baseRx: 102, baseTx: 85, maxScale: 180, rxUnit: 'K', txUnit: 'K' }
+    ];
+
+    const sparklineData = portConfigs.map(cfg => {
+      const rxHistory = [];
+      const txHistory = [];
+      const length = 26;
+      for (let i = 0; i < length; i++) {
+        rxHistory.push(cfg.baseRx * (0.8 + Math.random() * 0.4));
+        txHistory.push(cfg.baseTx * (0.8 + Math.random() * 0.4));
+      }
+      return { ...cfg, rxHistory, txHistory };
+    });
+
+    function renderSparkline(item) {
+      const canvas = document.getElementById(item.id);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = '#1b1f28';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+
+      const len = item.rxHistory.length;
+      const dx = w / (len - 1);
+
+      // Rx (subtle sky/white)
+      ctx.beginPath();
+      item.rxHistory.forEach((val, i) => {
+        const x = i * dx;
+        const y = h - (Math.min(val, item.maxScale) / item.maxScale) * (h - 6) - 3;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Tx (subtle warm orange)
+      ctx.beginPath();
+      item.txHistory.forEach((val, i) => {
+        const x = i * dx;
+        const y = h - (Math.min(val, item.maxScale) / item.maxScale) * (h - 6) - 3;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#fb923c';
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+    }
+
+    function updateSparklines() {
+      sparklineData.forEach(item => {
+        let lastRx = item.rxHistory[item.rxHistory.length - 1];
+        let lastTx = item.txHistory[item.txHistory.length - 1];
+
+        let newRx = Math.max(0.1, lastRx + (Math.random() - 0.5) * (item.baseRx * 0.15));
+        let newTx = Math.max(0.1, lastTx + (Math.random() - 0.5) * (item.baseTx * 0.15));
+
+        item.rxHistory.shift();
+        item.rxHistory.push(newRx);
+
+        item.txHistory.shift();
+        item.txHistory.push(newTx);
+
+        const rxEl = document.getElementById(item.rxElem);
+        const txEl = document.getElementById(item.txElem);
+        if (rxEl) rxEl.textContent = `Rx ${newRx.toFixed(1)}${item.rxUnit}`;
+        if (txEl) txEl.textContent = `Tx ${newTx.toFixed(1)}${item.txUnit}`;
+
+        renderSparkline(item);
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      sparklineData.forEach(renderSparkline);
+    });
+
+    setTimeout(() => {
+      sparklineData.forEach(renderSparkline);
+    }, 50);
+
+    setInterval(updateSparklines, 1400);
+  })();
+</script>
+<!-- Lucide Icon Renderer Initialization -->
+<script data-purpose="icons-initializer">
+  document.addEventListener("DOMContentLoaded", function() {
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  });
+</script>
+
+
+</body></html>

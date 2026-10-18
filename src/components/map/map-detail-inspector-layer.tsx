@@ -34,6 +34,9 @@ export interface MapDetailInspectorLayerProps {
   onCancelInfraMove: () => void;
   onSaveInfraMove: () => Promise<boolean | void> | void;
   onDeleteInfra: () => Promise<boolean | void> | void;
+  infraList?: { id: string; name: string; type: string }[];
+  onSetParent?: (parentId: string | null) => Promise<void>;
+  isSettingParent?: boolean;
 }
 
 /**
@@ -58,6 +61,9 @@ export function MapDetailInspectorLayer({
   onCancelInfraMove,
   onSaveInfraMove,
   onDeleteInfra,
+  infraList,
+  onSetParent,
+  isSettingParent,
 }: MapDetailInspectorLayerProps) {
   // Jika tidak ada entitas terpilih dan tidak ada notifikasi aksi, jangan render apapun
   const hasActiveContent =
@@ -135,6 +141,9 @@ export function MapDetailInspectorLayer({
             isSavingMove={infraMove.isSaving}
             onDelete={onDeleteInfra}
             isDeleting={infraMove.isDeleting}
+            infraList={infraList}
+            onSetParent={onSetParent}
+            isSettingParent={isSettingParent}
           />
         </div>
       )}

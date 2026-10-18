@@ -14,18 +14,18 @@ export default async function OnboardingPage() {
   return (
     <div
       data-testid="onboarding-page"
-      className="mx-auto flex max-w-7xl flex-col gap-6"
+      className="flex w-full flex-col gap-6"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Pusat Onboarding & Tutorial Wajib
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Panduan terstruktur menjalankan aplikasi dari nol, gerbang konfigurasi perangkat wajib, serta modul integrasi bertahap hingga siap go-live.
-          </p>
+          <MockDataNotice source="alur onboarding & panduan tutorial" />
         </div>
-        <MockDataNotice source="alur onboarding & panduan tutorial" />
+        <p className="text-sm text-muted-foreground">
+          Panduan terstruktur menjalankan aplikasi dari nol, gerbang konfigurasi perangkat wajib, serta modul integrasi bertahap hingga siap go-live.
+        </p>
       </div>
 
       <PageTipsPanel />

@@ -54,6 +54,29 @@ export interface MikrotikInterface {
   comment: string;
 }
 
+export interface MikrotikPppActive {
+  id: string;
+  name: string;
+  service: string;
+  callerId: string;
+  address: string;
+  uptime: string;
+  sessionId?: string;
+  radius?: boolean;
+}
+
+export interface MikrotikPingPacket {
+  seq: number;
+  host: string;
+  size: number;
+  ttl: number;
+  time: string;
+  packetLoss: number;
+  minRtt?: string;
+  avgRtt?: string;
+  maxRtt?: string;
+}
+
 export interface MikrotikTestResult {
   ok: boolean;
   latencyMs: number;
@@ -67,13 +90,12 @@ export interface MikrotikTestResult {
 }
 
 const DEFAULT_TIMEOUT_MS = 8000;
-const LABEL = "router";
 
 type Raw = Record<string, unknown>;
 const str = (v: unknown, d = "") => (typeof v === "string" ? v : d);
-const num = (v: unknown) => {
+const num = (v: unknown, d = 0) => {
   const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : d;
 };
 // RouterOS REST mengirim boolean sebagai string "true"/"false".
 const bool = (v: unknown) => v === true || v === "true";
@@ -175,7 +197,7 @@ export class MikrotikRestClient {
     return r.ok ? null : new DeviceConnectionError(r.code ?? "CONNECTION_FAILED", r.message);
   }
 
-  private async request(path: string): Promise<unknown> {
+  private async request(path: string, method = "GET", body?: unknown): Promise<unknown> {
     // 8728/8729 adalah API biner RouterOS: fetch ke sana hanya macet atau ditolak.
     if (API_PROTOCOL_PORTS.has(this.target.port)) {
       throw new MikrotikError(
@@ -192,9 +214,17 @@ export class MikrotikRestClient {
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     try {
       const auth = Buffer.from(`${this.opts.username}:${this.opts.password}`).toString("base64");
+      const headers: Record<string, string> = {
+        Authorization: `Basic ${auth}`,
+        Accept: "application/json",
+      };
+      if (body) {
+        headers["Content-Type"] = "application/json";
+      }
       const res = await fetch(new URL(path, this.url), {
-        method: "GET",
-        headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
         signal: ctrl.signal,
         redirect: "manual", // anti-SSRF: jangan ikuti redirect
       });
@@ -300,5 +330,61 @@ export class MikrotikRestClient {
     }
     const data = await this.request("/rest/interface");
     return Array.isArray(data) ? (data as Raw[]).map(toInterface) : [];
+  }
+
+  async getPppActive(): Promise<MikrotikPppActive[]> {
+    if (this.simulated) {
+      const fail = this.simulatorFailure();
+      if (fail) throw fail;
+      return Array.from({ length: 67 }, (_, i) => ({
+        id: `*${(i + 1).toString(16).toUpperCase()}`,
+        name: `1706000${1100 + i}@runsnet.id`,
+        service: "pppoe",
+        callerId: `98:7D:DD:6D:${((i + 10) % 256).toString(16).padStart(2, "0").toUpperCase()}:A7`,
+        address: `172.16.15.${254 - (i % 250)}`,
+        uptime: `${Math.floor(i / 10) + 1}h${(i * 7) % 60}m`,
+      }));
+    }
+    const data = await this.request("/rest/ppp/active");
+    if (!Array.isArray(data)) return [];
+    return (data as Raw[]).map((d) => ({
+      id: str(d[".id"]),
+      name: str(d["name"]),
+      service: str(d["service"], "pppoe"),
+      callerId: str(d["caller-id"]),
+      address: str(d["address"]),
+      uptime: str(d["uptime"]),
+      sessionId: str(d["session-id"]),
+      radius: bool(d["radius"]),
+    }));
+  }
+
+  async ping(target: string, count = 3): Promise<MikrotikPingPacket[]> {
+    if (this.simulated) {
+      const fail = this.simulatorFailure();
+      if (fail) throw fail;
+      return Array.from({ length: count }, (_, i) => ({
+        seq: i,
+        host: target,
+        size: 56,
+        ttl: 64,
+        time: `${(1.2 + i * 0.1).toFixed(2)}ms`,
+        packetLoss: 0,
+        avgRtt: "1.35ms",
+      }));
+    }
+    const data = await this.request("/rest/tool/ping", "POST", { address: target, count });
+    if (!Array.isArray(data)) return [];
+    return (data as Raw[]).map((d) => ({
+      seq: num(d["seq"]),
+      host: str(d["host"], target),
+      size: num(d["size"], 56),
+      ttl: num(d["ttl"], 64),
+      time: str(d["time"]),
+      packetLoss: num(d["packet-loss"]),
+      minRtt: str(d["min-rtt"]),
+      avgRtt: str(d["avg-rtt"]),
+      maxRtt: str(d["max-rtt"]),
+    }));
   }
 }

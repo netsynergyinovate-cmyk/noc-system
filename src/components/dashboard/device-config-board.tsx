@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useSyncExternalStore } from "react";
 import {
@@ -167,32 +167,29 @@ export function DeviceConfigBoard() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Halaman */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Pengaturan &amp; Integrasi Perangkat
-            </h1>
-            <Badge variant={globalMode === "simulator" ? "secondary" : "default"}>
-              {globalMode === "simulator" ? "Mode Simulator" : "Mode Perangkat Fisik"}
-            </Badge>
+      <div className="flex flex-col gap-2 border-b pb-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Pengaturan &amp; Integrasi Perangkat
+          </h1>
+          <Badge variant={globalMode === "simulator" ? "secondary" : "default"}>
+            {globalMode === "simulator" ? "Mode Simulator" : "Mode Perangkat Fisik"}
+          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleTestAll}
+              disabled={isAllTesting}
+              className="gap-2"
+            >
+              <RefreshCw className={`size-4 ${isAllTesting ? "animate-spin" : ""}`} />
+              <span>{isAllTesting ? "Menguji Semua..." : "Uji Koneksi Terpadu"}</span>
+            </Button>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Konfigurasi koneksi MikroTik REST, OLT HSGQ, GenieACS NBI, dan portal billing berbasis environment variable.
-          </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            onClick={handleTestAll}
-            disabled={isAllTesting}
-            className="gap-2"
-          >
-            <RefreshCw className={`size-4 ${isAllTesting ? "animate-spin" : ""}`} />
-            <span>{isAllTesting ? "Menguji Semua..." : "Uji Koneksi Terpadu"}</span>
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Konfigurasi koneksi MikroTik REST, OLT HSGQ, GenieACS NBI, dan portal billing berbasis environment variable.
+        </p>
       </div>
 
       <DeviceModeSwitch onModeChange={handleModeChange} />

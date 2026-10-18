@@ -1,28 +1,22 @@
 import type { Metadata } from "next";
-import { BillingBoard } from "@/components/dashboard/billing-board";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
+import { RunsnetBillingBoard } from "@/components/dashboard/runsnet-billing-board";
 import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Status Billing" };
+export const metadata: Metadata = { title: "Billing & Tagihan RunsNet" };
 
 export default async function BillingPage() {
   await requireSession();
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Status Billing
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Status pembayaran tiap pelanggan, Lunas atau Isolir, disinkronkan
-            otomatis dari sistem billing dan dicocokkan lewat nama koneksi
-            PPPoE.
-          </p>
-        </div>
-        <MockDataNotice source="sistem billing" />
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl text-white">
+          Sistem Billing &amp; Tagihan Pelanggan
+        </h1>
+        <p className="text-sm text-zinc-400">
+          Sinkronisasi operasional nyata dengan aplikasi billing <span className="font-mono text-zinc-300">app.runsnet.id</span> (Mitra Net Synergy Inovate). Menarik data Pelanggan, Invoice, dan Riwayat Pembayaran ke database lokal PostgreSQL.
+        </p>
       </div>
-      <BillingBoard />
+      <RunsnetBillingBoard />
     </div>
   );
 }

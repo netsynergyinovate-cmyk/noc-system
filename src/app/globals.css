@@ -121,6 +121,53 @@
   filter: none !important;
 }
 
+/* Penskalaan Vektor Tajam Garis Kabel & Topologi Leaflet (Zoom-Proof Crisp Vectors) */
+.leaflet-pane svg path {
+  shape-rendering: geometricPrecision !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  vector-effect: non-scaling-stroke;
+}
+
+.sharp-cable-polyline {
+  shape-rendering: geometricPrecision !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-miterlimit: 4 !important;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.45));
+}
+
+.cable-halo-polyline {
+  shape-rendering: geometricPrecision !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  vector-effect: non-scaling-stroke;
+  filter: blur(0.5px);
+}
+
+.leaflet-zoom-animated svg {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Target Sentuh Ergonomis Kontrol Leaflet di Layar Kecil (Touchscreen Friendly) */
+@media (max-width: 767px) {
+  .leaflet-bar a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+  }
+  .leaflet-touch .leaflet-bar a {
+    width: 38px !important;
+    height: 38px !important;
+    line-height: 38px !important;
+    font-size: 20px !important;
+  }
+}
+
 
 /* uPlot menggambar di canvas; hanya kotak info kursor yang perlu gaya. */
 .traffic-tip {

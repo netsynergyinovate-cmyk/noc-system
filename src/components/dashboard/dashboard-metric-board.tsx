@@ -39,15 +39,19 @@ function MiniStat({
   hint?: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <Icon
-        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-        aria-hidden="true"
-      />
+    <div className="flex items-center gap-2.5">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
+        <Icon
+          className="size-3.5 text-muted-foreground"
+          aria-hidden="true"
+        />
+      </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-semibold tabular-nums">{value}</p>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
+        <div className="flex items-baseline gap-1.5 mt-1">
+          <span className="text-sm font-semibold tabular-nums text-foreground">{value}</span>
+          {hint && <span className="text-[10px] text-muted-foreground/80 leading-none">({hint})</span>}
+        </div>
       </div>
     </div>
   );
@@ -103,7 +107,7 @@ export function DashboardMetricBoard() {
       )}
       <section
         aria-label="Ringkasan jaringan"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
         <MetricCard
           label="Pelanggan online"
@@ -134,24 +138,24 @@ export function DashboardMetricBoard() {
         />
       </section>
 
-      <Card data-testid="metric-board-summary">
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Ringkasan terpadu</h2>
+      <Card data-testid="metric-board-summary" className="py-2.5 px-4 shadow-2xs">
+        <CardContent className="p-0 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2 shrink-0">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan terpadu</h2>
             {isMetricBoardMockActive(m.sourceStatus) && (
               <p
                 data-testid="metric-mock-badge"
-                className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
+                className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning"
               >
-                <FlaskConical className="size-3.5" aria-hidden="true" />
+                <FlaskConical className="size-3" aria-hidden="true" />
                 Data Tiruan (Fase 2)
-                <span className="font-normal">
+                <span className="hidden sm:inline font-normal">
                   · Wajib beralih ke backend nyata di Fase 5
                 </span>
               </p>
             )}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
             <MiniStat
               Icon={ArrowDownToLine}
               label="Total traffic masuk"

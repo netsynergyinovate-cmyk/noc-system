@@ -170,25 +170,23 @@ export function SimpleQueueBoard() {
   ];
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div className="flex flex-col gap-3">
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
         <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5" asChild>
           <Link href="/app/router">
             <ArrowLeft className="size-4" aria-hidden="true" />
             Kembali ke Kelola Router
           </Link>
         </Button>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Daftar Simple Queue MikroTik
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manajemen limitasi bandwidth, prioritas paket, dan pemantauan trafik per IP target/pelanggan.
-          </p>
-        </div>
-        <div>
           <MockDataNotice source="REST API RouterOS v7 (/rest/queue/simple)" />
         </div>
+        <p className="text-sm text-muted-foreground">
+          Manajemen limitasi bandwidth, prioritas paket, dan pemantauan trafik per IP target/pelanggan.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

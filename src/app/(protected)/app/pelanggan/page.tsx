@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { MapPin } from "lucide-react";
 import { BillingSyncChip } from "@/components/dashboard/billing-sync-chip";
 import { CustomerTable } from "@/components/dashboard/customer-table";
 import { requireSession } from "@/lib/session";
@@ -16,18 +19,27 @@ export default async function PelangganPage({
   const focusId = readFocusId((await searchParams).focus);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       {focusId && <MapFocusFromUrl customerId={focusId} />}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Daftar Pelanggan
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Daftar Pelanggan
+            </h1>
+            <BillingSyncChip />
+          </div>
+          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            <Link href="/app/pelanggan/peta">
+              <MapPin className="size-3.5 text-primary" />
+              <span>Lihat Peta Pelanggan</span>
+            </Link>
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
           Kelola perangkat pelanggan (CPE) dan pantau status koneksi, sinyal, serta tagihan.
         </p>
       </div>
-      {/* Seberapa baru status tagihan di tabel ini: sinkron billing terakhir. */}
-      <BillingSyncChip />
       <CustomerTable />
     </div>
   );

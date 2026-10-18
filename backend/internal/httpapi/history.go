@@ -41,6 +41,7 @@ const (
 // historyRanges adalah pintasan `range`: jendela yang berakhir sekarang. Nama
 // sama dengan pemilih rentang di dashboard.
 var historyRanges = map[string]time.Duration{
+	"5m":  5 * time.Minute,
 	"1h":  time.Hour,
 	"6h":  6 * time.Hour,
 	"24h": 24 * time.Hour,
@@ -175,7 +176,7 @@ func (a *historyAPI) window(params url.Values) (from, to int64, err error) {
 		}
 		span, ok := historyRanges[rangeName]
 		if !ok {
-			return 0, 0, fmt.Errorf("range harus salah satu dari 1h, 6h, 24h, 7d, 30d")
+			return 0, 0, fmt.Errorf("range harus salah satu dari 5m, 1h, 6h, 24h, 7d, 30d")
 		}
 		to = now.Unix()
 		return to - int64(span/time.Second), to, nil

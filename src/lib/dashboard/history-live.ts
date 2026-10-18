@@ -16,10 +16,11 @@ interface HistoryResponse {
 // "live" tidak lewat sini (datang dari WebSocket). Insiden belum ada sumbernya
 // di sini, jadi kosong; jangan diisi data tiruan di mode live.
 export async function loadLiveTrafficHistory(
-  rangeId: Exclude<TrafficRangeId, "live">,
+  rangeId: TrafficRangeId,
 ): Promise<TrafficHistory> {
+  const queryRange = rangeId === "live" ? "5m" : rangeId;
   const body = await backendGet<HistoryResponse>("/api/v1/traffic/history", {
-    range: rangeId,
+    range: queryRange,
   });
   const times = Array.isArray(body.times) ? body.times : [];
   return {

@@ -41,7 +41,7 @@ export default async function PonPortPage({ params }: { params: Promise<{ id: st
   const ratio = pon.totalOnu > 0 ? Math.round((pon.onlineOnu / pon.totalOnu) * 100) : 0;
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <Link
         href="/app/cpe"
         className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -50,33 +50,33 @@ export default async function PonPortPage({ params }: { params: Promise<{ id: st
         Kembali ke OLT &amp; CPE
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Detail Port PON 1/1/{pon.ponIndex}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{pon.oltName}</span>
-            <Badge
-              variant="outline"
-              className={
-                pon.status === "up"
-                  ? "border-success/40 bg-success/10 text-success"
-                  : "border-destructive/40 bg-destructive/10 text-destructive"
-              }
-            >
-              {pon.status === "up" ? "UP" : "DOWN"}
-            </Badge>
-            <span className="font-mono text-xs">Host: {pon.oltHost}</span>
-            <span className="text-xs">
-              Waktu sinkronisasi data:{" "}
-              <time dateTime={new Date(pon.syncedAt * 1000).toISOString()} className="font-medium text-foreground">
-                {syncFormat.format(new Date(pon.syncedAt * 1000))} WIB
-              </time>
-            </span>
-          </div>
+          <Badge
+            variant="outline"
+            className={
+              pon.status === "up"
+                ? "border-success/40 bg-success/10 text-success"
+                : "border-destructive/40 bg-destructive/10 text-destructive"
+            }
+          >
+            {pon.status === "up" ? "UP" : "DOWN"}
+          </Badge>
+          {pon.source !== "db" && <MockDataNotice source="sensor optik OLT" />}
         </div>
-        {pon.source !== "db" && <MockDataNotice source="sensor optik OLT" />}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{pon.oltName}</span>
+          <span className="font-mono text-xs">Host: {pon.oltHost}</span>
+          <span className="text-xs">
+            Waktu sinkronisasi data:{" "}
+            <time dateTime={new Date(pon.syncedAt * 1000).toISOString()} className="font-medium text-foreground">
+              {syncFormat.format(new Date(pon.syncedAt * 1000))} WIB
+            </time>
+          </span>
+        </div>
       </div>
 
       {pon.status === "down" && (

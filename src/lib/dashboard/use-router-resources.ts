@@ -8,8 +8,8 @@ import type { MockRouterDetail } from "./routers.ts";
 // Dipakai tabel router dan panel ringkasan; satu pemanggilan dipakai bersama
 // supaya router tidak ditanya dua kali tiap putaran.
 
-const REFRESH_MS = 10_000;
-const SHARE_WINDOW_MS = 3_000;
+const REFRESH_MS = 2_500;
+const SHARE_WINDOW_MS = 1_000;
 
 let shared: { at: number; promise: Promise<MockRouterDetail[]> } | null = null;
 
@@ -27,7 +27,7 @@ function fetchResources(force: boolean): Promise<MockRouterDetail[]> {
   return promise;
 }
 
-export function useRouterResources(enabled: boolean) {
+export function useRouterResources(enabled: boolean, intervalMs = REFRESH_MS) {
   const [items, setItems] = useState<MockRouterDetail[] | null>(null);
   const [failed, setFailed] = useState(false);
   const alive = useRef(true);
@@ -55,13 +55,13 @@ export function useRouterResources(enabled: boolean) {
     if (!enabled) return;
     // Pemuatan pertama dijadwalkan, bukan dipanggil langsung di badan efek.
     const first = setTimeout(() => void load(false), 0);
-    const timer = setInterval(() => void load(false), REFRESH_MS);
+    const timer = setInterval(() => void load(false), intervalMs);
     return () => {
       alive.current = false;
       clearTimeout(first);
       clearInterval(timer);
     };
-  }, [enabled, load]);
+  }, [enabled, intervalMs, load]);
 
   return { items, failed, refresh: () => load(true) };
 }

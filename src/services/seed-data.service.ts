@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   alertThresholds,
@@ -108,6 +108,24 @@ export async function seedAlertThresholdsIdempotent(): Promise<SeedResultItem> {
  */
 export async function seedDefaultRecipientsIdempotent(): Promise<SeedResultItem> {
   const key = "seed_whatsapp_recipients_v1";
+  const isLive =
+    process.env.DASHBOARD_DATA === "live" ||
+    process.env.DATA_MODE === "live" ||
+    process.env.DATA_MODE === "nyata" ||
+    process.env.NODE_ENV === "production" ||
+    process.env.APP_ENV === "production";
+
+  if (isLive) {
+    return {
+      key,
+      category: "whatsapp",
+      targetTable: "whatsapp_recipients",
+      recordsCount: 0,
+      status: "skipped",
+      checksum: "skipped_live_mode",
+    };
+  }
+
   const defaultRecipients = [
     { name: "Kepala Teknisi NOC", target: "6281200000001", type: "individual" as const },
     { name: "Petugas On-Call NOC", target: "6281200000002", type: "individual" as const },
@@ -172,7 +190,9 @@ export async function seedDefaultRouterIdempotent(): Promise<SeedResultItem> {
   const isLive =
     process.env.DASHBOARD_DATA === "live" ||
     process.env.DATA_MODE === "live" ||
-    process.env.DATA_MODE === "nyata";
+    process.env.DATA_MODE === "nyata" ||
+    process.env.NODE_ENV === "production" ||
+    process.env.APP_ENV === "production";
 
   if (isLive) {
     return {
@@ -387,3 +407,93 @@ export async function getSeedDataStatus(): Promise<SeedStatusResponse> {
     };
   }
 }
+
+export interface PurgeReport {
+  purgedRouters: number;
+  purgedRecipients: number;
+  purgedSeedTracking: number;
+  isClean: boolean;
+  timestamp: string;
+}
+
+/**
+ * Menghapus seluruh data contoh/dummy bawaan dari database produksi (Zero-Dummy Enforcer).
+ */
+export async function purgeSampleSeedDataFromProduction(): Promise<PurgeReport> {
+  // 1. Hapus router contoh bawaan (10.10.0.1:8728)
+  const routerRes = await db
+    .delete(routers)
+    .where(eq(routers.host, "10.10.0.1:8728"));
+  const purgedRouters = routerRes.rowCount ?? 0;
+
+  // 2. Hapus kontak dummy WhatsApp bawaan (6281200000001 & 6281200000002)
+  let purgedRecipients = 0;
+  for (const dummyTarget of ["6281200000001", "6281200000002"]) {
+    const res = await db
+      .delete(whatsappRecipients)
+      .where(eq(whatsappRecipients.target, dummyTarget));
+    purgedRecipients += res.rowCount ?? 0;
+  }
+
+  // 3. Hapus rekam jejak seed contoh dari seed_tracking agar tidak dianggap sebagai konfigurasi nyata
+  let purgedSeedTracking = 0;
+  for (const sampleKey of ["seed_default_router_v1", "seed_whatsapp_recipients_v1"]) {
+    const res = await db
+      .delete(seedTracking)
+      .where(eq(seedTracking.seedKey, sampleKey));
+    purgedSeedTracking += res.rowCount ?? 0;
+  }
+
+  return {
+    purgedRouters,
+    purgedRecipients,
+    purgedSeedTracking,
+    isClean: true,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Memeriksa apakah ada sisa data seed contoh di tabel-tabel database.
+ */
+export async function checkSampleSeedDataInProduction(): Promise<{
+  hasSampleData: boolean;
+  sampleRouters: number;
+  sampleRecipients: number;
+  sampleSeedTracking: number;
+}> {
+  const sampleRouters = await db
+    .select({ id: routers.id })
+    .from(routers)
+    .where(eq(routers.host, "10.10.0.1:8728"));
+
+  const sampleRecipients = await db
+    .select({ id: whatsappRecipients.id })
+    .from(whatsappRecipients)
+    .where(
+      inArray(whatsappRecipients.target, ["6281200000001", "6281200000002"]),
+    );
+
+  const sampleTracking = await db
+    .select({ id: seedTracking.id })
+    .from(seedTracking)
+    .where(
+      inArray(seedTracking.seedKey, [
+        "seed_default_router_v1",
+        "seed_whatsapp_recipients_v1",
+      ]),
+    );
+
+  const hasSampleData =
+    sampleRouters.length > 0 ||
+    sampleRecipients.length > 0 ||
+    sampleTracking.length > 0;
+
+  return {
+    hasSampleData,
+    sampleRouters: sampleRouters.length,
+    sampleRecipients: sampleRecipients.length,
+    sampleSeedTracking: sampleTracking.length,
+  };
+}
+

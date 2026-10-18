@@ -9,18 +9,18 @@ export default async function TrafficPage() {
   await requireSession();
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Trafik &amp; Tren Bandwidth
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Trafik &amp; Tren Bandwidth
+          </h1>
+          <MockDataNotice source="sampel trafik MikroTik" real />
+        </div>
+        <p className="text-sm text-muted-foreground">
           Pemantauan throughput bandwidth unduh/unggah real-time dan analisis utilisasi kapasitas
           link interface.
         </p>
-      </div>
-      <div>
-        <MockDataNotice source="sampel trafik MikroTik" real />
       </div>
       <TrafficTrendBoard nowSec={Math.floor(Date.now() / 1000)} />
     </div>

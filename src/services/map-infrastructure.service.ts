@@ -300,6 +300,18 @@ export async function deleteInfrastructurePoint(
   };
 }
 
+export async function updateInfrastructureParent(
+  id: string,
+  parentId: string | null,
+): Promise<{ id: string; parentId: string | null }> {
+  if (!id) throw new Error("ID perangkat tidak valid.");
+  await db
+    .update(networkInfrastructure)
+    .set({ parentId })
+    .where(eq(networkInfrastructure.id, id));
+  return { id, parentId };
+}
+
 export async function getNetworkInfrastructureList(): Promise<NetworkInfrastructurePoint[]> {
   try {
     const rows = await db

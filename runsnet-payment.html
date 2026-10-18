@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="author" content="PuffinTheme the theme designer">
+    <link rel="icon" href="../assets/images/rubyan.png" type="image/x-icon" />
+    <title>:: Next-Gen RunsNet ::</title>
+    <link rel="stylesheet" href="../assets/plugins/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="../assets/plugins/charts-c3/c3.min.css" />
+    <link rel="stylesheet" href="../assets/plugins/jvectormap/jvectormap-2.0.3.css" />
+    <link rel="stylesheet" href="../assets/plugins/datatable/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="../assets/plugins/datatable/fixedeader/dataTables.fixedcolumns.bootstrap4.min.css">
+    <link rel="stylesheet" href="../assets/plugins/datatable/fixedeader/dataTables.fixedheader.bootstrap4.min.css">
+    <link rel="stylesheet" href="../assets/plugins/bootstrap-colorpicker/css/bootstrap-colorpicker.css" />
+    <link rel="stylesheet" href="../assets/plugins/bootstrap-datepicker/css/bootstrap-datepicker3.min.css" />
+    <link rel="stylesheet" href="../assets/plugins/summernote/dist/summernote.css" />
+    <link rel="stylesheet" href="../assets/plugins/multi-select/css/multi-select.css">
+    <link rel="stylesheet" href="../assets/plugins/select2/css/select2.min.css">
+    <link rel="stylesheet" href="../assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+    <link rel="stylesheet" href="../assets/plugins/dropify/css/dropify.min.css">
+    <link rel="stylesheet" href="../assets/plugins/morrisjs/morris.css" />
+
+    <!-- MAPS PLUGIN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-search@latest/dist/leaflet-search.min.css">
+
+    <!-- skin css -->
+    <link rel="stylesheet" href="../assets/css/main.css" />
+    <link rel="stylesheet" href="assets/css/theme2.css" />
+    <script src="../assets/bundles/lib.vendor.bundle.js"></script>
+    
+<style>
+    #map {
+        height: 80vh;
+    }
+
+    .tooltip-trigger {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .tooltip-box {
+        visibility: hidden;
+        width: auto;
+        background-color: #333;
+        color: #fff;
+        text-align: left;
+        border-radius: 5px;
+        padding: 10px;
+        position: absolute;
+        z-index: 1;
+        top: 50%;
+        /* Adjust vertical positioning */
+        left: 100%;
+        /* Position to the right of the trigger */
+        transform: translateY(-50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+        white-space: nowrap;
+    }
+
+    .tooltip-box::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 100%;
+        /* Position arrow to the right of the tooltip */
+        margin-top: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: transparent #333 transparent transparent;
+    }
+
+    .tooltip-trigger:hover .tooltip-box {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .tooltip-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .tooltip-table th,
+    .tooltip-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .tooltip-table th {
+        color: white;
+    }
+
+    /* Gaya untuk layar loading */
+    #loading {
+        display: none;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        text-align: center;
+        color: white;
+        font-size: 24px;
+        padding-top: 20%;
+    }
+
+    .blink {
+        animation: blinker 1.5s linear infinite;
+        color: red;
+        font-family: sans-serif;
+    }
+
+    @keyframes blinker {
+        50% {
+            opacity: 0;
+        }
+    }
+
+    body::after {
+        background: url("../assets/images/bg.jpg") top center;
+        background-size: cover;
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: -1;
+    }
+
+
+    .hover-text {
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .hover-text:hover {
+        /* background-color: #e0e0e0; */
+    }
+
+    .hover-text::before {
+        content: attr(data-default);
+    }
+
+    .hover-text:hover::before {
+        content: attr(data-hover);
+    }
+    
+    @media (max-width: 768px) {
+        .CustomeTableDrop .expand-row { cursor: pointer; }
+        .CustomeTableDrop .detail-row { display: none; background: #f9f9f9; }
+        .CustomeTableDrop .detail-table { width: 100%; }
+        .CustomeTableDrop .detail-table td {
+            padding: 6px 10px;
+            vertical-align: top;
+        }
+        .CustomeTableDrop .detail-table td:first-child {
+            width: 35%;
+            font-weight: 600;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .CustomeTableDrop .detail-table td:last-child {
+            text-align: left;
+        }
+    }
+</style></head>
+
+<body class="font-opensans">
+    <!-- Page Loader -->
+    <div class="page-loader-wrapper">
+        <div class="loader"></div>
+    </div>
+    <div id="loading">Processing, Please wait...</div>
+    <!-- End of Page Loader -->
+    <div id="main_content">
+        <div id="header_top" class="header_top dark">
+    <div class="container">
+        <div class="hleft">
+            <a class="header-brand menu_toggle" href="#"><i class="fa fa-dashboard brand-logo"></i></a>
+            <div class="dropdown">
+                <a href="javascript:void(0)" class="nav-link icon xs-hide" onclick="setmenu_utama('previewb', 'LVL06')"><i data-toggle="tooltip" data-placement="right" class="fa fa-calculator" title="Jurnal"></i></a><a href="javascript:void(0)" class="nav-link icon xs-hide" onclick="setmenu_utama('previewc', 'LVL06')"><i data-toggle="tooltip" data-placement="right" class="fa fa-desktop" title="App FTTH"></i></a><a href="javascript:void(0)" class="nav-link icon xs-hide" onclick="setmenu_utama('previewd', 'LVL06')"><i data-toggle="tooltip" data-placement="right" class="fa fa-feed" title="Hotspot"></i></a>            </div>
+        </div>
+        <div class="hright">
+            <div class="dropdown">
+                <!-- <a href="javascript:void(0)" class="nav-link icon theme_btn"><i class="fa fa-paint-brush" data-toggle="tooltip" data-placement="right" title="Themes"></i></a> -->
+                <a href="javascript:void(0)" class="nav-link icon settingbar"><i class="fa fa-gear fa-spin" data-toggle="tooltip" data-placement="right" title="Settings"></i></a>
+                <a href="javascript:void(0)" class="nav-link user_btn"><img class="avatar" src="../assets/imagey/_LOGO_Logo Net.SI.png" alt="" data-toggle="tooltip" data-placement="right" title="User Menu" /></a>
+                <a href="javascript:void(0)" class="nav-link icon menu_toggle"><i class="fa  fa-align-left"></i></a>
+            </div>
+        </div>
+    </div>
+</div><!-- Setting web -->
+
+<div id="rightsidebar" class="right_sidebar">
+    <a href="javascript:void(0)" class="p-3 settingbar float-right"><i class="fa fa-close"></i></a>
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#Settings" aria-expanded="true">Settings</a></li>
+    </ul>
+    <div class="tab-content">
+        <div role="tabpanel" class="tab-pane vivify fadeIn active" id="Settings" aria-expanded="true">
+            <div class="mb-4">
+                <h6 class="font-14 font-weight-bold text-muted">Font Style</h6>
+                <div class="custom-controls-stacked font_setting">
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="font" value="font-opensans" checked="">
+                        <span class="custom-control-label pt-1">Open Sans Font</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="font" value="font-montserrat">
+                        <span class="custom-control-label pt-1">Montserrat Google Font</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="font" value="font-poppins">
+                        <span class="custom-control-label pt-1">Poppins Google Font</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mb-4">
+                <h6 class="font-14 font-weight-bold text-muted">Dropdown Menu Icon</h6>
+                <div class="custom-controls-stacked arrow_option">
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="marrow" value="arrow-a" checked="">
+                        <span class="custom-control-label pt-1">A</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="marrow" value="arrow-b">
+                        <span class="custom-control-label pt-1">B</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="marrow" value="arrow-c">
+                        <span class="custom-control-label pt-1">C</span>
+                    </label>
+                </div>
+                <h6 class="font-14 font-weight-bold mt-4 text-muted">SubMenu List Icon</h6>
+                <div class="custom-controls-stacked list_option">
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="listicon" value="list-a" checked="">
+                        <span class="custom-control-label pt-1">A</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="listicon" value="list-b">
+                        <span class="custom-control-label pt-1">B</span>
+                    </label>
+                    <label class="custom-control custom-radio custom-control-inline">
+                        <input type="radio" class="custom-control-input" name="listicon" value="list-c">
+                        <span class="custom-control-label pt-1">C</span>
+                    </label>
+                </div>
+            </div>
+            <div class="mb-4">
+                <h6 class="font-14 font-weight-bold mt-4 text-muted">General Settings</h6>
+                <ul class="setting-list list-unstyled mt-1 setting_switch">
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Night Mode</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-darkmode">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Fix Navbar top</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-fixnavbar">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Header Dark</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-pageheader">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Min Sidebar Dark</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-min_sidebar">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Sidebar Dark</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-sidebar">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Icon Color</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-iconcolor">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Gradient Color</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-gradient">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Box Shadow</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-boxshadow">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">RTL Support</span>
+                            <input type="checkbox" name="custom-switch-checkbox" class="custom-switch-input btn-rtl">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                    <li>
+                        <label class="custom-switch">
+                            <span class="custom-switch-description">Box Layout</span>
+                            <input type="checkbox" name="custom-switch-checkbox" id="customswitchcheckbox10" class="custom-switch-input btn-boxlayout">
+                            <span class="custom-switch-indicator"></span>
+                        </label>
+                    </li>
+                </ul>
+            </div>
+            <div class="mb-4">
+                <form method="post" enctype="multipart/form-data" id="#" onsubmit="return confirmSubmit();">
+                    <div class="row">
+                        <div class="col-md-12 pb-2">
+                            <b>Background</b>
+                            <input type="file" class="form-control" id="backgroundimg" name="backgroundimg" required="" accept="image/*" onchange="readURL(this, 'file00');">
+                            <img id="file00" src="../assets/images/bg.jpg" alt="your image" />
+                        </div>
+                        <div class='col-12 pt-1 pb-2' align='right'>
+                            <button type="submit" name="backgroundimgupdate" id="backgroundimgupdate" class="btn btn-success"><i class='fa fa-plus-square'></i> <b>Update Background</b></button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profile -->
+
+<div class="user_div">
+    <h5 class="brand-name mb-4">USRID000000000240001<a href="control/bagan_logout.php" class="user_btn"><i class="icon-logout"></i></a></h5>
+    <div class="card">
+        <div class="card-body">
+            <div class="media">
+                <img class="avatar avatar-xl mr-3" src="../assets/imagey/_LOGO_Logo Net.SI.png" alt="avatar">
+                <div class="media-body">
+                    <h5 class="m-0">Net Synergy Inovate</h5>
+                    <p class="text-muted mb-0">Non Karyawan</p>
+                    <p class="text-muted mb-0"><a href='?WmxBZ3o0TVVUd1ZWYlc1TnZhUDVQQT09=Y2MyS24vQ25sdGFOYUU4aEFud0RmZz09'>Profile</a></p>
+                    <ul class="social-links list-inline mb-0 mt-2">
+                        <li class="list-inline-item"><a href="javascript:void(0)" title="" data-toggle="tooltip" data-original-title="Facebook"><i class="fa fa-facebook"></i></a></li>
+                        <li class="list-inline-item"><a href="javascript:void(0)" title="" data-toggle="tooltip" data-original-title="Twitter"><i class="fa fa-twitter"></i></a></li>
+                        <li class="list-inline-item"><a href="javascript:void(0)" title="" data-toggle="tooltip" data-original-title="1234567890"><i class="fa fa-phone"></i></a></li>
+                        <li class="list-inline-item"><a href="javascript:void(0)" title="" data-toggle="tooltip" data-original-title="@skypename"><i class="fa fa-skype"></i></a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="media">
+                <div class="media-body">
+                    <h6 class="m-0">Mitra Net Synergy Inovate</h6>
+                    <p class="text-muted mb-0">ID00000000024</p>
+                    <p class="text-muted mb-0"><a href='?WmxBZ3o0TVVUd1ZWYlc1TnZhUDVQQT09=S00vdmxUSnJEUUJUUW02SHQwR0w3aHQvRjJNOTJ5SzNDSFNJeVNFM0ErND0='>Profile</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="media">
+                <div class="media-body">
+                    <h6 class="m-0">Change Logs</h6>
+                    <p class="text-muted mb-0"><a href='?WmxBZ3o0TVVUd1ZWYlc1TnZhUDVQQT09=dHpXYmcxMUQ3c0IrWU9pbGtuc01qbzNIZitBZ2xzaG1CMWFvVVFxTmxWST0='>Click Here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div><div id="left-sidebar" class="sidebar ">
+    <h5 class="brand-name"><img src="../assets/images/rubyan.png" style="width: 50%;"> <a href="javascript:void(0)" class="menu_option float-right"><i class="icon-grid font-16" data-toggle="tooltip" data-placement="left" title="Grid & List Toggle"></i></a></h5>
+    <nav id="left-sidebar-nav" class="sidebar-nav">
+        <ul class="metismenu" id='metismenu'>
+            <li><a href="#" onclick="setmenu_utama('previewb', 'LVL06')"><i class="fa fa-calculator"></i><span>jurnal</span></a></li><li><a href="#" onclick="setmenu_utama('previewc', 'LVL06')"><i class="fa fa-desktop"></i><span>ftth</span></a></li><li><a href="#" onclick="setmenu_utama('previewd', 'LVL06')"><i class="fa fa-feed"></i><span>hotspot</span></a></li>        </ul>
+    </nav>
+</div>        <div class="page">
+            <div id="page_top" class="section-body">
+    <div class="container-fluid">
+        <div class="page-header">
+            <div class="left">
+                <h1 class="page-title">Mitra Net Synergy Inovate</h1>
+            </div>
+            <div class="right">
+                            </div>
+        </div>
+    </div>
+</div><div class="section-body">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            <ul class="nav nav-tabs page-header-tab">
+                <br>
+                            </ul>
+        </div>
+    </div>
+</div>            <div class="section-body mt-1">
+                <div class="container-fluid">
+                    <div class="tab-content mt-1">
+                        <div class="row clearfix">
+                            <div class="col-12">
+    <div class="row" id="viewheader"></div>
+</div>
+<div class="col-lg-12">
+	<div class="card">
+		<div class="card-body">
+			<div class="row">
+									<div class="col-md-12 pb-2">
+						<div class="input-group-append">
+							<button data-toggle="dropdown" type="button" class="btn btn-primary dropdown-toggle"><i class="fa fa-cogs"></i> Management Action</button>
+							<div class="dropdown-menu dropdown-menu-left">
+								<a class="dropdown-item" href='#' onclick="if(confirm('Apakah sudah yakin dengan data ?')) createreversal();"><b><i class="fa fa-plus-square"></i> Reversal Pembayaran</b></a>
+								<span id='bidingboxcustome'></span>
+								<a class="dropdown-item" href='output/output_ftth_data_payment.php?target=ID00000000024&date1=&date2=' target='_BLANK' id="exportLink"><b><i class="fa fa-file-excel-o"></i> Export Payment</b></a>
+							</div>
+						</div>
+					</div>
+								<div class="col-md-3 pb-2">
+					<div class="form-group m-0">
+						<div class="input-daterange input-group" data-provide="datepicker">
+							<input type="text" class="input-sm form-control" id="filterdata1" value="10/01/2026" onchange="setloaddata()">
+							<span class="input-group-addon range-to">to</span>
+							<input type="text" class="input-sm form-control" id="filterdata2" value="10/16/2026" onchange="setloaddata()">
+						</div>
+					</div>
+				</div>
+				<div class="col-md-2 pb-2">
+					<div class=" multiselect_div">
+						<select id="filterdata4" name="filterdata4" class="form-control multiselect4-filter" onchange="setloaddata()">
+							<option value="">Isi Agent / Koordinator</option>
+													</select>
+					</div>
+				</div>
+			</div>
+			<div class="table-responsive mb-4">
+				<table class="table table-hover table-vcenter text-nowrap js-basic-example dataTable table_custom spacing5 CustomeTableDrop" id="dataku">
+					<thead>
+						<tr>
+							<th class="text-gray"><input type='checkbox' name='select' onclick="toggle(this);"></th>
+							<th class="text-gray">PaymentCode</th>
+							<th class="text-gray">InvoiceCode</th>
+							<th class="text-gray">CustID</th>
+							<th class="text-gray">CustNama</th>
+							<th class="text-gray">Periode</th>
+							<th class="text-gray">PayDate</th>
+							<th class="text-gray">PayAmount</th>
+							<th class="text-gray">Methode</th>
+							<th class="text-gray">Agent</th>
+							<th class="text-gray">Operator</th>
+							<th class="text-gray">Action</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- POP UP DETAIL PELANGGAN -->
+<div class='modal fade' id='viewdata1'>
+	<div class='modal-dialog modal-md'>
+		<div class='modal-content'>
+			<div class='modal-body' style='font-size: 12px;'>
+				<div class='row' id="resultviewdata1">
+					<div class="col-12 text-center"><b>Silakan Pilih data terlebih dahulu !!!</b></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	function toggle(source) {
+		let checkboxes = document
+			.querySelectorAll('input[type="checkbox"]');
+		for (let i = 0; i < checkboxes.length; i++) {
+			if (checkboxes[i] != source)
+				checkboxes[i].checked = source.checked;
+		}
+	}
+
+	function createreversal() {
+		var array = []
+		var checkboxes = document.querySelectorAll('input[name=select]:checked')
+		for (var i = 0; i < checkboxes.length; i++) {
+			array.push(checkboxes[i].value)
+		}
+
+		window.open('?WmxBZ3o0TVVUd1ZWYlc1TnZhUDVQQT09=Qy90UHNlSmZVclhuUjd5TWNFZnF4RWEyby9hNCtuSUdCMm1ac0JycnlMVT0=&data1=' + array + '', '_self');
+	}
+</script>
+<script type="text/javascript">
+	$(document).ready(function() {
+		load_data("10/01/2026", "10/16/2026", "");
+		filterheader("10/01/2026", "10/16/2026");
+	});
+		
+	// Saat tombol export diklik, update href dengan nilai datepicker
+	document.getElementById('exportLink').addEventListener('click', function(e) {
+		const date1 = document.getElementById('filterdata1').value;
+		const date2 = document.getElementById('filterdata2').value;
+
+		if (!date1 || !date2) {
+			e.preventDefault(); // cegah klik jika kosong
+			alert('Harap isi kedua tanggal terlebih dahulu.');
+			return;
+		}
+
+		const target = "ID00000000024";
+		const newHref = `output/output_ftth_data_payment.php?target=${target}&date1=${date1}&date2=${date2}`;
+		this.href = newHref;
+	});
+
+	function setloaddata() {
+		var data1 = document.getElementById('filterdata1').value;
+		var data2 = document.getElementById('filterdata2').value;
+		var data4 = document.getElementById('filterdata4').value;
+		load_data(data1, data2, data4);
+		filterheader(data1, data2);
+	}
+
+	function load_data(data1, data2, data4) {
+		var dataTable = $('#dataku').DataTable({
+			"processing": true,
+			"serverSide": true,
+			"pageLength": 10,
+			"responsive": true,
+			"autoWidth": false,
+			"bDestroy": true,
+			"ajax": {
+				url: "model/previewc/query/payment.php?data1=" + data1 + "&data2=" + data2 + "&data4=" + data4 + "&target=ID00000000024",
+				type: "post",
+				error: function() {
+					$(".dataku-error").html("");
+					$("#dataku").append('<tbody class="dataku-error"><tr><th colspan="8">Tidak ada data untuk ditampilkan</th></tr></tbody>');
+					$("#dataku-error-proses").css("display", "none");
+				}
+			},
+			'aoColumnDefs': [{
+					"targets": [0, 6, 10, 11],
+					"className": "align-middle text-center",
+					"orderable": false,
+				},
+				{
+					"targets": [1, 2, 3, 4, 5, 8, 9],
+					"className": "align-middle text-left",
+				},
+				{
+					"targets": [7],
+					"className": "align-middle text-right",
+				}
+			],
+			'order': [[1, 'desc']],
+			"drawCallback": function(settings) {
+				setupExpandableTable($('#dataku'));
+			}
+		});
+	}
+
+	function filterheader(data1, data2) {
+		jQuery.ajax({
+			type: "POST",
+			url: "model/previewc/fungsi/payment_header.php?data1=" + data1 + "&data2=" + data2 + "&target=ID00000000024",
+			dataType: 'json',
+			success: function(obj, textstatus) {
+				document.getElementById("viewheader").innerHTML = obj.data['data_a'];
+			}
+		});
+	};
+
+	function sendmessage(data1) {
+		jQuery.ajax({
+			type: "POST",
+			url: "model/previewc/fungsi/payment_send.php?data1=" + data1,
+			dataType: 'json',
+			success: function(obj, textstatus) {
+				alert("Invoice Berhasil Dikirimkan !!");
+			}
+		});
+	};
+</script>                        </div>
+                    </div>
+                </div>
+            </div>
+                    </div>
+    </div>
+
+    <div class='modal fade' id='jurnalview'>
+        <div class='modal-dialog modal-md'>
+            <div class='modal-content'>
+                <div class='modal-body pb-0' style='font-size: 12px;'>
+                    <div class='row pb-0' id='viewdatajurnal'>INI JURNAL !!!!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    function setmenu_utama(value, level) {
+        $.ajax({
+            type: 'POST',
+            url: "control/function/function_get_menu.php?menu=previewc_payment&master=" + value + "&level=" + level,
+            cache: false,
+            success: function(msg) {
+                $("#metismenu").html(msg);
+                sessionStorage.setItem("lastname", value);
+
+
+                var others = $("[name='" + this.name + "']").map(function() {
+                    return this.value
+                }).get().join(" ")
+                $('.metismenu li .collapse a').removeClass(others).addClass(this.value)
+            }
+        });
+    }
+
+    function getmenu_utama() {
+        $.ajax({
+            type: 'POST',
+            url: "control/function/function_get_main.php",
+            cache: false,
+            success: function(msg) {
+                $("#metismenu").html(msg);
+            }
+        });
+    }
+
+    function readURL(input, container) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                $('#' + container).attr('src', e.target.result);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function getCookie(name) {
+        const cookies = document.cookie.split("; ");
+        for (let i = 0; i < cookies.length; i++) {
+            const [key, value] = cookies[i].split("=");
+            if (key === name) {
+                return decodeURIComponent(value);
+            }
+        }
+        return null;
+    }
+
+    function confirmSubmit() {
+        let text = "Apakah data sudah sesuai ?";
+        if (confirm(text) == true) {
+            document.getElementById('dataForm').addEventListener('submit', function() {
+                document.getElementById('loading').style.display = 'block';
+            });
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function getdatajurnal(value) {
+        jQuery.ajax({
+            type: "POST",
+            url: "model/previewb/fungsi/jurnal_detail.php?data=" + value,
+            dataType: 'json',
+            success: function(obj, textstatus) {
+                document.getElementById("viewdatajurnal").innerHTML = obj.data['data_a'];
+            }
+        });
+    };
+
+    function getdatapreview(value, typetrx) {
+        jQuery.ajax({
+            type: "POST",
+            url: "model/previewb/fungsi/jurnal_preview.php?data=" + value + "&data2=" + typetrx,
+            dataType: 'json',
+            success: function(obj, textstatus) {
+                document.getElementById("viewdatajurnal").innerHTML = obj.data['data_a'];
+            }
+        });
+    };
+
+    function showDiv(value) {
+        var isi = "";
+        if (value == "IPPUBLIC") {
+            isi += "<div class='row'>";
+            isi += "    <div class='col-md-5 pb-2'>";
+            isi += "        <b>IP Address</b>";
+            isi += "        <input type='text' class='form-control ipaddress' name='nasname' id='nasname' required='' placeholder='Ex: 255.255.255.255'>";
+            isi += "    </div>";
+            isi += "    <div class='col-md-2 pb-2'>";
+            isi += "        <b>Port</b>";
+            isi += "        <input type='text' class='form-control' name='ports' id='ports' value='0' required=''>";
+            isi += "    </div>";
+            isi += "    <div class='col-md-5 pb-2'>";
+            isi += "        <b>Secret</b>";
+            isi += "        <input type='password' class='form-control' name='secret' id='secret' required=''>";
+            isi += "    </div>";
+            isi += "</div>";
+        } else {
+            isi = "";
+        }
+        document.getElementById('containerrouter').innerHTML = isi;
+        $('.ipaddress').inputmask({
+            alias: "ip",
+            greedy: false //The initial mask shown will be "" instead of "-____".
+        });
+    }
+
+    function formatCurrency(value) {
+        const isNegative = value < 0; // Cek apakah nilai negatif
+        const absValue = Math.abs(value); // Ambil nilai absolut untuk format angka
+
+        let formattedValue;
+        if (absValue >= 1e9) {
+            formattedValue = `${(absValue / 1e9).toFixed(1)} Miliar`;
+        } else if (absValue >= 1e6) {
+            formattedValue = `${(absValue / 1e6).toFixed(1)} Juta`;
+        } else if (absValue >= 1e3) {
+            formattedValue = `${(absValue / 1e3).toFixed(1)} Ribu`;
+        } else {
+            formattedValue = absValue.toLocaleString('id-ID');
+        }
+        return isNegative ? `-${formattedValue}` : `${formattedValue}`;
+    }
+
+    function copyvalue(value) {
+        const textToCopy = value;
+        const tempInput = document.createElement("input");
+        tempInput.value = textToCopy;
+        document.body.appendChild(tempInput);
+
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+
+        alert("Data Telah disalin !!!");
+    }
+    /// CUSTOME SETTING SKIN
+
+    // Font Setting and icon
+    $(document).ready(function() {
+        "use strict";
+        // setting default
+
+        // Font icon Setting 
+        const arrow_option = getCookie('arrow_option');
+        $('.metismenu .has-arrow').removeClass(getCookie('arrow_option_others')).addClass(arrow_option)
+        if (arrow_option) {
+            const radio = document.querySelector(`input[name="listicon"][value="${arrow_option}"]`);
+            if (radio) radio.checked = true;
+        }
+        // change control
+        $('.arrow_option input:radio').click(function() {
+            var others = $("[name='" + this.name + "']").map(function() {
+                return this.value
+            }).get().join(" ")
+            $('.metismenu .has-arrow').removeClass(others).addClass(this.value)
+            document.cookie = "arrow_option=" + this.value + "; path=/";
+            document.cookie = "arrow_option_others=" + others + "; path=/";
+        });
+
+        const list_option = getCookie('list_option');
+        $('.metismenu li .collapse a').removeClass(getCookie('list_option_others')).addClass(list_option)
+        if (list_option) {
+            const radio = document.querySelector(`input[name="listicon"][value="${list_option}"]`);
+            if (radio) radio.checked = true;
+        }
+        // change control
+        $('.list_option input:radio').click(function() {
+            var others = $("[name='" + this.name + "']").map(function() {
+                return this.value
+            }).get().join(" ")
+            $('.metismenu li .collapse a').removeClass(others).addClass(this.value)
+            document.cookie = "list_option=" + this.value + "; path=/";
+            document.cookie = "list_option_others=" + others + "; path=/";
+        });
+
+        // Font Setting 
+        const font_setting = getCookie('font_setting');
+        $('body').removeClass(getCookie('font_setting_others')).addClass(font_setting)
+        if (font_setting) {
+            const radio = document.querySelector(`input[name="font"][value="${font_setting}"]`);
+            if (radio) radio.checked = true;
+        }
+        // change control
+        $('.font_setting input:radio').click(function() {
+            var others = $("[name='" + this.name + "']").map(function() {
+                return this.value
+            }).get().join(" ")
+            $('body').removeClass(others).addClass(this.value)
+            document.cookie = "font_setting=" + this.value + "; path=/";
+            document.cookie = "font_setting_others=" + others + "; path=/";
+        });
+        console.log(document.cookie);
+    });
+
+    // Switch Setting
+    $(document).ready(function() {
+        "use strict";
+        // Full Dark mode
+        const darkmode = getCookie('darkmode');
+        if (darkmode) {
+            $('body').addClass('dark-mode');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-darkmode'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('dark-mode');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-darkmode'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-darkmode").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('dark-mode');
+                document.cookie = "darkmode=dark-mode; path=/";
+            } else {
+                $('body').removeClass('dark-mode');
+                document.cookie = "darkmode=; path=/";
+            }
+        });
+
+        // Top bar sticky
+        const sticky_top = getCookie('sticky_top');
+        if (sticky_top) {
+            $('#page_top').addClass('sticky-top');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-fixnavbar'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('#page_top').removeClass('sticky-top');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-fixnavbar'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-fixnavbar").on('change', function() {
+            if (this.checked) {
+                $('#page_top').addClass('sticky-top');
+                document.cookie = "sticky_top=sticky-top; path=/";
+            } else {
+                $('#page_top').removeClass('sticky-top');
+                document.cookie = "sticky_top=; path=/";
+            }
+        });
+
+        // icon-color
+        const iconcolor = getCookie('iconcolor');
+        if (iconcolor) {
+            $('body').addClass('iconcolor');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-iconcolor'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('iconcolor');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-iconcolor'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-iconcolor").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('iconcolor');
+                document.cookie = "iconcolor=iconcolor; path=/";
+            } else {
+                $('body').removeClass('iconcolor');
+                document.cookie = "iconcolor=; path=/";
+            }
+        });
+        // Gradient Color
+        const gradient = getCookie('gradient');
+        if (gradient) {
+            $('body').addClass('gradient');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-gradient'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('gradient');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-gradient'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-gradient").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('gradient');
+                document.cookie = "gradient=gradient; path=/";
+            } else {
+                $('body').removeClass('gradient');
+                document.cookie = "gradient=; path=/";
+            }
+        });
+        // Dark Sidebar
+        const sidebar_dark = getCookie('sidebar_dark');
+        if (sidebar_dark) {
+            $('body').addClass('sidebar_dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-sidebar'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('sidebar_dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-sidebar'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-sidebar").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('sidebar_dark');
+                document.cookie = "sidebar_dark=sidebar_dark; path=/";
+            } else {
+                $('body').removeClass('sidebar_dark');
+                document.cookie = "sidebar_dark=; path=/";
+            }
+        });
+        // min_sidebar Sidebar
+        const dark = getCookie('dark');
+        if (dark) {
+            $('#header_top').addClass('dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-min_sidebar'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('#header_top').removeClass('dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-min_sidebar'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-min_sidebar").on('change', function() {
+            if (this.checked) {
+                $('#header_top').addClass('dark');
+                document.cookie = "dark=dark; path=/";
+            } else {
+                $('#header_top').removeClass('dark');
+                document.cookie = "dark=; path=/";
+            }
+        });
+        // Dark Sidebar
+        const top_dark = getCookie('top_dark');
+        if (top_dark) {
+            $('#page_top').addClass('top_dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-pageheader'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('#page_top').removeClass('top_dark');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-pageheader'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-pageheader").on('change', function() {
+            if (this.checked) {
+                $('#page_top').addClass('top_dark');
+                document.cookie = "top_dark=top_dark; path=/";
+            } else {
+                $('#page_top').removeClass('top_dark');
+                document.cookie = "top_dark=; path=/";
+            }
+        });
+
+        // Box Shadow
+        const box_shadow = getCookie('box_shadow');
+        if (box_shadow) {
+            $('.card, .btn, .progress').addClass('box_shadow');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-boxshadow'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('.card, .btn, .progress').removeClass('box_shadow');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-boxshadow'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-boxshadow").on('change', function() {
+            if (this.checked) {
+                $('.card, .btn, .progress').addClass('box_shadow');
+                document.cookie = "box_shadow=box_shadow; path=/";
+            } else {
+                $('.card, .btn, .progress').removeClass('box_shadow');
+                document.cookie = "box_shadow=; path=/";
+            }
+        });
+
+        // RTL Support
+        const rtl = getCookie('rtl');
+        if (rtl) {
+            $('body').addClass('rtl');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-rtl'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('rtl');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-rtl'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-rtl").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('rtl');
+                document.cookie = "rtl=rtl; path=/";
+            } else {
+                $('body').removeClass('rtl');
+                document.cookie = "rtl=; path=/";
+            }
+        });
+
+        const boxlayout = getCookie('boxlayout');
+        if (boxlayout) {
+            $('body').addClass('boxlayout');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-boxlayout'}`);
+            if (checkbox) checkbox.checked = true;
+        } else {
+            $('body').removeClass('boxlayout');
+            const checkbox = document.querySelector(`input[name="custom-switch-checkbox"].${'btn-boxlayout'}`);
+            if (checkbox) checkbox.checked = false;
+        }
+        $(".setting_switch .btn-boxlayout").on('change', function() {
+            if (this.checked) {
+                $('body').addClass('boxlayout');
+                document.cookie = "boxlayout=boxlayout; path=/";
+            } else {
+                $('body').removeClass('boxlayout');
+                document.cookie = "boxlayout=; path=/";
+            }
+        });
+    });
+
+    
+    window.RefreshCustomTableDrop = function() {
+        $(".CustomeTableDrop").each(function() {
+            setupExpandableTable($(this));
+        });
+    };
+
+    $(document).ready(function() {
+        var lastname = sessionStorage.getItem("lastname") || "Guest";
+        setmenu_utama(lastname, 'LVL06');
+        if ('LVL06' == 'LVL08') {
+            setmenu_utama('previewd', 'LVL06')
+        }
+        $('.masking2').mask('#.##0', {
+            reverse: true
+        });
+        $('.masking3').mask('#,##0', {
+            reverse: true
+        });
+        $('.ipaddress').inputmask({
+            alias: "ip",
+            greedy: false //The initial mask shown will be "" instead of "-____".
+        });
+
+        $('.multiselect4-filter').select2({
+            theme: 'bootstrap4'
+        })
+    });
+
+    function setupExpandableTable($table) {
+        const visibleCols = 3; // hanya tampil 2 kolom di layar mobile
+        const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+        $table.find("thead th, tbody td").show();
+        $table.find("tr.detail-row").remove();
+        $table.find("tr").removeClass("expand-row");
+
+        if (isMobile) {
+            $table.find("thead th").each(function(index) {
+                if (index >= visibleCols) $(this).hide();
+            });
+
+            $table.find("tbody tr").each(function() {
+                const $cells = $(this).find("td");
+                const detailRows = [];
+
+                $cells.each(function(index) {
+                    if (index >= visibleCols) {
+                        const label = $table.find("thead th").eq(index).text();
+                        const value = $(this).html();
+                        detailRows.push(`<tr><td>${label}</td><td>${value}</td></tr>`);
+                        $(this).hide();
+                    }
+                });
+
+                const detailRow = $(`
+                    <tr class="detail-row">
+                        <td colspan="${visibleCols}">
+                            <table class="detail-table">${detailRows.join("")}</table>
+                        </td>
+                    </tr>
+                `);
+
+                $(this).after(detailRow);
+                $(this).addClass("expand-row");
+            });
+        }
+    }
+
+    // klik untuk expand
+    $(document).on("click", ".CustomeTableDrop .expand-row", function() {
+        const $table = $(this).closest(".CustomeTableDrop");
+        $table.find(".detail-row").not($(this).next()).slideUp();
+        $(this).next(".detail-row").slideToggle();
+    });
+
+</script>    <!-- <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> -->
+    <script src="../assets/bundles/counterup.bundle.js"></script>
+    <script src="../assets/bundles/apexcharts.bundle.js"></script>
+    <script src="../assets/bundles/dataTables.bundle.js"></script>
+    <script src="../assets/bundles/c3.bundle.js"></script>
+    <script src="../assets/bundles/knobjs.bundle.js"></script>
+    <script src="../assets/bundles/morris.bundle.js"></script>
+    <script src="../assets/bundles/jvectormap1.bundle.js"></script>
+    <script src="../assets/plugins/bootstrap-colorpicker/js/bootstrap-colorpicker.js"></script>
+    <script src="../assets/plugins/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
+    <script src="../assets/plugins/bootstrap-multiselect/bootstrap-multiselect.js"></script>
+    <script src="../assets/plugins/multi-select/js/jquery.multi-select.js"></script>
+    <script src="../assets/plugins/jquery.maskedinput/jquery.maskedinput.min.js"></script>
+    <script src="../assets/plugins/jquery-inputmask/jquery.inputmask.bundle.js"></script>
+    <script src="../assets/plugins/dropify/js/dropify.min.js"></script>
+    <script src="../assets/plugins/custome/jmasking.js"></script>
+    <script src="../assets/plugins/select2/js/select2.full.min.js"></script>
+    <script src="../assets/js/core.js"></script>
+    <script src="assets/js/page/index.js"></script>
+    <script src="assets/js/table/datatable.js"></script>
+    <script src="assets/js/form/form-advanced.js"></script>
+    <script src="assets/js/chart/knobjs.js"></script>
+    <!-- <script src="assets/js/page/w-statistics.js"></script> -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-search@latest/dist/leaflet-search.min.js"></script>
+</body>
+</html>

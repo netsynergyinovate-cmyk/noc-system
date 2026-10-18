@@ -35,23 +35,23 @@ export function MetricCard({
   ...props
 }: MetricCardProps & { children?: ReactNode }) {
   return (
-    <Card className={cn("gap-3 py-5", className)} {...props}>
-      <CardContent className="flex items-start justify-between gap-3">
+    <Card className={cn("py-3 px-4 shadow-2xs transition-all hover:border-border/80", className)} {...props}>
+      <CardContent className="p-0 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">
             {value}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/85 truncate">{hint}</p>
           {children}
         </div>
         <span
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-lg",
+            "flex size-8 shrink-0 items-center justify-center rounded-md",
             toneClasses[tone],
           )}
         >
-          <Icon className="size-5" aria-hidden="true" />
+          <Icon className="size-4" aria-hidden="true" />
         </span>
       </CardContent>
     </Card>

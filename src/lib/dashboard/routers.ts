@@ -1,4 +1,4 @@
-﻿import type { DashboardCustomer, DashboardRouter } from "./types.ts";
+import type { DashboardCustomer, DashboardRouter } from "./types.ts";
 
 // Rincian router tiruan; kontrak untuk REST API RouterOS v7 yang belum tersambung.
 export interface MockRouterDetail {
@@ -15,6 +15,22 @@ export interface MockRouterDetail {
   queueCount: number; // >= 0
   temperature: number; // derajat Celsius, 0 = tidak ada sensor / offline
   pppoeCount: number; // >= 0
+  latencyMs?: number;
+  currentDownloadMbps?: number;
+  currentUploadMbps?: number;
+  peakMbps?: number;
+  asn?: string;
+  interfaces?: {
+    id: string;
+    name: string;
+    type: string;
+    running: boolean;
+    rxByte: number;
+    txByte: number;
+    rxMbps?: number;
+    txMbps?: number;
+    comment: string;
+  }[];
 }
 
 export type RouterStatusFilter = "all" | "active" | "disconnected";

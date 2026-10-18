@@ -355,25 +355,25 @@ export function SettingsBoard() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Halaman Pengaturan */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <div>
+      <div className="flex flex-col gap-2 border-b pb-5">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Pengaturan Sistem &amp; Operasional NOC
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Konfigurasi terpusat untuk identitas, notifikasi bot, ambang batas anomali, koneksi collector, dan panduan integrasi.
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5">
+              <RotateCcw className="size-4" />
+              Reset Bawaan
+            </Button>
+            <Button size="sm" onClick={handleSave} className="gap-1.5 font-medium">
+              <Save className="size-4" />
+              Simpan Perubahan
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset} className="gap-1.5">
-            <RotateCcw className="size-4" />
-            Reset Bawaan
-          </Button>
-          <Button size="sm" onClick={handleSave} className="gap-1.5 font-medium">
-            <Save className="size-4" />
-            Simpan Perubahan
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Konfigurasi terpusat untuk identitas, notifikasi bot, ambang batas anomali, koneksi collector, dan panduan integrasi.
+        </p>
       </div>
 
       {/* Banner Notifikasi Berhasil */}

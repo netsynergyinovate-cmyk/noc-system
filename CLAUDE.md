@@ -1,6 +1,6 @@
-Read @AGENTS.md for the project's conventions, Context7 workflow, and skill map.
+Read @AGENTS.md and @GEMINI.md for the project's conventions, Context7 workflow, and unified Gemini & Claude Code engineering standards.
 
-Project skills live in `.agents/skills/`. Read the appropriate `SKILL.md` directly before setup, feature-building, or derivative work; they do not need to be installed globally.
+Project skills live in `.agents/skills/`. Read the appropriate `SKILL.md` (termasuk `.agents/skills/gemini-claude-code/SKILL.md`) directly before setup, feature-building, or derivative work; they do not need to be installed globally.
 
 ## graphify
 

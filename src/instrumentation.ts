@@ -29,6 +29,15 @@ export async function register() {
         );
         await runStartupSeed();
       }
+
+      try {
+        const { startVlanBackgroundCollector } = await import(
+          "@/services/vlan-traffic.service"
+        );
+        startVlanBackgroundCollector();
+      } catch (err) {
+        console.error("Gagal memulai background collector VLAN:", err);
+      }
     }
   }
 }

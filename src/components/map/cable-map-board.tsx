@@ -63,6 +63,10 @@ export function CableMapBoard({
   const [showCableDeleteConfirm, setShowCableDeleteConfirm] = useState(false);
   const [cableDeleteError, setCableDeleteError] = useState<string | null>(null);
 
+  // Ubah warna jalur kabel
+  const [cableColor, setCableColor] = useState<string>("");
+  const [isSavingColor, setIsSavingColor] = useState(false);
+
   const handleDeleteCable = useCallback(async () => {
     if (!selectedCable) return;
     setIsDeletingCable(true);
@@ -79,6 +83,28 @@ export function CableMapBoard({
       setCableDeleteError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsDeletingCable(false);
+    }
+  }, [selectedCable]);
+
+  const handleSaveCableColor = useCallback(async (color: string) => {
+    if (!selectedCable) return;
+    setIsSavingColor(true);
+    try {
+      const res = await fetch(`/api/map/cables/${selectedCable.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal simpan warna.");
+      setData((prev) => ({
+        ...prev,
+        cables: prev.cables.map((c) => c.id === selectedCable.id ? { ...c, color } : c),
+      }));
+    } catch (err) {
+      console.error("[SAVE CABLE COLOR]", err);
+    } finally {
+      setIsSavingColor(false);
     }
   }, [selectedCable]);
 
@@ -187,6 +213,11 @@ export function CableMapBoard({
     if (selectedCable) {
       setEditableWaypoints([...selectedCable.coordinates]);
     }
+  }, [selectedCable]);
+
+  // Reset warna input saat kabel terpilih berubah
+  React.useEffect(() => {
+    setCableColor(selectedCable?.color || "");
   }, [selectedCable]);
 
   // Filter daftar jalur kabel berdasarkan pencarian, tipe, dan status
@@ -673,6 +704,28 @@ export function CableMapBoard({
                 <div className="pt-2 border-t mt-2 flex flex-col gap-2">
                   {!isEditingWaypoints ? (
                     <div className="flex flex-col gap-1.5">
+                      {/* Color picker */}
+                      <div className="flex items-center gap-2">
+                        <label className="text-[11px] text-muted-foreground shrink-0">Warna Jalur:</label>
+                        <input
+                          type="color"
+                          defaultValue={selectedCable.color || "#3b82f6"}
+                          onChange={(e) => setCableColor(e.target.value)}
+                          className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                          title="Pilih warna jalur kabel"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSaveCableColor(cableColor || selectedCable.color || "#3b82f6")}
+                          className="h-6 text-[10px] px-2 gap-1"
+                          disabled={isSavingColor}
+                        >
+                          {isSavingColor ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                          Simpan
+                        </Button>
+                      </div>
                       <Button
                         type="button"
                         size="sm"

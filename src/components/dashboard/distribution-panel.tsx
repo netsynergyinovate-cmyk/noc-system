@@ -56,13 +56,13 @@ export function DistributionPanel({ className }: { className?: string }) {
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle>Sebaran pelanggan</CardTitle>
-        <CardDescription>
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-base font-semibold">Sebaran pelanggan</CardTitle>
+        <CardDescription className="text-xs">
           Hijau normal, kuning perlu dicek, merah offline
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-5">
+      <CardContent className="p-4 pt-0 flex flex-col gap-3">
         <div
           role="region"
           aria-label="Peta sebaran pelanggan"

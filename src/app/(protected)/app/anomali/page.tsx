@@ -8,18 +8,18 @@ export const metadata: Metadata = { title: "Deteksi Anomali" };
 export default async function AnomalyPage() {
   await requireSession();
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Deteksi Anomali
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Gangguan yang terdeteksi otomatis: jalur penuh, router terbebani,
-            error port, sinyal optik lemah, dan pelanggan offline.
-          </p>
+          <MockDataNotice real />
         </div>
-        <MockDataNotice real />
+        <p className="text-sm text-muted-foreground">
+          Gangguan yang terdeteksi otomatis: jalur penuh, router terbebani,
+          error port, sinyal optik lemah, dan pelanggan offline.
+        </p>
       </div>
       <AnomalyBoard />
     </div>

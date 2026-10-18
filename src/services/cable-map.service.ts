@@ -595,3 +595,9 @@ export async function deleteCable(
   await db.delete(networkCables).where(eq(networkCables.id, id));
   return { id, deleted: true };
 }
+
+export async function updateCableColor(id: string, color: string): Promise<{ id: string; color: string }> {
+  if (!id) throw new Error("ID kabel tidak valid.");
+  await db.update(networkCables).set({ color, updatedAt: new Date() }).where(eq(networkCables.id, id));
+  return { id, color };
+}

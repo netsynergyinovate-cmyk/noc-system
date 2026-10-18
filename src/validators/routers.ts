@@ -24,3 +24,19 @@ export const testRouterSchema = z.object({
 
 export type CreateRouterInput = z.infer<typeof createRouterSchema>;
 
+export const updateRouterSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100).optional(),
+    host: z.string().trim().min(1).max(255).optional(),
+    port: z.number().int().min(1).max(65535).optional(),
+    username: z.string().trim().min(1).max(100).optional(),
+    password: z.string().min(1).max(100).optional(),
+    useSsl: z.boolean().optional(),
+    status: z.enum(["aktif", "nonaktif"]).optional(),
+    mode: z.enum(["real", "simulator"]).optional(),
+    validateConnection: z.boolean().optional(),
+  })
+  .strict();
+
+export type UpdateRouterInput = z.infer<typeof updateRouterSchema>;
+

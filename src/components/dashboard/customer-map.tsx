@@ -308,6 +308,7 @@ export function CustomerMap() {
 
   useEffect(() => {
     if (!focused || !focused.odpName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveRoute(null);
       return;
     }
@@ -444,6 +445,7 @@ export function CustomerMap() {
             key="streets"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            subdomains={["a", "b", "c"]}
             maxNativeZoom={19}
             maxZoom={20}
           />

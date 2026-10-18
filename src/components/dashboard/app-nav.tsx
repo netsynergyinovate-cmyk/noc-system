@@ -25,6 +25,8 @@ import {
   ShieldCheck,
   Compass,
   Radio,
+  MapPin,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -69,6 +71,9 @@ const navCategories: NavCategory[] = [
     items: [
       { label: "Router", href: "/app/router", Icon: Router },
       { label: "OLT & Optik", href: "/app/cpe", Icon: Network },
+      { label: "Peta Jaringan", href: "/app/peta", Icon: MapPin },
+      { label: "Jalur Kabel", href: "/app/peta/kabel", Icon: Share2 },
+      { label: "Lapisan Gambar", href: "/app/peta/gambar", Icon: Layers },
       { label: "GenieACS (TR-069)", href: "/app/genieacs", Icon: Radio },
       { label: "Integrasi Perangkat", href: "/app/pengaturan/perangkat", Icon: Server },
     ],

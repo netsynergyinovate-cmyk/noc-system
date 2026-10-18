@@ -122,6 +122,7 @@ export async function verifyZeroDummy(options = {}) {
     { key: "DUMMY_BILLING", page: "/app/billing", name: "Status Billing" },
     { key: "DUMMY_NETFLOW", page: "/app/netflow", name: "Papan NetFlow" },
     { key: "DUMMY_ANOMALY", page: "/app/anomali", name: "Deteksi Anomali" },
+    { key: "DUMMY_MAP", page: "/app/peta", name: "Peta Jaringan & Topologi" },
   ];
 
   for (const item of dummyOverrides) {

@@ -162,39 +162,39 @@ export function GenieacsBoard() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header Halaman */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-5">
-        <div>
+      <div className="flex flex-col gap-2 border-b pb-5">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2.5">
             <Radio className="size-6 text-primary" />
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               Server GenieACS (TR-069 ACS)
             </h1>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Pusat manajemen jarak jauh Auto Configuration Server untuk modem ONT / CPE pelanggan (ZTE, Huawei, Fiberhome, VSOL).
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                checkNbiConnection();
+                loadDevices();
+              }}
+              disabled={isCheckingNbi}
+              className="gap-1.5"
+            >
+              <RefreshCw className={`size-4 ${isCheckingNbi ? "animate-spin" : ""}`} />
+              <span>Segarkan Status</span>
+            </Button>
+            <Button asChild size="sm" className="gap-1.5">
+              <a href="http://localhost:7558" target="_blank" rel="noopener noreferrer">
+                <span>Buka GenieACS Web UI</span>
+                <ExternalLink className="size-4" />
+              </a>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              checkNbiConnection();
-              loadDevices();
-            }}
-            disabled={isCheckingNbi}
-            className="gap-1.5"
-          >
-            <RefreshCw className={`size-4 ${isCheckingNbi ? "animate-spin" : ""}`} />
-            <span>Segarkan Status</span>
-          </Button>
-          <Button asChild size="sm" className="gap-1.5">
-            <a href="http://localhost:7558" target="_blank" rel="noopener noreferrer">
-              <span>Buka GenieACS Web UI</span>
-              <ExternalLink className="size-4" />
-            </a>
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Pusat manajemen jarak jauh Auto Configuration Server untuk modem ONT / CPE pelanggan (ZTE, Huawei, Fiberhome, VSOL).
+        </p>
       </div>
 
       {/* 4 Kartu Pilar Status Port & Layanan */}

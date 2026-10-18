@@ -381,6 +381,7 @@ export function NetworkMap({
   const [infraMoveDraftCoords, setInfraMoveDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isSavingInfraMove, setIsSavingInfraMove] = useState(false);
   const [isDeletingInfra, setIsDeletingInfra] = useState(false);
+  const [isSettingParent, setIsSettingParent] = useState(false);
   const [infraActionSuccessMessage, setInfraActionSuccessMessage] = useState<string | null>(null);
   const [infraActionErrorMessage, setInfraActionErrorMessage] = useState<string | null>(null);
 
@@ -1165,6 +1166,33 @@ export function NetworkMap({
     }
   }, [selectedInfra]);
 
+  const handleSetParent = useCallback(async (parentId: string | null) => {
+    if (!selectedInfra) return;
+    setIsSettingParent(true);
+    try {
+      const res = await fetch(`/api/map/infrastructure/${selectedInfra.id}/parent`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal set parent.");
+      setFetchedData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          infrastructure: prev.infrastructure.map((i) =>
+            i.id === selectedInfra.id ? { ...i, parentId } : i
+          ),
+        };
+      });
+    } catch (err) {
+      console.error("[SET PARENT]", err);
+    } finally {
+      setIsSettingParent(false);
+    }
+  }, [selectedInfra]);
+
   const handleDeleteCustomer = useCallback(async () => {
     if (!selectedCustomer) return;
     setIsDeletingCustomer(true);
@@ -1678,7 +1706,7 @@ export function NetworkMap({
     >
       {/* Top Floating Control Bar - Responsif Tablet & Desktop */}
       <div
-        className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 z-[1000] flex flex-col md:flex-row md:items-center md:justify-between gap-2 pointer-events-none"
+        className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 z-[1030] flex flex-col md:flex-row md:items-center md:justify-between gap-2 pointer-events-none"
         data-testid="map-top-control-bar"
       >
         {/* Search & Filter Group */}
@@ -2207,7 +2235,7 @@ export function NetworkMap({
       {/* Empty State: Belum Ada Perangkat atau Titik Jaringan */}
       {!isLoading && !loadError && data && data.customers.length === 0 && data.infrastructure.length === 0 && (
         <div
-          className="absolute inset-0 z-[1020] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
+          className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
           data-testid="map-empty-state"
         >
           <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
@@ -2412,7 +2440,7 @@ export function NetworkMap({
       {/* Seluruh Pelanggan Belum Memiliki Koordinat GPS (Unmapped Customers State) */}
       {data && data.customers.length > 0 && geocodedList.length === 0 && !searchQuery && statusFilter === "all" && regionFilter === "all" && !isUnmappedDismissed && (
         <div
-          className="absolute inset-0 z-[1020] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
+          className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
           data-testid="unmapped-customers-empty-state"
         >
           <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
@@ -2632,7 +2660,7 @@ export function NetworkMap({
                       positions={cable.path}
                       pathOptions={{
                         className: "cable-halo-polyline",
-                        color: cable.isHighlighted ? "#22d3ee" : style.haloColor,
+                        color: cable.isHighlighted ? "#22d3ee" : (cable.color ? cable.color + "80" : style.haloColor),
                         weight: haloWeight,
                         opacity: cable.isHighlighted ? 0.6 : 0.35,
                         lineCap: "round",
@@ -2645,7 +2673,7 @@ export function NetworkMap({
                     positions={cable.path}
                     pathOptions={{
                       className: "sharp-cable-polyline",
-                      color: style.color,
+                      color: cable.color || style.color,
                       weight: scaledWeight,
                       opacity: style.opacity,
                       dashArray: style.dashArray,
@@ -2693,6 +2721,31 @@ export function NetworkMap({
               </span>
             );
           })}
+
+          {/* Garis drop fiber: Pelanggan ke ODP */}
+          {showCustomers && visibleCustomers
+            .filter((c) => c.odpName && c.latitude !== null && c.longitude !== null)
+            .map((cust) => {
+              const odp = visibleInfrastructure.find(
+                (i) => i.name.toLowerCase() === cust.odpName?.toLowerCase()
+              );
+              if (!odp) return null;
+              return (
+                <Polyline
+                  key={`drop-${cust.id}`}
+                  positions={[
+                    [odp.latitude, odp.longitude],
+                    [cust.latitude as number, cust.longitude as number],
+                  ]}
+                  pathOptions={{
+                    color: cust.isOnline ? "#22c55e" : "#ef4444",
+                    weight: 1,
+                    opacity: 0.4,
+                    dashArray: "3 5",
+                  }}
+                />
+              );
+            })}
 
           {/* Infrastruktur Jaringan: Core Router, OLT, ODP, ODC, Tiang (Vektor Tajam & Ikon) */}
           {showInfrastructure &&
@@ -3514,6 +3567,9 @@ export function NetworkMap({
         onCancelInfraMove={handleCancelMoveInfra}
         onSaveInfraMove={handleSaveMoveInfra}
         onDeleteInfra={handleDeleteInfra}
+        infraList={fetchedData?.infrastructure?.map((i) => ({ id: i.id, name: i.name, type: i.type })) || []}
+        onSetParent={handleSetParent}
+        isSettingParent={isSettingParent}
       />
 
       {/* Panel Informasi & Legenda Posisi Tetap (Fixed Docked Legend) */}

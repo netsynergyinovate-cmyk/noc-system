@@ -21,16 +21,15 @@ export function getTileProviders(): Record<MapLayerId, TileProviderConfig> {
   return {
     satellite: {
       id: "satellite",
-      name: "Satelit (Google)",
+      name: "Satelit (Esri)",
       url:
         process.env.NEXT_PUBLIC_MAP_SATELLITE_URL ||
-        "https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attribution:
         process.env.NEXT_PUBLIC_MAP_SATELLITE_ATTRIBUTION ||
-        '&copy; <a href="https://maps.google.com/">Google Maps</a>',
-      maxNativeZoom: 21,
-      maxZoom: 22,
-      subdomains: ["0", "1", "2", "3"],
+        '&copy; <a href="https://www.esri.com/">Esri World Imagery</a>',
+      maxNativeZoom: 19,
+      maxZoom: 20,
     },
     streets: {
       id: "streets",

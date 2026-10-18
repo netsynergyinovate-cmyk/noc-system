@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,7 @@ import {
 } from "@/lib/dashboard/filter";
 import { getCustomerHealth } from "@/lib/dashboard/health";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import type { DashboardCustomer } from "@/lib/dashboard/types";
+import type { BillingStatus, DashboardCustomer } from "@/lib/dashboard/types";
 import { selectClassName } from "./select-class";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
 import { BillingBadge, HealthBadge } from "./status-badge";
@@ -75,6 +75,85 @@ export function CustomerTable() {
   const customers = useDashboardStore((state) => state.customers);
   const routers = useDashboardStore((state) => state.routers);
   const [filters, setFilters] = useState<CustomerFilters>(defaultFilters);
+  const [isSyncingBilling, setIsSyncingBilling] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (customers.length === 0) {
+      fetch("/api/customers")
+        .then((res) => res.json())
+        .then((json) => {
+          if (active && json.ok && Array.isArray(json.data) && json.data.length > 0) {
+            const list = json.data as DashboardCustomer[];
+            useDashboardStore.setState({
+              customers: list,
+              onlineCount: list.filter((c) => c.isOnline).length,
+              offlineCount: list.filter((c) => !c.isOnline).length,
+              weakSignalCount: list.filter((c) => getCustomerHealth(c) === "warning").length,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      active = false;
+    };
+  }, [customers.length]);
+
+  const handleSyncBillingNames = async () => {
+    try {
+      setIsSyncingBilling(true);
+      setSyncFeedback(null);
+      const res = await fetch("/api/customers/sync-billing-names", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pullFresh: false }),
+      });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        setSyncFeedback({
+          type: "success",
+          message: json.message || "Nama pelanggan berhasil dicocokkan dan diperbarui dari billing.",
+        });
+
+        if (Array.isArray(json.data?.updatedCustomers)) {
+          type SyncedCustomerItem = { id: string; newName: string; billingStatus: BillingStatus };
+          const items = json.data.updatedCustomers as SyncedCustomerItem[];
+          const map = new Map<string, SyncedCustomerItem>(items.map((u) => [u.id, u]));
+          useDashboardStore.setState((prev) => ({
+            customers: prev.customers.map((c) => {
+              const u = map.get(c.id);
+              if (u) {
+                return {
+                  ...c,
+                  name: u.newName,
+                  billingStatus: u.billingStatus,
+                };
+              }
+              return c;
+            }),
+          }));
+        }
+      } else {
+        setSyncFeedback({
+          type: "error",
+          message: json.error || "Gagal menarik nama pelanggan dari billing.",
+        });
+      }
+    } catch (err) {
+      setSyncFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Gagal terhubung ke server.",
+      });
+    } finally {
+      setIsSyncingBilling(false);
+    }
+  };
+
   const routerNames = useMemo(
     () => new Map(routers.map((router) => [router.id, router.name])),
     [routers],
@@ -100,15 +179,15 @@ export function CustomerTable() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Status pelanggan</CardTitle>
-        <CardDescription role="status">
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-base font-semibold">Status pelanggan</CardTitle>
+        <CardDescription role="status" className="text-xs">
           {filtered
             ? `Menampilkan ${formatInteger(visible.length)} dari ${formatInteger(customers.length)} pelanggan PPPoE`
             : `${formatInteger(customers.length)} pelanggan PPPoE`}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="p-4 pt-0 flex flex-col gap-3.5">
         <div className="grid gap-3 sm:grid-cols-[1fr_11rem_11rem_auto] sm:items-end">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="customer-search">Cari pelanggan</Label>
@@ -178,11 +257,13 @@ export function CustomerTable() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2"
-              onClick={() => alert("Sinkronisasi tagihan dimulai...")}
+              className="gap-2 border-emerald-500/40 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+              onClick={handleSyncBillingNames}
+              disabled={isSyncingBilling}
+              title="Cocokkan ID PPPoE dan tarik nama pelanggan riil dari RunsNet Billing"
             >
-              <RefreshCw className="size-3.5" />
-              Sinkron Tagihan
+              <RefreshCw className={`size-3.5 ${isSyncingBilling ? "animate-spin" : ""}`} />
+              {isSyncingBilling ? "Menarik dari Billing..." : "Tarik Nama dari Billing"}
             </Button>
             <Button
               variant="ghost"
@@ -194,6 +275,29 @@ export function CustomerTable() {
             </Button>
           </div>
         </div>
+
+        {syncFeedback && (
+          <div
+            role="status"
+            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs font-mono transition-all ${
+              syncFeedback.type === "success"
+                ? "border-emerald-500/40 bg-emerald-950/20 text-emerald-300"
+                : "border-rose-500/40 bg-rose-950/20 text-rose-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${syncFeedback.type === "success" ? "bg-emerald-400" : "bg-rose-400"}`} />
+              <span>{syncFeedback.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncFeedback(null)}
+              className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div
           // relative: teks sr-only di dalam sel bersifat absolute; tanpa penampung
           // berposisi ia lolos dari overflow dan melebarkan seluruh halaman.

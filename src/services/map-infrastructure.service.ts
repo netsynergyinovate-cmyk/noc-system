@@ -229,18 +229,47 @@ export async function deleteInfrastructurePoint(
     // Abaikan
   }
 
-  // Hapus titik perangkat dari network_infrastructure
-  try {
-    await db
-      .delete(networkInfrastructure)
-      .where(
-        or(
-          eq(networkInfrastructure.id, id),
-          ilike(networkInfrastructure.name, id),
-        ),
-      );
-  } catch (err) {
-    console.error("[DELETE INFRASTRUCTURE DB ERROR]", err);
+  // Untuk router/OLT: hapus koordinat saja (device tetap ada di DB)
+  if (id.startsWith("router-")) {
+    const routerId = id.slice("router-".length);
+    try {
+      const rows = await db
+        .update(routers)
+        .set({ latitude: null, longitude: null })
+        .where(eq(routers.id, routerId))
+        .returning({ name: routers.name });
+      if (rows.length > 0) deviceName = rows[0].name;
+      deviceType = "router";
+    } catch (err) {
+      console.error("[DELETE ROUTER COORDS ERROR]", err);
+    }
+  } else if (id.startsWith("olt-")) {
+    const oltId = id.slice("olt-".length);
+    try {
+      const rows = await db
+        .update(olts)
+        .set({ latitude: null, longitude: null })
+        .where(eq(olts.id, oltId))
+        .returning({ name: olts.name });
+      if (rows.length > 0) deviceName = rows[0].name;
+      deviceType = "olt";
+    } catch (err) {
+      console.error("[DELETE OLT COORDS ERROR]", err);
+    }
+  } else {
+    // Hapus titik perangkat dari network_infrastructure
+    try {
+      await db
+        .delete(networkInfrastructure)
+        .where(
+          or(
+            eq(networkInfrastructure.id, id),
+            ilike(networkInfrastructure.name, id),
+          ),
+        );
+    } catch (err) {
+      console.error("[DELETE INFRASTRUCTURE DB ERROR]", err);
+    }
   }
 
   // Catat riwayat penghapusan perangkat ke audit log

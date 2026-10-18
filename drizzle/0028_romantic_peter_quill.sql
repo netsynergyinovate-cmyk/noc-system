@@ -1,4 +1,4 @@
-CREATE TABLE "vlan_traffic_samples" (
+CREATE TABLE IF NOT EXISTS "vlan_traffic_samples" (
 	"vlan_name" text NOT NULL,
 	"vlan_id" integer NOT NULL,
 	"pon_index" integer NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE "vlan_traffic_samples" (
 	CONSTRAINT "vlan_traffic_samples_nonnegative_check" CHECK ("vlan_traffic_samples"."download_mbps" >= 0 and "vlan_traffic_samples"."upload_mbps" >= 0)
 );
 --> statement-breakpoint
-CREATE TABLE "runsnet_customers" (
+CREATE TABLE IF NOT EXISTS "runsnet_customers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"cust_id" text NOT NULL,
 	"name" text NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE "runsnet_customers" (
 	CONSTRAINT "runsnet_customers_cust_id_unique" UNIQUE("cust_id")
 );
 --> statement-breakpoint
-CREATE TABLE "runsnet_invoices" (
+CREATE TABLE IF NOT EXISTS "runsnet_invoices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"invoice_code" text NOT NULL,
 	"cust_id" text NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE "runsnet_invoices" (
 	CONSTRAINT "runsnet_invoices_invoice_code_unique" UNIQUE("invoice_code")
 );
 --> statement-breakpoint
-CREATE TABLE "runsnet_payments" (
+CREATE TABLE IF NOT EXISTS "runsnet_payments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"payment_code" text NOT NULL,
 	"invoice_code" text,
@@ -59,7 +59,7 @@ CREATE TABLE "runsnet_payments" (
 	CONSTRAINT "runsnet_payments_payment_code_unique" UNIQUE("payment_code")
 );
 --> statement-breakpoint
-CREATE TABLE "runsnet_sync_logs" (
+CREATE TABLE IF NOT EXISTS "runsnet_sync_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"status" text NOT NULL,
 	"customers_count" integer DEFAULT 0 NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE "runsnet_sync_logs" (
 	"completed_at" timestamp with time zone
 );
 --> statement-breakpoint
-CREATE TABLE "network_cables" (
+CREATE TABLE IF NOT EXISTS "network_cables" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"source_id" text NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE "network_cables" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "network_device_relations" (
+CREATE TABLE IF NOT EXISTS "network_device_relations" (
 	"id" text PRIMARY KEY NOT NULL,
 	"parent_id" text NOT NULL,
 	"child_id" text NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE "network_device_relations" (
 	CONSTRAINT "network_device_rel_type_check" CHECK ("network_device_relations"."relation_type" in ('hierarchy', 'feeder', 'backup', 'distribution'))
 );
 --> statement-breakpoint
-CREATE TABLE "network_infrastructure" (
+CREATE TABLE IF NOT EXISTS "network_infrastructure" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"type" text NOT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE "network_infrastructure" (
 	CONSTRAINT "network_infra_longitude_check" CHECK ("network_infrastructure"."longitude" between -180 and 180)
 );
 --> statement-breakpoint
-CREATE TABLE "map_drawing_layers" (
+CREATE TABLE IF NOT EXISTS "map_drawing_layers" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
@@ -137,31 +137,43 @@ CREATE TABLE "map_drawing_layers" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "routers" ADD COLUMN "latitude" double precision;--> statement-breakpoint
-ALTER TABLE "routers" ADD COLUMN "longitude" double precision;--> statement-breakpoint
-ALTER TABLE "olts" ADD COLUMN "latitude" double precision;--> statement-breakpoint
-ALTER TABLE "olts" ADD COLUMN "longitude" double precision;--> statement-breakpoint
-ALTER TABLE "network_device_relations" ADD CONSTRAINT "network_device_relations_parent_id_network_infrastructure_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."network_infrastructure"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "network_device_relations" ADD CONSTRAINT "network_device_relations_child_id_network_infrastructure_id_fk" FOREIGN KEY ("child_id") REFERENCES "public"."network_infrastructure"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "vlan_traffic_samples_vlan_time_idx" ON "vlan_traffic_samples" USING btree ("vlan_name","sampled_at" DESC NULLS LAST);--> statement-breakpoint
-CREATE INDEX "vlan_traffic_samples_time_idx" ON "vlan_traffic_samples" USING btree ("sampled_at" DESC NULLS LAST);--> statement-breakpoint
-CREATE INDEX "runsnet_customers_cust_id_idx" ON "runsnet_customers" USING btree ("cust_id");--> statement-breakpoint
-CREATE INDEX "runsnet_customers_status_idx" ON "runsnet_customers" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "runsnet_invoices_cust_id_idx" ON "runsnet_invoices" USING btree ("cust_id");--> statement-breakpoint
-CREATE INDEX "runsnet_invoices_status_idx" ON "runsnet_invoices" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "runsnet_invoices_periode_idx" ON "runsnet_invoices" USING btree ("periode");--> statement-breakpoint
-CREATE INDEX "runsnet_payments_cust_id_idx" ON "runsnet_payments" USING btree ("cust_id");--> statement-breakpoint
-CREATE INDEX "runsnet_payments_invoice_code_idx" ON "runsnet_payments" USING btree ("invoice_code");--> statement-breakpoint
-CREATE INDEX "runsnet_payments_pay_date_idx" ON "runsnet_payments" USING btree ("pay_date");--> statement-breakpoint
-CREATE INDEX "runsnet_sync_logs_started_at_idx" ON "runsnet_sync_logs" USING btree ("started_at");--> statement-breakpoint
-CREATE INDEX "network_cables_source_idx" ON "network_cables" USING btree ("source_id");--> statement-breakpoint
-CREATE INDEX "network_cables_target_idx" ON "network_cables" USING btree ("target_id");--> statement-breakpoint
-CREATE INDEX "network_cables_type_idx" ON "network_cables" USING btree ("cable_type");--> statement-breakpoint
-CREATE INDEX "network_device_rel_parent_idx" ON "network_device_relations" USING btree ("parent_id");--> statement-breakpoint
-CREATE INDEX "network_device_rel_child_idx" ON "network_device_relations" USING btree ("child_id");--> statement-breakpoint
-CREATE INDEX "network_device_rel_type_idx" ON "network_device_relations" USING btree ("relation_type");--> statement-breakpoint
-CREATE INDEX "network_infra_type_idx" ON "network_infrastructure" USING btree ("type");--> statement-breakpoint
-CREATE INDEX "network_infra_status_idx" ON "network_infrastructure" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "network_infra_parent_idx" ON "network_infrastructure" USING btree ("parent_id");--> statement-breakpoint
-CREATE INDEX "map_drawing_layers_visible_idx" ON "map_drawing_layers" USING btree ("is_visible");--> statement-breakpoint
-CREATE INDEX "map_drawing_layers_z_index_idx" ON "map_drawing_layers" USING btree ("z_index");
+ALTER TABLE "routers" ADD COLUMN IF NOT EXISTS "latitude" double precision;--> statement-breakpoint
+ALTER TABLE "routers" ADD COLUMN IF NOT EXISTS "longitude" double precision;--> statement-breakpoint
+ALTER TABLE "olts" ADD COLUMN IF NOT EXISTS "latitude" double precision;--> statement-breakpoint
+ALTER TABLE "olts" ADD COLUMN IF NOT EXISTS "longitude" double precision;--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'network_device_relations_parent_id_network_infrastructure_id_fk'
+  ) THEN
+    ALTER TABLE "network_device_relations" ADD CONSTRAINT "network_device_relations_parent_id_network_infrastructure_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."network_infrastructure"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'network_device_relations_child_id_network_infrastructure_id_fk'
+  ) THEN
+    ALTER TABLE "network_device_relations" ADD CONSTRAINT "network_device_relations_child_id_network_infrastructure_id_fk" FOREIGN KEY ("child_id") REFERENCES "public"."network_infrastructure"("id") ON DELETE cascade ON UPDATE no action;
+  END IF;
+END $$;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "vlan_traffic_samples_vlan_time_idx" ON "vlan_traffic_samples" USING btree ("vlan_name","sampled_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "vlan_traffic_samples_time_idx" ON "vlan_traffic_samples" USING btree ("sampled_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_customers_cust_id_idx" ON "runsnet_customers" USING btree ("cust_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_customers_status_idx" ON "runsnet_customers" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_invoices_cust_id_idx" ON "runsnet_invoices" USING btree ("cust_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_invoices_status_idx" ON "runsnet_invoices" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_invoices_periode_idx" ON "runsnet_invoices" USING btree ("periode");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_payments_cust_id_idx" ON "runsnet_payments" USING btree ("cust_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_payments_invoice_code_idx" ON "runsnet_payments" USING btree ("invoice_code");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_payments_pay_date_idx" ON "runsnet_payments" USING btree ("pay_date");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "runsnet_sync_logs_started_at_idx" ON "runsnet_sync_logs" USING btree ("started_at");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_cables_source_idx" ON "network_cables" USING btree ("source_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_cables_target_idx" ON "network_cables" USING btree ("target_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_cables_type_idx" ON "network_cables" USING btree ("cable_type");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_device_rel_parent_idx" ON "network_device_relations" USING btree ("parent_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_device_rel_child_idx" ON "network_device_relations" USING btree ("child_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_device_rel_type_idx" ON "network_device_relations" USING btree ("relation_type");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_infra_type_idx" ON "network_infrastructure" USING btree ("type");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_infra_status_idx" ON "network_infrastructure" USING btree ("status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "network_infra_parent_idx" ON "network_infrastructure" USING btree ("parent_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "map_drawing_layers_visible_idx" ON "map_drawing_layers" USING btree ("is_visible");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "map_drawing_layers_z_index_idx" ON "map_drawing_layers" USING btree ("z_index");

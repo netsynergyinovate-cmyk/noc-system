@@ -1,0 +1,74 @@
+{
+ "want": {
+  "URL": "http://172.16.0.1:7547",
+  "Username": "admin",
+  "Password": "admin",
+  "PeriodicInformInterval": "300"
+ },
+ "rows": [
+  [
+   "Tr069Enable",
+   "1"
+  ],
+  [
+   "EnTr069Flag",
+   "1"
+  ],
+  [
+   "ActiveCwmpFlag",
+   "Yes"
+  ],
+  [
+   "isMidwareSupported",
+   "0"
+  ],
+  [
+   "MiddlewareAddress",
+   "0.0.0.0"
+  ],
+  [
+   "MiddlewarePort",
+   "0"
+  ],
+  [
+   "PeriodicInformEnable",
+   "Yes"
+  ],
+  [
+   "PeriodicInformInterval",
+   "300"
+  ],
+  [
+   "PeriodicInformTime",
+   "0001-01-01T00:00:00Z"
+  ],
+  [
+   "URL",
+   "http://172.16.0.1:7547"
+  ],
+  [
+   "Username",
+   "admin"
+  ],
+  [
+   "Password",
+   "admin"
+  ],
+  [
+   "ConnectionRequestUsername",
+   "itms"
+  ],
+  [
+   "ConnectionRequestPassword",
+   "itms"
+  ],
+  [
+   "X_ATP_SSLCertEnable",
+   "0"
+  ],
+  [
+   "SaveFlag",
+   "1"
+  ]
+ ]
+}

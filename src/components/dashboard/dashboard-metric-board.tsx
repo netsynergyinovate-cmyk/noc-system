@@ -98,9 +98,6 @@ export function DashboardMetricBoard() {
                 Tambah Router
               </Link>
             </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/setup">Setup Wisaya</Link>
-            </Button>
           </div>
         </div>
       )}

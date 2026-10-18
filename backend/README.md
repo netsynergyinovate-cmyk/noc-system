@@ -53,6 +53,9 @@ aplikasi, `POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/tr069-bind`).
 
 | Variabel                  | Default | Keterangan                                                                                                                   |
 | ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `TRAFFIC_SOURCE`          | `interface` | Sumber angka download/upload dashboard. `interface` (bawaan): selisih counter byte interface tiap detik, sama dengan Winbox dan tanpa jeda. `queue`: jumlah `rate` simple queue (cara lama: dihaluskan RouterOS dan tertinggal ±3 detik, hanya pelanggan ber-queue). |
+| `TRAFFIC_INTERFACE`       | (kosong) | Nama interface router untuk trafik dashboard. Kosong = cari interface berkomentar `TRAFFIC_INTERFACE_COMMENT` (bawaan `UPLINK`); bila tidak ada atau ada dua, dipakai jumlah queue dan dicatat peringatan. Pada interface uplink Rx = download dan Tx = upload. |
+| `TRAFFIC_INTERFACE_CUSTOMER_SIDE` | `false` | `true` bila interface itu menghadap pelanggan (mis. ke OLT): Tx = download, Rx = upload. |
 | `OLT_TR069_AUTOBIND`      | `off`   | Default di BINER Go. `off` mati. `new`: hanya ONU yang pertama terlihat SESUDAH fitur dinyalakan untuk OLT itu. `all`: semua ONU online yang belum terikat (sekali jalan). **`compose.yaml` proyek ini mengganti defaultnya ke `new`** — isi `OLT_TR069_AUTOBIND=off` di `.env` untuk mematikannya. |
 | `OLT_TR069_PROFILE_ID`    | `1`     | Id profil di OLT (1-32). Profil harus SUDAH dibuat operator; backend tidak membuatnya. Dipakai AutoBinder MAUPUN endpoint manual di bawah; satu nilai untuk keduanya. |
 | `OLT_TR069_MAX_PER_ROUND` | `5`     | Batas ONU yang diikat AutoBinder per putaran polling (30 dtk) per OLT (1-20). Tidak membatasi endpoint manual (satu ONU per permintaan). |
@@ -312,6 +315,124 @@ aman (OLT menerima nilai yang sama); `olt_onus.tr069_bound_at` ditulis ulang.
 Next.js meneruskannya lewat `src/app/api/olts/[id]/onus/[pon]/[onu]/tr069-bind/route.ts`
 (tiket sekali pakai diterbitkan HANYA setelah sesi dan izin `cpe:manage` Better
 Auth lolos, pola yang sama dengan sinkron billing manual).
+
+### Pasang GenieACS lewat web ONT (`POST /api/v1/ont-web/tr069`)
+
+Cara kedua mendaftarkan modem ke GenieACS, untuk modem yang belum pernah
+menghubungi ACS: backend login ke halaman web admin modem (`http://IP:80`) dan
+mengisi menu Settings > TR-069 seperti teknisi. Hanya **CDTC FD511GW** (web
+"ONU Web Management System" 1.0.0.2); merek lain butuh klien sendiri di
+`internal/ontweb`. Protokol (dibaca dari JS halaman modem): `POST /post.json`
+`module=login` dengan `encryPassword = md5(kata sandi)` mengembalikan `token`
+(header `Authorization`), `GET /get.json?module=tr069_config`, `POST /post.json`
+`module=tr069_config` (hanya bagian yang berbeda), `module=logout`.
+
+Body: `{"onuId":"<olt_onus.id>"}`. **IP modem dicari otomatis**: ONU -> pelanggan
+(`olt_onus.customer_id`) -> nama PPPoE -> alamat sesi aktif di `/ppp/active` MikroTik.
+Ini benar karena WAN FD511GW ber-PPPoE (koneksi "TR069_INTERNET"), sehingga alamat
+sesi PPPoE adalah IP halaman web modem. ONU belum dipetakan -> 409 `onu_unmapped`;
+pelanggan tidak sedang terhubung -> 409 `customer_offline`. Opsional `host` (IPv4)
+menimpa pencarian, dan `username`/`password` menimpa admin web modem bawaan di
+database (tidak disimpan, tidak dicatat). Alamat hasil pencarian tetap diperiksa
+terhadap `ONT_WEB_ALLOWED_CIDRS`. Tiket `cpe:manage`.
+
+Dua kebiasaan modem yang HARUS ditiru klien (dicek terhadap FD511GW asli; tanpa
+keduanya modem menjawab kode 10104 untuk SEMUA permintaan, termasuk login):
+header `Authorization` selalu ada (`null` sebelum login) dan header `Referer`
+(`"Referer is null."`). Kredensial admin web modem sebenarnya bisa dibaca dari
+data TR-069 modem yang sudah terdaftar (`InternetGatewayDevice.X_Authentication.WebAccount`);
+begitulah nilai awal `ont_web_settings` diisi.
+
+**Empat jenis modem, dikenali otomatis tanpa kredensial** (`ontweb.Detect`: `public_info` FD511GW, judul halaman
+login ZIMLINK, judul halaman login GGCLink, lalu halaman login F609; selain itu `ont_wrong_device` dan kredensial tidak dikirim):
+
+| Jenis | Dilaporkan OLT sebagai | Halaman web | Akun admin di `ont_web_settings` |
+| ----- | ---------------------- | ----------- | -------------------------------- |
+| C-Data FD511GW | `CDTC …` | SPA JSON (`/post.json`, token) | `web_username` / `web_password_enc` |
+| ZIMLINK ZL-2113X | `HWTC H113` | server Boa, formulir HTML (`/cgi-bin/*.asp`, cookie) | `zimlink_username` / `zimlink_password_enc` |
+| ZTE F609 (MediaTek) | `MTKc F609` | server Boa, `/cgi-bin/*.asp` sekeluarga ZIMLINK, login AJAX `check_auth.json` | `f609_username` / `f609_password_enc` (migrasi 0022) |
+| GGCLink GM220-S XPON | `ZICG GM22` | firmware ZTE ("Mini web server"), halaman `*.gch`, tanpa cookie | `ggclink_username` / `ggclink_password_enc` (migrasi 0021) |
+
+ZL-2113X (`internal/ontweb/zimlink*.go`): login = `POST /cgi-bin/index2.asp` + cookie `SESSIONID/UID/PSW`,
+lalu WAJIB membuka `content.asp` (tanpa itu modem menjawab 401 untuk halaman lain). TR-069 =
+formulir `net-tr069.asp` (16 field), status ACS dibaca dari `sta-acs.asp` ("Reported successfully" = kode 8),
+WAN dari `get_node_foreach_info.json?param1=waninfo_wanif` dan disimpan lewat formulir `net-wanset.asp`
+(±115 field). Karena satu salah isi bisa memutus PPPoE pelanggan, isi formulir WAN dan TR-069 DIBUKTIKAN
+sama byte demi byte dengan yang dikirim halaman asli (diambil di peramban dengan permintaan dibatalkan sebelum
+sampai ke modem; 12 modem nyata, 6 varian firmware, fixture tanpa data pelanggan di `testdata/zl2113x`).
+`planZLWAN` menolak bentuk yang belum teramati (WAN lebih dari satu, bukan PPPoE/Route/IPv4, VLAN bertag,
+kunci JSON tak dikenal, dst.) dengan catatan "ubah manual". Uji baca-saja terhadap modem asli (opt-in):
+`ONT_LIVE_ZIMLINK_URL=http://IP ONT_LIVE_ZIMLINK_USER=… ONT_LIVE_ZIMLINK_PASS=… go test ./internal/ontweb -run TestLiveZimlinkReadOnly -v`.
+
+GM220-S (`internal/ontweb/ggclink*.go`): login = `GET /` (token login ada di skripnya, `Frm_Logintoken`) lalu
+`POST /` `frashnum=&action=login&Frm_Logintoken=N&username=U&Password=P` (berhasil = 302 ke `/start.ghtml`; gagal =
+200 + halaman login dengan "User information is error"; terkunci 1 menit setelah 3 kali salah). Tidak ada cookie:
+modem mengenali sesi dari alamat pengirim, dan tiap halaman membawa `session_token` yang harus ikut di POST
+(`_SESSION_TOKEN`, paling akhir). TR-069 = menu Network > Remote Management > ITMS (`getpage.gch?pid=1002&nextpage=net_tr069_basic_t.gch`,
+formulir `fSubmit`, `IF_ACTION=apply`). Sandi yang tidak diubah dikirim `NULL` dan nilai tersimpan modem berbentuk
+base64 (itu sebabnya "sudah sama?" dibandingkan lewat base64). Status lapor dari `manager_act_inform_t.gch`
+(`InfoStat`/`InfoDesc`; 3 = "Succeed to report"; "No Wan Connection for TR069" berarti butuh WAN layanan TR069).
+**WAN pelanggan TIDAK pernah diubah**: halaman WAN modem ini mengunci "Service List" WAN PPPoE yang sudah ada.
+Dengan `ensureWan`, aplikasi MENAMBAH WAN baru bertipe `TR069`, mode DHCP, tanpa VLAN (`ggclink_wan.go`;
+POST `IF_ACTION=new`, 80 field, dibuktikan sama byte demi byte dengan peramban asli di dua modem). Hanya
+modem dengan tepat satu WAN PPPoE `N_INTERNET_R_VID_` yang dikerjakan; bentuk lain ditolak dengan catatan
+"tambahkan manual". Modem lalu meminta IP lewat DHCP di VLAN PON-nya, jadi router HARUS menjawab DHCP di sana
+(lihat "Jaringan manajemen ONT" di bawah). Isi POST TR-069 dibuktikan sama byte demi byte
+dengan tangkapan peramban asli (dua keadaan: semua kolom diketik, dan hanya URL+interval; fixture di
+`testdata/gm22`); susunan formulir yang berbeda ditolak tanpa mengirim apa pun. Pencarian IP lewat MAC TIDAK
+dipakai untuk ZICG (selisih MAC ONU dan caller-id PPPoE tidak konsisten); IP dicari lewat nama PPPoE pelanggan.
+Uji baca-saja terhadap modem asli (opt-in):
+`ONT_LIVE_GGCLINK_URL=http://IP ONT_LIVE_GGCLINK_USER=… ONT_LIVE_GGCLINK_PASS=… go test ./internal/ontweb -run TestLiveGGCLinkReadOnly -v`.
+
+F609 (`internal/ontweb/f609.go`): halaman TR-069 sama dengan ZIMLINK (`ConfigForm`, `SaveFlag=1`, status ACS kode sama),
+tetapi login berbeda: `GET /cgi-bin/index2.asp` memuat `var rand = "…"`; `POST /cgi-bin/check_auth.json` dengan
+`Password = md5(sandi + rand)`, `Password1=`/`Password2=` kosong, dan WAJIB cookie `loginTimes=0; LoginFailTime=0` (dipasang
+halaman sebelum mengirim; tanpanya modem menjawab Privilege 0 untuk sandi yang benar); jawaban JSON
+`{Locked, Logged, Privilege, ecntToken}` (Privilege 1/2 = sukses; `ecntToken` menjadi cookie). Setiap POST formulir wajib
+membawa cookie `EBOOVALUE = crc32(nama+nilai semua field, hex huruf kecil)` (`setEBooValueCookie` di util.js); keduanya
+dibuktikan sama dengan tangkapan peramban asli. Susunan formulir TR-069 di luar yang terverifikasi ditolak. Input lama di
+dalam komentar HTML (`PasswordAuthFlag`) tidak ikut terkirim, jadi parser membuang komentar. **WAN belum diubah otomatis**
+XX
+Uji baca-saja: `ONT_LIVE_F609_URL=http://IP ONT_LIVE_F609_USER=… ONT_LIVE_F609_PASS=… go test -count=1 ./internal/ontweb -run TestLiveF609ReadOnly -v`.
+
+**Jaringan manajemen ONT (tanpa VLAN baru, OLT tidak diubah).** Port PON OLT memakai `port default-vlan 110n`,
+jadi frame tanpa tag dari ONU masuk VLAN PON-nya dan sampai ke MikroTik di `vlan110n`. Di MikroTik (semua
+objek berkomentar `NOC-MGMT`): DHCP server `noc-mgmt-pN` di tiap `vlan110n` (pool `10.30.N.10-250`, gateway
+`10.30.N.1`), firewall yang mengunci `10.30.0.0/21` (modem hanya boleh ke `10.20.30.3:7547`; NOC lewat
+WireGuard boleh ke modem; modem tidak boleh ke layanan router), dan ACS tetap `http://172.16.0.1:7547`
+(dst-nat router ke NOC). Komputer NOC butuh `10.30.0.0/21` di AllowedIPs tunnel WireGuard supaya connection
+request (`http://10.30.N.x:58000`) dan halaman web modem terjangkau. Dibuktikan di modem GM22 nyata:
+lease DHCP, Inform di GenieACS, dan connection request 200.
+
+**Pengaturan ada di database, bukan `.env`:** tabel `ont_web_settings` (satu baris,
+`id='default'`, migrasi 0019): `acs_url` (alamat CWMP GenieACS yang dapat dijangkau
+**modem**, mis. `http://172.16.0.1:7547`), `acs_username`/`acs_password_enc` (bawaan GenieACS: `admin`/`admin`),
+`inform_interval` (30-86400, bawaan 300), `web_username`/`web_password_enc` (admin web
+modem bawaan). Kata sandi terenkripsi AES-256-GCM dengan `DEVICE_SECRET` (format sama
+dengan `olts.password_enc`). Backend membaca baris itu pada SETIAP permintaan, jadi
+perubahan langsung berlaku tanpa restart. Diisi lewat dialog "Pasang via web ONT" di
+aplikasi (`GET/PUT /api/ont-web/settings`, izin `cpe:manage`, kata sandi tidak pernah
+dikembalikan; audit hanya mencatat metode dan target).
+
+| Status | Arti                                                                              |
+| ------ | --------------------------------------------------------------------------------- |
+| 200    | `{"ok":true,"changed":bool,"fields":[...],"informing":bool,"message":"..."}`; `changed:false` = modem sudah berisi pengaturan itu, tidak ada yang ditulis |
+| 400    | Alamat bukan IPv4 / di luar `ONT_WEB_ALLOWED_CIDRS`, body tidak sah, atau tak ada kredensial |
+| 422    | Nama pengguna/kata sandi modem salah (TIDAK diulang: modem mengunci setelah 3 salah) |
+| 409/423| Sesi modem penuh / login terkunci                                                  |
+| 502/504| Modem tidak terjangkau, tidak menjawab seperti FD511GW, atau tidak menyimpan       |
+| 503    | `ont_web_settings` belum ada barisnya (`acs_not_configured`)                      |
+| 409    | juga: ONU belum dipetakan / pelanggan tidak terhubung (lihat di atas)             |
+
+Satu-satunya env: `ONT_WEB_ALLOWED_CIDRS` (bawaan RFC 1918 + `100.64.0.0/10`). Hanya
+alamat di sini yang boleh dibuka (cegah SSRF); loopback, link-local dan publik selalu
+ditolak. Sengaja env, bukan database: ini batas keamanan jaringan, bukan data operasional.
+
+Keselamatan: port dikunci 80, redirect tidak diikuti, alamat harus IPv4 literal
+(tanpa DNS), logout selalu dijalankan, bagian `cwmp` (kredensial connection
+request) tidak disentuh. Idempoten: dijalankan dua kali tidak menulis ulang.
+Next.js meneruskannya lewat `src/app/api/ont-web/tr069/route.ts`; UI-nya tombol
+"Pasang via web ONT" di Inventaris ONU (`ont-web-dialog.tsx`).
 
 ### Histori traffic (`/api/v1/traffic/history`)
 
@@ -868,6 +989,17 @@ topik `ppp,account` ke backend (`/system logging action` tipe `remote`, lalu
 **Belum diuji terhadap router sungguhan.** Format baris syslog di atas (topik lalu
 pesan) berdasarkan keluaran RouterOS yang umum, dan yang dikirim `/tool fetch`
 diuji tanpa asumsi Content-Type. Coba pada satu router sebelum diandalkan.
+
+## Trafik dashboard: counter interface, bukan rate queue
+
+Diukur di router nyata (24 sampel per detik, jumlah `rate` queue terhadap laju counter interface OLT): `rate`
+queue adalah rata-rata yang dihaluskan RouterOS, jadi tertinggal ±3 detik dan lebih datar daripada laju sebenarnya
+(116–165 Mbps pada saat interface menunjukkan 92–204 Mbps); jumlahnya juga ±5% lebih rendah untuk download dan
+±20% untuk upload (overhead PPPoE dan trafik tanpa queue). Winbox membaca counter byte interface, jadi dashboard
+sekarang melakukan hal yang sama: tiap detik `GET /rest/interface?name=…` (`rx-byte`, `tx-byte`), laju = selisih
+byte × 8 / selang waktu sebenarnya (titik tengah permintaan), `ifRate` menolak counter yang turun (router restart)
+dan selang lebih dari 15 detik. Sampel pertama dan tiap kegagalan jatuh ke jumlah queue. Queue tetap dibaca
+tiap detik untuk rule engine (rasio per pelanggan).
 
 ## Collector MikroTik (polling queue)
 

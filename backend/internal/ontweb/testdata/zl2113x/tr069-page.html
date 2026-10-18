@@ -1,0 +1,694 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"><html><head>
+<title>CWMP</title>
+ <meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+ <link rel="stylesheet" type="text/css" href="/JS/reset.css">
+ <link rel="stylesheet" type="text/css" href="/JS/base.css">
+  <link rel="stylesheet" type="text/css" href="/JS/stylemain.css">
+<link href="/JS/style_zimm.css" type="text/css" rel="stylesheet">
+<script language="javascript" src="/JS/menu.js"></script>
+<script language="javascript" src="/JS/jquery.js"></script>
+<script language="javascript" src="/JS/util.js"></script>
+
+<script language="JavaScript" type="text/javascript">
+function stCWMP(domain,InformEnb,Interval,URL,Username,Password,CntReqName,CntReqPwd,sslCertEnbl)
+{
+this.domain = domain;
+this.InformEnb = InformEnb;
+this.Interval = Interval;
+this.URL = URL;
+this.Username = Username;
+this.Password = Password;
+this.CntReqName = CntReqName;
+this.CntReqPwd = CntReqPwd;
+this.sslCertEnbl = sslCertEnbl;
+}
+function stmid(domain,midurl, tr069enable)
+{
+this.domain = domain;
+this.Url = midurl;
+this.Tr069enable = tr069enable;
+}
+var URLAccessAttr = 'Subscriber';
+var UsrAccessAttr = 'Subscriber';
+var PwdAccessAttr = 'Subscriber';
+var conUsrAccessAttr = 'Subscriber';
+var conPwdAccessAttr = 'Subscriber';
+var midcom = new Array(new stmid("InternetGatewayDevice.DeviceInfo.X_CT-COM_MiddlewareMgt","0.0.0.0:0","1"),null);
+var mid = midcom[0];
+var temp = new Array(new stCWMP("InternetGatewayDevice.ManagementServer","1","20","http://122.193.99.166:80/comserver/node1/tr069","hgw","hgw","itms","itms","0"),null);
+var cwmp = temp[0];
+var msg = new Array(6);
+
+var midLastRadioValue = "0";
+
+msg[0] = "Upload the certificate file successfully!";
+msg[1] = "Certificate file is illegal, and fail to upload the certificate file!";
+msg[2] = "The function of certificate have been prohibited!";
+msg[3] = "The function of certificate have been enabled!";
+msg[4] = "The certificate file does not exist, please upload first!";
+msg[5] = "The certificate file is so large that fail to upload!";
+
+
+
+
+function LoadOLTForm()
+{
+
+}
+
+function LoadFrame()
+{
+
+	document.ConfigForm.SaveFlag.value = "0";
+	document.SslForm.postflag.value = "0";
+
+	document.OLTForm.SubmitFlag.value = "0";
+	
+	var obj = getElById('ResultText');
+	var certStatus = parseInt("N/A");
+	
+	if ((certStatus >= 0) && (certStatus <= 9))
+	{
+		obj.innerHTML = '<font color="#FF0000">' + msg[certStatus] + '</font>';
+		setDisplay('ResultText',1);
+	}
+	else
+	{
+		setDisplay('ResultText', 0);
+	}
+	
+	midLastRadioValue = document.ConfigForm.EnTr069Flag.value;
+	
+	if(midLastRadioValue == "0")
+	{
+		document.ConfigForm.Tr069Enable[0].checked = true;
+		setDisplay("midurl", 1);
+	}
+	else if(midLastRadioValue == "2")
+	{
+		document.ConfigForm.Tr069Enable[2].checked = true;
+		setDisplay("midurl", 1);
+	}
+	else
+	{
+		document.ConfigForm.Tr069Enable[1].checked = true;
+		setDisplay("midurl", 0);
+	}
+}
+function isSafeStringSN(val)
+{
+if ( val == "" )
+{
+return false;
+}
+for ( var j = 0 ; j < val.length ; j++ )
+{
+if ( !isSafeCharSN(val.charAt(j)) )
+{
+return false;
+}
+}
+return true;
+}
+function isSafeCharSN(val)
+{
+if (((val >= 'A')&&(val <= 'Z'))
+||((val >= 'a')&&(val <= 'z'))
+||((val >= '0')&&(val <= '9'))
+||(val == ':')||(val == '/')
+||(val == '-')||(val == '.')
+||(val == '_'))
+{
+return true;
+}
+else
+{
+return false;
+}
+}
+function isTimeFormat(str)
+{
+	if(str.length > 20 || str.length < 19)	//0001-01-01T00:00:00Z
+		return false;
+
+	if(str.substr(10, 1) != 'T' || str.substr(4, 1) != '-' || str.substr(7, 1) != '-' || str.substr(13, 1) != ':' || str.substr(16, 1) != ':' || (str.substr(19, 1) != 'Z' && str.length == 20))
+		return false;
+	
+	if(str.substr(0, 4) < '0001' || str.substr(0, 4) > '9999')	
+		return false;
+			
+	if(str.substr(5, 2) < '01' || str.substr(5, 2) > '12')
+		return false;
+			
+	if(str.substr(8, 2) < '01' || str.substr(8, 2) > '31')	
+		return false;
+			
+	if(str.substr(11, 2) < '00' || str.substr(11, 2) > '23')	
+		return false;		
+
+	if(str.substr(14, 2) < '00' || str.substr(14, 2) > '59')	
+		return false;		
+
+	if(str.substr(17, 2) < '00' || str.substr(17, 2) > '59')	
+		return false;	
+				
+	return true;
+	
+}
+function isSafeStringSN(val)
+{
+if (val == "")
+{
+return true;
+}
+for ( var j = 0 ; j < val.length ; j++ )
+{
+if ( !isSafeCharSN(val.charAt(j)) )
+{
+return false;
+}
+}
+return true;
+}
+function CheckForm(type)
+{
+with (getElById ("ConfigForm"))
+{
+if (!isSafeStringSN(URL.value))
+{
+alert("ACS should consist of letter,digit and some character such as \":, /, -, .\"");
+return false;
+}
+if(URL.value.indexOf("http://") !=0 && URL.value.indexOf("https://") !=0)
+{
+alert("ACS should begin with 'http://' or 'https://'.");
+return false;
+}
+if (PeriodicInformEnable[1].checked == true &&PeriodicInformInterval.value =='' )
+{
+alert("Periodic notification time interval is invalid.");
+return false;
+}
+if ((PeriodicInformInterval.value == '') || (isPlusInteger(PeriodicInformInterval.value) == false))
+{
+alert("Periodic notification time interval is invalid.");
+return false;
+}
+if (false)
+{
+if (PeriodicInformEnable[1].checked == true && PeriodicInformTime.value =='' )
+{
+alert("Periodic notification time is invalid.");
+return false;
+}
+if ((PeriodicInformTime.value == '') || (isTimeFormat(PeriodicInformTime.value) == false) )
+{
+alert("Periodic notification time is invalid.");
+return false;
+}
+}
+var info = parseFloat(PeriodicInformInterval.value );
+if (info < 0 || info > 2147483647)
+{
+alert("Periodic notification time interval is invalid.");
+return false;
+}
+if (isValidString(Username.value) == false )
+{
+alert("ACS user name is invalid.");
+return false;
+}
+if (isValidString(Password.value) == false )
+{
+alert("ACS password is invalid.");
+return false;
+}
+if (isValidString(ConnectionRequestUsername.value) == false )
+{
+alert("The user name of connection request is invalid.");
+return false;
+}
+if (isValidString(ConnectionRequestPassword.value) == false )
+{
+alert("The password of connection request is invalid.");
+return false;
+}
+}
+with (getElById ("ConfigForm"))
+{
+if (Tr069Enable[1].checked == true &&Tr069Enable.value =='' )
+{
+alert("The enable function of Tr069Enable is invalid.");
+return false;
+}
+if (mid.Tr069enable == '0' && Tr069Enable[2].checked == true)
+{
+alert("The state of tr069enable cannot switch from 0 to 2!");
+return false;
+}
+if (mid.Tr069enable == '2' && Tr069Enable[0].checked == true)
+{
+alert("The state of tr069enable cannot switch from 0 to 2!");
+return false;
+}
+if(Tr069Enable[0].checked == true || Tr069Enable[2].checked == true)
+{
+if (MiddlewareAddress.value == '')
+{
+alert("Please enter the address of middleware business management platform!");
+return false;
+}
+if (!isValidIpAddress(MiddlewareAddress.value) && !isSafeStringSN(MiddlewareAddress.value))
+{
+alert("Invalid address, please enter right IP address or domain name!");
+return false;
+}
+if (MiddlewarePort.value == '')
+{
+alert("Please enter the port of middleware business management platform!");
+return false;
+}
+if (!isValidPort(MiddlewarePort.value))
+{
+alert("Invalid port,please enter again!");
+return false;
+}
+}
+}
+return true;
+}
+function AddSubmitParam(SubmitForm,type)
+{
+/*var MiddlewareURL;
+SubmitForm.addForm('ConfigForm','x');
+SubmitForm.addParameter('y.Tr069Enable', getRadioVal("Tr069Enable"));
+if ((0 == getRadioVal("Tr069Enable")) || (2 == getRadioVal("Tr069Enable")))
+{
+MiddlewareURL = getValue("MiddlewareAddress") + ":" + getValue("MiddlewarePort");
+SubmitForm.addParameter('y.MiddlewareURL', MiddlewareURL);
+}
+SubmitForm.setAction('setcfg.cgi?x=InternetGatewayDevice.ManagementServer&y=InternetGatewayDevice.DeviceInfo.X_CT-COM_MiddlewareMgt&'
++ 'RequestFile=html/network/tr069.asp');*/
+}
+function SubmitCert()
+{
+	var SslForm =document.SslForm;
+	var string = SslForm.filename.value.search(/pem/);
+	
+		if(SslForm.filename.value=="")
+		{
+			alert("Please select the certificate file to upload!");
+		}
+		else
+		{
+			SslForm.postflag.value = "1";
+			SslForm.submit();
+		}
+}
+</script>	
+</head>
+<body vlink="#000000" alink="#000000" link="#000000" leftmargin="0" topmargin="0" onload="DisplayLocation(getElement('Selected_Menu').value);FinishLoad();if(getElById('ConfigForm') != null)LoadFrame()" onunload="DoUnload()" marginheight="0" marginwidth="0">
+<div id="wrapper">
+    <div id="header">
+	  <div class="top_bg round">
+		<table>
+		  <tbody><tr><td style="font-size:20px;padding-top:20px;color:black;align:right;">&nbsp;&nbsp;</td></tr>
+		  <tr><td style="padding-top:10px;align:right;">
+			<a onclick="DoLogout()" href="/cgi-bin/logout.cgi" id="logOut" name="logOut" target="_top">
+			<span class="logout">LogOut </span></a>
+			</td></tr>
+		</tbody></table><table>
+		</table><table>
+			<tbody><tr><td style="padding-top:20px;color:white;align:right;"></td></tr>
+		</tbody></table>
+	  </div>
+	  <div class="nav_side clearfix">
+		  <table id="table2" height="40" cellspacing="0" cellpadding="0" width="960" border="0">
+				<tbody>
+				<tr class="round">
+				  <td id="MenuArea_L1" valign="bottom" bgcolor="#000000" colspan="3" height="30"><ul id="nav" class="round"><li><a href="javascript:LoadPage('0')" target="">Status</a></li><li><a href="javascript:LoadPage('6')" target="" class="active">Net</a></li><li><a href="javascript:LoadPage('15')" target="">Security</a></li><li><a href="javascript:LoadPage('21')" target="">APP</a></li><li><a href="javascript:LoadPage('29')" target="">Manage</a></li><li><a href="javascript:LoadPage('35')" target="">Diagnose</a></li><li><a href="javascript:LoadPage('37')" target="">Help</a></li></ul></td>
+				  <td bgcolor="#000000" width="80">
+				  <input id="Selected_Menu" type="hidden" value="Net-&gt;CWMP" name="Sta_Dev">
+				  </td></tr>
+				</tbody></table>
+	   </div>
+    </div>
+    <div id="main" class="clearfix">
+		<div id="side_wrapper">
+		   <div class="box_wrapper round">
+			<div class="box_content" id="MenuArea_L2"><ul id="side"><li><h3><a href="#">Net</a> </h3> <ul><li><a href="javascript:LoadPage('7')" target="">WAN </a></li><li><a href="javascript:LoadPage('8')" target="">Binding </a></li><li><a href="javascript:LoadPage('9')" target="">LAN </a></li><li><a href="javascript:LoadPage('10')" target="">WLAN </a></li><li><a href="javascript:LoadPage('11')" target="" class="active">CWMP </a></li><li><a href="javascript:LoadPage('12')" target="">QoS </a></li><li><a href="javascript:LoadPage('13')" target="">Time </a></li><li><a href="javascript:LoadPage('14')" target="">Route </a></li></ul></li></ul>
+			</div>
+		   </div>
+		</div>   
+		<div id="content">	
+			<div class="column">
+				<div class="column_title">
+					<div class="column_title_left"></div>
+						<p>ITMS Server</p>
+					<div class="column_title_right"></div>
+				</div>
+
+				<div class="data_common2">
+				
+                  <form name="ConfigForm" action="/cgi-bin/net-tr069.asp" method="post">
+                  <div id="En069Info" style="display: none;"><table cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                    <tr>
+                      <td width="149">Middleware Mode</td>
+                      <td><input onclick="ntpEnbltr069()" type="radio" value="0" name="Tr069Enable"> Open Middleware(Including TR069 function)</td></tr>
+                    <tr>
+                      <td width="149"></td>
+                      <td><input onclick="ntpEnbltr069()" type="radio" value="1" name="Tr069Enable" checked=""> Close Middleware</td></tr>
+                    <tr>
+                      <td width="149"></td>
+                      <td><input onclick="ntpEnbltr069()" type="radio" value="2" name="Tr069Enable"> Open Middleware(Excluding TR069 function)</td></tr>
+                    </tbody></table></div>
+                          <input type="hidden" name="EnTr069Flag" value="1">
+                          <input type="hidden" name="ActiveCwmpFlag" value="Yes">
+                      		<input type="HIDDEN" name="isMidwareSupported" value="0">
+                          <script language="JavaScript" type="text/JavaScript">
+function ntpEnbltr069()
+{
+with (getElById ("ConfigForm"))
+{
+	if(midLastRadioValue == "0" && Tr069Enable[2].checked == true || midLastRadioValue == "2" && Tr069Enable[0].checked == true)
+	{
+		alert("Cannot directly switch between middleware(including TR069 function) and middleware(excluding TR069 function).");
+		if(midLastRadioValue == "0")
+			Tr069Enable[0].checked = true;
+		else
+			Tr069Enable[2].checked = true;
+	}
+	
+	if(midLastRadioValue == "0" && Tr069Enable[1].checked == true || midLastRadioValue == "1" && Tr069Enable[0].checked == true)
+		alert("Please reboot when switchs between open middleware(including TR069 function) and close middleware(including TR069 function).");
+	
+	if (Tr069Enable[1].checked == true)
+	{
+		setDisplay("midurl", 0);
+		ActiveCwmpFlag.value = "Yes";
+		EnTr069Flag.value = "1";
+	}
+	else
+	{
+		setDisplay("midurl", 1);
+		if(Tr069Enable[0].checked == true)
+		{
+			ActiveCwmpFlag.value = "Yes";
+			EnTr069Flag.value = "0";
+		}
+		else
+		{
+			ActiveCwmpFlag.value = "Yes";
+			EnTr069Flag.value = "2";
+		}
+	}
+}
+}
+if(document.ConfigForm.isMidwareSupported.value == 1)
+	getElById("En069Info").style.display = "";
+else
+getElById("En069Info").style.display = "none";
+
+</script>
+                  <div id="midurl" style="display: none;">
+                  <table height="37" cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                    <tr id="hideTR">
+                      <td width="149">Middleware Server URL</td>
+                      <td width="31">Address:</td>
+                      <td width="163"><input id="MiddlewareAddress" maxlength="256" name="MiddlewareAddress" value="0.0.0.0"> </td>
+                      <td width="46">Port:</td>
+                      <td width="62"><input id="MiddlewarePort" maxlength="256" size="8" name="MiddlewarePort" value="0"></td></tr></tbody></table>
+                            
+                          </div>
+                  <table cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                    <tr>
+                      <td width="200">Periodic Notification</td>
+                      <td><input id="PeriodicInformEnable" type="radio" value="No" name="PeriodicInformEnable">Disable</td>
+                                <td><input id="radio" type="radio" value="Yes" name="PeriodicInformEnable" checked="">
+                                  Enable</td>
+                              </tr></tbody></table>
+                  <table cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                    <tr>
+                      <td width="200">Periodic Notification Time Interval[0-2147483647]:</td>
+                      <td><input id="PeriodicInformInterval" style="WIDTH: 150px" maxlength="10" name="PeriodicInformInterval" value="43200"></td></tr>
+                    <tr style="display:none">
+                      <td width="200">Periodic Notification Time[yyyy-mm-ddThh:dd:ss]:</td>
+                      <td><input id="PeriodicInformTime" style="WIDTH: 150px" maxlength="20" name="PeriodicInformTime" value="0001-01-01T00:00:00Z"></td></tr>
+                    <tr>
+                      <td>Server Domain Name/IP Address and Port:</td>
+                      <td><input id="URL" style="WIDTH: 150px" maxlength="256" name="URL" value="http://devacs.edatahome.com:9090/ACS-server/ACS"></td></tr>
+                    <tr>
+                      <td>Platform User Name:</td>
+                      <td><input id="Username" style="WIDTH: 150px" maxlength="256" name="Username" value="hgw"></td></tr>
+                    <tr>
+                      <td>Platform Password:</td>
+                      <td>
+					  	<span id="inpsw"><input id="Password" style="WIDTH: 150px" type="password" maxlength="256" name="Password" value="hgw"></span>
+						
+						<input id="cb_enablshowpsw" onclick="doshowpswChange()" type="checkbox" name="cb_enablshowpsw">Show Password
+						<script language="JavaScript" type="text/JavaScript">
+						
+						function doshowpswChange() {
+							with (getElById('ConfigForm')){
+								var tempvalue1 = Password.value;
+								if (cb_enablshowpsw.checked) {
+									inpsw.innerHTML = "<input id=\"Password\" style=\"WIDTH: 150px\" type=\"text\" maxLength=256 name=\"Password\" value=" +document.ConfigForm.Password.value+ ">";
+								}
+								else {
+									inpsw.innerHTML = "<input id=\"Password\" style=\"WIDTH: 150px\" type=\"password\" maxLength=256 name=\"Password\" value=" +document.ConfigForm.Password.value+ ">";
+								}
+								Password.value = tempvalue1;
+							}
+						
+						}
+						
+						</script>
+						
+						</td></tr>
+                    <tr>
+                      <td>Terminal User Name</td>
+                      <td><input name="ConnectionRequestUsername" id="ConnectionRequestUsername" style="WIDTH: 150px" value="itms" maxlength="256"></td></tr>
+                    <tr>
+                      <td>Terminal Password:</td>
+                      <td>
+					  	<span id="inrapsw"><input name="ConnectionRequestPassword" type="password" id="ConnectionRequestPassword" style="WIDTH: 150px" value="itms" maxlength="256"></span>
+						
+						<input id="cb_enablshowrapsw" onclick="doshowrapswChange()" type="checkbox" name="cb_enablshowrapsw">Show Password
+						<script language="JavaScript" type="text/JavaScript">
+						
+						function doshowrapswChange() {
+							with (getElById('ConfigForm')){
+								var tempvalue2 = ConnectionRequestPassword.value;
+								if (cb_enablshowrapsw.checked) {
+									inrapsw.innerHTML = "<input id=\"ConnectionRequestPassword\" style=\"WIDTH: 150px\" type=\"text\" maxLength=256 name=\"ConnectionRequestPassword\" value=" +document.ConfigForm.ConnectionRequestPassword.value+ ">";
+								}
+								else {
+									inrapsw.innerHTML = "<input id=\"ConnectionRequestPassword\" style=\"WIDTH: 150px\" type=\"password\" maxLength=256 name=\"ConnectionRequestPassword\" value=" +document.ConfigForm.ConnectionRequestPassword.value+ ">";
+								}
+								ConnectionRequestPassword.value = tempvalue2;
+							}
+						
+						}
+						
+						</script>
+						
+						</td></tr></tbody></table>
+                  <table cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+
+                    <tr>
+                      <td width="200">Enable Certificate Function</td>
+                      <td>
+					  <input type="radio" value="0" name="X_ATP_SSLCertEnable" checked=""> 
+                        <font color="#000000">Disable</font>
+                      <input type="radio" value="1" name="X_ATP_SSLCertEnable"> 
+                        <font color="#000000">Enable</font></td></tr>
+						
+						</tbody></table>
+                          <input type="hidden" name="SaveFlag" value="0">
+		<script language="JavaScript" type="text/javascript">
+			if(document.ConfigForm.isMidwareSupported.value == 1)
+				getElById("midurl").style.display = "";
+			else
+			  getElById("midurl").style.display = "none";
+			  
+		</script>
+                          <script language="JavaScript" type="text/JavaScript">
+						  
+function btnSave()
+{
+	if(CheckForm() == false)
+		return;
+	
+	var Form = document.ConfigForm;
+	Form.SaveFlag.value = "1";
+	Form.submit();
+}
+</script>
+                        </form>
+
+				<table cellspacing="0" cellpadding="0" border="0">	
+				<tbody><tr>
+				<td width="10">&nbsp;</td>
+				<td>
+                  <form id="SslForm" name="SslForm" method="post" enctype="multipart/form-data">File Path[Maximum 128 characters]: <input type="file" name="filename">&nbsp; <input id="btnSubmit" class="link_bg" onclick="SubmitCert()" type="button" value="Upload" name="btnSubmit" style="height:22px"><br>
+                          <input type="hidden" name="postflag" value="0">
+                          <input type="hidden" name="fileIndex" value="1">
+                  </form>
+                  <center>
+                  <div id="ResultText" name="ResultText" style="display: none;"></div> 
+                  </center>
+				  
+				  </td>
+                <td width="10">&nbsp;</td></tr>
+              <tr>
+                <td width="10">&nbsp;</td>
+                <td>
+
+                  <script language="javascript">
+				  	var  cflag = "N/A";//the certificate of index 1 is exist?
+					if(cflag != "N/A"){
+						document.write("(The gateway has been loaded with a certificate file!)");
+					}
+					else
+				  		document.write("(The gateway did not load the certificate file!)");
+				  </script>(The gateway did not load the certificate file!)
+</td>
+                <td width="10">&nbsp;</td></tr>
+              <tr>
+                
+                <td colspan="3"><p align="center">
+				<input type="button" onclick="btnSave()" class="link_bg" id="btnOK" name="btnOK" value="Apply">&nbsp;&nbsp;
+				<input type="button" onclick="RefreshPage()" class="link_bg" id="Cancel" name="Cancel" value="Cancel"></p>
+				</td></tr></tbody></table>
+				</div>
+			</div>
+			<div class="column">
+				<div class="column_title">
+					<div class="column_title_left"></div>
+						<p>OLT Certificate</p>
+					<div class="column_title_right"></div>
+				</div>
+
+				<div class="data_common2">
+				<form name="OLTForm" action="/cgi-bin/net-tr069.asp" method="post">
+        <table cellspacing="0" cellpadding="0" width="100%" border="0">
+
+              <tbody>
+              <tr>
+                <td width="10">&nbsp;</td>
+                <td colspan="2">
+                  <p>
+                  	
+                  	You can set the LOID and password, and then click on "certification" to register and request the business configuration from network management server.
+                  	
+                  	</p>
+                      </td></tr>
+              
+              <tr>
+              	<td>&nbsp;</td>
+                      <td width="118">LOID:</td>
+                      <td><input id="LoidUsername" style="WIDTH: 150px" maxlength="256" name="LoidUsername" value=""></td></tr>
+						
+              <tr>
+                <td>&nbsp;</td>
+                      <td width="118">Password:</td>
+                      <td>
+					  	<span id="inLoidpsw"><input id="LoidPassword" style="WIDTH: 150px" type="password" maxlength="256" name="LoidPassword" value=""></span>
+						
+						<input id="cb_enablshowpsw" onclick="doshowLOIDpswChange()" type="checkbox" name="cb_enablshowpsw">Show Password
+						<script language="JavaScript" type="text/JavaScript">
+						
+						function doshowLOIDpswChange() {
+							with (getElById('OLTForm')){
+								var tempvalue1 = LoidPassword.value;
+								if (cb_enablshowpsw.checked) {
+									inLoidpsw.innerHTML = "<input id=\"LoidPassword\" style=\"WIDTH: 150px\" type=\"text\" maxLength=256 name=\"LoidPassword\" value=" +document.OLTForm.LoidPassword.value+ ">";
+								}
+								else {
+									inLoidpsw.innerHTML = "<input id=\"LoidPassword\" style=\"WIDTH: 150px\" type=\"password\" maxLength=256 name=\"LoidPassword\" value=" +document.OLTForm.LoidPassword.value+ ">";
+								}
+								LoidPassword.value = tempvalue1;
+							}
+						
+						}
+						
+						</script>
+						
+						</td></tr>
+						<tr>
+                <td>&nbsp;</td>
+                <td></td>
+                <td>&nbsp;</td></tr>
+						<tr>
+                <td align="center" colspan="3">
+        
+				<input type="button" id="btnAuth" name="btnAuth" class="link_bg" onclick="doSubmit()" value="Certificate">&nbsp;&nbsp;
+				<input type="button" id="btnCancel" name="btnCancel" class="link_bg" onclick="RefreshPage()" value="Cancel"><input type="hidden" name="SubmitFlag" value="0"></td></tr>					
+
+
+						<script language="JavaScript" type="text/JavaScript">
+
+						function doSubmit() {
+							var Form = document.OLTForm;
+
+
+							if(Form.LoidUsername.value == "")
+							{
+								alert("LOID is empty.");
+								Form.LoidUsername.focus();
+								return;
+							}
+
+
+
+
+							Form.SubmitFlag.value = "1";
+							Form.submit();
+						}
+												
+						</script>					
+						</tbody></table></form>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+<script language="JavaScript">
+
+
+var URLOpenFlag = "0";
+var UsernameOpenFlag = "0";
+var PasswordOpenFlag = "0";
+var CRUsernameOpenFlag = "0";
+var CRPasswordOpenFlag = "0";
+
+	URLOpenFlag = "0";
+	UsernameOpenFlag = "0";
+	PasswordOpenFlag = "0";
+	CRUsernameOpenFlag = "0";
+	CRPasswordOpenFlag = "0";
+
+
+
+
+
+if(URLOpenFlag == "1" && getElById('URL') )
+
+	getElById('URL').disabled = true;
+
+if(UsernameOpenFlag == "1" && getElById('Username'))
+	getElById('Username').disabled = true;
+if(PasswordOpenFlag == "1" && getElById('Password'))
+	getElById('Password').disabled = true;
+if(CRUsernameOpenFlag == "1" && getElById('ConnectionRequestUsername'))
+	getElById('ConnectionRequestUsername').disabled = true;
+if(CRPasswordOpenFlag == "1" && getElById('ConnectionRequestPassword'))
+	getElById('ConnectionRequestPassword').disabled = true;
+</script>
+	
+</div></body></html>

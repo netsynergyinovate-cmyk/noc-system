@@ -75,6 +75,18 @@ type PollerOptions struct {
 	// RequestTimeout membatasi satu permintaan queue; default 90% dari Interval
 	// agar satu permintaan yang macet tidak menumpuk dengan berikutnya.
 	RequestTimeout time.Duration
+	// TrafficFromQueues: true = trafik dashboard dari jumlah rate simple queue (cara lama: dihaluskan
+	// RouterOS, tertinggal sekitar 3 detik, hanya pelanggan ber-queue). Bawaan false: counter interface.
+	TrafficFromQueues bool
+	// TrafficInterface: interface yang counter byte-nya menjadi trafik dashboard (sama dengan Winbox).
+	// Kosong = cari interface berkomentar TrafficComment di tiap router. Tanpa keduanya (atau bila
+	// interface tidak ditemukan) dipakai jumlah rate simple queue seperti sebelumnya.
+	TrafficInterface string
+	// TrafficComment: komentar interface uplink; bawaan "UPLINK".
+	TrafficComment string
+	// TrafficCustomerSide: true bila interface itu menghadap pelanggan (mis. ke OLT), jadi Tx =
+	// download dan Rx = upload. Bawaan false: interface uplink, Rx = download dan Tx = upload.
+	TrafficCustomerSide bool
 	// Backup mengaktifkan jalur cadangan; nil berarti hanya polling queue.
 	Backup *BackupOptions
 	// OnResult dipanggil setelah tiap putaran job selesai (err nil = berhasil), dari
@@ -113,6 +125,13 @@ type worker struct {
 
 	mu     sync.Mutex
 	status map[string]*Status
+
+	// Sumber trafik dari counter interface (hanya disentuh goroutine job queue, jadi tanpa kunci).
+	ifName      string    // interface yang dipakai; kosong = belum/tidak ditemukan
+	ifLookupAt  time.Time // terakhir mencari interface berkomentar (untuk membatasi pencarian)
+	ifPrev      *ifSample
+	ifLogged    bool
+	ifFallbackW bool
 }
 
 type job struct {
@@ -134,6 +153,9 @@ func NewPoller(rec Recorder, opts PollerOptions) *Poller {
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
+	}
+	if opts.TrafficComment == "" {
+		opts.TrafficComment = "UPLINK"
 	}
 	if b := opts.Backup; b != nil {
 		backup := *b // jangan mengubah milik pemanggil
@@ -347,6 +369,11 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 		return 0, err
 	}
 	down, up, counted := Totals(samples)
+	// Trafik dashboard dari counter interface (sama dengan Winbox, tanpa jeda); jumlah queue hanya
+	// cadangan bila interface tidak tersedia.
+	if rx, tx, ok := p.interfaceTraffic(ctx, w); ok {
+		down, up = rx, tx
+	}
 	// Sampel dicap detik saat permintaan dikirim, bukan saat jawaban tiba.
 	point := state.TrafficPoint{Time: started.Unix(), RxMbps: down, TxMbps: up}
 	if _, err := p.rec.RecordTraffic(w.routerID, point); err != nil {
@@ -383,6 +410,62 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 	}
 
 	return counted, nil
+}
+
+// ifLookupEvery: jarak minimal antar pencarian interface berkomentar bila belum ketemu.
+const ifLookupEvery = 5 * time.Minute
+
+// interfaceTraffic mengembalikan laju download/upload (Mbps) dari counter interface. ok=false bila
+// belum ada pembanding, interface tidak ditemukan, atau pembacaan gagal: pemanggil memakai cadangan.
+func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upMbps float64, ok bool) {
+	if p.opts.TrafficFromQueues {
+		return 0, 0, false
+	}
+	now := p.opts.Now()
+	if w.ifName == "" {
+		if p.opts.TrafficInterface != "" {
+			w.ifName = p.opts.TrafficInterface
+		} else if w.ifLookupAt.IsZero() || now.Sub(w.ifLookupAt) >= ifLookupEvery {
+			w.ifLookupAt = now
+			name, err := w.client.FindInterfaceByComment(ctx, p.opts.TrafficComment)
+			if err == nil && name != "" {
+				w.ifName = name
+			} else if !w.ifFallbackW {
+				w.ifFallbackW = true
+				p.opts.Logger.Warn("trafik memakai jumlah rate queue: interface berkomentar tidak ditemukan atau ambigu",
+					"router", w.routerID, "komentar", p.opts.TrafficComment)
+			}
+		}
+		if w.ifName == "" {
+			return 0, 0, false
+		}
+	}
+	t0 := p.opts.Now()
+	cur, err := w.client.InterfaceCounters(ctx, w.ifName)
+	t1 := p.opts.Now()
+	if err != nil {
+		w.ifPrev = nil
+		return 0, 0, false
+	}
+	if !w.ifLogged {
+		w.ifLogged = true
+		p.opts.Logger.Info("trafik dashboard dari counter interface", "router", w.routerID, "interface", w.ifName, "sisi_pelanggan", p.opts.TrafficCustomerSide)
+	}
+	// Router membaca counter di tengah permintaan; pakai titik tengahnya sebagai saat pembacaan.
+	sample := ifSample{At: t0.Add(t1.Sub(t0) / 2), Rx: cur.RxBytes, Tx: cur.TxBytes}
+	prev := w.ifPrev
+	w.ifPrev = &sample
+	if prev == nil {
+		return 0, 0, false
+	}
+	rx, tx, ok := ifRate(*prev, sample)
+	if !ok {
+		return 0, 0, false
+	}
+	if p.opts.TrafficCustomerSide {
+		return tx, rx, true
+	}
+	return rx, tx, true
 }
 
 // runPPPActive: menyamakan status pelanggan dengan sesi PPPoE yang aktif.

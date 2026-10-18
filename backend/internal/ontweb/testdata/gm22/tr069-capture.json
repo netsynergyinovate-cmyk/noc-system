@@ -1,0 +1,111 @@
+{
+  "want": {
+    "url": "http://172.16.0.1:7547",
+    "user": "admin",
+    "pass": "admin",
+    "interval": "300",
+    "crUser": "noc",
+    "crPass": "noc-secret"
+  },
+  "path": "/getpage.gch?pid=1002&nextpage=net_tr069_basic_t.gch",
+  "referer": "/getpage.gch?pid=1002&nextpage=net_tr069_basic_t.gch",
+  "body": "IF_ACTION=apply&IF_ERRORSTR=SUCC&IF_ERRORPARAM=SUCC&IF_ERRORTYPE=-1&URL=http%3A%2F%2F172.16.0.1%3A7547&UserName=admin&UserPassword=admin&PeriodicInformEnable=1&PeriodicInformInterval=300&ParameterKey=NULL&ConnectionRequestURL=NULL&ConnectionRequestUsername=noc&ConnectionRequestPassword=noc-secret&UpgradesManaged=NULL&DefaultWan=NULL&SupportCertAuth=0&ConnectionRequestPort=58000&IF_PAGE=&IF_URLATTR=2&IF_UsernameATTR=2&IF_PasswordATTR=2&IF_ConnectionRequestUsernameATTR=2&IF_ConnectionRequestPasswordATTR=2&_SESSION_TOKEN=1111222233334444",
+  "rows": [
+    [
+      "IF_ACTION",
+      "apply"
+    ],
+    [
+      "IF_ERRORSTR",
+      "SUCC"
+    ],
+    [
+      "IF_ERRORPARAM",
+      "SUCC"
+    ],
+    [
+      "IF_ERRORTYPE",
+      "-1"
+    ],
+    [
+      "URL",
+      "http://172.16.0.1:7547"
+    ],
+    [
+      "UserName",
+      "admin"
+    ],
+    [
+      "UserPassword",
+      "admin"
+    ],
+    [
+      "PeriodicInformEnable",
+      "1"
+    ],
+    [
+      "PeriodicInformInterval",
+      "300"
+    ],
+    [
+      "ParameterKey",
+      "NULL"
+    ],
+    [
+      "ConnectionRequestURL",
+      "NULL"
+    ],
+    [
+      "ConnectionRequestUsername",
+      "noc"
+    ],
+    [
+      "ConnectionRequestPassword",
+      "noc-secret"
+    ],
+    [
+      "UpgradesManaged",
+      "NULL"
+    ],
+    [
+      "DefaultWan",
+      "NULL"
+    ],
+    [
+      "SupportCertAuth",
+      "0"
+    ],
+    [
+      "ConnectionRequestPort",
+      "58000"
+    ],
+    [
+      "IF_PAGE",
+      ""
+    ],
+    [
+      "IF_URLATTR",
+      "2"
+    ],
+    [
+      "IF_UsernameATTR",
+      "2"
+    ],
+    [
+      "IF_PasswordATTR",
+      "2"
+    ],
+    [
+      "IF_ConnectionRequestUsernameATTR",
+      "2"
+    ],
+    [
+      "IF_ConnectionRequestPasswordATTR",
+      "2"
+    ],
+    [
+      "_SESSION_TOKEN",
+      "1111222233334444"
+    ]
+  ]
+}

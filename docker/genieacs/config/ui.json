@@ -1,0 +1,140 @@
+{
+  "_catatan": "Konfigurasi UI GenieACS (halaman Devices dan detail perangkat). Diratakan jadi kunci 'ui.index.0.label' dst. oleh scripts/genieacs-apply-config.mjs. Nilai 'parameter' dan isi 'parameters' ditulis apa adanya (ekspresi GenieACS); string lain dikutip jadi literal. Kolom memakai VirtualParameters (docker/genieacs/config/virtual_parameters).",
+
+  "ui.index": [
+    { "label": "PON", "parameter": "VirtualParameters.ponType" },
+    {
+      "label": "ID PPPoE",
+      "type": "device-link",
+      "parameter": "VirtualParameters.pppoeUsername",
+      "components": [{ "type": "parameter" }]
+    },
+    { "label": "SSID", "parameter": "VirtualParameters.ssid" },
+    { "label": "Active", "parameter": "VirtualParameters.activeDevices" },
+    { "label": "RX (dBm)", "parameter": "VirtualParameters.rxPower" },
+    { "label": "Temp (°C)", "parameter": "VirtualParameters.temperature" },
+    { "label": "Uptime", "parameter": "VirtualParameters.uptime" },
+    { "label": "IP PPPoE", "parameter": "VirtualParameters.ipPppoe" },
+    { "label": "IP WAN/TR069", "parameter": "VirtualParameters.ipTr069" },
+    { "label": "SN ONT", "parameter": "VirtualParameters.snOnt" },
+    { "label": "Mac", "parameter": "VirtualParameters.mac" },
+    { "label": "Product class", "parameter": "DeviceID.ProductClass" },
+    { "label": "Reg Time", "parameter": "DATE_STRING(Events.Registered)" },
+    {
+      "label": "Komunikasi Terakhir",
+      "type": "container",
+      "element": "span.inform",
+      "parameter": "DATE_STRING(Events.Inform)",
+      "components": [{ "type": "parameter" }, { "type": "overview-dot", "chart": "online" }]
+    },
+    { "label": "Tags", "type": "tags", "parameter": "Tags", "unsortable": true, "writable": false }
+  ],
+
+  "ui.filters": [
+    { "label": "ID PPPoE", "parameter": "VirtualParameters.pppoeUsername", "type": "string" },
+    { "label": "SN ONT", "parameter": "VirtualParameters.snOnt", "type": "string" },
+    { "label": "Mac", "parameter": "VirtualParameters.mac", "type": "string" },
+    { "label": "IP PPPoE", "parameter": "VirtualParameters.ipPppoe", "type": "string" },
+    { "label": "SSID", "parameter": "VirtualParameters.ssid", "type": "string" },
+    { "label": "Product class", "parameter": "DeviceID.ProductClass", "type": "string" },
+    { "label": "Serial number", "parameter": "DeviceID.SerialNumber", "type": "string" },
+    { "label": "Tag", "type": "tag" }
+  ],
+
+  "ui.device": [
+    { "type": "tags" },
+    { "type": "ping" },
+    {
+      "type": "parameter-list",
+      "parameters": [
+        {
+          "label": "Komunikasi terakhir",
+          "type": "container",
+          "element": "span.inform",
+          "parameter": "DATE_STRING(Events.Inform)",
+          "components": [
+            { "type": "parameter" },
+            { "type": "overview-dot", "chart": "online" },
+            {
+              "type": "summon-button",
+              "parameters": [
+                "InternetGatewayDevice.DeviceInfo.UpTime",
+                "InternetGatewayDevice.DeviceInfo.SoftwareVersion",
+                "InternetGatewayDevice.DeviceInfo.HardwareVersion",
+                "InternetGatewayDevice.DeviceInfo.XponInterface.*",
+                "InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.*.*",
+                "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage",
+                "InternetGatewayDevice.DeviceInfo.MemoryStatus.*",
+                "InternetGatewayDevice.ManagementServer.*",
+                "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.*",
+                "InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.*",
+                "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID",
+                "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.Enable",
+                "InternetGatewayDevice.LANDevice.*.Hosts.Host.*.*"
+              ]
+            }
+          ]
+        },
+        { "label": "ID PPPoE", "parameter": "VirtualParameters.pppoeUsername" },
+        { "label": "SN ONT", "parameter": "VirtualParameters.snOnt" },
+        { "label": "Jenis PON", "parameter": "VirtualParameters.ponType" },
+        { "label": "Product class", "parameter": "DeviceID.ProductClass" },
+        { "label": "OUI", "parameter": "DeviceID.OUI" },
+        { "label": "Manufacturer", "parameter": "DeviceID.Manufacturer" },
+        { "label": "Hardware version", "parameter": "InternetGatewayDevice.DeviceInfo.HardwareVersion" },
+        { "label": "Software version", "parameter": "InternetGatewayDevice.DeviceInfo.SoftwareVersion" },
+        { "label": "MAC", "parameter": "VirtualParameters.mac" },
+        { "label": "IP PPPoE", "parameter": "VirtualParameters.ipPppoe" },
+        { "label": "IP WAN/TR069", "parameter": "VirtualParameters.ipTr069" },
+        { "label": "Uptime", "parameter": "VirtualParameters.uptime" },
+        { "label": "RX (dBm)", "parameter": "VirtualParameters.rxPower" },
+        { "label": "TX (dBm)", "parameter": "VirtualParameters.txPower" },
+        { "label": "Suhu modul optik (°C)", "parameter": "VirtualParameters.temperature" },
+        { "label": "CPU (%)", "parameter": "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage" },
+        { "label": "SSID", "parameter": "VirtualParameters.ssid" },
+        { "label": "Perangkat aktif", "parameter": "VirtualParameters.activeDevices" },
+        { "label": "Periodic inform (detik)", "parameter": "InternetGatewayDevice.ManagementServer.PeriodicInformInterval" },
+        { "label": "URL ACS di modem", "parameter": "InternetGatewayDevice.ManagementServer.URL" }
+      ]
+    },
+    {
+      "type": "parameter-table",
+      "label": "Perangkat terhubung (LAN/Wi-Fi)",
+      "parameter": "InternetGatewayDevice.LANDevice.1.Hosts.Host",
+      "childParameters": [
+        { "label": "Nama host", "parameter": "HostName" },
+        { "label": "Alamat IP", "parameter": "IPAddress" },
+        { "label": "Alamat MAC", "parameter": "MACAddress" },
+        { "label": "Aktif", "parameter": "Active" },
+        { "label": "Antarmuka", "parameter": "InterfaceType" }
+      ]
+    },
+    {
+      "type": "parameter-table",
+      "label": "Koneksi WAN (PPPoE)",
+      "parameter": "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection",
+      "childParameters": [
+        { "label": "Nama", "parameter": "Name" },
+        { "label": "Akun PPPoE", "parameter": "Username" },
+        { "label": "Status", "parameter": "ConnectionStatus" },
+        { "label": "IP", "parameter": "ExternalIPAddress" },
+        { "label": "MAC", "parameter": "MACAddress" },
+        { "label": "Uptime (detik)", "parameter": "Uptime" }
+      ]
+    },
+    {
+      "type": "container",
+      "element": "div",
+      "components": [{ "type": "container", "element": "h3", "components": ["Faults"] }, { "type": "device-faults" }]
+    },
+    {
+      "type": "container",
+      "element": "div.container-full-width",
+      "components": [
+        { "type": "container", "element": "h3", "components": ["All parameters"] },
+        { "type": "all-parameters" }
+      ]
+    },
+    { "type": "device-actions" }
+  ]
+}

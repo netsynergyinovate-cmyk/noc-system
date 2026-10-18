@@ -27,6 +27,7 @@ import (
 	"noc-isp/backend/internal/hub"
 	"noc-isp/backend/internal/netflow"
 	"noc-isp/backend/internal/olt"
+	"noc-isp/backend/internal/ontweb"
 	"noc-isp/backend/internal/state"
 	"noc-isp/backend/internal/wire"
 )
@@ -141,6 +142,13 @@ func run() error {
 		// tetap dipasang walau bindCfg.Mode == off, supaya operator bisa mengikat
 		// satu ONU lewat tombol tanpa menyalakan pengikatan otomatis untuk semua.
 		apiOptions.OltBind = httpapi.NewOltBindAPI(pool, cfg.DeviceSecret, bindCfg.ProfileID, olt.NewPGBindStore(pool), logger)
+		// "Pasang GenieACS lewat web ONT": ACS dan kredensial dibaca dari tabel
+		// ont_web_settings per permintaan; hanya batas jaringan modem dari env.
+		if ontNets, err := ontweb.PolicyFromEnv(os.Getenv); err != nil {
+			fmt.Fprintln(os.Stderr, "peringatan: ONT_WEB_ALLOWED_CIDRS tidak valid, pasang TR-069 lewat web ONT dimatikan:", err)
+		} else {
+			apiOptions.OntWeb = httpapi.NewOntWebAPI(pool, cfg.DeviceSecret, ontNets, logger)
+		}
 		apiOptions.History = archive.NewPGStore(pool)
 		billingDB = pool
 		billingRead = pool

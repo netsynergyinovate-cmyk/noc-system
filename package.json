@@ -42,6 +42,7 @@
     "genieacs:down": "docker compose -f compose.genieacs.yaml down",
     "genieacs:logs": "docker compose -f compose.genieacs.yaml logs -f",
     "genieacs:status": "docker compose -f compose.genieacs.yaml ps",
+    "genieacs:config": "node scripts/genieacs-apply-config.mjs",
     "simulator:dev": "node scripts/simulator-lab.mjs",
     "benchmark:run": "node scripts/run-benchmark-comparison.mjs",
     "benchmark:db": "node scripts/run-benchmark-db.mjs",

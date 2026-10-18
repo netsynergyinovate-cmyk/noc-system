@@ -24,7 +24,7 @@ export default async function DashboardPage({
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       {focusId && <MapFocusFromUrl customerId={focusId} />}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between lg:items-center">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Dashboard NOC
@@ -33,11 +33,13 @@ export default async function DashboardPage({
             Ringkasan jaringan pelanggan PPPoE dalam satu layar.
           </p>
         </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <LiveStatus />
+        <div className="flex flex-col items-start gap-2.5 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2">
+            <MockDataNotice real />
+            <AnomalyBadge />
+            <LiveStatus />
+          </div>
           <DashboardAutoRefresh />
-          <AnomalyBadge />
-          <MockDataNotice real />
         </div>
       </div>
       <StreamDisconnectedBanner />

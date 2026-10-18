@@ -131,3 +131,61 @@ export const testBillingConnectionSchema = z
   .strict();
 
 export type TestBillingConnectionInput = z.infer<typeof testBillingConnectionSchema>;
+
+// Pasang TR-069 lewat web admin modem: IPv4 literal saja (backend memeriksa lagi
+// jaringan yang diizinkan). Kredensial opsional menimpa bawaan server; tidak
+// pernah disimpan atau dicatat.
+export const ontWebTr069Schema = z
+  .object({
+    // onuId (olt_onus.id): backend mencari IP modem otomatis dari sesi PPPoE
+    // pelanggannya. host (IPv4) menimpa pencarian itu. Salah satu wajib.
+    onuId: z.string().uuid().optional(),
+    host: z
+      .string()
+      .trim()
+      .regex(/^(?:\d{1,3}\.){3}\d{1,3}$/, "Isi alamat IPv4 modem, mis. 172.16.15.248")
+      .optional(),
+    username: z.string().trim().max(100).optional(),
+    password: z.string().max(100).optional(),
+    // Ubah WAN internet modem jadi TR069_INTERNET bila belum ada WAN pembawa TR-069
+    // (PPPoE pelanggan tersambung ulang beberapa detik). Harus diminta eksplisit.
+    ensureWan: z.boolean().optional(),
+  })
+  .strict()
+  .refine((v) => v.onuId !== undefined || v.host !== undefined, "Isi onuId atau host");
+export type OntWebTr069Input = z.infer<typeof ontWebTr069Schema>;
+
+// Pengaturan "Pasang GenieACS lewat web ONT" (tabel ont_web_settings). Kata sandi:
+// tidak dikirim (undefined) = biarkan yang tersimpan; string kosong = hapus.
+const optionalSecret = z.string().max(100).optional();
+export const ontWebSettingsSchema = z
+  .object({
+    acsUrl: z
+      .string()
+      .trim()
+      .max(256)
+      .refine((v) => {
+        try {
+          const u = new URL(v);
+          return (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password;
+        } catch {
+          return false;
+        }
+      }, "Isi alamat ACS seperti http://172.16.0.1:7547"),
+    acsUsername: z.string().trim().max(100).optional(),
+    acsPassword: optionalSecret,
+    informInterval: z.number().int().min(30).max(86400),
+    webUsername: z.string().trim().max(100).optional(),
+    webPassword: optionalSecret,
+    // Admin web ZIMLINK ZL-2113X ("HWTC H113"): akun berbeda dari FD511GW.
+    zimlinkUsername: z.string().trim().max(100).optional(),
+    zimlinkPassword: optionalSecret,
+    // Admin web GGCLink GM220-S XPON ("ZICG GM22").
+    ggclinkUsername: z.string().trim().max(100).optional(),
+    ggclinkPassword: optionalSecret,
+    // Admin web ZTE F609 MediaTek ("MTKc F609").
+    f609Username: z.string().trim().max(100).optional(),
+    f609Password: optionalSecret,
+  })
+  .strict();
+export type OntWebSettingsInput = z.infer<typeof ontWebSettingsSchema>;

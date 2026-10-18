@@ -25,3 +25,4 @@ export * from "./device-test-results";
 export * from "./schema-migrations";
 export * from "./data-sync-tracking";
 export * from "./onboarding";
+export * from "./ont-web-settings";

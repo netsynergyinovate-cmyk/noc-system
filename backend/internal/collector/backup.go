@@ -203,3 +203,87 @@ func reconcilePresence(p Presence, notify func(state.Change), routerID string, s
 	}
 	return result
 }
+
+// PPPActiveAddress mengembalikan alamat IP sesi PPP aktif bernama name
+// (/ppp/active), atau ok=false bila pelanggan itu sedang tidak terhubung di
+// router ini. Nama dicocokkan persis dulu; bila tidak ada, tanpa membedakan
+// huruf besar/kecil asal hanya SATU sesi yang cocok (tidak pernah menebak).
+func (c *Client) PPPActiveAddress(ctx context.Context, name string) (addr string, ok bool, err error) {
+	body, err := c.get(ctx, "name,address", "ppp", "active")
+	if err != nil {
+		return "", false, err
+	}
+	var rows []struct {
+		Name    string `json:"name"`
+		Address string `json:"address"`
+	}
+	if err := json.Unmarshal(body, &rows); err != nil {
+		return "", false, fmt.Errorf("jawaban /ppp/active bukan daftar yang valid: %w", err)
+	}
+	var folded []string
+	for _, r := range rows {
+		if r.Address == "" {
+			continue
+		}
+		if r.Name == name {
+			return r.Address, true, nil
+		}
+		if strings.EqualFold(r.Name, name) {
+			folded = append(folded, r.Address)
+		}
+	}
+	if len(folded) == 1 {
+		return folded[0], true, nil
+	}
+	return "", false, nil
+}
+
+// macValue mengubah "D0:5F:AF:D3:C7:1F" (atau dengan "-") menjadi angka; ok=false bila bukan MAC.
+func macValue(s string) (v uint64, ok bool) {
+	s = strings.NewReplacer(":", "", "-", "").Replace(strings.TrimSpace(s))
+	if len(s) != 12 {
+		return 0, false
+	}
+	n, err := strconv.ParseUint(s, 16, 64)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// PPPActiveByMAC mencari sesi PPP aktif yang caller-id-nya (MAC WAN modem) berdekatan
+// dengan mac (MAC ONU di OLT). Modem memakai blok alamat berurutan: ONU di OLT
+// D0:5F:AF:D3:C7:1D, LAN ...1E, WAN (yang dilihat router sebagai caller-id) ...1F.
+// Cocok bila lima oktet pertama sama dan selisih terakhir 1..maxDelta. Tidak pernah
+// menebak: lebih dari satu kandidat dianggap tidak ditemukan.
+func (c *Client) PPPActiveByMAC(ctx context.Context, mac string, maxDelta uint64) (addr string, ok bool, err error) {
+	want, valid := macValue(mac)
+	if !valid {
+		return "", false, nil
+	}
+	body, err := c.get(ctx, "name,address,caller-id", "ppp", "active")
+	if err != nil {
+		return "", false, err
+	}
+	var rows []struct {
+		Address  string `json:"address"`
+		CallerID string `json:"caller-id"`
+	}
+	if err := json.Unmarshal(body, &rows); err != nil {
+		return "", false, fmt.Errorf("jawaban /ppp/active bukan daftar yang valid: %w", err)
+	}
+	var found []string
+	for _, r := range rows {
+		got, valid := macValue(r.CallerID)
+		if !valid || r.Address == "" || got>>8 != want>>8 {
+			continue
+		}
+		if d := got - want; got > want && d >= 1 && d <= maxDelta {
+			found = append(found, r.Address)
+		}
+	}
+	if len(found) != 1 {
+		return "", false, nil
+	}
+	return found[0], true, nil
+}

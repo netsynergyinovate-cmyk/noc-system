@@ -39,3 +39,6 @@ graphify-out/
 # Skrip coba-coba lokal (memuat IP router dan kredensial dev).
 /probe-winbox-m2.mjs
 /check-session-db.mjs
+
+# cadangan konfigurasi UI GenieACS (dibuat npm run genieacs:config)
+docker/genieacs/config/.backup/

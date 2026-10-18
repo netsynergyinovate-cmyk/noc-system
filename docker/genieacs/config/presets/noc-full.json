@@ -1,0 +1,7 @@
+{
+  "weight": 10,
+  "channel": "noc-full",
+  "events": {},
+  "precondition": "",
+  "configurations": [{ "type": "provision", "name": "noc-full", "args": null }]
+}

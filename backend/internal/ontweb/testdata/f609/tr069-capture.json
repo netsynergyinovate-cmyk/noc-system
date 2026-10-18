@@ -1,0 +1,77 @@
+{
+ "body": "Tr069Enable=1&EnTr069Flag=1&ActiveCwmpFlag=Yes&isMidwareSupported=0&MiddlewareAddress=0.0.0.0&MiddlewarePort=0&PeriodicInformEnable=Yes&PeriodicInformInterval=300&PeriodicInformTime=0001-01-01T00%3A00%3A00Z&URL=http%3A%2F%2F172.16.0.1%3A7547&Username=admin&Password=admin&ConnectionRequestUsername=RMS&ConnectionRequestPassword=RMS&X_ATP_SSLCertEnable=0&SaveFlag=1",
+ "rows": [
+  [
+   "Tr069Enable",
+   "1"
+  ],
+  [
+   "EnTr069Flag",
+   "1"
+  ],
+  [
+   "ActiveCwmpFlag",
+   "Yes"
+  ],
+  [
+   "isMidwareSupported",
+   "0"
+  ],
+  [
+   "MiddlewareAddress",
+   "0.0.0.0"
+  ],
+  [
+   "MiddlewarePort",
+   "0"
+  ],
+  [
+   "PeriodicInformEnable",
+   "Yes"
+  ],
+  [
+   "PeriodicInformInterval",
+   "300"
+  ],
+  [
+   "PeriodicInformTime",
+   "0001-01-01T00:00:00Z"
+  ],
+  [
+   "URL",
+   "http://172.16.0.1:7547"
+  ],
+  [
+   "Username",
+   "admin"
+  ],
+  [
+   "Password",
+   "admin"
+  ],
+  [
+   "ConnectionRequestUsername",
+   "RMS"
+  ],
+  [
+   "ConnectionRequestPassword",
+   "RMS"
+  ],
+  [
+   "X_ATP_SSLCertEnable",
+   "0"
+  ],
+  [
+   "SaveFlag",
+   "1"
+  ]
+ ],
+ "ebooValue": "8fbf6a4f",
+ "referer": "/cgi-bin/net-tr069.asp",
+ "want": {
+  "url": "http://172.16.0.1:7547",
+  "user": "admin",
+  "pass": "admin",
+  "interval": "300"
+ }
+}

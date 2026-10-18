@@ -1,0 +1,145 @@
+<html><head><title>GM220-S XPON</title></head><body>
+<!-- fixture: bagian net_ethwan_conf_t.gch yang dipakai parser (modem nyata 2) -->
+<script>
+function pageAdd()
+{
+ReSetIpRmZero("Frm_IPAddress","Frm_SubnetMask","Frm_GateWay","Frm_DNS1","Frm_DNS2","Frm_DNS3");
+ReSetValueRmZero("Frm_IdleTime","Frm_Priority","Frm_MaxUser","Frm_VLANID","Frm_MTU","Frm_Gua1PrefixLen");
+if(pageCheckValue()==true)
+{
+pageSetValue();
+setValue("IF_ACTION","new");
+jslDisable("Frm_mode");
+if(getValue("Frm_mode")=="DHCP"
+||(getValue("Frm_IPv6mode")=="IP" && getValue("Frm_protocol")=="IPv4/v6"))
+{
+setValue("IF_IDLE","edit");
+}
+</script>
+<FORM NAME=fSubmit ID=fSubmit METHOD='POST' action=>
+<INPUT type='hidden' name=IF_ACTION ID=IF_ACTION value=''>
+<script language=javascript>Transfer_meaning('IF_ACTION','');</script>
+<INPUT type='hidden' name=IF_ERRORSTR ID=IF_ERRORSTR value=''>
+<script language=javascript>Transfer_meaning('IF_ERRORSTR','SUCC');</script>
+<INPUT type='hidden' name=IF_ERRORPARAM ID=IF_ERRORPARAM value=''>
+<script language=javascript>Transfer_meaning('IF_ERRORPARAM','SUCC');</script>
+<INPUT type='hidden' name=IF_ERRORTYPE ID=IF_ERRORTYPE value=''>
+<script language=javascript>Transfer_meaning('IF_ERRORTYPE','\x2d1');</script>
+<INPUT type='hidden' name=IF_INSTNUM ID=IF_INSTNUM value=''>
+<script language=javascript>Transfer_meaning('IF_INSTNUM','');</script>
+<INPUT type='hidden' name=IF_INDEX ID=IF_INDEX value=''>
+<script language=javascript>Transfer_meaning('IF_INDEX','\x2d1');</script>
+<INPUT type='hidden' name=IF_WANNAME0 ID=IF_WANNAME0 value=''>
+<script language=javascript>Transfer_meaning('IF_WANNAME0','2\x5fINTERNET\x5fR\x5fVID\x5f');</script>
+<INPUT type='hidden' name=IF_WANIDENTITY0 ID=IF_WANIDENTITY0 value=''>
+<script language=javascript>Transfer_meaning('IF_WANIDENTITY0','IGD\x2eWD1\x2eWCD2\x2eWCPPP1');</script>
+<INPUT type='hidden' name=Enable1   ID=Enable1 value=''>
+<INPUT type='hidden' name=WANCName1   ID=WANCName1 value=''>
+<INPUT type='hidden' name=ConnType1   ID=ConnType1 value=''>
+<INPUT type='hidden' name=LANDViewName1   ID=LANDViewName1 value=''>
+<INPUT type='hidden' name=StrServList1   ID=StrServList1 value=''>
+<INPUT type='hidden' name=ServList1   ID=ServList1 value=''>
+<INPUT type='hidden' name=IsNAT1   ID=IsNAT1 value=''>
+<INPUT type='hidden' name=IsDefGW1   ID=IsDefGW1 value=''>
+<INPUT type='hidden' name=IsForward1   ID=IsForward1 value=''>
+<INPUT type='hidden' name=VLANID1   ID=VLANID1 value=''>
+<INPUT type='hidden' name=Priority1   ID=Priority1 value=''>
+<INPUT type='hidden' name=WBDMode1   ID=WBDMode1 value=''>
+<INPUT type='hidden' name=IPAddress1   ID=IPAddress1 value=''>
+<INPUT type='hidden' name=SubnetMask1   ID=SubnetMask1 value=''>
+<INPUT type='hidden' name=GateWay1   ID=GateWay1 value=''>
+<INPUT type='hidden' name=DNS11   ID=DNS11 value=''>
+<INPUT type='hidden' name=DNS21   ID=DNS21 value=''>
+<INPUT type='hidden' name=DNS31   ID=DNS31 value=''>
+<INPUT type='hidden' name=WorkIFMac1   ID=WorkIFMac1 value=''>
+<INPUT type='hidden' name=UpTime1   ID=UpTime1 value=''>
+<INPUT type='hidden' name=ConnStatus1   ID=ConnStatus1 value=''>
+<INPUT type='hidden' name=UserName1   ID=UserName1 value=''>
+<INPUT type='hidden' name=Password1   ID=Password1 value=''>
+<INPUT type='hidden' name=PPPoEACName1   ID=PPPoEACName1 value=''>
+<INPUT type='hidden' name=PPPoEServiceName1   ID=PPPoEServiceName1 value=''>
+<INPUT type='hidden' name=MRU1   ID=MRU1 value=''>
+<INPUT type='hidden' name=MTU1   ID=MTU1 value=''>
+<INPUT type='hidden' name=ConnTrigger1   ID=ConnTrigger1 value=''>
+<INPUT type='hidden' name=TransType1   ID=TransType1 value=''>
+<INPUT type='hidden' name=AuthType1   ID=AuthType1 value=''>
+<INPUT type='hidden' name=IdleTime1   ID=IdleTime1 value=''>
+<INPUT type='hidden' name=ConnError1   ID=ConnError1 value=''>
+<INPUT type='hidden' name=DestAddress1   ID=DestAddress1 value=''>
+<INPUT type='hidden' name=ATMLinkType1   ID=ATMLinkType1 value=''>
+<INPUT type='hidden' name=ATMEncapsulation1   ID=ATMEncapsulation1 value=''>
+<INPUT type='hidden' name=ATMQoS1   ID=ATMQoS1 value=''>
+<INPUT type='hidden' name=ATMPeakCellRate1   ID=ATMPeakCellRate1 value=''>
+<INPUT type='hidden' name=ATMMaxBurstSize1   ID=ATMMaxBurstSize1 value=''>
+<INPUT type='hidden' name=ATMMinCellRate1   ID=ATMMinCellRate1 value=''>
+<INPUT type='hidden' name=ATMSCR1   ID=ATMSCR1 value=''>
+<INPUT type='hidden' name=ATMCDV1   ID=ATMCDV1 value=''>
+<INPUT type='hidden' name=RxPackets1   ID=RxPackets1 value=''>
+<INPUT type='hidden' name=TxPackets1   ID=TxPackets1 value=''>
+<INPUT type='hidden' name=RxBytes1   ID=RxBytes1 value=''>
+<INPUT type='hidden' name=TxBytes1   ID=TxBytes1 value=''>
+<INPUT type='hidden' name=EnableProxy1   ID=EnableProxy1 value=''>
+<INPUT type='hidden' name=MaxUser1   ID=MaxUser1 value=''>
+<INPUT type='hidden' name=DSCP1   ID=DSCP1 value=''>
+<INPUT type='hidden' name=EnablePassThrough1   ID=EnablePassThrough1 value=''>
+<INPUT type='hidden' name=ValidWANRx1   ID=ValidWANRx1 value=''>
+<INPUT type='hidden' name=ValidLANTx1   ID=ValidLANTx1 value=''>
+<INPUT type='hidden' name=bitBind1   ID=bitBind1 value=''>
+<INPUT type='hidden' name=dhcpEnable1   ID=dhcpEnable1 value=''>
+<INPUT type='hidden' name=HostTrigger1   ID=HostTrigger1 value=''>
+<INPUT type='hidden' name=IPMode1   ID=IPMode1 value=''>
+<INPUT type='hidden' name=GUASrc1   ID=GUASrc1 value=''>
+<INPUT type='hidden' name=DNSv6Src1   ID=DNSv6Src1 value=''>
+<INPUT type='hidden' name=Gatewayv6Src1   ID=Gatewayv6Src1 value=''>
+<INPUT type='hidden' name=MTUv6Src1   ID=MTUv6Src1 value=''>
+<INPUT type='hidden' name=GUA11   ID=GUA11 value=''>
+<INPUT type='hidden' name=IsOutPreferredLft11   ID=IsOutPreferredLft11 value=''>
+<INPUT type='hidden' name=GUA21   ID=GUA21 value=''>
+<INPUT type='hidden' name=IsOutPreferredLft21   ID=IsOutPreferredLft21 value=''>
+<INPUT type='hidden' name=GUA31   ID=GUA31 value=''>
+<INPUT type='hidden' name=IsOutPreferredLft31   ID=IsOutPreferredLft31 value=''>
+<INPUT type='hidden' name=Gatewayv61   ID=Gatewayv61 value=''>
+<INPUT type='hidden' name=DNS1v61   ID=DNS1v61 value=''>
+<INPUT type='hidden' name=DNS2v61   ID=DNS2v61 value=''>
+<INPUT type='hidden' name=DNS3v61   ID=DNS3v61 value=''>
+<INPUT type='hidden' name=MTUv61   ID=MTUv61 value=''>
+<INPUT type='hidden' name=MCVlANID1   ID=MCVlANID1 value=''>
+<INPUT type='hidden' name=GuaNum1   ID=GuaNum1 value=''>
+<INPUT type='hidden' name=PdNum1   ID=PdNum1 value=''>
+<INPUT type='hidden' name=IPv6CPExt1   ID=IPv6CPExt1 value=''>
+<INPUT type='hidden' name=PrefixSrc1   ID=PrefixSrc1 value=''>
+<INPUT type='hidden' name=Prefix11   ID=Prefix11 value=''>
+<INPUT type='hidden' name=Prefix1Len1   ID=Prefix1Len1 value=''>
+<INPUT type='hidden' name=PrefixNum1   ID=PrefixNum1 value=''>
+<INPUT type='hidden' name=IsADSL1   ID=IsADSL1 value=''>
+<script language=javascript>Transfer_meaning('IF_ERRORSTR','SUCC');</script>
+<script language=javascript>Transfer_meaning('IF_ERRORPARAM','SUCC');</script>
+<script language=javascript>Transfer_meaning('IF_ERRORTYPE','1754552');</script>
+<INPUT type='hidden' name=IF_STATUS ID=IF_STATUS value=''>
+<script language=javascript>Transfer_meaning('IF_STATUS','1');</script>
+<INPUT type='hidden' name=IF_PPPNUM ID=IF_PPPNUM value=''>
+<script language=javascript>Transfer_meaning('IF_PPPNUM','1');</script>
+<INPUT type='hidden' name=IF_CONNSTATUS0 ID=IF_CONNSTATUS0 value=''>
+<script language=javascript>Transfer_meaning('IF_CONNSTATUS0','true');</script>
+<INPUT type='hidden' name=IF_CONNNAME0 ID=IF_CONNNAME0 value=''>
+<script language=javascript>Transfer_meaning('IF_CONNNAME0','2\x5fINTERNET\x5fR\x5fVID\x5f');</script>
+<INPUT type='hidden' name=IPMode0 ID=IPMode0 value=''>
+<script language=javascript>Transfer_meaning('IPMode0','ipv4');</script>
+<INPUT type='hidden' name=IF_MULTIDISPLAY ID=IF_MULTIDISPLAY value=''>
+<script language=javascript>Transfer_meaning('IF_MULTIDISPLAY','\x2d1');</script>
+<INPUT type='hidden' name=IF_TYPE ID=IF_TYPE value=''>
+<script language=javascript>Transfer_meaning('IF_TYPE','NULL');</script>
+<INPUT type='hidden' name=IF_PROTOCOL ID=IF_PROTOCOL value=''>
+<script language=javascript>Transfer_meaning('IF_PROTOCOL','NULL');</script>
+<INPUT type='hidden' name=IF_NAME ID=IF_NAME value=''>
+<script language=javascript>Transfer_meaning('IF_NAME','');</script>
+<INPUT type='hidden' name=IF_MODE ID=IF_MODE value=''>
+<script language=javascript>Transfer_meaning('IF_MODE','');</script>
+<INPUT type='hidden' name=IF_IDLE ID=IF_IDLE value=''>
+<script language=javascript>Transfer_meaning('IF_IDLE','');</script>
+<script language=javascript>Transfer_meaning('IF_INSTNUM','1');</script>
+</FORM>
+<script>
+var session_token = "1111222233334444";
+</script>
+</body></html>

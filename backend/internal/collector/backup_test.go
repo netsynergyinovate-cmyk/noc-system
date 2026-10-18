@@ -324,7 +324,8 @@ func backupPoller(rec Recorder, mgr *state.Manager, notify func(state.Change), t
 	if tweak != nil {
 		tweak(backup)
 	}
-	return newPoller(rec, func(o *PollerOptions) { o.Backup = backup })
+	// Sumber trafik dari queue: tes jalur cadangan menghitung panggilan /rest/interface sendiri.
+	return newPoller(rec, func(o *PollerOptions) { o.Backup = backup; o.TrafficFromQueues = true })
 }
 
 func registerBackupFixture(t *testing.T) *state.Manager {
@@ -484,7 +485,8 @@ func TestBackupJobsAreSkippedWhenTheirDependencyIsMissing(t *testing.T) {
 
 func TestOnlyQueuePollingRunsWithoutBackupOptions(t *testing.T) {
 	fake, tgt := newFakeMikroTik(t)
-	p := newPoller(&fakeRecorder{}, nil)
+	// Sumber trafik dari queue: tanpa itu poller juga membaca /rest/interface untuk counter uplink.
+	p := newPoller(&fakeRecorder{}, func(o *PollerOptions) { o.TrafficFromQueues = true })
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := p.Start(ctx, tgt); err != nil {
 		t.Fatal(err)

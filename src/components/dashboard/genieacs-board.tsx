@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { CustomerCpeDialog } from "@/components/dashboard/customer-cpe-dialog";
+import { GenieacsDeviceDialog } from "@/components/dashboard/genieacs-device-dialog";
 import { formatDbm, formatInteger } from "@/lib/dashboard/format";
 
 interface NbiStatus {
@@ -442,11 +443,14 @@ export function GenieacsBoard() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              {matched ? (
-                                <CustomerCpeDialog customer={matched} />
-                              ) : (
-                                <span className="text-[11px] text-muted-foreground">—</span>
-                              )}
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* Rincian untuk SEMUA modem di GenieACS, tidak hanya yang sudah cocok dengan pelanggan. */}
+                                <GenieacsDeviceDialog
+                                  deviceId={d.deviceId}
+                                  label={d.pppoeUsername || d.serialNumber}
+                                />
+                                {matched && <CustomerCpeDialog customer={matched} />}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );

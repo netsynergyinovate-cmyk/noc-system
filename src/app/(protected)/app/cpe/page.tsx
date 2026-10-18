@@ -21,7 +21,8 @@ export default async function CpePage() {
             Pemantauan modem ONT pelanggan, redaman optik fiber (RX dBm), status port PON, dan kendali jarak jauh CPE.
           </p>
         </div>
-        <MockDataNotice source="OLT & CPE" />
+        {/* Daftar perangkat, optik dan status GenieACS berasal dari OLT (polling backend) dan GenieACS NBI. */}
+        <MockDataNotice source="OLT & CPE" real />
       </div>
       <UnreachableDeviceBanner scope="olt" />
       <CpeBoard />

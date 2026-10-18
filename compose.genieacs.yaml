@@ -31,6 +31,11 @@ services:
       GENIEACS_NBI_PORT: "7557"
       GENIEACS_FS_PORT: "7567"
       GENIEACS_CWMP_PORT: "7547"
+      # Pohon parameter modem penuh (+-2200 parameter, dibaca 32 per permintaan) butuh sekitar
+      # 100 putaran; bawaan GenieACS (32, efektif 64) menghentikannya dengan fault too_many_commits.
+      # Ukuran batch sengaja tetap 32: modem kecil sering gagal bila diminta lebih banyak sekaligus.
+      GENIEACS_MAX_COMMIT_ITERATIONS: "256"
+      GENIEACS_GPV_BATCH_SIZE: "32"
       # Rahasia sesi UI: dari file .env (tidak di-commit), tanpa nilai bawaan.
       GENIEACS_UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?isi GENIEACS_JWT_SECRET di file .env}
       UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?isi GENIEACS_JWT_SECRET di file .env}

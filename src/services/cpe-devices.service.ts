@@ -49,5 +49,14 @@ export async function listCpeDevices(options: ListCpeOptions = {}): Promise<List
 }
 
 export async function getCpeDevice(id: string, client: GenieAcsClient = new GenieAcsClient()): Promise<CpeDevice | null> {
-  return client.getDevice(id);
+  // Id GenieACS memuat teks "%2D" apa adanya (mis. D05FAF-FD511GW-DF77%2D2511027460): coba
+  // sesuai diterima dulu, baru bentuk yang di-decode lagi. Men-decode di route saja membuat
+  // modem seperti ini "tidak ditemukan".
+  let decoded = id;
+  try {
+    decoded = decodeURIComponent(id);
+  } catch {
+    // bukan escape yang sah: pakai apa adanya
+  }
+  return (await client.getDevice(id)) ?? (decoded !== id ? await client.getDevice(decoded) : null);
 }

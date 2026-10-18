@@ -20,10 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiOltToDashboard, getOltStats, mockOlts, type ApiOlt, type DashboardOlt } from "@/lib/dashboard/olts";
-import { filterOnus, mapOnuToCustomer, mockOnus, type DashboardOnu, type OnuStatusFilter } from "@/lib/dashboard/onus";
 import { ConnectionErrorNotice } from "./connection-error-notice";
 import { GenieacsTestDialog } from "./genieacs-test-dialog";
-import { MapOnuDialog } from "./map-onu-dialog";
+import { CpeInventory } from "./cpe-inventory";
 import { OnuCustomerMappingPanel } from "./onu-customer-mapping-panel";
 import { OltWizardDialog } from "./olt-wizard-dialog";
 import { LiveOntPanel } from "./live-ont-panel";
@@ -31,16 +30,13 @@ import { PonPortsDialog } from "./pon-ports-dialog";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
-import { fetchLiveOlts, mapOnuLive } from "@/lib/dashboard/olt-live";
-import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
+import { fetchLiveOlts } from "@/lib/dashboard/olt-live";
 import { formatInteger } from "@/lib/dashboard/format";
 import { selectClassName } from "./select-class";
 import { CustomerCpeDialog } from "./customer-cpe-dialog";
 import { CpeDiagnosticsPanel } from "./cpe-diagnostics-panel";
 import { MetricCard } from "./metric-card";
-import { OpticalLoss, OpticalRx, OpticalTx } from "./optical-rx";
-import { OnuStatusBadge } from "./onu-status-badge";
-import { formatLastSeen } from "@/lib/dashboard/onu-status";
+import { OpticalRx } from "./optical-rx";
 import { getOpticalSignalStatus } from "@/lib/dashboard/optical";
 import { generateMockCpeDevices, summarizeCpeMetrics, type CpeDevice } from "@/lib/dashboard/cpe-mock";
 
@@ -50,274 +46,6 @@ const oltTimeFormat = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
   timeStyle: "medium",
 });
-
-function OnuInventory() {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<OnuStatusFilter>("all");
-  const [oltId, setOltId] = useState("all");
-
-  const customers = useDashboardStore((state) => state.customers);
-  const isDemo = useSession(selectPreviewEnabled);
-  // Mode live: ONU dari OLT lewat database (polling backend Go); demo: data tiruan.
-  const live = useLiveOnus(!isDemo);
-  const [demoOnus, setDemoOnus] = useState<readonly DashboardOnu[]>(mockOnus);
-  const onus: readonly DashboardOnu[] = isDemo ? demoOnus : (live.onus ?? []);
-  const [mappingId, setMappingId] = useState<string | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const mappingOnu = onus.find((o) => o.id === mappingId) ?? null;
-
-  // "Daftarkan ke GenieACS": satu perintah tulis nyata ke OLT (bukan ke GenieACS
-  // langsung), lewat backend Go. Status per baris, tidak hilang sendiri, supaya
-  // operator sempat membaca hasilnya sebelum pindah ke ONU lain.
-  const [bindState, setBindState] = useState<
-    Record<string, { phase: "saving" | "done" | "failed"; message?: string }>
-  >({});
-  async function handleBindTr069(o: DashboardOnu) {
-    if (o.ponIndex === null || o.onuIndex === null || !o.oltId) return;
-    if (bindState[o.id]?.phase === "saving") return;
-    setBindState((s) => ({ ...s, [o.id]: { phase: "saving" } }));
-    try {
-      const res = await fetch(
-        `/api/olts/${o.oltId}/onus/${o.ponIndex}/${o.onuIndex}/tr069-bind`,
-        { method: "POST" },
-      );
-      const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; message?: string; error?: { message?: string } }
-        | null;
-      if (res.ok && json?.ok) {
-        setBindState((s) => ({
-          ...s,
-          [o.id]: { phase: "done", message: json.message ?? "Berhasil diikat ke GenieACS." },
-        }));
-      } else {
-        setBindState((s) => ({
-          ...s,
-          [o.id]: { phase: "failed", message: json?.error?.message ?? "Gagal mengikat ONU ini." },
-        }));
-      }
-    } catch {
-      setBindState((s) => ({
-        ...s,
-        [o.id]: { phase: "failed", message: "Server aplikasi tidak terjangkau." },
-      }));
-    }
-  }
-
-  const handleSaveMapping = async (onuId: string, newCustomerId: string | null) => {
-    const customer = newCustomerId ? customers.find((c) => c.id === newCustomerId) ?? null : null;
-    if (newCustomerId && !customer) return;
-    if (isDemo) {
-      setDemoOnus((prev) => prev.map((o) => (o.id === onuId ? mapOnuToCustomer(o, customer) : o)));
-      setMappingId(null);
-      return;
-    }
-    const result = await mapOnuLive(onuId, newCustomerId);
-    if (!result.ok) {
-      setMapError(result.message);
-      return;
-    }
-    setMapError(null);
-    await live.reload();
-    setMappingId(null);
-  };
-
-  const olts = useMemo(
-    () => [...new Map(onus.map((o) => [o.oltId, o.oltName])).entries()],
-    [onus],
-  );
-  const rows = useMemo(() => filterOnus(onus, query, status, oltId), [onus, query, status, oltId]);
-
-  return (
-    <Card data-testid="onu-inventory-table">
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg">Inventaris ONU</CardTitle>
-            <CardDescription data-testid="onu-source-note">
-              {isDemo
-                ? "Data tiruan; belum terhubung ke OLT nyata."
-                : "Data dari OLT: hasil polling backend, diperbarui otomatis tiap 30 detik."}
-            </CardDescription>
-          </div>
-          <span className="text-xs text-muted-foreground tabular-nums" data-testid="onu-count">
-            Menampilkan {formatInteger(rows.length)} dari {formatInteger(onus.length)} ONU
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!isDemo && live.failed && (
-          <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Data ONU belum bisa dimuat dari server. Daftar di bawah adalah yang terakhir berhasil dimuat.
-          </p>
-        )}
-        {!isDemo && live.truncated && (
-          <p role="status" className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
-            Hanya {formatInteger(onus.length)} dari {formatInteger(live.total)} ONU yang dimuat. Persempit dengan pencarian atau filter OLT.
-          </p>
-        )}
-        {mapError && (
-          <p role="alert" data-testid="onu-map-error" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {mapError}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[220px] max-w-sm flex-1">
-            <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              aria-label="Cari ONU"
-              placeholder="Cari SN, nama, PPPoE, port…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as OnuStatusFilter)}
-            className={selectClassName}
-            aria-label="Filter status ONU"
-          >
-            <option value="all">Semua Status</option>
-            <option value="online">Online (Aktif)</option>
-            <option value="offline">Mati / Power Off</option>
-            <option value="los">Kabel Putus / LOS</option>
-            <option value="weak">Sinyal Lemah (&lt; -27 dBm)</option>
-            <option value="out">Sinyal di Luar Ambang</option>
-          </select>
-          <select
-            value={oltId}
-            onChange={(e) => setOltId(e.target.value)}
-            className={selectClassName}
-            aria-label="Filter OLT"
-          >
-            <option value="all">Semua OLT</option>
-            {olts.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>No</TableHead>
-                <TableHead>Serial Number</TableHead>
-                <TableHead>Model ONT</TableHead>
-                <TableHead>OLT &amp; Port PON</TableHead>
-                <TableHead>Jarak Kabel (m)</TableHead>
-                <TableHead>Redaman RX</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Terakhir Terlihat</TableHead>
-                <TableHead>Pelanggan / PPPoE</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-28 text-center text-muted-foreground">
-                    {!isDemo && onus.length === 0
-                      ? live.onus === null && !live.failed
-                        ? "Memuat ONU dari server…"
-                        : "Belum ada ONU. Daftarkan OLT di tab Daftar OLT; ONU muncul setelah backend berhasil memoll OLT."
-                      : "Tidak ada ONU yang sesuai dengan filter."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                rows.map((o, i) => {
-                  return (
-                    <TableRow key={o.id}>
-                      <TableCell className="tabular-nums text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="font-mono text-xs">{o.serialNumber}</TableCell>
-                      <TableCell className="text-sm">{o.model}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">{o.oltName}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{o.ponPort}</div>
-                      </TableCell>
-                      <TableCell className="tabular-nums">{o.distanceMeters === null ? "-" : formatInteger(o.distanceMeters)}</TableCell>
-                      <TableCell>
-                        <OpticalRx dbm={o.status === "los" ? null : o.rxPowerDbm} />
-                        <div className="mt-1 flex gap-3 text-muted-foreground">
-                          <span>TX <OpticalTx dbm={o.txPowerDbm} /></span>
-                          <span>Loss <OpticalLoss txDbm={o.txPowerDbm} rxDbm={o.status === "los" ? null : o.rxPowerDbm} /></span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <OnuStatusBadge status={o.status} />
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        <time
-                          dateTime={new Date(o.lastSeenAt * 1000).toISOString()}
-                          title={o.status === "online" ? "Terakhir diukur" : "Terakhir terlihat online"}
-                        >
-                          {formatLastSeen(o.lastSeenAt)}
-                        </time>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-foreground">{o.customerName}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{o.pppoeUsername}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-start gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            data-testid="btn-map-onu"
-                            onClick={() => setMappingId(o.id)}
-                          >
-                            {o.customerId === null ? "Petakan" : "Ubah"}
-                          </Button>
-                          {!isDemo && o.ponIndex !== null && o.onuIndex !== null && (
-                            <>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                data-testid="btn-bind-tr069"
-                                aria-disabled={bindState[o.id]?.phase === "saving"}
-                                onClick={() => {
-                                  if (bindState[o.id]?.phase !== "saving") void handleBindTr069(o);
-                                }}
-                              >
-                                {bindState[o.id]?.phase === "saving" ? "Mengikat…" : "Daftarkan ke GenieACS"}
-                              </Button>
-                              {bindState[o.id] && bindState[o.id].phase !== "saving" && (
-                                <p
-                                  role={bindState[o.id].phase === "failed" ? "alert" : "status"}
-                                  data-testid="bind-tr069-result"
-                                  className={`max-w-48 text-[11px] ${
-                                    bindState[o.id].phase === "failed" ? "text-destructive" : "text-success"
-                                  }`}
-                                >
-                                  {bindState[o.id].message}
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <MapOnuDialog
-          onu={mappingOnu}
-          open={mappingOnu !== null}
-          onOpenChange={(o) => !o && setMappingId(null)}
-          onSave={handleSaveMapping}
-          customers={customers}
-        />
-      </CardContent>
-    </Card>
-  );
-}
 
 export function CpeBoard() {
   const customers = useDashboardStore((state) => state.customers);
@@ -417,7 +145,7 @@ export function CpeBoard() {
       <TabsList className="h-auto flex-wrap">
         <TabsTrigger value="olt">Daftar OLT</TabsTrigger>
         <TabsTrigger value="ont">Modem ONT &amp; Redaman Fiber</TabsTrigger>
-        <TabsTrigger value="onus">Inventaris ONU</TabsTrigger>
+        <TabsTrigger value="onus">Perangkat CPE/ONT</TabsTrigger>
         <TabsTrigger value="mapping">Kelola Pemetaan ONU</TabsTrigger>
         <TabsTrigger value="diagnostics">Tugas Diagnostik &amp; Riwayat</TabsTrigger>
       </TabsList>
@@ -442,7 +170,7 @@ export function CpeBoard() {
       </TabsContent>
 
       <TabsContent value="onus" className="flex flex-col gap-6">
-        <OnuInventory />
+        <CpeInventory />
       </TabsContent>
 
       <TabsContent value="olt" className="flex flex-col gap-6">

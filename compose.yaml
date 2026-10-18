@@ -79,6 +79,10 @@ services:
       OLT_TR069_AUTOBIND: ${OLT_TR069_AUTOBIND:-new}
       OLT_TR069_PROFILE_ID: ${OLT_TR069_PROFILE_ID:-1}
       OLT_TR069_MAX_PER_ROUND: ${OLT_TR069_MAX_PER_ROUND:-5}
+      # "Pasang GenieACS lewat web ONT": alamat ACS dan kredensial admin modem diisi di aplikasi
+      # (tabel ont_web_settings, terenkripsi). Env hanya membatasi jaringan modem yang boleh
+      # dibuka (bawaan: alamat pribadi RFC 1918 + 100.64.0.0/10).
+      ONT_WEB_ALLOWED_CIDRS: ${ONT_WEB_ALLOWED_CIDRS:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
       interval: 5s

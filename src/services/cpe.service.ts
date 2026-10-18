@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { cpeTasks, auditLog, customers } from "@/db/schema";
 import { GenieAcsClient } from "../lib/genieacs/client.ts";
 import { getGenieacsConfig } from "../lib/genieacs/config.ts";
+import { changeDeviceWifi, WifiChangeError } from "./cpe-detail.service.ts";
 import {
   ChangeWifiInput,
   CreateDiagnosticTaskInput,
@@ -70,7 +71,16 @@ export async function enqueueChangeWifi(input: ChangeWifiInput, userId: string) 
     const client = new GenieAcsClient(config);
     const deviceId = await resolveDeviceId(client, config.mode === "simulator", input.customerId);
     if (deviceId) {
-      ok = (await client.setWifiConfig(deviceId, { ssid: input.ssid, password: input.password })).ok;
+      // Jalur baru: tulis ke parameter sandi yang benar-benar ada di modem itu, lalu baca ulang
+      // untuk memastikan. Null (simulator) atau modem tanpa parameter sandi yang dikenal: jalur lama.
+      try {
+        const changed = await changeDeviceWifi(deviceId, { index: 1, ssid: input.ssid, password: input.password }, client);
+        ok = changed !== null ? true : (await client.setWifiConfig(deviceId, { ssid: input.ssid, password: input.password })).ok;
+      } catch (err) {
+        ok = err instanceof WifiChangeError
+          ? (await client.setWifiConfig(deviceId, { ssid: input.ssid, password: input.password })).ok
+          : false;
+      }
     }
   } catch {
     // Pesan galat sengaja tidak dicatat: bisa membawa data permintaan.

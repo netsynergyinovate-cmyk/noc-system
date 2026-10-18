@@ -51,6 +51,11 @@ type Options struct {
 	// bukan menjawab error: 404 generik dari mux dashboard di belakangnya.
 	OltBind *OltBindAPI
 
+	// OntWeb melayani POST /api/v1/ont-web/tr069 (pasang GenieACS lewat halaman
+	// web admin modem). Kosong (ONT_ACS_URL tidak diisi) berarti rute tidak
+	// terdaftar: 404 generik.
+	OntWeb *OntWebAPI
+
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
 	// billing). Bawaannya time.Now; tes mengisinya agar jawabannya tetap. Pemeriksaan
 	// tiket tetap memakai jam sistem.
@@ -106,6 +111,9 @@ func NewHandler(opts Options) http.Handler {
 		billingAPI.register(api)
 		if opts.OltBind != nil {
 			opts.OltBind.register(api)
+		}
+		if opts.OntWeb != nil {
+			opts.OntWeb.register(api)
 		}
 		api.Handle("/", newDashboardMux(opts.Data, newHistoryAPI(opts.History, opts.Logger)))
 		// CORS paling luar agar preflight (yang tidak membawa tiket) bisa lewat.

@@ -1,0 +1,518 @@
+{
+ "wanJson": {
+  "EntryNum": "1",
+  "EntryName": "1_INTERNET_R_VID_,",
+  "ValidIFIndex": "0,",
+  "BindStatus": "Yes,No,No,No,Yes,No,No,No,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,0,-1,-1,-1,-1,-1,-1,-1",
+  "IFIdxArray": "1,",
+  "PPPBiArray": "No,",
+  "IFIdxStore": "1",
+  "Active": "Yes",
+  "WanMode": "Route",
+  "BandActive": "N/A",
+  "DHCPEnable": "1",
+  "LinkMode": "linkPPP",
+  "ISP": "2",
+  "IPVERSION": "IPv4",
+  "BridgeMode": "IP_Bridged",
+  "DHCPRealy": "Yes",
+  "VLANMode": "TRANSPARENT",
+  "MulticastVID": "",
+  "PPPManualStatus": "disconnect",
+  "CONNECTION": "",
+  "LAN1": "Yes",
+  "LAN2": "No",
+  "LAN3": "No",
+  "LAN4": "No",
+  "SSID1": "Yes",
+  "SSID2": "No",
+  "SSID3": "No",
+  "SSID4": "No",
+  "ServiceList": "INTERNET",
+  "MTU": "1492",
+  "NATENABLE": "Enable",
+  "IGMPproxy": "No",
+  "ManualDnsMode": "No",
+  "USERNAME": "pelanggan09@contoh.test",
+  "PASSWORD": "PW-CONTOH",
+  "SRVNAME": "",
+  "BridgeInterface": "No",
+  "PDEnable": "No",
+  "PDOrigin": "None",
+  "DsliteEnable": "No",
+  "Option60Enable1": "",
+  "Option60Enable2": "",
+  "Option60Enable3": "",
+  "Option60Enable4": "",
+  "Option60Type1": "",
+  "Option60Type2": "",
+  "Option60Type3": "",
+  "Option60Type4": "",
+  "Option60ValueMode1": "",
+  "Option60ValueMode2": "",
+  "Option60ValueMode3": "",
+  "Option60ValueMode4": "",
+  "Option60Value1": "",
+  "Option60Value2": "",
+  "Option60Value3": "",
+  "Option60Value4": ""
+ },
+ "rows": [
+  [
+   "curSetIndex",
+   "0"
+  ],
+  [
+   "WanActive",
+   "Yes"
+  ],
+  [
+   "WanCurrIFIdx",
+   "1"
+  ],
+  [
+   "wanId",
+   "0"
+  ],
+  [
+   "Wan_Flag",
+   "1"
+  ],
+  [
+   "EnCAPFlag",
+   "PPPoE LLC"
+  ],
+  [
+   "PPPGetIpFlag",
+   "Dynamic"
+  ],
+  [
+   "ConnectionFlag",
+   ""
+  ],
+  [
+   "Enable_Flag",
+   "Yes"
+  ],
+  [
+   "Disable_Flag",
+   "No"
+  ],
+  [
+   "afterdeleteFlag",
+   "0"
+  ],
+  [
+   "OperatorStyle",
+   "Modify"
+  ],
+  [
+   "dhcpv6pdflag",
+   "Yes"
+  ],
+  [
+   "WanNode",
+   "Wan"
+  ],
+  [
+   "pppManualStatus_Flag",
+   "disconnect"
+  ],
+  [
+   "cb_enblService",
+   "on"
+  ],
+  [
+   "enblService",
+   ""
+  ],
+  [
+   "wanMode",
+   "Route"
+  ],
+  [
+   "serviceList",
+   "TR069_INTERNET"
+  ],
+  [
+   "bindflag",
+   "N/A"
+  ],
+  [
+   "cb_bindlan1",
+   "on"
+  ],
+  [
+   "bindlan1",
+   "Yes"
+  ],
+  [
+   "bindlan2",
+   "No"
+  ],
+  [
+   "bindlan3",
+   "No"
+  ],
+  [
+   "bindlan4",
+   "No"
+  ],
+  [
+   "cb_bindwireless1",
+   "on"
+  ],
+  [
+   "bindwireless1",
+   "Yes"
+  ],
+  [
+   "bindwireless2",
+   "No"
+  ],
+  [
+   "bindwireless3",
+   "No"
+  ],
+  [
+   "bindwireless4",
+   "No"
+  ],
+  [
+   "bindwirelessac1",
+   "0"
+  ],
+  [
+   "bindwirelessac2",
+   "0"
+  ],
+  [
+   "bindwirelessac3",
+   "0"
+  ],
+  [
+   "bindwirelessac4",
+   "0"
+  ],
+  [
+   "cb_enabledhcp",
+   "on"
+  ],
+  [
+   "enable_dhcp",
+   "1"
+  ],
+  [
+   "linkMode",
+   "linkPPP"
+  ],
+  [
+   "IpVersion",
+   "IPv4"
+  ],
+  [
+   "IPVersionValue",
+   "IPv4"
+  ],
+  [
+   "ISPTypeValue",
+   "2"
+  ],
+  [
+   "IpMode",
+   "PPPoE"
+  ],
+  [
+   "bridgeMode",
+   "IP_Bridged"
+  ],
+  [
+   "dhcprelay",
+   "No"
+  ],
+  [
+   "multMode",
+   "0"
+  ],
+  [
+   "VLANMode",
+   "TRANSPARENT"
+  ],
+  [
+   "vlan",
+   ""
+  ],
+  [
+   "vlanId",
+   "No"
+  ],
+  [
+   "vlanUNTAG",
+   "4096"
+  ],
+  [
+   "vlanTRANSPARENT",
+   "4097"
+  ],
+  [
+   "v8021P",
+   ""
+  ],
+  [
+   "vlanPri",
+   "No"
+  ],
+  [
+   "vlanPriNone",
+   "0"
+  ],
+  [
+   "MulticastVID",
+   ""
+  ],
+  [
+   "MulVIDUsed",
+   "Yes"
+  ],
+  [
+   "MTU",
+   "1492"
+  ],
+  [
+   "cb_nat",
+   "on"
+  ],
+  [
+   "nat",
+   "Enable"
+  ],
+  [
+   "enblIgmp",
+   "No"
+  ],
+  [
+   "ManualDnsMode",
+   "No"
+  ],
+  [
+   "dnsMode",
+   "0"
+  ],
+  [
+   "wanIpAddress",
+   ""
+  ],
+  [
+   "wanSubnetMask",
+   ""
+  ],
+  [
+   "defaultGateway",
+   ""
+  ],
+  [
+   "dnsPrimary",
+   ""
+  ],
+  [
+   "dnsSecondary",
+   ""
+  ],
+  [
+   "pppUserName",
+   "pelanggan09@contoh.test"
+  ],
+  [
+   "pppPassword",
+   "PW-CONTOH"
+  ],
+  [
+   "pppServiceName",
+   ""
+  ],
+  [
+   "pppTimeOut",
+   ""
+  ],
+  [
+   "pppv6Mode",
+   "N/A"
+  ],
+  [
+   "enablepppbi",
+   "No"
+  ],
+  [
+   "pppbiUsed",
+   "Yes"
+  ],
+  [
+   "pppbiDisabled",
+   "No"
+  ],
+  [
+   "IdIpv6AddrType",
+   "Static"
+  ],
+  [
+   "IdIpv6Addr",
+   ""
+  ],
+  [
+   "IdIpv6PrefixLen",
+   ""
+  ],
+  [
+   "IdIpv6Gateway",
+   ""
+  ],
+  [
+   "IdIpv6Dns1",
+   ""
+  ],
+  [
+   "IdIpv6Dns2",
+   ""
+  ],
+  [
+   "enablepd",
+   ""
+  ],
+  [
+   "PDUsed",
+   "No"
+  ],
+  [
+   "PDDisabled",
+   "No"
+  ],
+  [
+   "pdmode",
+   "Yes"
+  ],
+  [
+   "pdmodeUsed",
+   "No"
+  ],
+  [
+   "pdmodeDisabled",
+   "No"
+  ],
+  [
+   "pdmodeAuto",
+   "PrefixDelegation"
+  ],
+  [
+   "pdmodeStatic",
+   "Static"
+  ],
+  [
+   "pdmodeNone",
+   "None"
+  ],
+  [
+   "pdprefix",
+   ""
+  ],
+  [
+   "pdprefixptime",
+   ""
+  ],
+  [
+   "pdprefixvtime",
+   ""
+  ],
+  [
+   "enabledslite",
+   ""
+  ],
+  [
+   "dsliteUsed",
+   "No"
+  ],
+  [
+   "dsliteDisabled",
+   "No"
+  ],
+  [
+   "dslitemode",
+   "1"
+  ],
+  [
+   "dsliteaddress",
+   ""
+  ],
+  [
+   "pppIdleTimeout",
+   "0"
+  ],
+  [
+   "xponstate",
+   "Yes"
+  ],
+  [
+   "Option60Enable1",
+   ""
+  ],
+  [
+   "Option60Enable2",
+   ""
+  ],
+  [
+   "Option60Enable3",
+   ""
+  ],
+  [
+   "Option60Enable4",
+   ""
+  ],
+  [
+   "Option60Type1",
+   ""
+  ],
+  [
+   "Option60Type2",
+   ""
+  ],
+  [
+   "Option60Type3",
+   ""
+  ],
+  [
+   "Option60Type4",
+   ""
+  ],
+  [
+   "Option60ValueMode1",
+   ""
+  ],
+  [
+   "Option60ValueMode2",
+   ""
+  ],
+  [
+   "Option60ValueMode3",
+   ""
+  ],
+  [
+   "Option60ValueMode4",
+   ""
+  ],
+  [
+   "Option60Value1",
+   ""
+  ],
+  [
+   "Option60Value2",
+   ""
+  ],
+  [
+   "Option60Value3",
+   ""
+  ],
+  [
+   "Option60Value4",
+   ""
+  ]
+ ]
+}

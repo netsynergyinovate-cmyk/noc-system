@@ -134,6 +134,34 @@
       "when": 1791988144452,
       "tag": "0018_needy_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792038980538,
+      "tag": "0019_nosy_giant_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792053714686,
+      "tag": "0020_nostalgic_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792057990766,
+      "tag": "0021_lowly_leech",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792076922463,
+      "tag": "0022_shocking_purifiers",
+      "breakpoints": true
     }
   ]
 }

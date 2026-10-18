@@ -62,8 +62,18 @@ func NewClient(t Target, httpClient *http.Client) (*Client, error) {
 // jawaban. Pesan error ditulis supaya bisa langsung ditampilkan ke petugas dan
 // tidak memuat kata sandi, URL, atau isi jawaban error router.
 func (c *Client) get(ctx context.Context, proplist string, segments ...string) ([]byte, error) {
+	return c.getQuery(ctx, proplist, nil, segments...)
+}
+
+// getQuery seperti get, dengan penyaring tambahan (mis. name=ether2) supaya router
+// hanya mengirim baris yang dibutuhkan.
+func (c *Client) getQuery(ctx context.Context, proplist string, filter url.Values, segments ...string) ([]byte, error) {
 	endpoint := c.base.JoinPath(append([]string{"rest"}, segments...)...)
-	endpoint.RawQuery = url.Values{".proplist": {proplist}}.Encode()
+	q := url.Values{".proplist": {proplist}}
+	for k, v := range filter {
+		q[k] = v
+	}
+	endpoint.RawQuery = q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {

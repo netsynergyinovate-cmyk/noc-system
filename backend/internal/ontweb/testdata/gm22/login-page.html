@@ -1,0 +1,21 @@
+<html><head><title>GM220-S XPON</title></head><body>
+<input type="hidden" name="action" id="action" value="">
+<input type="text" class="username" name="Username" id="Frm_Username" autocomplete="new-password" >
+<li class="login_li_1"><span>Password</span></li>
+<input type="password" class="password" name="Password"  id="Frm_Password" autocomplete="new-password">
+<input type="hidden" name="frashnum" id="frashnum" value="">
+<input type="hidden" name="action" id="action" value="login">
+<input type="hidden" name="Frm_Logintoken" id="Frm_Logintoken" value="">
+<input type="text" name="username" id="username" class="font_chara" />
+<label for="Password">password</label>
+<input name="Password" type="password" id="password" class="font_chara"/>
+getObj("username").value = "user";
+getObj("errmsg").innerHTML = "You have input the wrong username or password for three times. Please try again a minute later.";
+getObj("username").disabled = true;
+getObj("username").disabled = false;
+function dosubmit()
+var username = document.getElementById("Frm_Username").value;
+var password = document.getElementById("Frm_Password").value;
+document.getElementById("username").value = username;
+getObj("Frm_Logintoken").value = "3";
+</body></html>

@@ -26,11 +26,11 @@ export function LiveStatus() {
 
   return (
     <div
-      className="flex flex-wrap items-center gap-2 text-xs"
+      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-xs text-muted-foreground whitespace-nowrap backdrop-blur-xs"
       role="status"
       aria-live="polite"
     >
-      <span className={cn("size-2 rounded-full", view.dot)} aria-hidden="true" />
+      <span className={cn("size-2 shrink-0 rounded-full", view.dot)} aria-hidden="true" />
       <span className="font-medium text-foreground">{view.label}</span>
       {view.fallbackBadge && (
         <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -38,21 +38,27 @@ export function LiveStatus() {
         </span>
       )}
       {view.latency && (
-        <span className="font-mono tabular-nums text-muted-foreground">
-          {view.latency}
-        </span>
+        <>
+          <span className="text-border select-none" aria-hidden="true">•</span>
+          <span className="font-mono tabular-nums text-foreground/80">
+            {view.latency}
+          </span>
+        </>
       )}
       {lastUpdateAt !== null && (
-        <span className="tabular-nums text-muted-foreground">
-          Diperbarui {timeFormat.format(new Date(lastUpdateAt * 1000))}
-        </span>
+        <>
+          <span className="text-border select-none" aria-hidden="true">•</span>
+          <span className="tabular-nums text-muted-foreground">
+            Diperbarui {timeFormat.format(new Date(lastUpdateAt * 1000))}
+          </span>
+        </>
       )}
       {view.showRetry && reconnectFeed && (
         <button
           type="button"
           onClick={reconnectFeed}
           aria-label="Coba sambungkan ulang aliran realtime"
-          className="font-medium text-primary underline hover:no-underline"
+          className="ml-1 font-medium text-primary underline hover:no-underline"
         >
           Coba lagi
         </button>

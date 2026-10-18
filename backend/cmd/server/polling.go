@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -60,6 +62,14 @@ func startRouterPolling(
 	poller := collector.NewPoller(recorder, collector.PollerOptions{
 		Logger:     logger,
 		HTTPClient: collector.DefaultHTTPClient(),
+		// Trafik dashboard dari counter interface (sama dengan Winbox). Bawaan: interface berkomentar
+		// UPLINK, Rx = download. TRAFFIC_INTERFACE memilih nama interface tertentu;
+		// TRAFFIC_INTERFACE_CUSTOMER_SIDE=true bila interface itu menghadap pelanggan (Tx = download).
+		// TRAFFIC_SOURCE=queue mengembalikan cara lama (jumlah rate queue).
+		TrafficFromQueues:   strings.EqualFold(strings.TrimSpace(os.Getenv("TRAFFIC_SOURCE")), "queue"),
+		TrafficInterface:    strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE")),
+		TrafficComment:      strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_COMMENT")),
+		TrafficCustomerSide: strings.EqualFold(strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_CUSTOMER_SIDE")), "true"),
 		OnResult: func(routerID, _ string, err error) {
 			now := time.Now().Unix()
 			if err != nil {

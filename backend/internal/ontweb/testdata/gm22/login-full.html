@@ -1,0 +1,251 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<META HTTP-EQUIV="pragma" CONTENT="no-cache">
+<META HTTP-EQUIV="Cache-Control" CONTENT="no-cache, must-revalidate">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>GM220-S XPON</title>
+<LINK REL="stylesheet" HREF="css/login.css" TYPE="text/css" />
+<LINK REL="stylesheet" HREF="css/styleen.css" TYPE="text/css" />
+<!-- <link rel="stylesheet" href="css/user_login.css" /> -->
+<script>
+function onClickSetLang()
+{
+var parm="pid=1002?";
+var lang = "English";
+if ("English" == lang)
+{
+getObj("_lang").value = "Chinese";
+}
+else if ("Chinese" == lang)
+{
+getObj("_lang").value = "English";
+}
+getObj("action").value = "Change_Lang";
+document.fLangSet.submit();
+}
+
+function getObj(id)
+{
+return(document.getElementById(id));
+}
+var SetTFlag = 0;
+var maxtime;
+var interval;
+function setTime()
+{
+if(window.name>=60 || window.name<0 || window.name=="")
+{
+maxtime = Math.min(60, 0 + 60 - 84314);
+}
+else
+{
+maxtime = window.name;
+}
+if(maxtime>=0)
+{
+seconds = maxtime;
+getObj("time").innerHTML=seconds+" secs";
+if (maxtime == 0)
+{
+setDisable();
+SetTFlag =0;
+window.name="";
+if(interval)
+{
+clearInterval(interval);
+interval = 0;
+}
+}
+else
+{
+--maxtime;
+SetTFlag = 1;
+window.name = maxtime;
+}
+}
+}
+function setinner(type)
+{
+if (SetTFlag ==0)
+{
+getObj("myLayer").style.visibility = type ;
+}
+}
+function Transfer_meaning(id,value)
+{
+getObj(id).value=value;
+}
+</script>
+</head>
+<body onload="onFocus();">
+<form name="fLangSet" id="fLangSet" method="post"  onsubmit="return false;" action="/">
+<input type="hidden" name="_lang" id="_lang" value="">
+<input type="hidden" name="action" id="action" value="">
+</form>
+<div id="container">
+<div id="myLayer" onmousedown="setinner('hidden')" style="position:absolute; width:185px; height:91px; z-index:9; left: 50%; margin-left: 155px; top: 35%; background: url(img/pop_up.gif) no-repeat; border: 1px none #000000; visibility: hidden;">
+<div id="Layer1" style="position:absolute; width:180px; height:45px; z-index:10; left: 2px; top: 28px;">
+<table width="183" border="0">
+<tr>
+<td width="183">&nbsp;&nbsp;<font id="errmsg" class="notecontent" ></font><span id="time" style="color:red;display:none;"></span></td>
+</tr>
+</table>
+</div>
+<div id="Layer3" style="position:absolute; width:140px; height:10px; z-index:11; left: 34px; top: 9px; font-size: 8pt;">
+<font  class="note" id="errnote">&nbsp;Error</font>
+</div>
+</div>
+<div id="head">
+<div class="type"><font id="">GM220-S XPON</font></div>
+<div id="banner"></div>
+</div>
+
+
+<div id="loginArea">
+<div class="login_frame">
+<ul class="login_title">
+<li class="login_title_left"></li>
+<li class="login_title_center">Please login to continue...</li>
+<a id="TestLang" style="cursor:pointer" href="#" ><li id="TestLang01" class="login_title_centercn" style="" onclick="onClickSetLang();"></li></a>
+<li class="login_title_right"></li>
+</ul>
+<div class="content login_content">
+<ul class="login_blank"></ul>
+<ul class="login_ul_1">
+<li class="login_li_1"><span>Username</span></li>
+<li class="login_li_2">
+<input type="text" class="username" name="Username" id="Frm_Username" autocomplete="new-password" >
+</li>
+
+</ul>
+<ul class="login_blank"></ul>
+<ul class="login_ul_1">
+<li class="login_li_1"><span>Password</span></li>
+<li class="login_li_2">
+<input type="password" class="password" name="Password"  id="Frm_Password" autocomplete="new-password">
+</li>
+<li class="login_li_3">
+<input class="login" type="submit"  id="LoginId"  value="Login"  onclick="dosubmit()">
+</li>
+</ul>
+<ul class="login_blank"></ul>
+</div>
+</div>
+</div>
+<div style="font-family: Arial;font-size: 12px;text-align:center;">
+2011-2048 Corporation. All rights reserved..
+</div>
+<div class="bottom_line"></div>
+<div class="CLS_pageContent" style="display:none">
+<form name="fLogin" id="fLogin" method="post"  onsubmit="return false;" class="CLS_formTable" action="">
+<input type="hidden" name="_lang" id="_lang" value="" disabled>
+<input type="hidden" name="frashnum" id="frashnum" value="">
+<input type="hidden" name="action" id="action" value="login">
+<input type="hidden" name="Frm_Logintoken" id="Frm_Logintoken" value="">
+<table class="CLS_TB_operable">
+<tr>
+<td>
+<label for="user_name">user name</label>
+</td>
+<td>
+<input type="text" name="username" id="username" class="font_chara" />
+</td>
+</tr>
+<tr>
+<td>
+<label for="Password">password</label>
+</td>
+<td>
+<input name="Password" type="password" id="password" class="font_chara"/>
+</td>
+</tr>
+<tr id="tr_pwdcheck" style="display:none;">
+<td></td>
+<td><font color="red" id="errtip"></font></td>
+</tr>
+<tr>
+<td></td>
+<td colspan="2">
+<table>
+<tr>
+<td style="text-align:left;" width = "250" ></td>
+<td id="capslock" style="display:none;" ></td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td></td>
+<td>
+<table>
+<tr>
+<td><input type="button" class="blueBtn submitBtn" id="LoginId" onclick="dosubmit()" value="Login"/></td>
+<td><!--<input type="button" class="blueBtn submitBtn" style="margin-left:10px;" onclick="gotoRegister()" id="BTN_Register" value="Device Register"/> --></td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</form>
+</div>
+<!-- <img src="img/bg.png" class="LOGIN_IMG_contentBg"/> -->
+</body>
+</html>
+<script>
+
+getObj("username").value = "user";
+var UserStr = "user";
+
+window.name="";
+
+function gotoRegister()
+{
+document.location.href="register.gch";
+}
+function SetDisabled()
+{
+getObj("errmsg").innerHTML = "You have input the wrong username or password for three times. Please try again a minute later.";
+getObj("username").disabled = true;
+getObj("password").disabled = true;
+getObj("LoginId").disabled = true;
+getObj("myLayer").style.visibility = "visible" ;
+getObj("time").style.display = "" ;
+interval = setInterval("setTime()",1000);
+}
+function setDisable()
+{
+if (SetTFlag == 1)
+{
+getObj("username").disabled = false;
+getObj("password").disabled = false;
+getObj("LoginId").disabled = false;
+getObj("time").style.display = "none";
+getObj("myLayer").style.visibility = "hidden";
+}
+}
+function dosubmit()
+{
+var username = document.getElementById("Frm_Username").value;
+var password = document.getElementById("Frm_Password").value;
+document.getElementById("username").value = username;
+document.getElementById("password").value = password;
+{
+getObj("LoginId").disabled = true;
+getObj("Frm_Logintoken").value = "3";
+document.fLogin.submit();
+}
+}
+function doreset()
+{
+var HostIPAddr = "192.168.1.1";
+HostIPAddr = "http:\/\/"+HostIPAddr+"\/";
+document.location.href=HostIPAddr;
+}
+function onFocus()
+{
+if( document.getElementById("password").disabled == false )
+{
+document.getElementById("password").focus();
+}
+}
+</script>

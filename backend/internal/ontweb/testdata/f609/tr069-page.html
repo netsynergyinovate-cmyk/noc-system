@@ -1,0 +1,811 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>Acs</TITLE>
+<META http-equiv=Content-Language content=zh-cn>
+<META http-equiv=Content-Type content="text/html; charset=gb2312">
+<LINK href="/JS/stylemain.css" type=text/css rel=stylesheet>
+<SCRIPT language=javascript src="/JS/menu.js"></SCRIPT>
+<SCRIPT language=javascript src="/JS/util.js"></SCRIPT>
+<SCRIPT language=JavaScript src="/JS/printtable.js"></SCRIPT>
+<SCRIPT language=javascript src="/JS/jquery-1.8.3.min.js"></SCRIPT> 
+<META content="MSHTML 6.00.6000.16809" name=GENERATOR></HEAD>
+<BODY style="TEXT-ALIGN: center" vLink=#000000 aLink=#000000 link=#000000 
+leftMargin=0 topMargin=0 
+onload="DisplayLocation(getElement('Selected_Menu').value);FinishLoad();if(getElById('ConfigForm') != null)LoadFrame()" 
+onunload=DoUnload() marginheight="0" marginwidth="0">
+
+<div id="pHead" style="height: 105px; width: 978px; background-image: url(/img/top.png); margin-left: auto; margin-right: auto; margin-top:-22px;">
+
+
+
+<div style="float: right;margin-top: 63px;margin-right: 13px;font: 20px Aall-petite-caps;color: #fff;"><a style="text-decoration: none;" onclick="DoLogout()" href="/cgi-bin/logout.cgi" target="_top">
+							<span class="logout">Logout</span>
+							</a></div>
+							
+		
+
+
+
+            </div>
+
+<TABLE cellSpacing=0 cellPadding=0 align=center border=0 class="major">
+  <TBODY>
+  <TR>
+		<TD class="header">
+  		<TABLE cellSpacing=0 cellPadding=0 border=0 class="tbl_nav">
+    	<TBODY>
+      	<TR>
+        	<TD>&nbsp;</TD>
+        	<TD vAlign=top align=right>
+        		<TABLE id=table8 cellSpacing=0 cellPadding=0 border=0>
+            <TBODY>
+              <TR>
+                <TD class="td_model" align=left>
+                		<span>Model: </span> 
+                		<span> 
+                			<SCRIPT language=javascript> document.write(top.ModelName); </SCRIPT>
+                		</span>
+                </TD>
+                <TD class=welcom>
+                		<span>Welcome£¡</span> 
+                		<SPAN class=curUserName>&nbsp;</SPAN>
+                		<A onclick=DoLogout() href="/cgi-bin/logout.cgi" target=_top>
+                			 <SPAN class=logout>Logout</SPAN>
+                		</A>
+                  	<INPUT id=Selected_Menu type=hidden value="Wan->Acs" name=Selected_Menu></TD>
+              </TR>
+            </TBODY>
+          	</TABLE>
+          </TD>
+	      </TR>
+	    </TBODY>
+	  	</TABLE>
+		  <TABLE cellSpacing=0 cellPadding=0 border=0 id=table2>
+		    <TBODY>
+		      <TR>
+		        <TD id=MenuArea_L1></TD>
+		      </TR>
+		      <TR>
+		        <TD id=MenuArea_L2></TD>
+		      </TR>
+		    </TBODY>
+		  </TABLE>
+  	<SCRIPT language=javascript>
+		MakeMenu(getElById ('Selected_Menu').value);
+		</SCRIPT>
+    </TD>
+  </TR>
+
+  <TR>
+    <TD class="content">
+      <SCRIPT language=JavaScript type=text/javascript>
+function stCWMP(domain,InformEnb,Interval,URL,Username,Password,CntReqName,CntReqPwd,sslCertEnbl)
+{
+this.domain = domain;
+this.InformEnb = InformEnb;
+this.Interval = Interval;
+this.URL = URL;
+this.Username = Username;
+this.Password = Password;
+this.CntReqName = CntReqName;
+this.CntReqPwd = CntReqPwd;
+this.sslCertEnbl = sslCertEnbl;
+}
+function stmid(domain,midurl, tr069enable)
+{
+this.domain = domain;
+this.Url = midurl;
+this.Tr069enable = tr069enable;
+}
+var URLAccessAttr = 'Subscriber';
+var UsrAccessAttr = 'Subscriber';
+var PwdAccessAttr = 'Subscriber';
+var conUsrAccessAttr = 'Subscriber';
+var conPwdAccessAttr = 'Subscriber';
+var midcom = new Array(new stmid("InternetGatewayDevice.DeviceInfo.X_CT-COM_MiddlewareMgt","0.0.0.0:0","1"),null);
+var mid = midcom[0];
+var temp = new Array(new stCWMP("InternetGatewayDevice.ManagementServer","1","20","http://122.193.99.166:80/comserver/node1/tr069","hgw","hgw","itms","itms","0"),null);
+var cwmp = temp[0];
+var msg = new Array(6);
+
+var midLastRadioValue = "0";
+
+msg[0] = "Upload certificate file succeeded!";
+msg[1] = "The certificate file is illegal. Failed to upload the certificate file!";
+msg[2] = "Certificate function is prohibited!";
+msg[3] = "Certificate function is enabled!";
+msg[4] = "The certificate file does not exist, please upload it first!";
+msg[5] = "The certificate file is too large, upload failed!";
+
+
+function trimspace(str)
+{
+	var strTemp = new String(str);
+	while (-1 != strTemp.search(" "))
+	{
+		strTemp = strTemp.replace(" ", "");
+	}
+	return strTemp;
+}
+
+function LoadFrame()
+{
+
+	
+
+	document.ConfigForm.SaveFlag.value = "0";
+	document.SslForm.postflag.value = "0";
+
+	document.OLTForm.SubmitFlag.value = "0";
+	
+	var obj = getElById('ResultText');
+	var certStatus = parseInt("4");
+	
+	if ((certStatus >= 0) && (certStatus <= 9))
+	{
+		obj.innerHTML = '<font color="#FF0000">' + msg[certStatus] + '</font>';
+		setDisplay('ResultText',1);
+	}
+	else
+	{
+		setDisplay('ResultText', 0);
+	}
+	
+	midLastRadioValue = document.ConfigForm.EnTr069Flag.value;
+	
+	if(midLastRadioValue == "0")
+	{
+		document.ConfigForm.Tr069Enable[0].checked = true;
+		setDisplay("midurl", 1);
+	}
+	else if(midLastRadioValue == "2")
+	{
+		document.ConfigForm.Tr069Enable[2].checked = true;
+		setDisplay("midurl", 1);
+	}
+	else
+	{
+		document.ConfigForm.Tr069Enable[1].checked = true;
+		setDisplay("midurl", 0);
+	}
+}
+function isSafeStringSN(val)
+{
+if ( val == "" )
+{
+return false;
+}
+for ( var j = 0 ; j < val.length ; j++ )
+{
+if ( !isSafeCharSN(val.charAt(j)) )
+{
+return false;
+}
+}
+return true;
+}
+function isSafeCharSN(val)
+{
+if (((val >= 'A')&&(val <= 'Z'))
+||((val >= 'a')&&(val <= 'z'))
+||((val >= '0')&&(val <= '9'))
+||(val == ':')||(val == '/')
+||(val == '-')||(val == '.')
+||(val == '_'))
+{
+return true;
+}
+else
+{
+return false;
+}
+}
+function isTimeFormat(str)
+{
+	if(str.length > 20 || str.length < 19)	//0001-01-01T00:00:00Z
+		return false;
+
+	if(str.substr(10, 1) != 'T' || str.substr(4, 1) != '-' || str.substr(7, 1) != '-' ||¡¡str.substr(13, 1) != ':' || str.substr(16, 1) != ':' || (str.substr(19, 1) != 'Z' && str.length == 20))
+		return false;
+	
+	if(str.substr(0, 4) < '0001' || str.substr(0, 4) > '9999')	
+		return false;
+			
+	if(str.substr(5, 2) < '01' || str.substr(5, 2) > '12')
+		return false;
+			
+	if(str.substr(8, 2) < '01' || str.substr(8, 2) > '31')	
+		return false;
+			
+	if(str.substr(11, 2) < '00' || str.substr(11, 2) > '23')	
+		return false;		
+
+	if(str.substr(14, 2) < '00' || str.substr(14, 2) > '59')	
+		return false;		
+
+	if(str.substr(17, 2) < '00' || str.substr(17, 2) > '59')	
+		return false;	
+				
+	return true;
+	
+}
+function isSafeStringSN(val)
+{
+if (val == "")
+{
+return true;
+}
+for ( var j = 0 ; j < val.length ; j++ )
+{
+if ( !isSafeCharSN(val.charAt(j)) )
+{
+return false;
+}
+}
+return true;
+}
+function CheckForm(type)
+{
+with (getElById ("ConfigForm"))
+{
+if (!isSafeStringSN(URL.value))
+{
+alert("ACS must be a combination of English letters, numbers and the following characters:: \":, /, -, .\"");
+return false;
+}
+if (PeriodicInformEnable[1].checked == true &&PeriodicInformInterval.value =='' )
+{
+alert("The periodic notification interval is invalid");
+return false;
+}
+if ((PeriodicInformInterval.value == '') || (isPlusInteger(PeriodicInformInterval.value) == false))
+{
+alert("The periodic notification interval is invalid");
+return false;
+}
+if (false)
+{
+if (PeriodicInformEnable[1].checked == true && PeriodicInformTime.value =='' )
+{
+alert("Invalid cycle notification time");
+return false;
+}
+if ((PeriodicInformTime.value == '') || (isTimeFormat(PeriodicInformTime.value) == false) )
+{
+alert("Invalid cycle notification time");
+return false;
+}
+}
+var info = parseFloat(PeriodicInformInterval.value );
+if (info < 0 || info > 2147483647)
+{
+alert("The periodic notification interval is invalid");
+return false;
+}
+if (isValidString(Username.value) == false )
+{
+alert("Invalid ACS user name");
+return false;
+}
+if (isValidString(Password.value) == false )
+{
+alert("Invalid ACS password");
+return false;
+}
+if (isValidString(ConnectionRequestUsername.value) == false )
+{
+alert("The connection request user name is invalid");
+return false;
+}
+if (isValidString(ConnectionRequestPassword.value) == false )
+{
+alert("Invalid connection request password");
+return false;
+}
+}
+with (getElById ("ConfigForm"))
+{
+if (Tr069Enable[1].checked == true &&Tr069Enable.value =='' )
+{
+alert("Tr069enable is invalid");
+return false;
+}
+if (mid.Tr069enable == '0' && Tr069Enable[2].checked == true)
+{
+alert("Tr069enable status cannot be switched from 0 to 2!");
+return false;
+}
+if (mid.Tr069enable == '2' && Tr069Enable[0].checked == true)
+{
+alert("Tr069enable status cannot be switched from 2 to 0!");
+return false;
+}
+if(Tr069Enable[0].checked == true || Tr069Enable[2].checked == true)
+{
+if (MiddlewareAddress.value == '')
+{
+alert("Please enter the address of middleware business management platform!");
+return false;
+}
+if (!isValidIpAddress(MiddlewareAddress.value) && !isSafeStringSN(MiddlewareAddress.value))
+{
+alert("The address is invalid. Please enter the correct IP address or domain name!");
+return false;
+}
+if (MiddlewarePort.value == '')
+{
+alert("Please enter the port number of middleware business management platform!");
+return false;
+}
+if (!isValidPort(MiddlewarePort.value))
+{
+alert("Invalid port number, please enter again!");
+return false;
+}
+}
+}
+return true;
+}
+function AddSubmitParam(SubmitForm,type)
+{
+/*var MiddlewareURL;
+SubmitForm.addForm('ConfigForm','x');
+SubmitForm.addParameter('y.Tr069Enable', getRadioVal("Tr069Enable"));
+if ((0 == getRadioVal("Tr069Enable")) || (2 == getRadioVal("Tr069Enable")))
+{
+MiddlewareURL = getValue("MiddlewareAddress") + ":" + getValue("MiddlewarePort");
+SubmitForm.addParameter('y.MiddlewareURL', MiddlewareURL);
+}
+SubmitForm.setAction('setcfg.cgi?x=InternetGatewayDevice.ManagementServer&y=InternetGatewayDevice.DeviceInfo.X_CT-COM_MiddlewareMgt&'
++ 'RequestFile=html/network/tr069.asp');*/
+}
+function SubmitCert()
+{
+	var SslForm =document.SslForm;
+	var string = SslForm.filename.value.search(/pem/);
+	
+		if(SslForm.filename.value=="")
+		{
+			alert("Please select certificate file upload£¡");
+		}
+		else
+		{
+			SslForm.postflag.value = "1";
+			if( true == setEBooValueCookie(SslForm) )
+			SslForm.submit();
+		}
+
+}
+
+var cfg_menu_list  = new Array('Ê¡¼¶Êý×Ö¼ÒÍ¥¹ÜÀíÆ½Ì¨·þÎñÆ÷', 'ÈÏÖ¤');
+var cfg_cookie_name = 'net-tr069-menu';
+init_l_menu();
+</SCRIPT>
+
+      <TABLE height="100%" cellSpacing=0 cellPadding=0 border=0 class="tblMain">
+        <TBODY>
+          <TR>
+            <TD class="Item_T">
+              <ul class="TRD">
+                   
+                   <li id="Ê¡¼¶Êý×Ö¼ÒÍ¥¹ÜÀíÆ½Ì¨·þÎñÆ÷">Acs Platform</li>
+                   
+                   <li id="ÈÏÖ¤">Register</li>
+              </ul>
+            </TD>
+            <TD class='w-828'>
+	  <TABLE height="100%" cellSpacing=0 cellPadding=0 border=0>
+          <TBODY>
+          <TD width=7 background=/img/panel3.gif>¡¡</TD>
+          <TD vAlign=top>
+	  <DIV class="hide" id='Ê¡¼¶Êý×Ö¼ÒÍ¥¹ÜÀíÆ½Ì¨·þÎñÆ÷_item'>
+            <TABLE cellSpacing=0 cellPadding=0 width="90%" border=0>
+              <TBODY>
+              <TR>
+                <TD class='w-10'>&nbsp;</TD>
+                <TD>
+                  <FORM name="ConfigForm" action="/cgi-bin/net-tr069.asp" method="post">
+                  <DIV id="En069Info">
+                  <TABLE cellSpacing=0 cellPadding=0 border=0>
+                    <TBODY>
+                    <TR>
+                      <TD width=149>Middleware Working Mode</TD>
+                      <TD><INPUT onclick=ntpEnbltr069() type=radio value="0" 
+                        name="Tr069Enable" > 
+                        Enable Middleware (Including TR069 Function)</TD>
+                    </TR>
+                    <TR>
+                      <TD width=149></TD>
+                      <TD><INPUT onclick=ntpEnbltr069() type=radio value="1" 
+                        name="Tr069Enable" checked> 
+                      Close Middleware</TD>
+                    </TR>
+                    <TR>
+                      <TD width=149></TD>
+                      <TD><INPUT onclick=ntpEnbltr069() type=radio value="2" 
+                        name="Tr069Enable" > 
+                      Enable Middleware (Excluding TR069 Function)</TD>
+                    </TR>
+                    </TBODY>
+                    </TABLE></DIV>
+                          <input type="hidden" name="EnTr069Flag" value="1">
+                          <input type="hidden" name="ActiveCwmpFlag" value="Yes">
+                      		<INPUT TYPE="HIDDEN" NAME="isMidwareSupported" value="0">
+                          <script language="JavaScript" type="text/JavaScript">
+function ntpEnbltr069()
+{
+with (getElById ("ConfigForm"))
+{
+	if(midLastRadioValue == "0" && Tr069Enable[2].checked == true || midLastRadioValue == "2" && Tr069Enable[0].checked == true)
+	{
+		alert("You cannot directly switch between enabling middleware (including TR069 function) and enabling middleware (excluding TR069 function).");
+		if(midLastRadioValue == "0")
+			Tr069Enable[0].checked = true;
+		else
+			Tr069Enable[2].checked = true;
+	}
+	
+	if(midLastRadioValue == "0" && Tr069Enable[1].checked == true || midLastRadioValue == "1" && Tr069Enable[0].checked == true)
+		alert("Restart when switching between closing middleware and enabling middleware (including TR069 function)¡£");
+	
+	if (Tr069Enable[1].checked == true)
+	{
+		setDisplay("midurl", 0);
+		ActiveCwmpFlag.value = "Yes";
+		EnTr069Flag.value = "1";
+	}
+	else
+	{
+		setDisplay("midurl", 1);
+		if(Tr069Enable[0].checked == true)
+		{
+			ActiveCwmpFlag.value = "Yes";
+			EnTr069Flag.value = "0";
+		}
+		else
+		{
+			ActiveCwmpFlag.value = "Yes";
+			EnTr069Flag.value = "2";
+		}
+	}
+}
+}
+if(document.ConfigForm.isMidwareSupported.value == 1)
+	getElById("En069Info").style.display = "";
+else
+getElById("En069Info").style.display = "none";
+
+</script>
+                          <BR>
+                  <DIV id=midurl>
+                  <TABLE height=37 cellSpacing=0 cellPadding=0 border=0>
+                    <TBODY>
+                    <TR id="hideTR">
+                      <TD width=149>Middleware server URL</TD>
+                      <TD width=31>Address:</TD>
+                      <TD width=163><INPUT id=MiddlewareAddress maxLength=256 
+                        name="MiddlewareAddress" value="0.0.0.0"> </TD>
+                      <TD width=46>Port:</TD>
+                      <TD width=62><INPUT id=MiddlewarePort maxLength=256 
+                        size=8 name="MiddlewarePort" value="0"></TD>
+                    </TR>
+                    </TBODY>
+                  </TABLE>
+                  </DIV>
+                  <BR>
+                  <TABLE cellSpacing=0 cellPadding=0 border=0>
+                    <TBODY>
+                    <TR>
+                      <TD class='w-200'>Periodic Notification</TD>
+                      <TD>
+                           <INPUT id=PeriodicInformEnable type=radio value="No" name="PeriodicInformEnable" > 
+                           Disabled
+                           &nbsp;
+                           <input id=radio type=radio value="Yes" name="PeriodicInformEnable" checked>
+                           Enabled
+                      </TD>
+                    </TR>
+                  </TBODY>
+                  </TABLE>
+                  <TABLE cellSpacing=0 cellPadding=0 border=0>
+                    <TBODY>
+                    <TR>
+                      <TD class='w-200'>Periodic Notification Interval[0 - 2147483647]:</TD>
+                      <TD><INPUT id=PeriodicInformInterval 
+                        style="WIDTH: 150px" maxLength=10 
+                        name=PeriodicInformInterval value="43200"></TD>
+                    </TR>
+                    <TR style='display:none'>
+                      <TD>Cycle Notification Time[yyyy-mm-ddThh:dd:ss]:</TD>
+                      <TD><INPUT id=PeriodicInformTime 
+                        style="WIDTH: 150px" maxLength=20 
+                        name=PeriodicInformTime value="0001-01-01T00:00:00Z"></TD>
+                    </TR>
+                    <TR>
+                      <TD>Server Domain Name/IP Address And Port:</TD>
+                      <TD><INPUT id=URL style="WIDTH: 150px" maxLength=256 
+                        name=URL value=""></TD>
+                    </TR>
+                    <TR>
+                      <TD>Acs UserName:</TD>
+                      <TD><INPUT id=Username style="WIDTH: 150px" 
+                        maxLength=256 name=Username value="cpe"></TD>
+                    </TR>
+                    <TR>
+                      <TD>Acs Password:</TD>
+                      <TD>
+			 <span id="inpsw"><INPUT id=Password style="WIDTH: 150px" type=password maxLength=256 name=Password value="cpe"></span>
+						
+		       </TD>
+                    </TR>
+                    <TR>
+                      <TD>Rms UserName:</TD>
+                      <TD><INPUT 
+                        name=ConnectionRequestUsername id=ConnectionRequestUsername 
+                        style="WIDTH: 150px" value="RMS" maxLength=256></TD>
+                    </TR>
+                    <TR>
+                      <TD>Rms Password:</TD>
+                      <TD>
+			  <span id="inrapsw"><INPUT name=ConnectionRequestPassword type=password id=ConnectionRequestPassword style="WIDTH: 150px" value="RMS" maxLength=256></span>
+						
+		        </TD>
+                     </TR>
+                  </TBODY>
+                  </TABLE>
+                  <BR>
+                  <!-- TABLE cellSpacing=0 cellPadding=0 border=0>
+                    <TBODY>
+                    <TR>
+                      <TD  class='w-200'>PasswordÈÏÖ¤Ä£Ê½</TD>
+                      <TD><INPUT id=PasswordAuthFlag_check type=radio name="PasswordAuthFlag_check" > ½ûÓÃ
+					  &nbsp;
+                       <input id=radio type=radio name="PasswordAuthFlag_check" checked>
+                       ÆôÓÃ</TD>
+						<input type=hidden name="PasswordAuthFlag" value="0">	 
+                     </TR></TBODY></TABLE><BR><BR -->
+                  <TABLE cellSpacing=0 cellPadding=0 border=0 >
+                    <TBODY>
+                    <TR>
+                      <TD class='w-200'>Enable Certificate</TD>
+                      <TD>
+                        <INPUT type=radio value="0" name="X_ATP_SSLCertEnable" checked> 
+                        Disabled
+                        &nbsp;
+                        <INPUT type=radio value="1" name="X_ATP_SSLCertEnable" > 
+                        Enabled
+                      </TD>
+                    </TR>
+                    </TBODY>
+                  </TABLE>
+                          <input type="hidden" name="SaveFlag" value="0">
+		<SCRIPT language=JavaScript type=text/javascript>
+			if(document.ConfigForm.isMidwareSupported.value == 1)
+				getElById("midurl").style.display = "";
+			else
+			  getElById("midurl").style.display = "none";
+			  
+		</SCRIPT>
+                          <script language="JavaScript" type="text/JavaScript">
+						  
+function btnSave()
+{
+	if(CheckForm() == false)
+		return;
+	
+	var Form = document.ConfigForm;
+	Form.SaveFlag.value = "1";
+	if( true == setEBooValueCookie(Form) )
+		Form.submit();
+}
+</script>
+                        </FORM>
+       
+                  <SCRIPT language=javascript>
+				  	var  cflag = "N/A";//the certificate of index 1 is exist?
+					if(cflag != "N/A"){
+						document.write("(The gateway has already loaded the certificate file!)");
+					}
+					else
+				  		document.write("(The gateway did not load the certificate file!)");
+				  </SCRIPT>
+
+                  <FORM id=SslForm name="SslForm" method="post" encType="multipart/form-data">
+
+                          <TABLE cellSpacing=0 cellPadding=0 border=0>
+                            <TBODY>
+                              <TR>
+                                <TD class='w-200'>
+                                File Path: 
+                                </TD>
+                                <TD>
+                                <INPUT type=file name="filename">
+                                </TD>
+                                <TD align="center">
+                                <INPUT id="btnSubmit" onclick="SubmitCert()" type=button value=Upload name="btnSubmit" style="height:22px">
+                                </TD>
+                                <TD class='wp-20'></TD>
+                              </TR>
+                              <TR>
+                                <TD colspan='3'>
+                                 <DIV id=ResultText name="ResultText" class='text-center'></DIV> 
+                                </TD>
+                                <TD></TD>
+                              </TR>
+                            </TBODY>
+                          </TABLE>
+
+                     <input type="hidden" name="postflag" value="0">
+                     <input type="hidden" name="fileIndex" value="1">
+                  </FORM>
+                 </TD>
+                 <TD width=10>&nbsp;</TD>
+             </TR>
+
+              <TR>
+                <TD width=10>&nbsp;</TD>
+                <TD align=center>
+				<button type="button" onclick="btnSave();" id=btnSave name=btnSave>Apply</button>
+				&nbsp;&nbsp;
+				<button type="button" onclick="RefreshPage();" id=Cancel name=Cancel>Cancel</button></TD>
+                <TD width=10>&nbsp;</TD>
+              </TR>
+            </TBODY></TABLE>
+	</DIV>
+	<DIV class="hide" id='ÈÏÖ¤_item'>
+        <FORM name="OLTForm" action="/cgi-bin/net-tr069.asp" method="post">
+        <TABLE cellSpacing=0 cellPadding=0 width="100%" border=0>
+              <TBODY>
+              <TR>
+                <TD class='w-10'>&nbsp;</TD>
+                <TD colspan=2>
+                  <P>
+                  	
+                  	You can register with the network management server and request service configuration by setting the loid and password, and then clicking the "authentication" button¡£
+                  	
+                  </P>
+                 </TD>
+              </TR>
+              </TBODY>
+        </TABLE>
+        <TABLE cellSpacing=0 cellPadding=0 width="100%" border=0>
+              <TBODY>
+              <TR>
+
+
+              	<TD>&nbsp;</TD>
+                      <TD width=118>LOID:</TD>
+                      <TD><INPUT id=LoidUsername style="WIDTH: 150px"  
+                        maxLength=256 name=LoidUsername 
+value=""></TD></TR>
+
+
+
+
+
+
+                <TD class='w-10'>&nbsp;</TD>
+                <TD class='w-200'>Password:</TD>
+                 <TD>
+					<span id="inLoidpsw"><INPUT id=LoidPassword style="WIDTH: 150px" 
+						 
+						
+							 
+
+								 
+						
+								type=password 
+							
+								
+							
+							
+							
+						
+						
+						
+						
+						
+						
+						maxLength=256 
+						name=LoidPassword 
+							 
+							value="">
+							<input type="hidden" name="devReginfoFlag" value="1">
+					</span>
+					
+						
+		</TD>
+              </TR>
+              <TR>
+                <TD>&nbsp;</TD>
+                <TD></TD>
+                <TD>&nbsp;</TD>
+              </TR>
+              <TR>
+                <TD align=center colspan=3>
+                    
+					<button type="button" onclick="doSubmit();" id=authBtnSubmit name=authBtnSubmit>Register</button>
+                    &nbsp;&nbsp;
+					<button type=button onclick="cancelClick()" id=authbtnCancel name=authbtnCancel>Cancel</button>
+                    
+                    <input type="hidden" name="SubmitFlag" value="0">
+                </TD>
+              </TR>					
+						<script language="JavaScript" type="text/JavaScript">
+
+						function doSubmit() {
+							var Form = document.OLTForm;
+							var zone = "GV";
+                            if(zone == "GV" || zone == "LN" || zone == "AH" || zone == "YN"){
+							    if(Form.LoidUsername.value == "")
+							    {
+								    alert("Loid is empty¡£");
+								    Form.LoidUsername.focus();
+								    return;
+							    }
+							    var loidchg = trimspace(Form.LoidUsername.value);										
+							    setText('LoidUsername',loidchg);
+							    var reg = /^[a-zA-Z0-9][\x21-\x73]*[a-zA-Z0-9]$|^[a-zA-Z0-9]+$/;								
+							    var str = Form.LoidUsername.value;
+							    if (reg.test(str) == false)
+							    {
+						   	        alert("The loid can only start and end with an alphanumeric number, and cannot contain spaces in the middle¡£");
+								    return;
+							    } 
+							    str = Form.LoidPassword.value; 
+							    if (str.length>0 && reg.test(str) == false)
+							    {
+								    alert("Password can only start and end with alphanumeric characters, and cannot contain spaces¡£");
+								    return;
+							    }
+                            }
+
+							Form.SubmitFlag.value = "1";
+							if( true == setEBooValueCookie(Form) )
+								Form.submit();
+						}
+												
+						</script>					
+	    </TBODY>
+	    </TABLE>
+	   </FORM>
+	</DIV>
+        </TD>
+        </TR>
+        </TBODY></TABLE>
+     </TD></TR>
+    </TBODY>
+   </TABLE>
+  </TD>
+ </TR>
+  <!-- copyright bottom -->
+  <script language=JavaScript type=text/javascript>
+      printCopyRightBottom();
+  </script>
+<script language="JavaScript">
+
+var URLOpenFlag = "0";
+var UsernameOpenFlag = "0";
+var PasswordOpenFlag = "0";
+var CRUsernameOpenFlag = "0";
+var CRPasswordOpenFlag = "0";
+
+if(URLOpenFlag == "1" && getElById('URL') )
+
+	getElById('URL').disabled = true;
+
+if(UsernameOpenFlag == "1" && getElById('Username'))
+	getElById('Username').disabled = true;
+if(PasswordOpenFlag == "1" && getElById('Password'))
+	getElById('Password').disabled = true;
+if(CRUsernameOpenFlag == "1" && getElById('ConnectionRequestUsername'))
+	getElById('ConnectionRequestUsername').disabled = true;
+if(CRPasswordOpenFlag == "1" && getElById('ConnectionRequestPassword'))
+	getElById('ConnectionRequestPassword').disabled = true;
+</script>
+</TBODY>
+</TABLE>
+</BODY>
+</HTML>

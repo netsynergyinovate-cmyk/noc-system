@@ -1,0 +1,7 @@
+{
+  "weight": 0,
+  "channel": "noc-connreq",
+  "events": {},
+  "precondition": "",
+  "configurations": [{ "type": "provision", "name": "noc-connreq", "args": null }]
+}

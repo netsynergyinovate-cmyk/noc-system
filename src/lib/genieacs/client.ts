@@ -277,7 +277,34 @@ function parseOptical(raw: Raw): CpeOptical {
       temperatureC: numWithUnit(read(raw, `${p}.TransceiverTemperature`)),
     };
   }
+  // ZIMLINK ZL-2113X (OLT: "HWTC H113") dan firmware CT-COM sejenis: satuan MENTAH di
+  // X_CT-COM_EponInterfaceConfig. RX/TX dalam 0,1 uW (dBm = 10 log10(nilai x 0,0001)), suhu dalam
+  // 1/256 derajat C, bias dalam uA, tegangan dalam 0,1 mV. Diukur terhadap OLT untuk ONU yang sama:
+  // RX -20,81 = -20,81 dBm, TX 1,32 ~ 1,31, redaman 22,13 ~ 22,12.
+  for (const root of ROOTS) {
+    const p = `${root}.WANDevice.1.X_CT-COM_EponInterfaceConfig`;
+    const rx = dbmFromTenthsOfMicrowatt(read(raw, `${p}.RXPower`));
+    if (rx === null) continue;
+    const temp = num(read(raw, `${p}.TransceiverTemperature`));
+    const bias = num(read(raw, `${p}.BiasCurrent`));
+    const volt = num(read(raw, `${p}.SupplyVottage`));
+    return {
+      rxDbm: rx,
+      txDbm: dbmFromTenthsOfMicrowatt(read(raw, `${p}.TXPower`)),
+      biasMa: bias === null ? null : round2(bias / 1000),
+      voltageV: volt === null ? null : round2(volt / 10000),
+      temperatureC: temp === null || temp === 0 ? null : round2(temp / 256),
+    };
+  }
   return empty;
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** 0,1 uW mentah -> dBm; nol atau negatif (tanpa sinyal) = null, bukan -infinity. */
+function dbmFromTenthsOfMicrowatt(v: unknown): number | null {
+  const n = num(v);
+  return n !== null && n > 0 ? round2(10 * Math.log10(n * 0.0001)) : null;
 }
 
 /** Kesehatan modem dari parameter TR-098 baseline (lebih mungkin lintas-merek). */
@@ -356,6 +383,11 @@ export function mapGenieAcsToCpe(
     str(read(r, "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress")) ||
     str(read(r, "Device.IP.Interface.1.IPv4Address.1.IPAddress"));
   const optical = parseOptical(r);
+  const health = parseHealth(r);
+  // Modem tanpa sensor suhu terpisah (mis. ZL-2113X) tetap melaporkan suhu modul optiknya.
+  if (health.temperatures.length === 0 && optical.temperatureC !== null) {
+    health.temperatures.push({ name: "Modul optik", celsius: optical.temperatureC });
+  }
 
   return {
     id: deviceId ? `cpe-${deviceId}` : "",
@@ -385,7 +417,7 @@ export function mapGenieAcsToCpe(
     // tidak diketahui (konsisten dengan pemakai lama field ini).
     opticalPowerDbm: optical.rxDbm ?? 0,
     optical,
-    health: parseHealth(r),
+    health,
     wifi: parseWifi(r, hosts.filter((h) => h.active).length),
     hosts,
   };
@@ -474,6 +506,17 @@ export class GenieAcsClient {
     return mapGenieAcsToCpe(items[0]);
   }
 
+  /**
+   * Data mentah satu perangkat dari NBI (untuk halaman rincian). Null bila tidak ada
+   * atau mode simulator (tidak ada data mentah). Pemanggil menyaring rahasia sendiri.
+   */
+  async getRawDevice(deviceId: string): Promise<unknown | null> {
+    if (this.config.mode === "simulator") return null;
+    const query = encodeURIComponent(JSON.stringify({ _id: deviceId }));
+    const items = await this.fetchArray(`/devices/?query=${query}`);
+    return items && items.length > 0 ? items[0] : null;
+  }
+
   async listDevices(): Promise<CpeDevice[]> {
     if (this.config.mode === "simulator") return simulatorDevices();
     const items = await this.fetchArray("/devices/");
@@ -501,14 +544,23 @@ export class GenieAcsClient {
     deviceId: string,
     task: Record<string, unknown>,
     connectionRequest = true,
+    /**
+     * Lama NBI menunggu modem menyelesaikan task (milidetik). Bawaan NBI hanya 3 detik; yang
+     * lebih lama (mis. ubah Wi-Fi) memberi batas sendiri dan 200 berarti SELESAI, 202 antre.
+     */
+    waitMs?: number,
   ): Promise<{ ok: boolean; taskId?: string; error?: string; status?: number }> {
     if (this.config.mode === "simulator") return { ok: true, taskId: `sim-task-${Date.now()}` };
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    const timer = setTimeout(
+      () => controller.abort(),
+      waitMs ? Math.max(this.config.timeoutMs, waitMs + 3000) : this.config.timeoutMs,
+    );
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.config.authHeader) headers.Authorization = this.config.authHeader;
-    const url = `${this.config.url}/devices/${encodeURIComponent(deviceId)}/tasks${connectionRequest ? "?connection_request" : ""}`;
+    const query = connectionRequest ? (waitMs ? `?connection_request&timeout=${Math.floor(waitMs)}` : "?connection_request") : "";
+    const url = `${this.config.url}/devices/${encodeURIComponent(deviceId)}/tasks${query}`;
     try {
       const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
         method: "POST",

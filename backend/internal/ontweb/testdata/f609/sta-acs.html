@@ -1,0 +1,263 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+<TITLE>Acs</TITLE>
+<META http-equiv=Content-Language content=zh-cn>
+<META http-equiv=Content-Type content="text/html; charset=gb2312">
+<LINK href="/JS/stylemain.css" type=text/css rel=stylesheet>
+<SCRIPT language=javascript src="/JS/menu.js"></SCRIPT>
+<SCRIPT language=javascript src="/JS/util.js"></SCRIPT>
+<SCRIPT language=JavaScript src="/JS/printtable.js"></SCRIPT>
+<SCRIPT language=javascript src="/JS/jquery-1.8.3.min.js"></SCRIPT> 
+<META content="MSHTML 6.00.6000.16809" name=GENERATOR></HEAD>
+<BODY style="TEXT-ALIGN: center" vLink=#000000 aLink=#000000 link=#000000 leftMargin=0 topMargin=0 
+onload="DisplayLocation(getElement('Selected_Menu').value);FinishLoad();if(getElById('ConfigForm') != null)LoadFrame()" 
+onunload=DoUnload() marginheight="0" marginwidth="0">
+
+<div id="pHead" style="height: 105px; width: 978px; background-image: url(/img/top.png); margin-left: auto; margin-right: auto; margin-top:-22px;">
+
+
+<div style="float: right;margin-top: 63px;margin-right: 13px;font: 20px Aall-petite-caps;color: #fff;"><a style="text-decoration: none;" onclick="DoLogout()" href="/cgi-bin/logout.cgi" target="_top">
+							<span class="logout">Logout</span>
+							</a></div>
+							
+							
+
+            </div>
+
+<TABLE cellSpacing=0 cellPadding=0 align=center border=0 class="major">
+<TBODY>
+	<TR>
+		<TD class="header">
+		<TABLE cellSpacing=0 cellPadding=0 border=0 class="tbl_nav">
+		<TBODY>
+			<TR>
+				<TD>&nbsp;</TD>
+				<TD vAlign=top align=right>
+				<TABLE id=table8 cellSpacing=0 cellPadding=0 border=0>
+				<TBODY>
+					<TR>
+						<TD class="td_model">
+						<span>Model: </span> 
+						<span> 
+						<SCRIPT language=javascript> 
+							document.write(top.ModelName); 
+						</SCRIPT>
+						</span>
+						</TD>
+						<TD class=welcom>
+						<span>Welcome£¡</span> 
+						<SPAN class=curUserName>&nbsp;</SPAN>
+						<A onclick=DoLogout() href="/cgi-bin/logout.cgi" target=_top>
+						<SPAN class=logout>Logout</SPAN>
+						</A>
+						<INPUT id=Selected_Menu type=hidden value="Status->Acs" name=Selected_Menu>
+						</TD>
+					</TR>
+				</TBODY>
+				</TABLE>
+				</TD>
+			</TR>
+		</TBODY>
+		</TABLE>
+		<TABLE cellSpacing=0 cellPadding=0 border=0 id=table2>
+		<TBODY>
+			<TR>
+				<TD id=MenuArea_L1></TD>
+			</TR>
+			<TR>
+					<TD id=MenuArea_L2></TD>
+			</TR>
+		</TBODY>
+		</TABLE>
+<SCRIPT language=javascript>
+MakeMenu(getElById ('Selected_Menu').value);
+</SCRIPT>
+		</TD>
+	</TR>  
+	<TR>
+		<TD class="content">
+<SCRIPT language=JavaScript type=text/javascript>
+var resultinfo = "N/A";
+var autoreportinfo = "N/A";
+var itmsconn = "N/A";
+
+var cfg_menu_list  = new Array( '½»»¥½¨Á¢', 'ÒµÎñÅäÖÃÏÂ·¢×´Ì¬' );
+var cfg_cookie_name = 'sta-acs-menu';
+init_l_menu();
+</SCRIPT>
+		<TABLE height="100%" cellSpacing=0 cellPadding=0 border=0 class="tblMain">
+		<TBODY>
+			<TR>
+				<TD class="Item_T" rowspan="7">
+					<ul class="TRD">
+					<li id="½»»¥½¨Á¢">ACS Status</li>
+					<li id="ÒµÎñÅäÖÃÏÂ·¢×´Ì¬">Business Status</li>
+					</ul>
+				</TD>
+				<TD width=7 bgColor=#FAFAFA>¡¡</TD>
+				<TD class='w-828' height="20">¡¡</TD>
+			</TR>
+			<TR>
+				<TD width=7 background=/img/panel3.gif>¡¡</TD>
+				<TD valign="top">
+				<div style="display:none;" id="½»»¥½¨Á¢_item">
+				<TABLE cellSpacing=0 celladding=0 width="100%" border=0>
+				<TBODY>
+					<TR>
+						<TD width=10>&nbsp;</TD>
+						<TD>
+						<TABLE class="statblList" border="1">
+						<TBODY>
+							<TR>
+								<TD class=table_title width=200>Inform Status:</TD>
+								<TD>
+								<SCRIPT language=javascript>
+									var result = "1";
+									switch(result)
+									{
+										case "0":
+											document.writeln("Terminal is Starting");
+											break;
+										case "1":
+											document.writeln("TR069 Connection Not Created");
+											break;
+										case "2":
+											document.writeln("TR069 Not Connected");
+											break;
+										case "3":
+											document.writeln("TR069 DNS Exception");
+											break;
+										case "4":
+											document.writeln("RMS Not Configured");
+											break;
+										case "5":
+											document.writeln("RMS Domain Resolution Error");
+											break;
+										case "6":
+											document.writeln("Report No Response");
+											break;
+										case "7":
+											document.writeln("Reporting Interruption"); 
+											break;
+										case "8":
+											document.writeln("Reported successfully");
+											break;
+										 default:
+											document.writeln("N/A");
+											break;			
+									}						
+								</SCRIPT>
+								</TD>
+							</TR>
+						</TBODY>
+						</TABLE>
+						<BR><BR>
+						<TABLE class="statblList" border="1">
+						<TBODY>
+							<TR>
+								<TD class=table_title width=200>RMS Status:</TD>
+								<TD>
+								<SCRIPT language=javascript>
+									var result = "0";
+									switch(result)
+									{
+										case "0":
+											document.writeln("No Remote Connection Request Received");
+											break;
+										case "1":
+											document.writeln("RMS Remote Connection Process Interrupted");
+											break;
+										case "2":
+											document.writeln("RMS Remote Connection Succeeded");
+											break;
+										 default:
+											document.writeln("No Remote Connection Request Received");
+											break;			
+									}						
+								</SCRIPT>
+								</TD>
+							</TR>
+						</TBODY>
+						</TABLE>
+						</TD>
+						<TD width=10>&nbsp;</TD>
+					</TR>
+				</TBODY>
+				</TABLE>
+				</div>
+				<div style="display:none;" id="ÒµÎñÅäÖÃÏÂ·¢×´Ì¬_item">
+				<TABLE cellSpacing=0 cellPadding=0 width="100%" border=0>
+				<TBODY>
+					<TR>
+						<TD width=10>&nbsp;</TD>
+						<TD>
+						<TABLE class="statblList" border="1">
+						<TBODY>
+							<TR>
+								<TD class=table_title width=200>Business Status:</TD>
+								<TD>
+								<SCRIPT language=javascript>
+									var rstatus = "0";
+									var rresult = "1";
+									if(rstatus=="0" && rresult == "99")
+									{
+										document.write('Remote Service Configuration Not Received');
+									}
+									else if(rstatus=="0" && rresult == "0")
+									{
+										document.write('Accepting Remote Business Configuration Initiated By RMS');
+									}
+									else if(rstatus=="0" && rresult == "1")
+									{
+										document.write('Business Configuration Succeeded');
+									}
+									else if(rstatus=="5" && rresult == "0")
+									{
+										document.write('Business Configuration Succeeded');
+									}
+									else if(rstatus=="0" && rresult == "2")
+									{
+										document.write('Business Configuration Fail');
+									}
+									else
+									{
+										document.write('Remote Service Configuration Not Received');
+									}
+								</SCRIPT>
+								</TD>
+							</TR>
+						</TBODY>
+						</TABLE>
+						</TD>
+						<TD width=10>&nbsp;</TD>
+					</TR>
+					<TR>
+						<TD width=10>&nbsp;</TD>
+						<TD>&nbsp;</TD>
+						<TD width=10>&nbsp;</TD>
+					</TR>
+				</TBODY>
+				</TABLE>
+				</div>
+				</TD>
+			</TR>
+		</TBODY>
+		</TABLE>
+		</TD>
+	</TR>
+<SCRIPT language=JavaScript type=text/javascript>
+var curUserType = '0';  
+if (curUserType == '1')
+{
+	ctabOption.style.display = "none";
+	seDslStat.style.display = "none";
+}
+
+<!-- copyright bottom -->
+printCopyRightBottom();
+</SCRIPT>
+</TBODY>
+</TABLE>
+</BODY>
+</HTML>

@@ -1,0 +1,536 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3c.org/TR/1999/REC-html401-19991224/loose.dtd">
+<HTML xmlns="http://www.w3.org/1999/xhtml">
+<HEAD>
+<TITLE>Login</TITLE>
+<script language='javascript' src='/JS/jquery-1.8.3.min.js'></script>
+<script language='javascript' src='/JS/encryption.js'></script>
+<script language='javascript' src='/JS/util.js'></script>
+<script LANGUAGE="JavaScript">
+var Logged = 0;
+var isIPv4 = "0";
+var rand = "36d32e78";
+var ServerLanIP;
+if('0' == isIPv4)
+	ServerLanIP = "http://[" + "fe80::1" + "]";
+else ServerLanIP = "http://" + "192.168.1.1";
+function getCookie(Name)
+{
+	var search = Name + "=";
+	if(document.cookie.length > 0) 
+	{
+		offset = document.cookie.indexOf(search);
+		if(offset != -1) 
+		{
+			offset += search.length;
+			end = document.cookie.indexOf(";", offset);
+			if(end == -1) end = document.cookie.length;
+			return unescape(document.cookie.substring(offset, end));
+		}
+		else 
+			return "";
+	}
+}
+
+function SET_C_T(name, value, time)
+{
+	var strsec = getsec(time); 
+	var exp = new Date();  
+	exp.setTime(exp.getTime() + strsec*1);  
+	document.cookie = name + "="+ escape (value) + ";expires=" + exp.toGMTString()+";path=/;";
+} 
+
+function SET_C(name, value)
+{
+	document.cookie = name + "="+ escape (value) + ";path=/;";
+}
+
+function rmCookie(name)
+{  
+	var exp = new Date();  
+	exp.setTime(exp.getTime() - 10000);  
+	document.cookie = name + "=del;expires=" + exp.toGMTString();  
+	document.cookie = name + "=del;expires=" + exp.toGMTString()+";path=/;";  
+}
+
+function sleep(numberMillis) {
+	var now = new Date();
+	var exitTime = now.getTime() + numberMillis;
+	while (true) {
+		now = new Date();
+		if (now.getTime() > exitTime)
+		return;
+	}
+}
+
+
+function encryptionPassword(str)
+{
+	var tempstr = "";
+	if(str != ""){
+		tempstr = str + rand;
+		var pwd = encryption(tempstr);
+		//console.log(pwd);
+		
+		if(!document.getElementById) {
+			//console.log("error no support getElementById");
+			$('#Password').val(pwd);
+		}else{ 
+			var pass = document.getElementById('Password');
+			//console.log(pass.value);
+			pass.value = pwd;
+			//console.log(pass.value);
+		}
+		
+		for (var i=0; i <10; i++)
+		{
+			var trysetpass = document.getElementById('Password');
+			//console.log(i + ":" + trysetpass.value);
+			//console.log("len:" + trysetpass.value.length);
+			if(10 > trysetpass.value.length)
+			{
+				trysetpass.value = pwd;
+			}else{
+				break;
+			}
+			sleep(1000);
+		}
+	}
+}
+
+function gotoSimCardMsg()
+{
+	rmCookie("UID");rmCookie("PSW");rmCookie("LoginTimes");
+	top.window.location.href='/cgi-bin/InsertSimcardMsg.cgi';
+}
+
+var Logged = 0;
+var pswST = 0;
+var gotoMainSet = 0;
+function userlogin( login )
+{
+	Logged = login;
+}
+function userPSWST( st)
+{
+	pswST = st;
+}
+
+function gotomain_set()
+{
+	gotoMainSet = 1;
+}
+
+function gotomain()
+{
+	var logflag = getCookie('LOGFLAG');
+	if ( 1 != gotoMainSet )
+		return -1;
+
+	if ( 2 == pswST )
+		return -2 ;
+	else if ( 1 == pswST )
+	{
+		if ( 0 == Logged )
+		{
+			rmCookie("LoginTimes");
+			top.window.location.href = '/cgi-bin/content.asp';
+			return 1;
+		}
+		else
+		{
+			if ( logflag.indexOf('logged') < 0 )
+			{
+				rmCookie("UID");
+				rmCookie("PSW");
+				rmCookie("LoginTimes");
+			}
+
+			if ( 1 == Logged )
+				document.write('ά���˺��Ѿ����ڵ�¼״̬��');
+			else if ( 2 == Logged )
+				document.write('�û��˺��Ѿ����ڵ�¼״̬��');
+		}
+	}
+	return 0;
+}
+
+function refreshself()
+{
+	top.window.location.href ='/cgi-bin/index2.asp';
+}
+
+
+</script>
+<META http-equiv=Content-Type content="text/html; charset=gb2312">
+<SCRIPT language=JavaScript src="/JS/util.js"></SCRIPT>
+<STYLE type=text/css>
+#div_visite {
+	FONT-SIZE: 12px;
+	MARGIN: 100px 50px;
+	COLOR: #FFFFFF;
+	FONT-FAMILY: 'MicrosoftYaHei', 'Microsoft YaHei'
+}
+#div_visite TABLE.lmain {
+	background:url(/img/xpon_logo.png) no-repeat center 0 #2CBCD4;
+	width:350px;
+	height:45%;
+	position:relative;
+	-webkit-border-radius: 6px;
+	-moz-border-radius: 6px;
+	border-radius: 6px;
+}
+#div_visite TABLE input[type="button"] {
+ FONT-FAMILY: 'MicrosoftYaHei', 'Microsoft YaHei' font-weight: normal;
+	cursor:pointer;
+	min-width:150px;
+	height:30px;
+	line-height:26px;
+	background:#2CBCD4;
+	border: #FFF solid 1px;
+	color:#FFFFFF;
+	-webkit-border-radius: 4px;
+	-moz-border-radius: 4px;
+	border-radius: 4px;
+}
+input {
+	border:1px solid #E9E9E9;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius: 3px;
+	height:25px;
+	line-height:25px;
+}
+td.qr_note {
+	text-align:center;
+}
+</STYLE>
+<SCRIPT language=JavaScript type=text/javascript>
+
+var rstatus = "0";
+var rresult = "1";	
+
+function getsec(str)
+{  
+	var str1=str.substring(1,str.length)*1;    
+	var str2=str.substring(0,1);  
+	if (str2=="s")
+	{  
+		return str1*1000; 
+	}
+	else if (str2=="h")
+	{  
+		return str1*60*60*1000; 
+    	}
+	else if (str2=="d")
+	{  
+		return str1*24*60*60*1000; 
+    	}  
+}
+	
+function setCookie(name,value,time)
+{  
+	var strsec = getsec(time); 
+	var exp = new Date();  
+	exp.setTime(exp.getTime() + strsec*1);  
+	document.cookie = name + "="+ escape (value) + ";expires=" + exp.toGMTString();  
+} 
+	
+var LoginTimes = 0;
+var LoginFailTime = "0";
+if((getCookie("LoginTimes") != "") && (typeof(getCookie("LoginTimes")) != "undefined"))
+{
+	LoginTimes = parseInt(getCookie("LoginTimes"));
+}
+
+var loginTimes = 0;
+
+function doLogin()
+		{
+			var pusername = document.getElementById("Frm_Username").value;
+			var ppwd = document.getElementById("Frm_Password").value;
+
+			document.getElementById("Username").value = pusername;
+			document.getElementById("Password").value = ppwd;
+
+
+
+			rmCookie("UID");
+			rmCookie("PSW");
+			encryptionPassword($('#Password').val());
+			/* check empty */
+			if ( 0 == $('#Username').val().length )
+			{
+				alert("Account number cannot be empty");
+				return false;
+			}
+
+			if ( 0 == $('#Password').val().length )
+			{
+				alert("Password cannot be empty");
+				return false;
+			}
+
+			if( (getCookie("loginTimes") != "") && (typeof(getCookie("loginTimes")) != "undefined") )
+				loginTimes = parseInt(getCookie("loginTimes"));
+			if ( loginTimes >= 3 )
+			{
+				$('#errmsg').text('Login failed for three consecutive times, and the WEB login is locked. Please log in again in 1 minute!');
+				return false;	
+			}
+			SET_C_T("loginTimes", loginTimes, "s60");
+			SET_C_T("LoginFailTime", LoginFailTime, "s60");
+			var form = $('#ConfigForm');
+	    $.ajax({
+	        url: form.attr("action"),
+	        type: form.attr("method"),
+	        data: form.serialize(),
+	        dataType: "json",
+	        beforeSend: function () 
+	        {
+	        	$('#btnSubmit').attr('disabled', true);
+	        },
+	        error: function ()
+	        {
+	        	$('#btnSubmit').attr('disabled', false);
+	 					alert('fetal error!');
+	        },
+	        complete:function ()
+	        {
+	        	$('#btnSubmit').attr('disabled', false);
+	        },
+	        success: function (result)
+	        {
+	        		if ( '1' == result.Locked )
+	        		{
+	        				$('#errmsg').text('Login failed for three consecutive times, and the WEB login is locked. Please log in again in 1 minute!');
+							document.write('Login failed for three consecutive times, and the WEB login is locked. Please log in again in 1 minute!');
+	        				loginTimes = 0;
+	        				rmCookie('loginTimes');
+	        		}
+	        		else if ( '1' == result.Logged )
+	        		{
+	        				$('#errmsg').text('The maintenance account is already logged in��');
+	        				loginTimes = 0;
+	        				rmCookie('loginTimes');		
+	        		}
+	        		else if ( '2' == result.Logged )
+	        		{
+	        				$('#errmsg').text('The user account is already logged in��');
+	        				loginTimes = 0;
+	        				rmCookie('loginTimes');
+	        		}
+	        		else if ( '0' == result.Privilege )
+	        		{
+	        				loginTimes += 1;
+							SET_C_T("loginTimes", loginTimes, "s60");
+							LoginFailTime = parseInt(LoginFailTime) + 1;
+							SET_C_T("LoginFailTime", LoginFailTime, "s60");
+	        				$('#errmsg').text('You have' +  loginTimes + 'The secondary user name or password is entered incorrectly��');      			
+							top.location.replace(ServerLanIP + "/cgi-bin/index2.asp");	
+	        		}
+	        		else if ( '1' == result.Privilege || '2' == result.Privilege )
+	        		{
+	        				loginTimes = 0;
+	        				rmCookie('loginTimes');
+	        				SET_C('ecntToken', result.ecntToken);
+	        				top.location.href = '/cgi-bin/content.asp';
+	        		}
+	        }
+	    });
+		}
+
+function SubmitForm()
+{
+	var Username = document.getElementById('Username');
+	var Password = document.getElementById('Password');
+	var Password1 = document.getElementById('Password1');
+	var Password2 = document.getElementById('Password2');
+	var hLoginTimes = document.getElementById('hLoginTimes');
+	
+	if (Username.value == "")
+	{
+		alert("Account number cannot be empty");
+		return false;
+	}
+	if (Password.value == "")
+	{
+		alert("Password cannot be empty");
+		return false;
+	}
+	Password1.value = Password.value;
+	Password2.value = Password.value;
+	var cookie = "UID=" + Username.value + ";path=/;";
+	document.cookie = cookie;
+	var cookie = "PSW=" + Password.value + ";path=/;";
+	document.cookie = cookie;
+	LoginTimes = parseInt(LoginTimes) + 1;
+	LoginFailTime = parseInt(LoginFailTime) + 1;
+	document.ConfigForm.hLoginFailTime.value = 1;
+	document.ConfigForm.LoginFailTime.value = LoginFailTime;
+	setCookie("LoginTimes", LoginTimes, "s60");
+	hLoginTimes.value = LoginTimes;
+	document.ConfigForm.submit();
+	return true;
+}
+
+
+
+
+
+function onHandleKeyDown(e)
+{
+	var key = 0;
+	if (window.event)
+	{
+		key = window.event.keyCode;
+	}
+	else if (e)
+	{
+		key = e.which;
+	}
+	if (key == 13 && document.activeElement.id != 'btnSubmit' && document.activeElement.id != 'bandReg')
+	{
+		doLogin();
+	}
+}
+if ( !(0 != Logged && pswST) )
+	document.onkeypress = onHandleKeyDown;
+
+function LoadFrame()
+{
+	$('#Username').focus();
+	if( (getCookie("loginTimes") != "") && (typeof(getCookie("loginTimes")) != "undefined") )
+	{
+		loginTimes = parseInt(getCookie("loginTimes"));
+	}
+	if(loginTimes > 0)
+	{
+	    $('#errmsg').text('Incorrect account name or password');
+	}
+		
+}
+</SCRIPT>
+
+<META content="Microsoft FrontPage 5.0" name="GENERATOR">
+</HEAD>
+<BODY onload="LoadFrame()" style="font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;">
+<SCRIPT language=JavaScript type=text/javascript>
+
+if (LoginTimes >= 3 && !(1==gotoMainSet&&1==pswST&&0==Logged) )
+{
+	alert('Login failed for three consecutive times, web login is locked, please log in after 1 minute!');
+}
+</SCRIPT>
+
+<div id="pContent" style="height: 105px; min-height: 100%;">
+	<div id="pHead" style="height: 105px; width: 978px; background-image: url(/img/top.png); margin-left: auto; margin-right: auto; margin-top:-22px;">
+		<div style="float: right; margin-top: 53px; margin-right: 25px; font: 20px Aall-petite-caps; color: #fff;">F609</div>	
+	</div>
+	
+	<div id="pLoginArea" style="background-color: #f7f7f7; height: 389px; width: 978px; padding-top: 93px; margin-left: auto; margin-right: auto;">
+		<div style="width: 334px; height: 108px; margin-left: auto; margin-right:auto;">
+			<div id="pLoginTitle" style="width: 334px; height: 19px; background-color: #69ce28">
+				<div style="padding-left: 5px; color: #fff; font-weight: bold; font-size: 12px; padding-top: 3px;">Please login to continue...</div>
+			</div>
+			<div id="pLoginContent" style="width: 332px; height: 87px; border: 1px solid #69ce28;">
+				<div style="margin-top: 15px; margin-left: 35px;"> <span style="font-size: 12px;">Username</span> <input type="text" class="username" name="Username" id="Frm_Username" style="width: 120px; height: 18px; border: 1px solid #7F9DB7; font-size: 12px; font-family: Verdana, Geneva, Arial, Helvetica, sans-serif; vertical-align: middle; text-align: left;"></div>
+				
+				<div style="margin-left: 37px; margin-top: 10px;"> <span style="font-size: 12px;">Password</span> <input type="password" class="password" name="Password" id="Frm_Password" style="width: 120px; height: 18px; border: 1px solid #7F9DB7; font-size: 12px; font-family: Verdana, Geneva, Arial, Helvetica, sans-serif; vertical-align: middle; text-align: left;"> 
+					<input class="login" type="button" id="LoginId" value="Login" onclick="doLogin()" style="height: 22px; width: 70px; vertical-align: middle; text-align: center; font-size: 12px; font-family: Verdana, Geneva, Arial, Helvetica, sans-serif; line-height: 16px; appearance: auto; user-select: none; white-space: pre; align-items: flex-start; cursor: default;     box-sizing: border-box; background-color:buttonface; color: buttontext; border-width: 2px;     border-style: outset; border-color: buttonborder;     border-image: initial;"> </div>
+			</div>
+			
+		</div>
+		
+	</div>
+
+
+	<div style="height: 8px; width: 978px; background:#69ce28; margin-top: 10px; margin-left: auto; margin-right: auto;"></div>
+</div>
+
+
+
+
+
+
+
+
+<DIV id=div_visite style="display: none;">
+<FORM id="ConfigForm" name="ConfigForm" action="/cgi-bin/check_auth.json" method="post">		
+<TABLE class="lmain" cellSpacing="0" cellPadding="0" align="center" border="0">
+  <TBODY>
+        <tr>
+          <td colSpan="3" height="65px">&nbsp;</td>
+        </tr>
+
+  <TR>
+    <td align=right width="30%" height=50>
+	<script language="JavaScript" type="text/JavaScript">
+	
+		document.writeln("Account��");
+	
+	</script>
+	</td>
+    <TD width=30>��</TD>
+    <TD><LABEL>
+    <INPUT id="Username" style="WIDTH: 140px; FONT-FAMILY: Arial" name="Username" size="20"> </LABEL>
+    </TD>
+  </TR>
+
+  <TR>
+    <td align=right height=30>
+	
+            Password��
+	
+    </td>
+    <TD>��</TD>
+    <TD>
+	<input id="Logoff" type="hidden" name="Logoff" value="0">    
+	<input id="hLoginTimes" type="hidden" name="hLoginTimes" value="0">
+	<input id="hLoginTimes_Zero" type="hidden" name="hLoginTimes_Zero" value="0">
+	<input id="value_one" type="hidden" name="value_one" value="1"> 
+	<input id="Password1" type="hidden" name="Password1" value="">
+	<input id="Password2" type="hidden" name="Password2" value=""> 
+	<input id="logintype" type="hidden" name="logintype" value="usr">
+	<input id="LoginFailTime" type="hidden" name="LoginFailTime" value="0">
+	<input id="hLoginFailTime" type="hidden" name="hLoginFailTime" value="0">
+    <INPUT id="Password" style="WIDTH: 140px; FONT-FAMILY: Arial" type="password" name="Password" size="20"></TD>
+  </TR>
+  <TR>
+    <TD>&nbsp; </TD>
+    <TD>&nbsp; </TD>
+    <td style="COLOR: #ff0000" align="center" colspan="3" id='errmsg' name='errmsg'></td>
+  </TR>
+  <TR>
+     <td colSpan="3" height="20px">&nbsp;</td>
+  </TR>
+  <TR>
+    <TD align=center colSpan=3>
+	 <INPUT id="btnSubmit" onclick="doLogin()" type="button" value="Login" name="btnSubmit">
+            &nbsp;
+	</TD>
+  </TR>
+   <TR>
+       <td colSpan="3" height="20px">&nbsp;</td>
+   </TR>
+   </TBODY>
+   </TABLE>
+  </FORM>
+  </DIV>
+		<SCRIPT language=JavaScript type=text/javascript>
+		if ((LoginTimes >= 3) || (Logged&&pswST) || (1==gotoMainSet&&1==pswST&&0==Logged))
+		{
+			getElById('div_visite').style.display = 'none';
+		}
+		else
+		{
+			
+			getElById('Username').focus();
+			
+		}
+		/*
+		
+		getElById('Username').value="user";
+		
+		*/
+		</SCRIPT>
+</BODY></html>

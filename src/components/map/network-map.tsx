@@ -66,6 +66,7 @@ import {
   Maximize2,
   Move,
   Navigation,
+  Network,
   Pencil,
   Plus,
   RefreshCw,
@@ -1104,6 +1105,39 @@ export function NetworkMap({
     [map],
   );
 
+  const handleAutoSaveConnectCable = useCallback(async (
+    src: NetworkInfrastructurePoint,
+    tgt: NetworkInfrastructurePoint,
+  ) => {
+    const prefix = connectRouteNameRef.current.trim();
+    const cableName = prefix ? `${prefix} ➔ ${tgt.name}` : `${src.name} → ${tgt.name}`;
+    setIsSavingCable(true);
+    try {
+      const res = await fetch("/api/map/cables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: cableName,
+          sourceId: src.id,
+          targetId: tgt.id,
+          cableType: "feeder",
+          coreCapacity: 12,
+          color: "#f59e0b",
+          polyline: [[src.latitude, src.longitude], [tgt.latitude, tgt.longitude]],
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menyimpan kabel.");
+      setConnectSavedSegments((n) => n + 1);
+      setConnectSource(tgt);
+      fetchData();
+    } catch (err) {
+      console.error("[AUTO_SAVE_CONNECT]", err);
+    } finally {
+      setIsSavingCable(false);
+    }
+  }, [fetchData]);
+
   const handleSelectInfra = useCallback(
     (infra: NetworkInfrastructurePoint | null) => {
       // Baca mode dari refs agar selalu dapat nilai terkini (hindari stale closure Leaflet)
@@ -1128,10 +1162,7 @@ export function NetworkMap({
           return;
         }
         if (infra.id !== src.id) {
-          setConnectTarget(infra);
-          const prefix = connectRouteNameRef.current.trim() || "Jalur";
-          setConnectCableName(`${prefix} ➔ ${infra.name}`);
-          setShowConnectDialog(true);
+          void handleAutoSaveConnectCable(src, infra);
           return;
         }
         return;
@@ -1149,7 +1180,7 @@ export function NetworkMap({
       setInfraMoveDraftCoords(null);
       onSelectInfrastructure?.(infra);
     },
-    [map, onSelectInfrastructure],
+    [map, onSelectInfrastructure, handleAutoSaveConnectCable],
   );
 
   const handleSaveConnectCable = useCallback(async () => {
@@ -2504,9 +2535,10 @@ export function NetworkMap({
       )}
 
       {/* Floating Guide Banner Mode Koneksi ODP */}
-      {isConnectCableMode && !showConnectDialog && (
-        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-indigo-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+      {isConnectCableMode && (
+        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-indigo-700/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Share2 className="size-3.5 shrink-0" />
               <p className="font-bold text-xs">Koneksi ODP</p>
@@ -2515,48 +2547,80 @@ export function NetworkMap({
                   {connectSavedSegments} tersimpan
                 </span>
               )}
+              {isSavingCable && <Loader2 className="size-3 animate-spin opacity-70" />}
             </div>
             <div className="flex items-center gap-1">
               {connectSavedSegments > 0 && (
                 <Button type="button" size="sm" variant="ghost"
                   className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
-                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectTarget(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
                   Selesai
                 </Button>
               )}
               <Button type="button" size="sm" variant="ghost" className="text-white hover:bg-white/20 h-6 w-6 p-0"
-                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectTarget(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
                 <X className="size-3" />
               </Button>
             </div>
           </div>
 
-          {/* Input nama rute — hanya saat belum ada source */}
+          {/* Fase 1: Pilih OLT sumber dari daftar */}
           {!connectSource && (
-            <div>
-              <p className="text-[10px] opacity-70 mb-1">Nama rute (opsional):</p>
-              <Input
-                value={connectRouteName}
-                onChange={(e) => setConnectRouteName(e.target.value)}
-                placeholder="Jalur Desa PON1"
-                className="h-6 text-[11px] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:bg-white/20"
-              />
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] opacity-80 font-medium">Pilih OLT sebagai sumber jalur:</p>
+              <div className="space-y-1 max-h-36 overflow-y-auto">
+                {(fetchedData?.infrastructure?.filter(i => i.type === "olt") ?? []).length === 0 ? (
+                  <p className="text-[11px] opacity-50 italic">Belum ada OLT di peta.</p>
+                ) : (
+                  fetchedData!.infrastructure.filter(i => i.type === "olt").map(olt => (
+                    <button
+                      key={olt.id}
+                      type="button"
+                      onClick={() => setConnectSource(olt)}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-cyan-400/20 text-[11px] font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Network className="size-3 shrink-0 text-cyan-300" />
+                      <span className="truncate flex-1">{olt.name}</span>
+                      {olt.host && <span className="text-[10px] opacity-40 font-mono shrink-0">{olt.host}</span>}
+                    </button>
+                  ))
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] opacity-60 mb-1">Nama rute (opsional):</p>
+                <Input
+                  value={connectRouteName}
+                  onChange={(e) => setConnectRouteName(e.target.value)}
+                  placeholder="Jalur Desa PON1"
+                  className="h-6 text-[11px] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:bg-white/20"
+                />
+              </div>
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-[11px]">
-            <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-md", !connectSource ? "bg-white/20 font-semibold" : "bg-white/5 opacity-60")}>
-              <span className={cn("size-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0", !connectSource ? "bg-white text-indigo-700" : "bg-green-400 text-white")}>
-                {connectSource ? "✓" : "1"}
-              </span>
-              <span className="truncate max-w-[100px]">{connectSource ? connectSource.name : "Klik SUMBER"}</span>
+          {/* Fase 2: Klik ODP di peta satu per satu */}
+          {connectSource && (
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 text-[11px]">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/10 shrink-0">
+                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-green-400 text-white shrink-0">✓</span>
+                  <span className="truncate max-w-[110px] font-semibold">{connectSource.name}</span>
+                </div>
+                <span className="opacity-40 shrink-0">→</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/20 animate-pulse font-semibold">
+                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/30 shrink-0">?</span>
+                  <span>Klik ODP di peta</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConnectSource(null)}
+                className="text-[10px] opacity-50 hover:opacity-90 underline"
+              >
+                Ganti sumber OLT
+              </button>
             </div>
-            <span className="opacity-40 shrink-0">→</span>
-            <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-md", connectSource ? "bg-white/20 font-semibold animate-pulse" : "bg-white/5 opacity-40")}>
-              <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/30">2</span>
-              Klik TUJUAN
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -3900,74 +3964,6 @@ export function NetworkMap({
         onSetParent={handleSetParent}
         isSettingParent={isSettingParent}
       />
-
-      {/* Dialog Konfirmasi Buat Jalur Kabel */}
-      {showConnectDialog && connectSource && connectTarget && (
-        <Card className="fixed top-20 left-1/2 -translate-x-1/2 z-[1060] w-[92vw] max-w-sm p-4 bg-background/95 backdrop-blur-md border-indigo-500/30 shadow-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Share2 className="size-4 text-indigo-500" />
-                Segmen {connectSavedSegments + 1}
-                {connectRouteName && <span className="text-indigo-500 font-normal text-xs">— {connectRouteName}</span>}
-              </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                <span className="font-medium text-foreground">{connectSource.name}</span>
-                <span>→</span>
-                <span className="font-medium text-foreground">{connectTarget.name}</span>
-              </p>
-            </div>
-            <Button type="button" size="icon" variant="ghost" className="size-6 shrink-0"
-              onClick={() => { setShowConnectDialog(false); setConnectTarget(null); }}>
-              <X className="size-3.5" />
-            </Button>
-          </div>
-          <div className="space-y-2 text-xs">
-            <div>
-              <label className="text-muted-foreground block mb-1">Nama Jalur</label>
-              <Input value={connectCableName} onChange={(e) => setConnectCableName(e.target.value)}
-                className="h-7 text-xs" placeholder="Jalur Desa PON1 ➔ ODP1" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-muted-foreground block mb-1">Tipe</label>
-                <select value={connectCableType} onChange={(e) => setConnectCableType(e.target.value)}
-                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
-                  <option value="backbone">Backbone</option>
-                  <option value="feeder">Feeder</option>
-                  <option value="distribution">Distribusi</option>
-                  <option value="drop">Drop</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-muted-foreground block mb-1">Core</label>
-                <select value={connectCableCapacity} onChange={(e) => setConnectCableCapacity(Number(e.target.value))}
-                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
-                  {[6, 12, 24, 48, 96, 144].map(n => <option key={n} value={n}>{n} Core</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-muted-foreground shrink-0">Warna:</label>
-              <input type="color" value={connectCableColor} onChange={(e) => setConnectCableColor(e.target.value)}
-                className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5" />
-              <span className="text-[10px] text-muted-foreground">akan berlaku ke segmen berikutnya</span>
-            </div>
-            {connectCableError && <p className="text-destructive text-[11px]">{connectCableError}</p>}
-          </div>
-          <div className="flex gap-2 pt-1">
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-3"
-              onClick={() => { setShowConnectDialog(false); setConnectTarget(null); }}>
-              Batal
-            </Button>
-            <Button type="button" size="sm" className="flex-1 h-7 text-xs gap-1 bg-indigo-600 hover:bg-indigo-700"
-              disabled={!connectCableName.trim() || isSavingCable} onClick={handleSaveConnectCable}>
-              {isSavingCable ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-              Simpan &amp; Lanjut
-            </Button>
-          </div>
-        </Card>
-      )}
 
       {/* Dialog Simpan Jalur Gambar Kabel */}
       {showDrawDialog && (

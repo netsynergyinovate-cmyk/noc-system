@@ -453,6 +453,8 @@ export function NetworkMap({
   const [connectWaypoints, setConnectWaypoints] = useState<[number, number][]>([]);
   const connectWaypointsRef = useRef<[number, number][]>([]);
   useEffect(() => { connectWaypointsRef.current = connectWaypoints; }, [connectWaypoints]);
+  const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
+  const [isDeletingCable, setIsDeletingCable] = useState(false);
 
   // Inisialisasi ikon drag pin & ikon unik tiap jenis perangkat infrastruktur Leaflet
   useEffect(() => {
@@ -569,8 +571,12 @@ export function NetworkMap({
     }
   }, []);
 
+  // Fetch kabel + data terbaru saat mount (propData dari SSR tidak include cables)
+  useEffect(() => { void fetchData(); }, [fetchData]);
+
   // Turunkan data efektif dari prop eksternal atau hasil fetch/initialData tanpa set-state-in-effect
   const data = useMemo<NetworkMapData | null>(() => {
+    if (fetchedData) return fetchedData;
     if (propData) return propData;
 
     if (propCustomers || propInfra) {
@@ -1115,6 +1121,21 @@ export function NetworkMap({
     },
     [map],
   );
+
+  const handleDeleteCable = useCallback(async (id: string) => {
+    setIsDeletingCable(true);
+    try {
+      const res = await fetch(`/api/map/cables/${id}`, { method: "DELETE", credentials: "same-origin" });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menghapus kabel.");
+      setSelectedCableId(null);
+      fetchData();
+    } catch (err) {
+      console.error("[DELETE_CABLE]", err);
+    } finally {
+      setIsDeletingCable(false);
+    }
+  }, [fetchData]);
 
   const handleConnectCableAddPoint = useCallback((lat: number, lng: number) => {
     setConnectWaypoints((prev) => [...prev, [lat, lng] as [number, number]]);
@@ -2646,6 +2667,40 @@ export function NetworkMap({
         </div>
       )}
 
+      {/* Floating Panel Hapus Kabel Terpilih */}
+      {selectedCableId && (() => {
+        const cable = visibleCableRoutes.find(c => c.id === selectedCableId) ?? cableRoutes.find(c => c.id === selectedCableId);
+        if (!cable) return null;
+        return (
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1010] bg-background/95 backdrop-blur-md border border-rose-500/30 rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150 max-w-[90vw]">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate max-w-[180px]">{cable.name}</p>
+              <p className="text-[10px] text-muted-foreground">{cable.sourceName} → {cable.targetName ?? "—"}</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="h-7 px-3 text-xs shrink-0 gap-1"
+              disabled={isDeletingCable}
+              onClick={() => void handleDeleteCable(selectedCableId)}
+            >
+              {isDeletingCable ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+              Hapus
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 shrink-0"
+              onClick={() => setSelectedCableId(null)}
+            >
+              <X className="size-3" />
+            </Button>
+          </div>
+        );
+      })()}
+
       {/* Floating Guide Banner Mode Penentuan Titik Koordinat Pelanggan */}
       {plottingCustomer && (
         <div
@@ -3027,14 +3082,15 @@ export function NetworkMap({
                     positions={cable.path}
                     pathOptions={{
                       className: "sharp-cable-polyline",
-                      color: cable.color || style.color,
-                      weight: scaledWeight,
+                      color: selectedCableId === cable.id ? "#ef4444" : (cable.color || style.color),
+                      weight: selectedCableId === cable.id ? scaledWeight + 2 : scaledWeight,
                       opacity: style.opacity,
                       dashArray: style.dashArray,
                       lineCap: "round",
                       lineJoin: "round",
                     }}
                     smoothFactor={dynamicSmoothFactor}
+                    eventHandlers={{ click: () => setSelectedCableId(prev => prev === cable.id ? null : cable.id) }}
                   >
                   <Tooltip direction="center" opacity={0.95} sticky>
                     <div

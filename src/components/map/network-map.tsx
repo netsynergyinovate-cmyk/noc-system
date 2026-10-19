@@ -634,6 +634,31 @@ export function NetworkMap({
     }
   }, [data, initialFocusId, map]);
 
+  // Auto-fly ke area infrastruktur saat data pertama kali load (tidak ada initialFocusId)
+  const initialInfraFlyDoneRef = useRef(false);
+  useEffect(() => {
+    if (!map || initialInfraFlyDoneRef.current || initialFocusId) return;
+    const infra = data?.infrastructure?.filter(
+      (i) => Number.isFinite(i.latitude) && Number.isFinite(i.longitude),
+    );
+    if (!infra?.length) return;
+    initialInfraFlyDoneRef.current = true;
+    const timer = setTimeout(() => {
+      if (infra.length === 1) {
+        map.flyTo([infra[0].latitude, infra[0].longitude], 16, { duration: 0.8 });
+      } else {
+        const lats = infra.map((i) => i.latitude);
+        const lngs = infra.map((i) => i.longitude);
+        map.fitBounds(
+          [[Math.min(...lats) - 0.002, Math.min(...lngs) - 0.002],
+           [Math.max(...lats) + 0.002, Math.max(...lngs) + 0.002]],
+          { padding: [60, 60], animate: true },
+        );
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [map, data, initialFocusId]);
+
   // Efek penyorotan titik dan navigasi kamera saat focusedNodeId berubah dari panel pohon
   useEffect(() => {
     if (!focusedNodeId || !data) return;
@@ -1116,7 +1141,7 @@ export function NetworkMap({
       setInfraMoveDraftCoords(null);
       onSelectInfrastructure?.(infra);
     },
-    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName],
+    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName, isDrawCableMode],
   );
 
   const handleSaveConnectCable = useCallback(async () => {
@@ -3062,30 +3087,6 @@ export function NetworkMap({
               );
             })}
 
-          {/* Preview jalur gambar kabel (live saat draw mode) */}
-          {isDrawCableMode && drawWaypoints.length > 0 && (
-            <>
-              <Polyline
-                positions={[...drawWaypoints, ...(drawMousePos ? [drawMousePos] : [])]}
-                pathOptions={{ color: drawCableColor, weight: 3, dashArray: "8 5", opacity: 0.8 }}
-              />
-              {drawWaypoints.map((pt, idx) => (
-                <CircleMarker
-                  key={`draw-pt-${idx}`}
-                  center={pt}
-                  radius={idx === 0 ? 7 : 5}
-                  pathOptions={{
-                    color: "#fff",
-                    fillColor: idx === 0 ? "#8b5cf6" : drawCableColor,
-                    fillOpacity: 1,
-                    weight: 2,
-                    interactive: false,
-                  }}
-                />
-              ))}
-            </>
-          )}
-
           {/* Infrastruktur Jaringan: Core Router, OLT, ODP, ODC, Tiang (Vektor Tajam & Ikon) */}
           {showInfrastructure &&
             visibleInfrastructure.map((infra) => {
@@ -3238,6 +3239,30 @@ export function NetworkMap({
                 </span>
               );
             })}
+
+          {/* Preview jalur gambar kabel (di atas infra — waypoint dots terlihat) */}
+          {isDrawCableMode && drawWaypoints.length > 0 && (
+            <>
+              <Polyline
+                positions={[...drawWaypoints, ...(drawMousePos ? [drawMousePos] : [])]}
+                pathOptions={{ color: drawCableColor, weight: 3, dashArray: "8 5", opacity: 0.8 }}
+              />
+              {drawWaypoints.map((pt, idx) => (
+                <CircleMarker
+                  key={`draw-pt-${idx}`}
+                  center={pt}
+                  radius={idx === 0 ? 7 : 5}
+                  pathOptions={{
+                    color: "#fff",
+                    fillColor: idx === 0 ? "#8b5cf6" : drawCableColor,
+                    fillOpacity: 1,
+                    weight: 2,
+                    interactive: false,
+                  }}
+                />
+              ))}
+            </>
+          )}
 
           {/* Titik Pelanggan (Vektor Tajam dengan Indikator Optik & Tagihan) */}
           {showCustomers &&

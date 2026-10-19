@@ -2472,7 +2472,7 @@ export function NetworkMap({
 
       {/* Floating Banner Mode Gambar Kabel */}
       {isDrawCableMode && !showDrawDialog && (
-        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-violet-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-violet-400/30 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-max max-w-[calc(100vw-1.5rem)] sm:max-w-sm z-[1000] bg-violet-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-violet-400/30 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <Pencil className="size-3.5 shrink-0" />
@@ -3147,6 +3147,7 @@ export function NetworkMap({
                           fillOpacity: 0.35,
                           weight: 2.5,
                           className: "animate-pulse",
+                          interactive: false,
                         }}
                       />
                       <CircleMarker
@@ -3157,6 +3158,7 @@ export function NetworkMap({
                           fillColor: "transparent",
                           weight: 2,
                           dashArray: "4, 4",
+                          interactive: false,
                         }}
                       />
                     </>
@@ -3172,6 +3174,7 @@ export function NetworkMap({
                         fillOpacity: 0.18,
                         weight: 1.5,
                         dashArray: "3, 3",
+                        interactive: false,
                       }}
                     />
                   )}

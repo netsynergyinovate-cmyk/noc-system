@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Boxes,
   CheckCircle2,
@@ -89,6 +89,7 @@ export interface DeviceTypePickerProps {
   isSaving?: boolean;
   successMessage?: string | null;
   errorMessage?: string | null;
+  suggestedName?: string;
 }
 
 export function DeviceTypePicker({
@@ -102,9 +103,11 @@ export function DeviceTypePicker({
   isSaving = false,
   successMessage,
   errorMessage,
+  suggestedName,
 }: DeviceTypePickerProps) {
-  const [deviceName, setDeviceName] = useState("");
+  const [deviceName, setDeviceName] = useState(suggestedName ?? "");
   const [deviceHost, setDeviceHost] = useState("");
+  useEffect(() => { setDeviceName(suggestedName ?? ""); }, [suggestedName]);
   const [formError, setFormError] = useState<string | null>(null);
 
   if (!isOpen && !draftCoordinates) return null;

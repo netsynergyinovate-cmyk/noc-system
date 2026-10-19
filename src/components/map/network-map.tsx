@@ -66,10 +66,12 @@ import {
   Maximize2,
   Move,
   Navigation,
+  Pencil,
   Plus,
   RefreshCw,
   Save,
   Search,
+  Share2,
   WifiOff,
   X,
 } from "lucide-react";
@@ -183,6 +185,9 @@ function MapLocationPicker({
   onSelectInfraMove,
   onSelectPlotting,
   onInspectMapCoord,
+  isDrawCable,
+  onDrawCableAddPoint,
+  onDrawCableMouseMove,
 }: {
   isEditing: boolean;
   isPlacing: boolean;
@@ -193,9 +198,16 @@ function MapLocationPicker({
   onSelectInfraMove?: (lat: number, lng: number) => void;
   onSelectPlotting?: (lat: number, lng: number) => void;
   onInspectMapCoord?: (lat: number, lng: number) => void;
+  isDrawCable?: boolean;
+  onDrawCableAddPoint?: (lat: number, lng: number) => void;
+  onDrawCableMouseMove?: (lat: number, lng: number) => void;
 }) {
   useMapEvents({
     click(e) {
+      if (isDrawCable && onDrawCableAddPoint) {
+        onDrawCableAddPoint(e.latlng.lat, e.latlng.lng);
+        return;
+      }
       if (isMovingInfra && onSelectInfraMove) {
         onSelectInfraMove(e.latlng.lat, e.latlng.lng);
       } else if (isPlacing) {
@@ -206,6 +218,11 @@ function MapLocationPicker({
         onSelectLocation(e.latlng.lat, e.latlng.lng);
       } else if (onInspectMapCoord) {
         onInspectMapCoord(e.latlng.lat, e.latlng.lng);
+      }
+    },
+    mousemove(e) {
+      if (isDrawCable && onDrawCableMouseMove) {
+        onDrawCableMouseMove(e.latlng.lat, e.latlng.lng);
       }
     },
   });
@@ -384,6 +401,34 @@ export function NetworkMap({
   const [isSettingParent, setIsSettingParent] = useState(false);
   const [infraActionSuccessMessage, setInfraActionSuccessMessage] = useState<string | null>(null);
   const [infraActionErrorMessage, setInfraActionErrorMessage] = useState<string | null>(null);
+
+  // Mode Sambung Kabel
+  const [isConnectCableMode, setIsConnectCableMode] = useState(false);
+  const [connectRouteName, setConnectRouteName] = useState("");
+  const [connectSavedSegments, setConnectSavedSegments] = useState(0);
+  const [connectSource, setConnectSource] = useState<NetworkInfrastructurePoint | null>(null);
+  const [connectTarget, setConnectTarget] = useState<NetworkInfrastructurePoint | null>(null);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [connectCableName, setConnectCableName] = useState("");
+  const [connectCableType, setConnectCableType] = useState("distribution");
+  const [connectCableCapacity, setConnectCableCapacity] = useState(12);
+  const [connectCableColor, setConnectCableColor] = useState("#3b82f6");
+  const [isSavingCable, setIsSavingCable] = useState(false);
+  const [connectCableError, setConnectCableError] = useState<string | null>(null);
+
+  // Mode Gambar Kabel (free draw)
+  const [isDrawCableMode, setIsDrawCableMode] = useState(false);
+  const [drawWaypoints, setDrawWaypoints] = useState<[number, number][]>([]);
+  const [drawMousePos, setDrawMousePos] = useState<[number, number] | null>(null);
+  const [drawFirstNodeId, setDrawFirstNodeId] = useState<string | null>(null);
+  const [drawLastNodeId, setDrawLastNodeId] = useState<string | null>(null);
+  const [showDrawDialog, setShowDrawDialog] = useState(false);
+  const [drawCableName, setDrawCableName] = useState("");
+  const [drawCableType, setDrawCableType] = useState("distribution");
+  const [drawCableCapacity, setDrawCableCapacity] = useState(12);
+  const [drawCableColor, setDrawCableColor] = useState("#3b82f6");
+  const [isSavingDraw, setIsSavingDraw] = useState(false);
+  const [drawCableError, setDrawCableError] = useState<string | null>(null);
 
   // Inisialisasi ikon drag pin & ikon unik tiap jenis perangkat infrastruktur Leaflet
   useEffect(() => {
@@ -1024,6 +1069,30 @@ export function NetworkMap({
 
   const handleSelectInfra = useCallback(
     (infra: NetworkInfrastructurePoint | null) => {
+      // Jika mode gambar kabel aktif — snap ke node yang diklik
+      if (isDrawCableMode && infra) {
+        setDrawWaypoints((prev) => {
+          if (prev.length === 0) setDrawFirstNodeId(infra.id);
+          setDrawLastNodeId(infra.id);
+          return [...prev, [infra.latitude, infra.longitude] as [number, number]];
+        });
+        return;
+      }
+      // Jika mode sambung kabel aktif
+      if (isConnectCableMode && infra) {
+        if (!connectSource) {
+          setConnectSource(infra);
+          return;
+        }
+        if (infra.id !== connectSource.id) {
+          setConnectTarget(infra);
+          const prefix = connectRouteName.trim() || "Jalur";
+          setConnectCableName(`${prefix} ➔ ${infra.name}`);
+          setShowConnectDialog(true);
+          return;
+        }
+        return;
+      }
       setSelectedInfra(infra);
       if (infra) {
         setSelectedCustomer(null);
@@ -1047,8 +1116,111 @@ export function NetworkMap({
       setInfraMoveDraftCoords(null);
       onSelectInfrastructure?.(infra);
     },
-    [onSelectInfrastructure, map],
+    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName],
   );
+
+  const handleSaveConnectCable = useCallback(async () => {
+    if (!connectSource || !connectTarget) return;
+    setIsSavingCable(true);
+    setConnectCableError(null);
+    try {
+      const polyline: [number, number][] = [
+        [connectSource.latitude, connectSource.longitude],
+        [connectTarget.latitude, connectTarget.longitude],
+      ];
+      const res = await fetch("/api/map/cables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: connectCableName,
+          sourceId: connectSource.id,
+          targetId: connectTarget.id,
+          cableType: connectCableType,
+          coreCapacity: connectCableCapacity,
+          color: connectCableColor,
+          polyline,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal membuat kabel.");
+      setConnectSavedSegments((n) => n + 1);
+      // Chain: source = target lama, tunggu klik ODP berikutnya
+      setConnectSource(connectTarget);
+      setConnectTarget(null);
+      setShowConnectDialog(false);
+      setConnectCableError(null);
+      fetchData();
+    } catch (err) {
+      setConnectCableError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSavingCable(false);
+    }
+  }, [connectSource, connectTarget, connectCableName, connectCableType, connectCableCapacity, connectCableColor, fetchData, setConnectSavedSegments]);
+
+
+  const SNAP_DIST = 0.0004; // ~44m
+
+  const handleDrawAddPoint = useCallback((lat: number, lng: number) => {
+    let finalLat = lat, finalLng = lng, nodeId: string | null = null;
+    for (const infra of (fetchedData?.infrastructure ?? [])) {
+      if (Math.abs(infra.latitude - lat) < SNAP_DIST && Math.abs(infra.longitude - lng) < SNAP_DIST) {
+        finalLat = infra.latitude; finalLng = infra.longitude; nodeId = infra.id; break;
+      }
+    }
+    setDrawWaypoints((prev) => {
+      if (prev.length === 0 && nodeId) setDrawFirstNodeId(nodeId);
+      if (nodeId) setDrawLastNodeId(nodeId);
+      return [...prev, [finalLat, finalLng]];
+    });
+  }, [fetchedData]);
+
+  const handleDrawMouseMove = useCallback((lat: number, lng: number) => {
+    setDrawMousePos([lat, lng]);
+  }, []);
+
+  const handleDrawUndo = useCallback(() => {
+    setDrawWaypoints((prev) => prev.slice(0, -1));
+  }, []);
+
+  const handleDrawFinish = useCallback(() => {
+    if (drawWaypoints.length < 2) return;
+    setDrawCableName("Jalur Kabel Baru");
+    setShowDrawDialog(true);
+  }, [drawWaypoints]);
+
+  const handleSaveDrawCable = useCallback(async () => {
+    if (drawWaypoints.length < 2) return;
+    setIsSavingDraw(true);
+    setDrawCableError(null);
+    try {
+      const res = await fetch("/api/map/cables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: drawCableName,
+          sourceId: drawFirstNodeId ?? `draw-${Date.now()}`,
+          targetId: drawLastNodeId,
+          cableType: drawCableType,
+          coreCapacity: drawCableCapacity,
+          color: drawCableColor,
+          polyline: drawWaypoints,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Gagal simpan.");
+      setShowDrawDialog(false);
+      setIsDrawCableMode(false);
+      setDrawWaypoints([]);
+      setDrawMousePos(null);
+      setDrawFirstNodeId(null);
+      setDrawLastNodeId(null);
+      fetchData();
+    } catch (err) {
+      setDrawCableError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSavingDraw(false);
+    }
+  }, [drawWaypoints, drawCableName, drawCableType, drawCableCapacity, drawCableColor, drawFirstNodeId, drawLastNodeId, fetchData]);
 
   const handleStartMoveInfra = useCallback(() => {
     if (!selectedInfra) return;
@@ -2079,6 +2251,48 @@ export function NetworkMap({
           {/* Panduan Singkat Simbol & Interaksi Peta */}
           <MapSymbolsGuideDialog />
 
+          {/* Tombol Sambung Kabel */}
+          <Button
+            type="button"
+            variant={isConnectCableMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setIsConnectCableMode(!isConnectCableMode);
+              setConnectSource(null);
+              setConnectTarget(null);
+              setShowConnectDialog(false);
+            }}
+            className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", isConnectCableMode && "bg-indigo-600 text-white border-indigo-700")}
+            title="Mode sambung kabel: klik 2 titik untuk buat jalur"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sambung Kabel</span>
+          </Button>
+
+          {/* Tombol Gambar Kabel */}
+          <Button
+            type="button"
+            variant={isDrawCableMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              const next = !isDrawCableMode;
+              setIsDrawCableMode(next);
+              setDrawWaypoints([]);
+              setDrawMousePos(null);
+              setShowDrawDialog(false);
+              if (next) {
+                setIsPlacementPickerOpen(false);
+                setPlacementType(null);
+                setPlacementDraftCoords(null);
+              }
+            }}
+            className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", isDrawCableMode && "bg-violet-600 text-white border-violet-700")}
+            title="Mode gambar kabel: klik peta untuk tambah waypoint"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Gambar Kabel</span>
+          </Button>
+
           {/* Tombol Tempatkan Titik Perangkat Infrastruktur */}
           <Button
             type="button"
@@ -2093,6 +2307,9 @@ export function NetworkMap({
                 setIsPlacementPickerOpen(true);
                 setIsEditingLocation(false);
                 setDraftCoords(null);
+                setIsDrawCableMode(false);
+                setDrawWaypoints([]);
+                setDrawMousePos(null);
               }
             }}
             className={cn(
@@ -2253,6 +2470,47 @@ export function NetworkMap({
         </div>
       )}
 
+      {/* Floating Banner Mode Gambar Kabel */}
+      {isDrawCableMode && !showDrawDialog && (
+        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-violet-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-violet-400/30 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <Pencil className="size-3.5 shrink-0" />
+              <p className="font-bold text-xs">Gambar Jalur Kabel</p>
+              {drawWaypoints.length > 0 && (
+                <span className="bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">{drawWaypoints.length} titik</span>
+              )}
+            </div>
+            <div className="flex gap-1">
+              {drawWaypoints.length > 0 && (
+                <Button type="button" size="sm" variant="ghost"
+                  className="text-white hover:bg-white/20 h-6 px-2 text-[10px]"
+                  onClick={handleDrawUndo}>
+                  ↩ Hapus
+                </Button>
+              )}
+              {drawWaypoints.length >= 2 && (
+                <Button type="button" size="sm" variant="ghost"
+                  className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
+                  onClick={handleDrawFinish}>
+                  Selesai ✓
+                </Button>
+              )}
+              <Button type="button" size="sm" variant="ghost"
+                className="text-white hover:bg-white/20 h-6 w-6 p-0"
+                onClick={() => { setIsDrawCableMode(false); setDrawWaypoints([]); setDrawMousePos(null); }}>
+                <X className="size-3" />
+              </Button>
+            </div>
+          </div>
+          <p className="text-[11px] opacity-80">
+            {drawWaypoints.length === 0
+              ? "Klik peta untuk mulai menggambar jalur kabel. Snap otomatis ke ODP/OLT terdekat."
+              : "Klik peta untuk tambah titik belokan. Klik Selesai saat jalur siap."}
+          </p>
+        </div>
+      )}
+
       {/* Floating Guide Banner Mode Geser Posisi Titik */}
       {isEditingLocation && selectedCustomer && (
         <div
@@ -2289,6 +2547,63 @@ export function NetworkMap({
               </>
             )}
           </Button>
+        </div>
+      )}
+
+      {/* Floating Guide Banner Mode Sambung Kabel */}
+      {isConnectCableMode && !showConnectDialog && (
+        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-indigo-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Share2 className="size-3.5 shrink-0" />
+              <p className="font-bold text-xs">Sambung Kabel</p>
+              {connectSavedSegments > 0 && (
+                <span className="bg-green-400 text-green-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {connectSavedSegments} tersimpan
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {connectSavedSegments > 0 && (
+                <Button type="button" size="sm" variant="ghost"
+                  className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
+                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectTarget(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                  Selesai
+                </Button>
+              )}
+              <Button type="button" size="sm" variant="ghost" className="text-white hover:bg-white/20 h-6 w-6 p-0"
+                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectTarget(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                <X className="size-3" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Input nama rute — hanya saat belum ada source */}
+          {!connectSource && (
+            <div>
+              <p className="text-[10px] opacity-70 mb-1">Nama rute (opsional):</p>
+              <Input
+                value={connectRouteName}
+                onChange={(e) => setConnectRouteName(e.target.value)}
+                placeholder="Jalur Desa PON1"
+                className="h-6 text-[11px] bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:bg-white/20"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 text-[11px]">
+            <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-md", !connectSource ? "bg-white/20 font-semibold" : "bg-white/5 opacity-60")}>
+              <span className={cn("size-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0", !connectSource ? "bg-white text-indigo-700" : "bg-green-400 text-white")}>
+                {connectSource ? "✓" : "1"}
+              </span>
+              <span className="truncate max-w-[100px]">{connectSource ? connectSource.name : "Klik SUMBER"}</span>
+            </div>
+            <span className="opacity-40 shrink-0">→</span>
+            <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-md", connectSource ? "bg-white/20 font-semibold animate-pulse" : "bg-white/5 opacity-40")}>
+              <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/30">2</span>
+              Klik TUJUAN
+            </div>
+          </div>
         </div>
       )}
 
@@ -2747,6 +3062,30 @@ export function NetworkMap({
               );
             })}
 
+          {/* Preview jalur gambar kabel (live saat draw mode) */}
+          {isDrawCableMode && drawWaypoints.length > 0 && (
+            <>
+              <Polyline
+                positions={[...drawWaypoints, ...(drawMousePos ? [drawMousePos] : [])]}
+                pathOptions={{ color: drawCableColor, weight: 3, dashArray: "8 5", opacity: 0.8 }}
+              />
+              {drawWaypoints.map((pt, idx) => (
+                <CircleMarker
+                  key={`draw-pt-${idx}`}
+                  center={pt}
+                  radius={idx === 0 ? 7 : 5}
+                  pathOptions={{
+                    color: "#fff",
+                    fillColor: idx === 0 ? "#8b5cf6" : drawCableColor,
+                    fillOpacity: 1,
+                    weight: 2,
+                    interactive: false,
+                  }}
+                />
+              ))}
+            </>
+          )}
+
           {/* Infrastruktur Jaringan: Core Router, OLT, ODP, ODC, Tiang (Vektor Tajam & Ikon) */}
           {showInfrastructure &&
             visibleInfrastructure.map((infra) => {
@@ -2769,9 +3108,33 @@ export function NetworkMap({
 
               const radius = isRouter ? 12 : isOlt ? 10 : 8;
               const isHighlighted = selectedInfra?.id === infra.id || focusedNodeId === infra.id;
+              const isConnectSource = isConnectCableMode && connectSource?.id === infra.id;
+              const isConnectTarget = isConnectCableMode && !connectSource;
 
               return (
                 <span key={infra.id} data-marker-type={infra.type} data-highlighted={isHighlighted ? "true" : undefined}>
+                  {/* Ring pulse saat mode sambung kabel: source = hijau, semua node = indigo */}
+                  {isConnectSource && (
+                    <>
+                      <CircleMarker
+                        center={[infra.latitude, infra.longitude]}
+                        radius={radius + 14}
+                        pathOptions={{ color: "#22c55e", fillColor: "#22c55e", fillOpacity: 0.25, weight: 3, className: "animate-pulse", interactive: false }}
+                      />
+                      <CircleMarker
+                        center={[infra.latitude, infra.longitude]}
+                        radius={radius + 7}
+                        pathOptions={{ color: "#22c55e", fillColor: "transparent", weight: 2, dashArray: "4,3", interactive: false }}
+                      />
+                    </>
+                  )}
+                  {isConnectTarget && !isConnectSource && (
+                    <CircleMarker
+                      center={[infra.latitude, infra.longitude]}
+                      radius={radius + 8}
+                      pathOptions={{ color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.2, weight: 2, className: "animate-pulse", interactive: false }}
+                    />
+                  )}
                   {/* Efek Sorot (Highlight Halo Rings) saat dipilih dari pohon atau peta */}
                   {isHighlighted && (
                     <>
@@ -3023,6 +3386,9 @@ export function NetworkMap({
             onInspectMapCoord={isInspectModeActive ? (lat, lng) => {
               setInspectedMapCoord({ lat, lng });
             } : undefined}
+            isDrawCable={isDrawCableMode}
+            onDrawCableAddPoint={handleDrawAddPoint}
+            onDrawCableMouseMove={handleDrawMouseMove}
           />
 
           {/* Draggable Marker untuk Penempatan Titik Perangkat Baru */}
@@ -3518,6 +3884,13 @@ export function NetworkMap({
       {/* Pemilih Jenis Perangkat & Form Konfirmasi Penempatan */}
       <DeviceTypePicker
         isOpen={isPlacementPickerOpen}
+        suggestedName={
+          placementType === "odp"
+            ? `ODP-${String((fetchedData?.infrastructure?.filter((i) => i.type === "odp").length ?? 0) + 1).padStart(2, "0")}`
+            : placementType === "odc"
+              ? `ODC-${String((fetchedData?.infrastructure?.filter((i) => i.type === "odc").length ?? 0) + 1).padStart(2, "0")}`
+              : undefined
+        }
         onClose={() => {
           setIsPlacementPickerOpen(false);
           setPlacementType(null);
@@ -3571,6 +3944,135 @@ export function NetworkMap({
         onSetParent={handleSetParent}
         isSettingParent={isSettingParent}
       />
+
+      {/* Dialog Konfirmasi Buat Jalur Kabel */}
+      {showConnectDialog && connectSource && connectTarget && (
+        <Card className="fixed top-20 left-1/2 -translate-x-1/2 z-[1060] w-[92vw] max-w-sm p-4 bg-background/95 backdrop-blur-md border-indigo-500/30 shadow-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Share2 className="size-4 text-indigo-500" />
+                Segmen {connectSavedSegments + 1}
+                {connectRouteName && <span className="text-indigo-500 font-normal text-xs">— {connectRouteName}</span>}
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                <span className="font-medium text-foreground">{connectSource.name}</span>
+                <span>→</span>
+                <span className="font-medium text-foreground">{connectTarget.name}</span>
+              </p>
+            </div>
+            <Button type="button" size="icon" variant="ghost" className="size-6 shrink-0"
+              onClick={() => { setShowConnectDialog(false); setConnectTarget(null); }}>
+              <X className="size-3.5" />
+            </Button>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div>
+              <label className="text-muted-foreground block mb-1">Nama Jalur</label>
+              <Input value={connectCableName} onChange={(e) => setConnectCableName(e.target.value)}
+                className="h-7 text-xs" placeholder="Jalur Desa PON1 ➔ ODP1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-muted-foreground block mb-1">Tipe</label>
+                <select value={connectCableType} onChange={(e) => setConnectCableType(e.target.value)}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
+                  <option value="backbone">Backbone</option>
+                  <option value="feeder">Feeder</option>
+                  <option value="distribution">Distribusi</option>
+                  <option value="drop">Drop</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-muted-foreground block mb-1">Core</label>
+                <select value={connectCableCapacity} onChange={(e) => setConnectCableCapacity(Number(e.target.value))}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
+                  {[6, 12, 24, 48, 96, 144].map(n => <option key={n} value={n}>{n} Core</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-muted-foreground shrink-0">Warna:</label>
+              <input type="color" value={connectCableColor} onChange={(e) => setConnectCableColor(e.target.value)}
+                className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+              <span className="text-[10px] text-muted-foreground">akan berlaku ke segmen berikutnya</span>
+            </div>
+            {connectCableError && <p className="text-destructive text-[11px]">{connectCableError}</p>}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-3"
+              onClick={() => { setShowConnectDialog(false); setConnectTarget(null); }}>
+              Batal
+            </Button>
+            <Button type="button" size="sm" className="flex-1 h-7 text-xs gap-1 bg-indigo-600 hover:bg-indigo-700"
+              disabled={!connectCableName.trim() || isSavingCable} onClick={handleSaveConnectCable}>
+              {isSavingCable ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+              Simpan &amp; Lanjut
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Dialog Simpan Jalur Gambar Kabel */}
+      {showDrawDialog && (
+        <Card className="fixed top-20 left-1/2 -translate-x-1/2 z-[1060] w-[92vw] max-w-sm p-4 bg-background/95 backdrop-blur-md border-violet-500/30 shadow-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Pencil className="size-4 text-violet-500" /> Simpan Jalur Kabel
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{drawWaypoints.length} titik waypoint</p>
+            </div>
+            <Button type="button" size="icon" variant="ghost" className="size-6 shrink-0"
+              onClick={() => setShowDrawDialog(false)}>
+              <X className="size-3.5" />
+            </Button>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div>
+              <label className="text-muted-foreground block mb-1">Nama Jalur</label>
+              <Input value={drawCableName} onChange={(e) => setDrawCableName(e.target.value)}
+                className="h-7 text-xs" placeholder="Jalur Desa PON1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-muted-foreground block mb-1">Tipe</label>
+                <select value={drawCableType} onChange={(e) => setDrawCableType(e.target.value)}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
+                  <option value="backbone">Backbone</option>
+                  <option value="feeder">Feeder</option>
+                  <option value="distribution">Distribusi</option>
+                  <option value="drop">Drop</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-muted-foreground block mb-1">Core</label>
+                <select value={drawCableCapacity} onChange={(e) => setDrawCableCapacity(Number(e.target.value))}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
+                  {[6, 12, 24, 48, 96, 144].map(n => <option key={n} value={n}>{n} Core</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-muted-foreground shrink-0">Warna:</label>
+              <input type="color" value={drawCableColor} onChange={(e) => setDrawCableColor(e.target.value)}
+                className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+            </div>
+            {drawCableError && <p className="text-destructive text-[11px]">{drawCableError}</p>}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-3"
+              onClick={() => setShowDrawDialog(false)}>
+              Lanjut Edit
+            </Button>
+            <Button type="button" size="sm" className="flex-1 h-7 text-xs gap-1 bg-violet-600 hover:bg-violet-700"
+              disabled={!drawCableName.trim() || isSavingDraw} onClick={handleSaveDrawCable}>
+              {isSavingDraw ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+              Simpan Kabel
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Panel Informasi & Legenda Posisi Tetap (Fixed Docked Legend) */}
       <NetworkMapLegend

@@ -1094,6 +1094,12 @@ export function NetworkMap({
 
   const handleSelectInfra = useCallback(
     (infra: NetworkInfrastructurePoint | null) => {
+      // Jika mode pasang titik aktif — snap koordinat ke infra yang diklik
+      if (placementType && infra) {
+        setPlacementDraftCoords({ lat: infra.latitude, lng: infra.longitude });
+        setIsPlacementPickerOpen(false);
+        return;
+      }
       // Jika mode gambar kabel aktif — snap ke node yang diklik
       if (isDrawCableMode && infra) {
         setDrawWaypoints((prev) => {
@@ -1141,7 +1147,7 @@ export function NetworkMap({
       setInfraMoveDraftCoords(null);
       onSelectInfrastructure?.(infra);
     },
-    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName, isDrawCableMode],
+    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName, isDrawCableMode, placementType],
   );
 
   const handleSaveConnectCable = useCallback(async () => {

@@ -263,6 +263,25 @@ export function DeviceTypePicker({
               </button>
             </div>
 
+            {/* Type switcher chips */}
+            <div className="flex gap-1 flex-wrap">
+              {DEVICE_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.type}
+                  type="button"
+                  onClick={() => onSelectType(opt.type)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border transition-colors ${
+                    selectedType === opt.type
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-border hover:bg-accent"
+                  }`}
+                >
+                  <opt.icon className="size-2.5" />
+                  {opt.type.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
             {successMessage && (
               <div
                 className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs"

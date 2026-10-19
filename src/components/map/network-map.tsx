@@ -453,6 +453,22 @@ export function NetworkMap({
   const [connectWaypoints, setConnectWaypoints] = useState<[number, number][]>([]);
   const connectWaypointsRef = useRef<[number, number][]>([]);
   useEffect(() => { connectWaypointsRef.current = connectWaypoints; }, [connectWaypoints]);
+
+  // Ctrl+Z — undo titik waypoint terakhir di mode aktif
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== "z") return;
+      e.preventDefault();
+      if (isConnectCableModeRef.current && connectWaypointsRef.current.length > 0) {
+        setConnectWaypoints((prev) => prev.slice(0, -1));
+      } else if (isDrawCableModeRef.current) {
+        setDrawWaypoints((prev) => prev.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
   const [isDeletingCable, setIsDeletingCable] = useState(false);
 
@@ -1835,6 +1851,13 @@ export function NetworkMap({
     );
   }, [cableRoutes, enableCableOptimization, viewportBounds, currentZoom, isCableInViewport]);
 
+  const selectedCable = useMemo(
+    () => selectedCableId
+      ? (visibleCableRoutes.find(c => c.id === selectedCableId) ?? cableRoutes.find(c => c.id === selectedCableId) ?? null)
+      : null,
+    [selectedCableId, visibleCableRoutes, cableRoutes],
+  );
+
   // Fit bounds ke semua titik yang ada
   const handleFitBounds = useCallback(() => {
     if (!map) return;
@@ -2284,10 +2307,15 @@ export function NetworkMap({
             variant={isConnectCableMode ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              setIsConnectCableMode(!isConnectCableMode);
-              setConnectSource(null);
-              setConnectTarget(null);
-              setShowConnectDialog(false);
+              const next = !isConnectCableMode;
+              setIsConnectCableMode(next);
+              if (!next) {
+                setConnectSource(null);
+                setConnectTarget(null);
+                setConnectSavedSegments(0);
+                setConnectRouteName("");
+                setConnectWaypoints([]);
+              }
             }}
             className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", isConnectCableMode && "bg-indigo-600 text-white border-indigo-700")}
             title="Mode sambung kabel: klik 2 titik untuk buat jalur"
@@ -2668,38 +2696,29 @@ export function NetworkMap({
       )}
 
       {/* Floating Panel Hapus Kabel Terpilih */}
-      {selectedCableId && (() => {
-        const cable = visibleCableRoutes.find(c => c.id === selectedCableId) ?? cableRoutes.find(c => c.id === selectedCableId);
-        if (!cable) return null;
-        return (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1010] bg-background/95 backdrop-blur-md border border-rose-500/30 rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150 max-w-[90vw]">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground truncate max-w-[180px]">{cable.name}</p>
-              <p className="text-[10px] text-muted-foreground">{cable.sourceName} → {cable.targetName ?? "—"}</p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              className="h-7 px-3 text-xs shrink-0 gap-1"
-              disabled={isDeletingCable}
-              onClick={() => void handleDeleteCable(selectedCableId)}
-            >
-              {isDeletingCable ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
-              Hapus
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 shrink-0"
-              onClick={() => setSelectedCableId(null)}
-            >
-              <X className="size-3" />
-            </Button>
+      {selectedCable && (
+        <div className="absolute bottom-24 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-xs z-[1010] bg-background/95 backdrop-blur-md border border-rose-500/40 rounded-xl shadow-2xl px-3 py-2.5 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground truncate">{selectedCable.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{selectedCable.sourceName} → {selectedCable.targetName ?? "—"}</p>
           </div>
-        );
-      })()}
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            className="h-7 px-2.5 text-xs shrink-0 gap-1"
+            disabled={isDeletingCable}
+            onClick={() => void handleDeleteCable(selectedCable.id)}
+          >
+            {isDeletingCable ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+            Hapus
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0"
+            onClick={() => setSelectedCableId(null)}>
+            <X className="size-3" />
+          </Button>
+        </div>
+      )}
 
       {/* Floating Guide Banner Mode Penentuan Titik Koordinat Pelanggan */}
       {plottingCustomer && (

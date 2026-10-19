@@ -1187,7 +1187,9 @@ export function NetworkMap({
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menyimpan kabel.");
       setConnectSavedSegments((n) => n + 1);
+      connectWaypointsRef.current = [];
       setConnectWaypoints([]);
+      connectSourceRef.current = tgt;  // update ref langsung — jangan tunggu useEffect
       setConnectSource(tgt);
       fetchData();
     } catch (err) {

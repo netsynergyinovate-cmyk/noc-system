@@ -172,7 +172,7 @@ export function DeviceTypePicker({
             </div>
 
             <div className="space-y-1.5">
-              {DEVICE_TYPE_OPTIONS.map((opt) => {
+              {DEVICE_TYPE_OPTIONS.filter((o) => o.type === "odp" || o.type === "odc").map((opt) => {
                 const IconComponent = opt.icon;
                 const isSelected = selectedType === opt.type;
                 return (
@@ -265,7 +265,7 @@ export function DeviceTypePicker({
 
             {/* Type switcher chips */}
             <div className="flex gap-1 flex-wrap">
-              {DEVICE_TYPE_OPTIONS.map((opt) => (
+              {DEVICE_TYPE_OPTIONS.filter((o) => o.type === "odp" || o.type === "odc").map((opt) => (
                 <button
                   key={opt.type}
                   type="button"

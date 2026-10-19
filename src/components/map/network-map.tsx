@@ -402,7 +402,7 @@ export function NetworkMap({
   const [infraActionSuccessMessage, setInfraActionSuccessMessage] = useState<string | null>(null);
   const [infraActionErrorMessage, setInfraActionErrorMessage] = useState<string | null>(null);
 
-  // Mode Sambung Kabel
+  // Mode Koneksi ODP
   const [isConnectCableMode, setIsConnectCableMode] = useState(false);
   const [connectRouteName, setConnectRouteName] = useState("");
   const [connectSavedSegments, setConnectSavedSegments] = useState(0);
@@ -1109,8 +1109,9 @@ export function NetworkMap({
         });
         return;
       }
-      // Jika mode sambung kabel aktif
+      // Jika mode koneksi ODP aktif — hanya ODP/ODC/OLT
       if (isConnectCableMode && infra) {
+        if (!["odp", "odc", "olt"].includes(infra.type)) return;
         if (!connectSource) {
           setConnectSource(infra);
           return;
@@ -2308,7 +2309,7 @@ export function NetworkMap({
           {/* Panduan Singkat Simbol & Interaksi Peta */}
           <MapSymbolsGuideDialog />
 
-          {/* Tombol Sambung Kabel */}
+          {/* Tombol Koneksi ODP */}
           <Button
             type="button"
             variant={isConnectCableMode ? "default" : "outline"}
@@ -2323,7 +2324,7 @@ export function NetworkMap({
             title="Mode sambung kabel: klik 2 titik untuk buat jalur"
           >
             <Share2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Sambung Kabel</span>
+            <span className="hidden sm:inline">Koneksi ODP</span>
           </Button>
 
           {/* Tombol Gambar Kabel */}
@@ -2607,13 +2608,13 @@ export function NetworkMap({
         </div>
       )}
 
-      {/* Floating Guide Banner Mode Sambung Kabel */}
+      {/* Floating Guide Banner Mode Koneksi ODP */}
       {isConnectCableMode && !showConnectDialog && (
         <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-indigo-700/95 text-white backdrop-blur-md p-3 rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Share2 className="size-3.5 shrink-0" />
-              <p className="font-bold text-xs">Sambung Kabel</p>
+              <p className="font-bold text-xs">Koneksi ODP</p>
               {connectSavedSegments > 0 && (
                 <span className="bg-green-400 text-green-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                   {connectSavedSegments} tersimpan

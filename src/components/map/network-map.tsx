@@ -2204,7 +2204,7 @@ export function NetworkMap({
 
           {/* Indikator Viewport Culling */}
           <div
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border bg-card/95 backdrop-blur-md shadow-xs text-muted-foreground"
+            className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border bg-card/95 backdrop-blur-md shadow-xs text-muted-foreground"
             data-testid="viewport-culling-indicator"
             title={`Menampilkan ${visibleCustomers.length + visibleInfrastructure.length} dari ${geocodedList.length + (data?.infrastructure.length ?? 0)} titik di dalam area viewport layar`}
           >
@@ -2226,7 +2226,7 @@ export function NetworkMap({
           {/* Indikator Optimasi Jalur Kabel */}
           {showCables && (
             <div
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border bg-card/95 backdrop-blur-md shadow-xs text-muted-foreground"
+              className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border bg-card/95 backdrop-blur-md shadow-xs text-muted-foreground"
               data-testid="cable-render-indicator"
               title={`Menampilkan ${visibleCableRoutes.length} dari ${cableRoutes.length} jalur kabel di area pandang`}
             >
@@ -2257,7 +2257,7 @@ export function NetworkMap({
             data-testid="fit-bounds-button"
           >
             <Maximize2 className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Semua Titik</span>
+            <span className="hidden xl:inline">Semua Titik</span>
           </Button>
 
           {/* GPS Teknisi */}
@@ -2272,7 +2272,7 @@ export function NetworkMap({
             data-testid="locate-me-button"
           >
             <Navigation className={cn("h-3.5 w-3.5", isLocating && "animate-spin")} />
-            <span className="hidden md:inline">Lokasi Saya</span>
+            <span className="hidden xl:inline">Lokasi Saya</span>
           </Button>
 
           {/* Panduan Singkat Simbol & Interaksi Peta */}
@@ -2579,7 +2579,7 @@ export function NetworkMap({
 
       {/* Floating Guide Banner Mode Koneksi ODP */}
       {isConnectCableMode && (
-        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-sm z-[1000] bg-indigo-700/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+        <div className="absolute top-24 left-3 right-3 sm:right-auto sm:max-w-xs z-[1000] bg-indigo-700/95 text-white backdrop-blur-md rounded-xl shadow-2xl border border-indigo-400/30 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-white/10">
             <div className="flex items-center gap-2">
@@ -2764,7 +2764,7 @@ export function NetworkMap({
       {/* Floating Guide Banner Mode Penempatan Titik Perangkat */}
       {placementType && !placementDraftCoords && (
         <div
-          className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-lg z-[1000] bg-cyan-600 text-white backdrop-blur-md p-3 rounded-lg shadow-xl text-xs flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute top-24 left-3 right-3 sm:right-auto sm:max-w-lg z-[1000] bg-cyan-600 text-white backdrop-blur-md p-3 rounded-lg shadow-xl text-xs flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-150"
           data-testid="device-placement-banner"
         >
           <div className="flex items-center gap-2.5 min-w-0">

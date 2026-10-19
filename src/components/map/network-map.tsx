@@ -430,6 +430,18 @@ export function NetworkMap({
   const [isSavingDraw, setIsSavingDraw] = useState(false);
   const [drawCableError, setDrawCableError] = useState<string | null>(null);
 
+  // Refs mode aktif — selalu terkini, menghindari stale closure di event handler Leaflet
+  const isConnectCableModeRef = useRef(false);
+  const isDrawCableModeRef = useRef(false);
+  const placementTypeRef = useRef<typeof placementType>(null);
+  const connectSourceRef = useRef<typeof connectSource>(null);
+  const connectRouteNameRef = useRef("");
+  useEffect(() => { isConnectCableModeRef.current = isConnectCableMode; }, [isConnectCableMode]);
+  useEffect(() => { isDrawCableModeRef.current = isDrawCableMode; }, [isDrawCableMode]);
+  useEffect(() => { placementTypeRef.current = placementType; }, [placementType]);
+  useEffect(() => { connectSourceRef.current = connectSource; }, [connectSource]);
+  useEffect(() => { connectRouteNameRef.current = connectRouteName; }, [connectRouteName]);
+
   // Inisialisasi ikon drag pin & ikon unik tiap jenis perangkat infrastruktur Leaflet
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1094,14 +1106,13 @@ export function NetworkMap({
 
   const handleSelectInfra = useCallback(
     (infra: NetworkInfrastructurePoint | null) => {
-      // Jika mode pasang titik aktif — snap koordinat ke infra yang diklik
-      if (placementType && infra) {
+      // Baca mode dari refs agar selalu dapat nilai terkini (hindari stale closure Leaflet)
+      if (placementTypeRef.current && infra) {
         setPlacementDraftCoords({ lat: infra.latitude, lng: infra.longitude });
         setIsPlacementPickerOpen(false);
         return;
       }
-      // Jika mode gambar kabel aktif — snap ke node yang diklik
-      if (isDrawCableMode && infra) {
+      if (isDrawCableModeRef.current && infra) {
         setDrawWaypoints((prev) => {
           if (prev.length === 0) setDrawFirstNodeId(infra.id);
           setDrawLastNodeId(infra.id);
@@ -1109,16 +1120,16 @@ export function NetworkMap({
         });
         return;
       }
-      // Jika mode koneksi ODP aktif — hanya ODP/ODC/OLT
-      if (isConnectCableMode && infra) {
+      if (isConnectCableModeRef.current && infra) {
         if (!["odp", "odc", "olt"].includes(infra.type)) return;
-        if (!connectSource) {
+        const src = connectSourceRef.current;
+        if (!src) {
           setConnectSource(infra);
           return;
         }
-        if (infra.id !== connectSource.id) {
+        if (infra.id !== src.id) {
           setConnectTarget(infra);
-          const prefix = connectRouteName.trim() || "Jalur";
+          const prefix = connectRouteNameRef.current.trim() || "Jalur";
           setConnectCableName(`${prefix} ➔ ${infra.name}`);
           setShowConnectDialog(true);
           return;
@@ -1128,18 +1139,8 @@ export function NetworkMap({
       setSelectedInfra(infra);
       if (infra) {
         setSelectedCustomer(null);
-        if (
-          map &&
-          Number.isFinite(infra.latitude) &&
-          Number.isFinite(infra.longitude)
-        ) {
-          flyToWithoutOcclusion(
-            map,
-            infra.latitude,
-            infra.longitude,
-            Math.max(map.getZoom(), 17),
-            { duration: 0.8 },
-          );
+        if (map && Number.isFinite(infra.latitude) && Number.isFinite(infra.longitude)) {
+          flyToWithoutOcclusion(map, infra.latitude, infra.longitude, Math.max(map.getZoom(), 17), { duration: 0.8 });
         }
       }
       setIsEditingLocation(false);
@@ -1148,7 +1149,7 @@ export function NetworkMap({
       setInfraMoveDraftCoords(null);
       onSelectInfrastructure?.(infra);
     },
-    [onSelectInfrastructure, map, isConnectCableMode, connectSource, connectRouteName, isDrawCableMode, placementType],
+    [map, onSelectInfrastructure],
   );
 
   const handleSaveConnectCable = useCallback(async () => {

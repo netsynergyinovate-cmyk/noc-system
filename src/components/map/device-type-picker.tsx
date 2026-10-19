@@ -72,6 +72,13 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
   },
 ];
 
+export interface RouteOption {
+  id: string;
+  name: string;
+  oltName: string | null;
+  odcName: string | null;
+}
+
 export interface DeviceTypePickerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -84,12 +91,15 @@ export interface DeviceTypePickerProps {
     latitude: number;
     longitude: number;
     host?: string;
+    routeId?: string;
   }) => Promise<void> | void;
   onCancelPlacement: () => void;
   isSaving?: boolean;
   successMessage?: string | null;
   errorMessage?: string | null;
   suggestedName?: string;
+  routes?: RouteOption[];
+  activeRouteId?: string | null;
 }
 
 export function DeviceTypePicker({
@@ -104,11 +114,15 @@ export function DeviceTypePicker({
   successMessage,
   errorMessage,
   suggestedName,
+  routes = [],
+  activeRouteId = null,
 }: DeviceTypePickerProps) {
   const [deviceName, setDeviceName] = useState(suggestedName ?? "");
   const [deviceHost, setDeviceHost] = useState("");
   useEffect(() => { setDeviceName(suggestedName ?? ""); }, [suggestedName]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>(activeRouteId ?? "");
+  useEffect(() => { setSelectedRouteId(activeRouteId ?? ""); }, [activeRouteId]);
 
   if (!isOpen && !draftCoordinates) return null;
 
@@ -132,6 +146,7 @@ export function DeviceTypePicker({
       latitude: draftCoordinates.lat,
       longitude: draftCoordinates.lng,
       host: deviceHost.trim() || undefined,
+      routeId: selectedRouteId || undefined,
     });
     setDeviceName("");
     setDeviceHost("");
@@ -324,6 +339,30 @@ export function DeviceTypePicker({
                   autoFocus
                 />
               </div>
+
+              {(selectedType === "odp" || selectedType === null) && routes.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    Jalur <span className="text-muted-foreground">(opsional)</span>
+                  </label>
+                  <select
+                    value={selectedRouteId}
+                    onChange={(e) => setSelectedRouteId(e.target.value)}
+                    disabled={!!activeRouteId}
+                    className="w-full text-xs rounded-md border border-input bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+                  >
+                    <option value="">— Tanpa jalur —</option>
+                    {routes.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}{r.odcName ? ` (${r.odcName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {activeRouteId && (
+                    <p className="text-[10px] text-muted-foreground">Jalur terkunci ke mode aktif.</p>
+                  )}
+                </div>
+              )}
 
               {(selectedType === "router" || selectedType === "olt") && (
                 <div className="space-y-1">

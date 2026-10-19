@@ -54,6 +54,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import {
   AlertTriangle,
+  Boxes,
   Copy,
   Crosshair,
   Database,
@@ -72,6 +73,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  Server,
   Share2,
   WifiOff,
   X,
@@ -284,6 +286,14 @@ export function NetworkMap({
   const [selectedInfra, setSelectedInfra] = useState<NetworkInfrastructurePoint | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(DEFAULT_ZOOM);
 
+  const [availableRoutes, setAvailableRoutes] = useState<Array<{
+    id: string;
+    name: string;
+    oltName: string | null;
+    odcName: string | null;
+  }>>([]);
+  const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
+
   // Pelacak area viewport peta Leaflet & optimasi spatial culling (sembunyikan titik di luar layar)
   const [viewportBounds, setViewportBounds] = useState<L.LatLngBounds | null>(null);
   const [enableViewportCulling, setEnableViewportCulling] = useState<boolean>(true);
@@ -416,14 +426,7 @@ export function NetworkMap({
   const [connectRouteName, setConnectRouteName] = useState("");
   const [connectSavedSegments, setConnectSavedSegments] = useState(0);
   const [connectSource, setConnectSource] = useState<NetworkInfrastructurePoint | null>(null);
-  const [connectTarget, setConnectTarget] = useState<NetworkInfrastructurePoint | null>(null);
-  const [showConnectDialog, setShowConnectDialog] = useState(false);
-  const [connectCableName, setConnectCableName] = useState("");
-  const [connectCableType, setConnectCableType] = useState("distribution");
-  const [connectCableCapacity, setConnectCableCapacity] = useState(12);
-  const [connectCableColor, setConnectCableColor] = useState("#3b82f6");
   const [isSavingCable, setIsSavingCable] = useState(false);
-  const [connectCableError, setConnectCableError] = useState<string | null>(null);
 
   // Mode Gambar Kabel (free draw)
   const [isDrawCableMode, setIsDrawCableMode] = useState(false);
@@ -588,7 +591,28 @@ export function NetworkMap({
   }, []);
 
   // Fetch kabel + data terbaru saat mount (propData dari SSR tidak include cables)
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/map/network", { credentials: "same-origin" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((json) => {
+        if (active && json.success && json.data) {
+          setFetchedData(json.data);
+          setLoadError(null);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setLoadError(err instanceof Error ? err.message : "Koneksi ke server gagal");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Turunkan data efektif dari prop eksternal atau hasil fetch/initialData tanpa set-state-in-effect
   const data = useMemo<NetworkMapData | null>(() => {
@@ -1073,6 +1097,17 @@ export function NetworkMap({
     [manualCoordInput, parseCoordinates, map, plottingCustomer],
   );
 
+  useEffect(() => {
+    fetch("/api/map/routes")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.ok && Array.isArray(json.data)) {
+          setAvailableRoutes(json.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleConfirmDevicePlacement = useCallback(
     async (point: {
       name: string;
@@ -1080,6 +1115,7 @@ export function NetworkMap({
       latitude: number;
       longitude: number;
       host?: string;
+      routeId?: string;
     }) => {
       setIsSavingPlacement(true);
       setPlacementErrorMessage(null);
@@ -1122,6 +1158,15 @@ export function NetworkMap({
         setPlacementDraftCoords(null);
         setPlacementType(null);
         setIsPlacementPickerOpen(false);
+
+        if (point.routeId && newPoint.type === "odp") {
+          fetch("/api/map/routes")
+            .then((r) => r.json())
+            .then((rJson) => {
+              if (rJson.ok && Array.isArray(rJson.data)) setAvailableRoutes(rJson.data);
+            })
+            .catch(() => {});
+        }
 
         if (map) {
           map.flyTo([newPoint.latitude, newPoint.longitude], 17, { duration: 0.8 });
@@ -1244,43 +1289,6 @@ export function NetworkMap({
     [map, onSelectInfrastructure, handleAutoSaveConnectCable],
   );
 
-  const handleSaveConnectCable = useCallback(async () => {
-    if (!connectSource || !connectTarget) return;
-    setIsSavingCable(true);
-    setConnectCableError(null);
-    try {
-      const polyline: [number, number][] = [
-        [connectSource.latitude, connectSource.longitude],
-        [connectTarget.latitude, connectTarget.longitude],
-      ];
-      const res = await fetch("/api/map/cables", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: connectCableName,
-          sourceId: connectSource.id,
-          targetId: connectTarget.id,
-          cableType: connectCableType,
-          coreCapacity: connectCableCapacity,
-          color: connectCableColor,
-          polyline,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal membuat kabel.");
-      setConnectSavedSegments((n) => n + 1);
-      // Chain: source = target lama, tunggu klik ODP berikutnya
-      setConnectSource(connectTarget);
-      setConnectTarget(null);
-      setShowConnectDialog(false);
-      setConnectCableError(null);
-      fetchData();
-    } catch (err) {
-      setConnectCableError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsSavingCable(false);
-    }
-  }, [connectSource, connectTarget, connectCableName, connectCableType, connectCableCapacity, connectCableColor, fetchData, setConnectSavedSegments]);
 
 
   const SNAP_DIST = 0.0004; // ~44m
@@ -2313,7 +2321,6 @@ export function NetworkMap({
               setIsConnectCableMode(next);
               if (!next) {
                 setConnectSource(null);
-                setConnectTarget(null);
                 setConnectSavedSegments(0);
                 setConnectRouteName("");
                 setConnectWaypoints([]);
@@ -2637,26 +2644,44 @@ export function NetworkMap({
             </div>
           </div>
 
-          {/* Fase 1: Pilih OLT sumber dari daftar */}
+          {/* Fase 1: Pilih sumber dari daftar */}
           {!connectSource && (
             <div className="p-3 space-y-2">
-              <p className="text-[11px] opacity-80 font-medium">Pilih OLT sebagai sumber jalur:</p>
-              <div className="space-y-1 max-h-36 overflow-y-auto">
-                {(fetchedData?.infrastructure?.filter(i => i.type === "olt") ?? []).length === 0 ? (
-                  <p className="text-[11px] opacity-50 italic">Belum ada OLT di peta.</p>
+              <p className="text-[11px] opacity-80 font-medium">Pilih sumber jalur:</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {(fetchedData?.infrastructure?.filter(i => ["olt","odp","odc"].includes(i.type)) ?? []).length === 0 ? (
+                  <p className="text-[11px] opacity-50 italic">Belum ada OLT/ODP/ODC di peta.</p>
                 ) : (
-                  fetchedData!.infrastructure.filter(i => i.type === "olt").map(olt => (
-                    <button
-                      key={olt.id}
-                      type="button"
-                      onClick={() => setConnectSource(olt)}
-                      className="w-full text-left px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-cyan-400/20 text-[11px] font-medium transition-colors flex items-center gap-2"
-                    >
-                      <Network className="size-3 shrink-0 text-cyan-300" />
-                      <span className="truncate flex-1">{olt.name}</span>
-                      {olt.host && <span className="text-[10px] opacity-40 font-mono shrink-0">{olt.host}</span>}
-                    </button>
-                  ))
+                  (["olt","odc","odp"] as const).flatMap(typeKey => {
+                    const nodes = fetchedData!.infrastructure.filter(i => i.type === typeKey);
+                    if (nodes.length === 0) return [];
+                    const isNew = typeKey === "olt";
+                    return [
+                      <p key={`hdr-${typeKey}`} className="text-[9px] uppercase font-bold opacity-40 pt-1 pb-0.5 tracking-wider">
+                        {typeKey === "olt" ? "OLT — Jalur Baru" : typeKey === "odc" ? "ODC — Lanjutkan" : "ODP — Lanjutkan"}
+                      </p>,
+                      ...nodes.map(node => (
+                        <button
+                          key={node.id}
+                          type="button"
+                          onClick={() => setConnectSource(node)}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-medium transition-colors flex items-center gap-2"
+                        >
+                          {typeKey === "olt" ? (
+                            <Network className="size-3 shrink-0 text-cyan-300" />
+                          ) : typeKey === "odc" ? (
+                            <Server className="size-3 shrink-0 text-blue-300" />
+                          ) : (
+                            <Boxes className="size-3 shrink-0 text-amber-300" />
+                          )}
+                          <span className="truncate flex-1">{node.name}</span>
+                          <span className={`text-[9px] font-bold shrink-0 ${isNew ? "text-cyan-300" : "text-amber-300"}`}>
+                            {isNew ? "BARU" : "LANJUT"}
+                          </span>
+                        </button>
+                      )),
+                    ];
+                  })
                 )}
               </div>
               <div>
@@ -4043,6 +4068,8 @@ export function NetworkMap({
         isSaving={isSavingPlacement}
         successMessage={placementSuccessMessage}
         errorMessage={placementErrorMessage}
+        routes={availableRoutes}
+        activeRouteId={activeRouteId}
       />
 
       {/* Layer Panel Inspeksi Detail Terpisah dari Layer Titik Kanvas Leaflet */}

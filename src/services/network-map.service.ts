@@ -41,9 +41,24 @@ export interface NetworkInfrastructurePoint {
   details?: Record<string, unknown>;
 }
 
+export interface NetworkCableEntry {
+  id: string;
+  name: string;
+  sourceId: string;
+  sourceName: string;
+  targetId: string;
+  targetName: string;
+  type: "backbone" | "feeder" | "distribution" | "drop";
+  coreCapacity: number;
+  color: string;
+  coordinates: [number, number][];
+  status: string;
+}
+
 export interface NetworkMapData {
   customers: NetworkCustomerPoint[];
   infrastructure: NetworkInfrastructurePoint[];
+  cables?: NetworkCableEntry[];
   summary: {
     totalCustomers: number;
     geocodedCustomers: number;

@@ -1683,7 +1683,33 @@ export function NetworkMap({
       }
     }
 
-    // 2. Hubungkan perangkat yang belum memiliki induk eksplisit (smart fallback)
+    // 2. Kabel tersimpan dari database (polyline nyata — prioritas di atas smart fallback)
+    if (data.cables) {
+      for (const cable of data.cables) {
+        const coords = cable.coordinates as [number, number][] | null;
+        if (!Array.isArray(coords) || coords.length < 2) continue;
+        const isHighlighted =
+          selectedInfra?.id === cable.sourceId || selectedInfra?.id === cable.targetId;
+        routes.push({
+          id: cable.id,
+          name: cable.name,
+          path: coords,
+          color: isHighlighted ? "#22d3ee" : (cable.color || "#3b82f6"),
+          type: cable.type,
+          sourceId: cable.sourceId,
+          sourceName: cable.sourceName,
+          targetId: cable.targetId || undefined,
+          targetName: cable.targetName,
+          coreCapacity: cable.coreCapacity,
+          status: cable.status,
+          isHighlighted: Boolean(isHighlighted),
+        });
+        connectedDeviceIds.add(cable.sourceId);
+        if (cable.targetId) connectedDeviceIds.add(cable.targetId);
+      }
+    }
+
+    // 3. Hubungkan perangkat yang belum memiliki induk eksplisit (smart fallback)
     const routerNode = infraList.find((i) => i.type === "router");
     const oltNode = infraList.find((i) => i.type === "olt");
     const odcNodes = infraList.filter((i) => i.type === "odc");

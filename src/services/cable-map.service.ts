@@ -1,7 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { networkInfrastructure, networkCables } from "@/db/schema";
+import { networkInfrastructure, networkCables, networkDeviceRelations } from "@/db/schema";
 import { getNetworkMapData, type NetworkMapData } from "./network-map.service";
 import {
   generateRoadBendedPolyline,
@@ -90,13 +90,27 @@ export async function getCableMapData(options?: {
   const infraList = baseMapData.infrastructure;
   const custList = baseMapData.customers;
 
+  // Ambil semua relasi hierarki dari DB sebagai sumber topologi utama
+  const hierarchyRelations = await db
+    .select({
+      parentId: networkDeviceRelations.parentId,
+      childId: networkDeviceRelations.childId,
+    })
+    .from(networkDeviceRelations)
+    .where(eq(networkDeviceRelations.relationType, "hierarchy"));
+
+  const childToParentMap = new Map(
+    hierarchyRelations.map((r) => [r.childId, r.parentId]),
+  );
+
   const cables: CableRouteSegment[] = [];
   const connectedDeviceIds = new Set<string>();
 
   // 1. Ekstrak jalur kabel antar perangkat infrastruktur (Explicit Parent)
   for (const infra of infraList) {
     const parentId =
-      infra.parentId ||
+      childToParentMap.get(infra.id) ||       // networkDeviceRelations (sumber utama)
+      infra.parentId ||                         // kolom parentId lama (fallback)
       (infra.details?.parentId as string | undefined) ||
       (infra.details?.parentOdc as string | undefined) ||
       (infra.details?.parentRoot as string | undefined);
@@ -600,4 +614,29 @@ export async function updateCableColor(id: string, color: string): Promise<{ id:
   if (!id) throw new Error("ID kabel tidak valid.");
   await db.update(networkCables).set({ color, updatedAt: new Date() }).where(eq(networkCables.id, id));
   return { id, color };
+}
+
+export async function createCable(input: {
+  name: string;
+  sourceId: string;
+  targetId: string | null;
+  cableType: string;
+  coreCapacity: number;
+  color: string;
+  polyline: [number, number][];
+}) {
+  const lengthMeters = calculatePolylineTotalMeters(input.polyline);
+  const [row] = await db.insert(networkCables).values({
+    name: input.name,
+    sourceId: input.sourceId,
+    targetId: input.targetId,
+    targetType: "infrastructure",
+    cableType: input.cableType,
+    coreCapacity: input.coreCapacity,
+    color: input.color,
+    lengthMeters,
+    polyline: input.polyline,
+    status: "active",
+  }).returning();
+  return row;
 }

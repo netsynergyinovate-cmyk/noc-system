@@ -34,6 +34,7 @@ export const createInfrastructurePointSchema = z.object({
     .min(-180, "Longitude tidak boleh kurang dari -180 derajat.")
     .max(180, "Longitude tidak boleh lebih dari 180 derajat."),
   host: z.string().trim().optional(),
+  routeId: z.string().trim().min(1).optional(),
   details: z.record(z.string(), z.unknown()).optional(),
 });
 

@@ -16,6 +16,7 @@ import type {
   InfrastructureQueryInput,
 } from "@/validators/infrastructure-placement";
 import { getLocalMockMapData } from "./network-map-mock";
+import { getRoute, getLastOdpInRoute, connectOdp } from "./route.service";
 
 export async function createInfrastructurePoint(
   input: CreateInfrastructurePointInput,
@@ -47,6 +48,7 @@ export async function createInfrastructurePoint(
       status: "active",
       latitude: input.latitude,
       longitude: input.longitude,
+      routeId: input.routeId ?? null,
       details: {
         ...input.details,
         placementSource: "NOC Infrastructure Map Tool",
@@ -55,6 +57,22 @@ export async function createInfrastructurePoint(
   } catch (err) {
     console.error("[INSERT INFRASTRUCTURE DB ERROR]", err);
     // Tetap kembalikan newPoint bila koneksi offline saat simulasi
+  }
+
+  // Auto-connect ODP ke tail node jika routeId diberikan
+  if (input.routeId && input.type === "odp") {
+    try {
+      const route = await getRoute(input.routeId);
+      if (route) {
+        const tail = await getLastOdpInRoute(input.routeId);
+        const parentId = tail?.id ?? route.odcId ?? route.oltId;
+        if (parentId) {
+          await connectOdp(generatedId, parentId, input.routeId);
+        }
+      }
+    } catch (err) {
+      console.error("[AUTO_CONNECT_ODP_ERROR]", err);
+    }
   }
 
   // Jejak audit aksi teknisi

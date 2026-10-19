@@ -30,3 +30,4 @@ export * from "./vlan-traffic-samples";
 export * from "./runsnet-billing";
 export * from "./network-infrastructure";
 export * from "./map-drawing-layers";
+export * from "./network-routes";

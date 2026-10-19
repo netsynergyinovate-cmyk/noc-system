@@ -39,6 +39,7 @@ export const networkInfrastructure = pgTable(
     latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
     longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
     parentId: text("parent_id"),
+    routeId: text("route_id"),
     capacity: integer("capacity"),
     usedCapacity: integer("used_capacity").default(0),
     description: text("description"),
@@ -55,6 +56,7 @@ export const networkInfrastructure = pgTable(
     index("network_infra_type_idx").on(table.type),
     index("network_infra_status_idx").on(table.status),
     index("network_infra_parent_idx").on(table.parentId),
+    index("network_infra_route_idx").on(table.routeId),
     check(
       "network_infra_type_check",
       sql`${table.type} in ('router', 'olt', 'odp', 'odc', 'pole', 'server')`,

@@ -189,6 +189,8 @@ function MapLocationPicker({
   isDrawCable,
   onDrawCableAddPoint,
   onDrawCableMouseMove,
+  isConnectCableWaypoint,
+  onConnectCableAddPoint,
 }: {
   isEditing: boolean;
   isPlacing: boolean;
@@ -202,9 +204,15 @@ function MapLocationPicker({
   isDrawCable?: boolean;
   onDrawCableAddPoint?: (lat: number, lng: number) => void;
   onDrawCableMouseMove?: (lat: number, lng: number) => void;
+  isConnectCableWaypoint?: boolean;
+  onConnectCableAddPoint?: (lat: number, lng: number) => void;
 }) {
   useMapEvents({
     click(e) {
+      if (isConnectCableWaypoint && onConnectCableAddPoint) {
+        onConnectCableAddPoint(e.latlng.lat, e.latlng.lng);
+        return;
+      }
       if (isDrawCable && onDrawCableAddPoint) {
         onDrawCableAddPoint(e.latlng.lat, e.latlng.lng);
         return;
@@ -442,6 +450,9 @@ export function NetworkMap({
   useEffect(() => { placementTypeRef.current = placementType; }, [placementType]);
   useEffect(() => { connectSourceRef.current = connectSource; }, [connectSource]);
   useEffect(() => { connectRouteNameRef.current = connectRouteName; }, [connectRouteName]);
+  const [connectWaypoints, setConnectWaypoints] = useState<[number, number][]>([]);
+  const connectWaypointsRef = useRef<[number, number][]>([]);
+  useEffect(() => { connectWaypointsRef.current = connectWaypoints; }, [connectWaypoints]);
 
   // Inisialisasi ikon drag pin & ikon unik tiap jenis perangkat infrastruktur Leaflet
   useEffect(() => {
@@ -1105,6 +1116,10 @@ export function NetworkMap({
     [map],
   );
 
+  const handleConnectCableAddPoint = useCallback((lat: number, lng: number) => {
+    setConnectWaypoints((prev) => [...prev, [lat, lng] as [number, number]]);
+  }, []);
+
   const handleAutoSaveConnectCable = useCallback(async (
     src: NetworkInfrastructurePoint,
     tgt: NetworkInfrastructurePoint,
@@ -1113,6 +1128,12 @@ export function NetworkMap({
     const cableName = prefix ? `${prefix} ➔ ${tgt.name}` : `${src.name} → ${tgt.name}`;
     setIsSavingCable(true);
     try {
+      const waypoints = connectWaypointsRef.current;
+      const polyline: [number, number][] = [
+        [src.latitude, src.longitude],
+        ...waypoints,
+        [tgt.latitude, tgt.longitude],
+      ];
       const res = await fetch("/api/map/cables", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1123,12 +1144,13 @@ export function NetworkMap({
           cableType: "feeder",
           coreCapacity: 12,
           color: "#f59e0b",
-          polyline: [[src.latitude, src.longitude], [tgt.latitude, tgt.longitude]],
+          polyline,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menyimpan kabel.");
       setConnectSavedSegments((n) => n + 1);
+      setConnectWaypoints([]);
       setConnectSource(tgt);
       fetchData();
     } catch (err) {
@@ -2553,12 +2575,12 @@ export function NetworkMap({
               {connectSavedSegments > 0 && (
                 <Button type="button" size="sm" variant="ghost"
                   className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
-                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); setConnectWaypoints([]); }}>
                   Selesai
                 </Button>
               )}
               <Button type="button" size="sm" variant="ghost" className="text-white hover:bg-white/20 h-6 w-6 p-0"
-                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); }}>
+                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); setConnectWaypoints([]); }}>
                 <X className="size-3" />
               </Button>
             </div>
@@ -3099,7 +3121,7 @@ export function NetworkMap({
                       ? "#f59e0b"
                       : "#64748b";
 
-              const radius = isRouter ? 12 : isOlt ? 10 : 8;
+              const radius = isRouter ? 12 : isOlt ? 10 : isOdp ? 11 : 8;
               const isHighlighted = selectedInfra?.id === infra.id || focusedNodeId === infra.id;
               const isConnectSource = isConnectCableMode && connectSource?.id === infra.id;
               const isConnectTarget = isConnectCableMode && !connectSource;
@@ -3231,6 +3253,18 @@ export function NetworkMap({
                 </span>
               );
             })}
+
+          {/* Preview waypoints jalur Koneksi ODP (garis sementara sebelum ODP diklik) */}
+          {isConnectCableMode && connectSource && connectWaypoints.length > 0 && (
+            <Polyline
+              positions={[
+                [connectSource.latitude, connectSource.longitude],
+                ...connectWaypoints,
+              ]}
+              pathOptions={{ color: "#f59e0b", weight: 2.5, dashArray: "6, 4", opacity: 0.8 }}
+              interactive={false}
+            />
+          )}
 
           {/* Preview jalur gambar kabel (di atas infra — waypoint dots terlihat) */}
           {isDrawCableMode && drawWaypoints.length > 0 && (
@@ -3409,6 +3443,8 @@ export function NetworkMap({
             isDrawCable={isDrawCableMode}
             onDrawCableAddPoint={handleDrawAddPoint}
             onDrawCableMouseMove={handleDrawMouseMove}
+            isConnectCableWaypoint={isConnectCableMode && !!connectSource}
+            onConnectCableAddPoint={handleConnectCableAddPoint}
           />
 
           {/* Draggable Marker untuk Penempatan Titik Perangkat Baru */}

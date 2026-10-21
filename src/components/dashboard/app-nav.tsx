@@ -27,6 +27,7 @@ import {
   Radio,
   MapPin,
   Share2,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -97,6 +98,7 @@ const navCategories: NavCategory[] = [
       { label: "Pengaman Deploy", href: "/app/pengaman-deploy", Icon: ShieldCheck },
       { label: "Jejak Aktivitas", href: "/app/jejak-aktivitas", Icon: ScrollText },
       { label: "Ekspor Data", href: "/app/ekspor", Icon: Download },
+      { label: "API Key", href: "/app/api-key", Icon: KeyRound },
       { label: "Uji Stack", href: "/app/uji-stack", Icon: Layers },
     ],
   },

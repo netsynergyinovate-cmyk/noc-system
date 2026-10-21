@@ -26,6 +26,8 @@ export const statement = {
   audit: ["read"],
   // Mengatur kredensial scraper billing (URL portal, akun, kata sandi).
   billing: ["manage"],
+  // Membuat dan mencabut API key untuk aplikasi luar (/api/api-keys).
+  apiKey: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -41,6 +43,7 @@ export const roles = {
     alert: [],
     threshold: [],
     billing: [],
+    apiKey: [],
     audit: ["read"],
   }),
   admin: ac.newRole({
@@ -51,6 +54,7 @@ export const roles = {
     alert: ["handle"],
     threshold: ["manage"],
     billing: ["manage"],
+    apiKey: ["manage"],
     audit: ["read"],
   }),
 } as const;

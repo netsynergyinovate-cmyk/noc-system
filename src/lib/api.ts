@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { env } from "@/lib/env";
 import type { Permissions } from "@/lib/permissions";
 import { roleCan } from "@/lib/roles";
+import { findApiKeyOwner } from "@/services/api-keys.service";
 
 export class ApiError extends Error {
   constructor(
@@ -18,7 +19,39 @@ export class ApiError extends Error {
   }
 }
 
-type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>>;
+// `apiKeyId` is set when the caller authenticated with an API key instead of a
+// cookie session. Such requests act as the key's owner.
+type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>> & {
+  apiKeyId?: string;
+};
+
+const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
+
+// `Authorization: Bearer noc_...` from an external app (see docs/noc/api-key.md).
+async function apiKeySession(request: Request): Promise<Session | null> {
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const found = await findApiKeyOwner(header.slice(7).trim());
+  if (!found)
+    throw new ApiError(401, "INVALID_API_KEY", "API key is invalid or revoked.");
+  if (found.access === "read" && !SAFE_METHODS.includes(request.method))
+    throw new ApiError(403, "READ_ONLY_API_KEY", "This API key is read-only.");
+  const now = new Date();
+  return {
+    user: found.owner,
+    session: {
+      id: `api-key:${found.id}`,
+      token: "",
+      userId: found.owner.id,
+      expiresAt: now,
+      createdAt: now,
+      updatedAt: now,
+      ipAddress: null,
+      userAgent: request.headers.get("user-agent"),
+    },
+    apiKeyId: found.id,
+  };
+}
 
 // Shared HTTP concerns only. Domain rules and Drizzle queries live in services.
 export async function withApiSession(
@@ -27,10 +60,12 @@ export async function withApiSession(
 ) {
   let response: Response;
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-      query: { disableCookieCache: true },
-    });
+    const session: Session | null =
+      (await apiKeySession(request)) ??
+      (await auth.api.getSession({
+        headers: request.headers,
+        query: { disableCookieCache: true },
+      }));
     if (!session)
       throw new ApiError(401, "UNAUTHORIZED", "Sign in to continue.");
 
@@ -50,7 +85,8 @@ export async function withApiSession(
     }
 
     // Better Auth protects its own endpoints. Custom cookie-authenticated mutations need this check too.
-    if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    // An API key is sent explicitly, never by the browser on its own, so it needs no Origin check.
+    if (!session.apiKeyId && !SAFE_METHODS.includes(request.method)) {
       if (
         request.headers.get("origin") !== new URL(env.BETTER_AUTH_URL).origin ||
         request.headers.get("sec-fetch-site") === "cross-site"

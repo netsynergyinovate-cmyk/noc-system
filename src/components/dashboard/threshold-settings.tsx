@@ -34,6 +34,7 @@ import {
   resetSavedThresholds,
   saveThresholds,
   subscribeThresholds,
+  thresholdRegistry,
 } from "@/lib/dashboard/threshold-registry";
 import {
   changedThresholds,
@@ -67,24 +68,22 @@ import { MockDataNotice } from "./mock-data-notice";
 //
 // Draft hanya berisi kolom yang diubah pengguna ("edits"); kolom yang tidak
 // disentuh selalu menampilkan nilai tersimpan. Karena itu nilai tersimpan tidak
-// pernah disalin ke state lewat efek: ia dibaca dengan useSyncExternalStore dan
-// ikut berubah bila tab lain menyimpan.
+// pernah disalin ke state lewat efek: ia dibaca dengan useSyncExternalStore dari
+// threshold-registry.ts (tabel alert_thresholds lewat /api/thresholds).
 //
 // Server dan render pertama di browser memakai nilai bawaan (getServerSnapshot),
-// nilai tersimpan masuk sesudah hidrasi, jadi HTML tidak berbeda dari render
-// pertama klien.
+// nilai dari database masuk sesudah dimuat. Menyimpan diblokir sampai nilai
+// database termuat, supaya isian bawaan tidak menimpa ambang yang sudah ada.
 
 // Kolom yang diubah pengguna saja, sebagai teks.
 type Edits = Partial<
   Record<IncidentKind, Partial<Record<ThresholdField, string>>>
 >;
 
-interface Notice {
-  kind: "saved" | "reset";
-  changes: ThresholdChange[];
-  // Salah bila penyimpanan peramban tidak bisa dipakai (nilai hanya di sesi ini).
-  persisted: boolean;
-}
+type Notice =
+  | { kind: "saved" | "reset"; changes: ThresholdChange[] }
+  // Server menolak atau tidak terjangkau; tidak ada yang berubah.
+  | { kind: "failed"; message: string };
 
 const fieldLabels: Record<
   IncidentKind,
@@ -118,13 +117,20 @@ const forbiddenReason =
 export function ThresholdSettings() {
   const baseId = useId();
   const canManage = useCanDo("manageThresholds");
-  const saved = useSyncExternalStore(
+  const { values: saved, status } = useSyncExternalStore(
     subscribeThresholds,
     getThresholdsSnapshot,
     getThresholdsServerSnapshot,
   );
   const [edits, setEdits] = useState<Edits>({});
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [saving, setSaving] = useState(false);
+  const loadBlocked =
+    status === "loading"
+      ? "Memuat ambang dari database"
+      : status === "error"
+        ? "Ambang belum termuat dari database"
+        : null;
 
   const savedTexts = textsFromValues(saved);
   const texts = {} as ThresholdTexts;
@@ -149,17 +155,23 @@ export function ThresholdSettings() {
   // bisa difokus (aria-disabled), supaya papan ketik tidak kehilangan tempat.
   const saveBlocked = !canManage
     ? forbiddenReason
-    : errorCount > 0
-      ? `Perbaiki ${errorCount} isian yang salah`
-      : !dirty
-        ? "Tidak ada perubahan"
-        : null;
+    : (loadBlocked ??
+      (saving
+        ? "Sedang menyimpan"
+        : errorCount > 0
+          ? `Perbaiki ${errorCount} isian yang salah`
+          : !dirty
+            ? "Tidak ada perubahan"
+            : null));
   const cancelBlocked = hasEdits ? null : "Tidak ada perubahan";
   const resetAllBlocked = !canManage
     ? forbiddenReason
-    : isDefaultThresholds(saved) && !hasEdits
-      ? "Sudah memakai nilai bawaan"
-      : null;
+    : (loadBlocked ??
+      (saving
+        ? "Sedang menyimpan"
+        : isDefaultThresholds(saved) && !hasEdits
+          ? "Sudah memakai nilai bawaan"
+          : null));
 
   const fieldId = (kind: IncidentKind, field: ThresholdField) =>
     `${baseId}-${kind}-${field}`;
@@ -205,15 +217,24 @@ export function ThresholdSettings() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (saveBlocked !== null) {
       if (errorCount > 0) focusFirstInvalid();
       return;
     }
-    const result = saveThresholds(values);
-    if (!result.ok) return;
-    setNotice({ kind: "saved", changes, persisted: result.persisted });
-    setEdits({});
+    setSaving(true);
+    setNotice(null);
+    try {
+      const result = await saveThresholds(values);
+      if (!result.ok) {
+        setNotice({ kind: "failed", message: result.message });
+        return;
+      }
+      setNotice({ kind: "saved", changes });
+      setEdits({});
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleCancel() {
@@ -222,14 +243,20 @@ export function ThresholdSettings() {
     setEdits({});
   }
 
-  function confirmReset() {
-    const result = resetSavedThresholds();
-    setEdits({});
-    setNotice({
-      kind: "reset",
-      changes: resetChanges,
-      persisted: result.ok && result.persisted,
-    });
+  async function confirmReset() {
+    setSaving(true);
+    setNotice(null);
+    try {
+      const result = await resetSavedThresholds();
+      if (!result.ok) {
+        setNotice({ kind: "failed", message: result.message });
+        return;
+      }
+      setEdits({});
+      setNotice({ kind: "reset", changes: resetChanges });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const titleId = `${baseId}-title`;
@@ -251,18 +278,40 @@ export function ThresholdSettings() {
             Ubah angkanya di kartu aturan, lalu simpan.
           </p>
         </div>
-        <MockDataNotice source="rule engine di backend" />
+        <MockDataNotice source="tabel alert_thresholds" real />
         <p
           data-testid="threshold-honesty"
           className="rounded-lg border bg-card p-3 text-sm text-foreground"
         >
-          Nilai ini baru tersimpan di peramban ini dan belum dibaca rule engine
-          di backend. Daftar anomali dan alert tiruan di dashboard juga belum
-          berubah: keduanya tetap memakai aturan bawaan. Tombol{" "}
+          Nilai ini tersimpan di database (tabel alert_thresholds) dan berlaku
+          untuk semua petugas. Rule engine di backend membacanya saat backend
+          dinyalakan, jadi ambang baru dipakai setelah backend di-restart. Daftar
+          anomali dan alert tiruan mode demo tetap memakai aturan bawaan. Tombol{" "}
           <strong>Simpan Perubahan</strong> dan <strong>Reset Bawaan</strong> di
           bagian atas halaman tidak mencakup tab ini; pakai tombol di bawah
           kartu.
         </p>
+        {status === "error" && (
+          <div
+            role="alert"
+            data-testid="threshold-load-error"
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
+          >
+            <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+            <span className="flex-1">
+              Ambang tidak bisa dimuat dari database. Yang tampil adalah nilai
+              bawaan; menyimpan diblokir sampai berhasil dimuat.
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void thresholdRegistry.refresh()}
+            >
+              Coba muat lagi
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Satu form untuk semua kartu: Enter di isian mana pun menyimpan, dan
@@ -274,7 +323,7 @@ export function ThresholdSettings() {
         data-testid="threshold-form"
         onSubmit={(event) => {
           event.preventDefault();
-          handleSave();
+          void handleSave();
         }}
         className="space-y-5"
       >
@@ -305,7 +354,18 @@ export function ThresholdSettings() {
             data-testid="threshold-status"
             className="min-h-6 text-sm"
           >
-            {notice ? (
+            {notice?.kind === "failed" ? (
+              <p
+                data-testid="threshold-failed"
+                className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 font-medium text-foreground"
+              >
+                <CircleAlert
+                  className="mt-0.5 size-4 shrink-0 text-destructive"
+                  aria-hidden="true"
+                />
+                <span>{notice.message}</span>
+              </p>
+            ) : notice ? (
               <div
                 data-testid="threshold-saved"
                 data-kind={notice.kind}
@@ -316,18 +376,13 @@ export function ThresholdSettings() {
                     className="size-4 shrink-0 text-success"
                     aria-hidden="true"
                   />
-                  {notice.persisted
-                    ? notice.kind === "saved"
-                      ? "Ambang disimpan di peramban ini"
-                      : "Ambang dikembalikan ke bawaan di peramban ini"
-                    : "Ambang berlaku di sesi ini saja"}
+                  {notice.kind === "saved"
+                    ? "Ambang disimpan di database"
+                    : "Ambang dikembalikan ke bawaan di database"}
                 </p>
-                {!notice.persisted && (
-                  <p>
-                    Penyimpanan peramban tidak bisa dipakai, jadi nilai ini
-                    hilang setelah halaman ditutup.
-                  </p>
-                )}
+                <p className="pl-6">
+                  Rule engine backend memakai nilai ini setelah backend di-restart.
+                </p>
                 {notice.changes.length > 0 ? (
                   <ul
                     data-testid="threshold-saved-changes"
@@ -455,12 +510,12 @@ export function ThresholdSettings() {
                       )}
                       {hasEdits &&
                         " Perubahan yang belum disimpan ikut dibuang."}{" "}
-                      Pengembalian ini langsung disimpan di peramban ini.
+                      Pengembalian ini langsung disimpan di database.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={confirmReset}>
+                    <AlertDialogAction onClick={() => void confirmReset()}>
                       Ya, kembalikan ke bawaan
                     </AlertDialogAction>
                   </AlertDialogFooter>

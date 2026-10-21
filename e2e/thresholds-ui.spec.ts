@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { Pool } from "pg";
 import { anomalyRules } from "../src/lib/dashboard/anomalies";
 import { incidentLabels } from "../src/lib/dashboard/incidents";
+import { isDefaultThresholds } from "../src/lib/dashboard/thresholds";
 import {
   contextFor,
   measureContrast,
@@ -8,13 +10,19 @@ import {
   type Cookies,
 } from "./billing-ui";
 
-// Halaman Pengaturan > Ambang Batas di halaman sungguhan (login nyata): lima kartu
-// dengan angka bawaan dari anomalyRules, simpan dan muat ulang, isian salah,
-// batalkan, kembalikan per kartu dan semua (lewat dialog), isi penyimpanan
-// rusak, penyimpanan diblokir, kejujuran bahwa nilainya belum dibaca rule engine,
-// tata letak 390 dan 1440 px, kontras di dua tema, dan tanpa galat di konsol.
+// Halaman Pengaturan > Ambang Batas di halaman sungguhan (login nyata, akun admin
+// karena menyimpan butuh threshold:manage): lima kartu dengan angka bawaan dari
+// anomalyRules, simpan ke tabel alert_thresholds lewat /api/thresholds dan muat
+// ulang, isian salah, batalkan, kembalikan per kartu dan semua (lewat dialog),
+// server menolak atau tidak terjangkau, akun tanpa izin, kejujuran soal kapan
+// rule engine membacanya, tata letak 390 dan 1440 px, kontras di dua tema, dan
+// tanpa galat di konsol. Tabel dipakai bersama, jadi dikosongkan sebelum tiap
+// tes (Playwright menjalankan tes berurutan, workers: 1).
 
-const STORAGE_KEY = "alertThresholds";
+const pool = new Pool({
+  connectionString: process.env.STARTER_TEST_DATABASE_URL,
+  max: 1,
+});
 
 let cookies: Cookies;
 test.beforeAll(async ({ browser }) => {
@@ -22,7 +30,18 @@ test.beforeAll(async ({ browser }) => {
     baseURL: "http://localhost:3101",
   });
   cookies = await signUp(context, "Petugas Ambang");
+  const response = await context.request.get("/api/auth/get-session");
+  const { user } = (await response.json()) as { user: { id: string } };
+  // Peran diberikan di luar aplikasi, seperti npm run role:set.
+  await pool.query('UPDATE "user" SET role = $1 WHERE id = $2', ["admin", user.id]);
   await context.close();
+});
+test.beforeEach(async () => {
+  await pool.query("DELETE FROM alert_thresholds");
+});
+test.afterAll(async () => {
+  await pool.query("DELETE FROM alert_thresholds");
+  await pool.end();
 });
 
 // Membuka halaman dan tab "Ambang Batas". Klik sebelum hidrasi tidak berefek,
@@ -50,9 +69,25 @@ const cancelButton = (page: Page) =>
   page.getByRole("button", { name: "Batalkan perubahan" });
 const resetAllButton = (page: Page) =>
   page.getByRole("button", { name: "Kembalikan semua ke bawaan" });
-const stored = (page: Page) =>
-  page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
-const storedJson = async (page: Page) => JSON.parse((await stored(page))!);
+// Nilai di database menurut GET /api/thresholds (memakai cookie halaman).
+const storedJson = async (page: Page) => {
+  const response = await page.request.get("/api/thresholds");
+  expect(response.status()).toBe(200);
+  return (await response.json()).data;
+};
+// null bila semua aturan masih bawaan (tidak ada yang tersimpan).
+const stored = async (page: Page) => {
+  const data = await storedJson(page);
+  return isDefaultThresholds(data) ? null : JSON.stringify(data);
+};
+// Mengisi tabel lewat API, seperti petugas lain yang menyimpan.
+async function putThresholds(page: Page, values: object) {
+  const response = await page.request.put("/api/thresholds", {
+    headers: { origin: "http://localhost:3101" },
+    data: values,
+  });
+  expect(response.status()).toBe(200);
+}
 
 async function expectBlocked(button: Locator, blocked: boolean) {
   await expect(button).toHaveAttribute("aria-disabled", String(blocked));
@@ -211,20 +246,18 @@ test.describe("kartu aturan", () => {
   });
 });
 
-test.describe("kejujuran bahwa ini tiruan", () => {
-  test("pemberitahuan data tiruan dan kalimat belum dibaca rule engine", async ({
+test.describe("kejujuran soal penyimpanan dan rule engine", () => {
+  test("kalimat database, berlaku setelah backend di-restart", async ({
     browser,
   }) => {
     const { context, page, errors } = await contextFor(browser, cookies);
     await openThresholds(page);
-    await expect(
-      page.getByText("Data tiruan, belum terhubung ke rule engine di backend"),
-    ).toBeVisible();
     const honesty = page.getByTestId("threshold-honesty");
-    await expect(honesty).toContainText("tersimpan di peramban ini");
-    await expect(honesty).toContainText("belum dibaca rule engine");
+    await expect(honesty).toContainText("tersimpan di database");
+    await expect(honesty).toContainText("setelah backend di-restart");
     await expect(honesty).toContainText("alert tiruan");
     await expect(honesty).toContainText("tidak mencakup tab ini");
+    await expect(honesty).not.toContainText("peramban");
     // Tidak ada klaim palsu, juga sesudah menyimpan.
     await thresholdInput(page, "cpu").fill("70");
     await saveButton(page).click();
@@ -254,19 +287,16 @@ test.describe("kejujuran bahwa ini tiruan", () => {
     await context.close();
   });
 
-  test("menyimpan dan mengembalikan tidak mengirim permintaan ke server", async ({
+  test("menyimpan dan mengembalikan memanggil PUT lalu DELETE /api/thresholds", async ({
     browser,
   }) => {
     const { context, page, errors } = await contextFor(browser, cookies);
     await openThresholds(page);
+    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
     const sent: string[] = [];
     page.on("request", (request) => {
-      if (
-        request.method() !== "GET" ||
-        /threshold|ambang/i.test(request.url())
-      ) {
-        sent.push(`${request.method()} ${request.url()}`);
-      }
+      if (request.method() !== "GET")
+        sent.push(`${request.method()} ${new URL(request.url()).pathname}`);
     });
     await thresholdInput(page, "cpu").fill("70");
     await saveButton(page).click();
@@ -279,7 +309,8 @@ test.describe("kejujuran bahwa ini tiruan", () => {
       "data-kind",
       "reset",
     );
-    expect(sent).toEqual([]);
+    expect(sent).toEqual(["PUT /api/thresholds", "DELETE /api/thresholds"]);
+    expect(await stored(page)).toBeNull();
     expect(errors).toEqual([]);
     await context.close();
   });
@@ -312,13 +343,13 @@ test.describe("menyimpan", () => {
 
     await saveButton(page).click();
     const saved = page.getByTestId("threshold-saved");
-    await expect(saved).toContainText("Ambang disimpan di peramban ini");
+    await expect(saved).toContainText("Ambang disimpan di database");
     await expect(saved).toContainText(
       "Beban router tinggi: ambang 85% menjadi 70%",
     );
     await expect(saved).toHaveAttribute("data-kind", "saved");
     await expect(page.getByTestId("threshold-status")).toContainText(
-      "Ambang disimpan di peramban ini",
+      "Ambang disimpan di database",
     );
     await expect(page.getByTestId("threshold-unsaved")).toHaveCount(0);
     await expect(page.getByTestId("rule-changed")).toHaveCount(0);
@@ -400,7 +431,7 @@ test.describe("menyimpan", () => {
     await context.close();
   });
 
-  test("tab lain yang menyimpan ikut mengubah nilai yang tampil", async ({
+  test("tab lain yang menyimpan ikut tampil saat tab ini difokus lagi", async ({
     browser,
   }) => {
     const { context, page, errors } = await contextFor(browser, cookies);
@@ -417,7 +448,8 @@ test.describe("menyimpan", () => {
     await thresholdInput(other, "cpu").fill("66");
     await saveButton(other).click();
     await expect(other.getByTestId("threshold-saved")).toBeVisible();
-    // Tab pertama tidak punya isian yang diubah, jadi langsung mengikuti.
+    // Tab pertama tidak punya isian yang diubah, jadi mengikuti begitu difokus.
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(thresholdInput(page, "cpu")).toHaveValue("66");
     await expect(card(page, "cpu").getByTestId("rule-changed")).toHaveCount(0);
     expect(errors).toEqual([]);
@@ -679,19 +711,13 @@ test.describe("batalkan dan kembalikan", () => {
 
 test.describe("Kembalikan semua ke bawaan", () => {
   async function seed(page: Page) {
-    await page.evaluate(
-      ([key, value]) => localStorage.setItem(key, value),
-      [
-        STORAGE_KEY,
-        JSON.stringify({
-          queue: { threshold: 80, forSeconds: 20 },
-          cpu: { threshold: 70, forSeconds: 300 },
-          port: { threshold: 20, forSeconds: 60 },
-          optical: { threshold: -25, forSeconds: 0 },
-          offline: { threshold: null, forSeconds: 30 },
-        }),
-      ],
-    );
+    await putThresholds(page, {
+      queue: { threshold: 80, forSeconds: 20 },
+      cpu: { threshold: 70, forSeconds: 300 },
+      port: { threshold: 20, forSeconds: 60 },
+      optical: { threshold: -25, forSeconds: 0 },
+      offline: { threshold: null, forSeconds: 30 },
+    });
   }
 
   test("dialog: fokus awal di Batal, Batal tidak mengubah, Konfirmasi mengembalikan, fokus kembali ke pemicu", async ({
@@ -718,7 +744,7 @@ test.describe("Kembalikan semua ke bawaan", () => {
     await expect(dialog).toContainText(
       "Jalur traffic penuh, Beban router tinggi",
     );
-    await expect(dialog).toContainText("langsung disimpan di peramban ini");
+    await expect(dialog).toContainText("langsung disimpan di database");
     await expect(dialog).not.toContainText("belum disimpan ikut dibuang");
     // Fokus awal di Batal, supaya Enter tidak langsung mengembalikan.
     await expect(
@@ -755,7 +781,7 @@ test.describe("Kembalikan semua ke bawaan", () => {
     const saved = page.getByTestId("threshold-saved");
     await expect(saved).toHaveAttribute("data-kind", "reset");
     await expect(saved).toContainText(
-      "Ambang dikembalikan ke bawaan di peramban ini",
+      "Ambang dikembalikan ke bawaan di database",
     );
     await expect(saved).toContainText(
       "Jalur traffic penuh: ambang 80% menjadi 95%",
@@ -864,7 +890,7 @@ test.describe("Kembalikan semua ke bawaan", () => {
   });
 });
 
-test.describe("isi penyimpanan yang rusak", () => {
+test.describe("pengaturan lama di peramban", () => {
   const defaultsText = {
     queue: ["95", "30"],
     cpu: ["85", "180"],
@@ -883,65 +909,6 @@ test.describe("isi penyimpanan yang rusak", () => {
       }
     }
   }
-
-  for (const [name, raw] of [
-    ["JSON terpotong", "{"],
-    ["bukan objek", "[]"],
-    ["null", "null"],
-    ["teks biasa", "bukan json"],
-    ["angka sebagai teks", '{"cpu":{"threshold":"70","forSeconds":"60"}}'],
-    ["di luar batas", '{"cpu":{"threshold":1,"forSeconds":1}}'],
-    ["__proto__", '{"__proto__":{"cpu":{"threshold":60,"forSeconds":60}}}'],
-  ] as const) {
-    test(`${name}: halaman tetap hidup dan memakai bawaan`, async ({
-      browser,
-    }) => {
-      const { context, page, errors } = await contextFor(browser, cookies);
-      await page.goto("/app/pengaturan");
-      await page.evaluate(
-        ([key, value]) => localStorage.setItem(key, value),
-        [STORAGE_KEY, raw],
-      );
-      await openThresholds(page);
-      await expect(page.getByTestId("threshold-card")).toHaveCount(5);
-      await expectDefaults(page);
-      await expect(page.getByTestId("field-error")).toHaveCount(0);
-      // Menyimpan di atas isi rusak menulis teks yang bersih.
-      await thresholdInput(page, "cpu").fill("70");
-      await saveButton(page).click();
-      await expect(page.getByTestId("threshold-saved")).toBeVisible();
-      expect((await storedJson(page)).cpu.threshold).toBe(70);
-      expect(errors).toEqual([]);
-      await context.close();
-    });
-  }
-
-  test("sebagian rusak: aturan yang sah dipakai, yang rusak bawaan", async ({
-    browser,
-  }) => {
-    const { context, page, errors } = await contextFor(browser, cookies);
-    await page.goto("/app/pengaturan");
-    await page.evaluate(
-      ([key, value]) => localStorage.setItem(key, value),
-      [
-        STORAGE_KEY,
-        JSON.stringify({
-          queue: { threshold: 80, forSeconds: 20 },
-          cpu: { threshold: 1, forSeconds: 1 },
-          optical: { threshold: -27.5, forSeconds: 0, tambahan: true },
-          asing: { threshold: 1 },
-        }),
-      ],
-    );
-    await openThresholds(page);
-    await expect(thresholdInput(page, "queue")).toHaveValue("80");
-    await expect(durationInput(page, "queue")).toHaveValue("20");
-    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
-    await expect(thresholdInput(page, "optical")).toHaveValue("-27,5");
-    await expect(page.getByTestId("rule-changed")).toHaveCount(0);
-    expect(errors).toEqual([]);
-    await context.close();
-  });
 
   test("pengaturan lama noc_app_settings dengan kolom ambang lama diabaikan", async ({
     browser,
@@ -978,81 +945,109 @@ test.describe("isi penyimpanan yang rusak", () => {
   });
 });
 
-test.describe("penyimpanan diblokir", () => {
-  test("localStorage melempar galat: tidak roboh, nilai berlaku di sesi ini saja", async ({
+test.describe("server menolak atau tidak terjangkau", () => {
+  test("simpan gagal (500): pesan galat, isian tetap, tombol tidak terkunci", async ({
     browser,
   }) => {
-    const { context, page, errors } = await contextFor(browser, cookies);
-    await context.addInitScript(() => {
-      Object.defineProperty(window, "localStorage", {
-        configurable: true,
-        get() {
-          throw new DOMException("diblokir", "SecurityError");
-        },
-      });
-    });
+    const { context, page } = await contextFor(browser, cookies);
     await openThresholds(page);
     await expect(thresholdInput(page, "cpu")).toHaveValue("85");
+    await page.route("**/api/thresholds", (route) =>
+      route.request().method() === "PUT"
+        ? route.fulfill({
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ error: { code: "INTERNAL_ERROR", message: "Database sedang tidak bisa dipakai." } }),
+          })
+        : route.continue(),
+    );
     await thresholdInput(page, "cpu").fill("70");
     await saveButton(page).click();
-    const saved = page.getByTestId("threshold-saved");
-    await expect(saved).toContainText("Ambang berlaku di sesi ini saja");
-    await expect(saved).toContainText(
-      "Penyimpanan peramban tidak bisa dipakai",
+    await expect(page.getByTestId("threshold-failed")).toHaveText(
+      "Database sedang tidak bisa dipakai.",
     );
-    await expect(saved).toContainText(
-      "Beban router tinggi: ambang 85% menjadi 70%",
-    );
-    await expect(card(page, "cpu").getByTestId("rule-sentence")).toHaveText(
-      "CPU router di atas 70% selama 3 menit",
-    );
-    // Pindah tab di halaman yang sama dan kembali: nilainya masih di memori.
-    await page.getByRole("tab", { name: "Umum" }).click();
-    await page.getByRole("tab", { name: "Ambang Batas" }).click();
+    await expect(page.getByTestId("threshold-saved")).toHaveCount(0);
+    // Draft tidak dibuang dan tombol bisa dipakai lagi.
     await expect(thresholdInput(page, "cpu")).toHaveValue("70");
-    // Kembalikan semua juga tidak melempar galat.
-    await resetAllButton(page).click();
-    await page
-      .getByRole("button", { name: "Ya, kembalikan ke bawaan" })
-      .click();
-    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
+    await expect(page.getByTestId("rule-changed")).toHaveCount(1);
+    await expectBlocked(saveButton(page), false);
+    expect(await stored(page)).toBeNull();
+    // Server pulih: simpan ulang berhasil.
+    await page.unroute("**/api/thresholds");
+    await saveButton(page).click();
     await expect(page.getByTestId("threshold-saved")).toContainText(
-      "Ambang berlaku di sesi ini saja",
+      "Ambang disimpan di database",
     );
-    // Muat ulang: kembali bawaan, tanpa galat.
-    await page.reload();
-    await page.getByRole("tab", { name: "Ambang Batas" }).click();
-    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
-    // Galat dari bagian lain halaman yang menyentuh penyimpanan tidak dihitung;
-    // yang dicek: tidak ada galat dari komponen ambang.
-    expect(
-      errors.filter((message) => /threshold|ambang/i.test(message)),
-    ).toEqual([]);
+    expect((await storedJson(page)).cpu.threshold).toBe(70);
     await context.close();
   });
 
-  test("setItem melempar galat (penyimpanan penuh): nilai tetap berlaku di sesi ini", async ({
+  test("server tidak terjangkau: pesan, tidak ada yang berubah", async ({
     browser,
   }) => {
-    const { context, page, errors } = await contextFor(browser, cookies);
-    await context.addInitScript(() => {
-      const original = Storage.prototype.setItem;
-      Storage.prototype.setItem = function (key: string, value: string) {
-        if (key === "alertThresholds") {
-          throw new DOMException("penuh", "QuotaExceededError");
-        }
-        return original.call(this, key, value);
-      };
-    });
+    const { context, page } = await contextFor(browser, cookies);
     await openThresholds(page);
+    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
+    await page.route("**/api/thresholds", (route) =>
+      route.request().method() === "GET" ? route.continue() : route.abort(),
+    );
     await thresholdInput(page, "queue").fill("88");
     await saveButton(page).click();
-    await expect(page.getByTestId("threshold-saved")).toContainText(
-      "Ambang berlaku di sesi ini saja",
+    await expect(page.getByTestId("threshold-failed")).toContainText(
+      "Server tidak terjangkau",
     );
-    await page.getByRole("tab", { name: "Umum" }).click();
-    await page.getByRole("tab", { name: "Ambang Batas" }).click();
-    await expect(thresholdInput(page, "queue")).toHaveValue("88");
+    expect(await stored(page)).toBeNull();
+    await context.close();
+  });
+
+  test("gagal memuat: bawaan tampil, menyimpan tertahan, Coba muat lagi memulihkan", async ({
+    browser,
+  }) => {
+    const { context, page } = await contextFor(browser, cookies);
+    await page.goto("/app/pengaturan");
+    await putThresholds(page, { cpu: { threshold: 70, forSeconds: 180 } });
+    await page.route("**/api/thresholds", (route) =>
+      route.fulfill({ status: 503, contentType: "application/json", body: "{}" }),
+    );
+    await openThresholds(page);
+    await expect(page.getByTestId("threshold-load-error")).toBeVisible();
+    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
+    await thresholdInput(page, "cpu").fill("75");
+    await expectBlocked(saveButton(page), true);
+    await expect(page.getByTestId("save-reason")).toHaveText(
+      "Ambang belum termuat dari database",
+    );
+    await expectBlocked(resetAllButton(page), true);
+    await page.unroute("**/api/thresholds");
+    await page.getByRole("button", { name: "Coba muat lagi" }).click();
+    await expect(page.getByTestId("threshold-load-error")).toHaveCount(0);
+    // Isian yang diketik tetap; kolom lain mengikuti database.
+    await expect(thresholdInput(page, "cpu")).toHaveValue("75");
+    await expectBlocked(saveButton(page), false);
+    await context.close();
+  });
+});
+
+test.describe("akun tanpa izin threshold:manage", () => {
+  test("tombol tertahan dengan alasan, dan server menolak PUT", async ({
+    browser,
+  }) => {
+    const signup = await browser.newContext({ baseURL: "http://localhost:3101" });
+    const viewer = await signUp(signup, "Petugas Lihat Ambang");
+    await signup.close();
+    const { context, page, errors } = await contextFor(browser, viewer);
+    await openThresholds(page);
+    await expect(thresholdInput(page, "cpu")).toHaveValue("85");
+    await thresholdInput(page, "cpu").fill("70");
+    await expectBlocked(saveButton(page), true);
+    await expect(page.getByTestId("save-reason")).toHaveText(
+      "Hanya admin yang dapat mengubah ambang batas",
+    );
+    const response = await page.request.put("/api/thresholds", {
+      headers: { origin: "http://localhost:3101" },
+      data: { cpu: { threshold: 70, forSeconds: 180 } },
+    });
+    expect(response.status()).toBe(403);
     expect(await stored(page)).toBeNull();
     expect(errors).toEqual([]);
     await context.close();
@@ -1154,7 +1149,7 @@ test.describe("tata letak", () => {
       await openThresholds(page);
       const list = (await page.getByRole("tablist").boundingBox())!;
       const tabs = await page.getByRole("tab").all();
-      expect(tabs).toHaveLength(6);
+      expect(tabs).toHaveLength(8);
       for (const tab of tabs) {
         const box = (await tab.boundingBox())!;
         expect(box.y).toBeGreaterThanOrEqual(list.y - 1);
@@ -1341,6 +1336,8 @@ test.describe("form (papan ketik)", () => {
     await thresholdInput(page, "queue").fill("90");
     await durationInput(page, "offline").fill("45");
     await durationInput(page, "port").press("Enter");
+    // Simpan berjalan lewat server; tunggu jawabannya sebelum membaca tabel.
+    await expect(page.getByTestId("threshold-saved")).toBeVisible();
     const saved = await storedJson(page);
     expect(saved.queue.threshold).toBe(90);
     expect(saved.offline.forSeconds).toBe(45);

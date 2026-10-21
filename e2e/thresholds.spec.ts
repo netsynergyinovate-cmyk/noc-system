@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { anomalyRules } from "../src/lib/dashboard/anomalies";
-import {
-  createThresholdRegistry,
-  THRESHOLDS_STORAGE_KEY,
-} from "../src/lib/dashboard/threshold-registry";
+import { createThresholdRegistry } from "../src/lib/dashboard/threshold-registry";
 import {
   changedThresholds,
   cloneThresholds,
@@ -30,9 +27,9 @@ import {
 } from "../src/lib/dashboard/thresholds";
 import type { IncidentKind } from "../src/lib/dashboard/types";
 
-// Logika murni ambang alert (thresholds.ts) dan "database" tiruannya
-// (threshold-registry.ts): bawaan, batas, validasi, penguraian teks isian,
-// kalimat, perubahan, dan baca/tulis penyimpanan. Tanpa browser.
+// Logika murni ambang alert (thresholds.ts) dan registry-nya
+// (threshold-registry.ts, dengan server palsu): bawaan, batas, validasi,
+// penguraian teks isian, kalimat, perubahan, dan muat/simpan. Tanpa browser.
 
 const KINDS: IncidentKind[] = ["queue", "cpu", "port", "optical", "offline"];
 
@@ -931,26 +928,50 @@ test.describe("validateThresholds melawan implementasi referensi (acak, seed tet
   });
 });
 
-test.describe("registry (penyimpanan tiruan)", () => {
-  function fakeStorage(initial: Record<string, string> = {}) {
-    const data = new Map(Object.entries(initial));
-    return {
-      data,
-      getItem: (key: string) => data.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        data.set(key, value);
+test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
+  // Server palsu: menyimpan nilai seperti tabel, menjawab `data` seperti API.
+  function fakeRemote(initial: unknown = null) {
+    let stored: unknown = initial;
+    const calls: string[] = [];
+    const sent: unknown[] = [];
+    const state = { failLoad: false, failWrite: false };
+    const answer = () => JSON.parse(JSON.stringify(stored ?? defaultThresholds()));
+    const remote = {
+      load: async () => {
+        calls.push("load");
+        if (state.failLoad) throw new Error("offline");
+        return answer();
       },
-      removeItem: (key: string) => {
-        data.delete(key);
+      save: async (values: ThresholdValues) => {
+        calls.push("save");
+        sent.push(JSON.parse(JSON.stringify(values)));
+        if (state.failWrite) throw new Error("Akun Anda tidak punya izin mengubah ambang batas.");
+        stored = values;
+        return answer();
+      },
+      reset: async () => {
+        calls.push("reset");
+        if (state.failWrite) throw new Error("offline");
+        stored = null;
+        return answer();
+      },
+    };
+    return {
+      remote,
+      calls,
+      sent,
+      state,
+      setStored: (value: unknown) => {
+        stored = value;
       },
     };
   }
-  function makeRegistry(storage = fakeStorage()) {
+  function makeRegistry(server = fakeRemote()) {
     let handler: (() => void) | null = null;
     let listens = 0;
     let stops = 0;
     const registry = createThresholdRegistry({
-      storage: () => storage,
+      remote: server.remote,
       listen: (onChange) => {
         handler = onChange;
         listens += 1;
@@ -962,7 +983,7 @@ test.describe("registry (penyimpanan tiruan)", () => {
     });
     return {
       registry,
-      storage,
+      server,
       fire: () => handler?.(),
       counts: () => ({ listens, stops }),
     };
@@ -973,203 +994,166 @@ test.describe("registry (penyimpanan tiruan)", () => {
     values.cpu.forSeconds = 300;
     return values;
   };
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  test("kosong: bawaan, dan objek yang sama dikembalikan terus", () => {
-    const { registry } = makeRegistry();
+  test("belum dimuat: bawaan dengan status loading, objek yang sama terus", () => {
+    const { registry, server } = makeRegistry();
     const first = registry.getSnapshot();
-    expect(first).toEqual(defaultThresholds());
+    expect(first).toEqual({ values: defaultThresholds(), status: "loading" });
     expect(registry.getSnapshot()).toBe(first);
-    expect(registry.getSaved()).toBe(first);
-    const server = registry.getServerSnapshot();
-    expect(server).toEqual(defaultThresholds());
-    expect(registry.getServerSnapshot()).toBe(server);
+    const snap = registry.getServerSnapshot();
+    expect(snap).toEqual({ values: defaultThresholds(), status: "loading" });
+    expect(registry.getServerSnapshot()).toBe(snap);
     expect(Object.isFrozen(first)).toBe(true);
-    expect(Object.isFrozen(first.cpu)).toBe(true);
+    expect(Object.isFrozen(first.values.cpu)).toBe(true);
+    // Tanpa pelanggan tidak ada permintaan ke server.
+    expect(server.calls).toEqual([]);
   });
 
-  test("snapshot server selalu bawaan, juga bila sudah ada yang tersimpan", () => {
-    const { registry } = makeRegistry();
-    registry.save(custom());
-    expect(registry.getServerSnapshot()).toEqual(defaultThresholds());
-    expect(registry.getSnapshot().cpu.threshold).toBe(70);
-  });
-
-  test("simpan nilai sah: tertulis, snapshot berganti, pelanggan diberi tahu", () => {
-    const { registry, storage } = makeRegistry();
+  test("pelanggan pertama memuat sekali dari server, lalu status ready", async () => {
+    const { registry, server } = makeRegistry();
+    server.setStored(custom());
     let notified = 0;
     registry.subscribe(() => {
       notified += 1;
     });
-    const before = registry.getSnapshot();
-    const values = custom();
-    const result = registry.save(values);
-    expect(result).toEqual({ ok: true, persisted: true });
+    registry.subscribe(() => {});
+    await flush();
+    expect(server.calls).toEqual(["load"]);
+    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
     expect(notified).toBe(1);
-    const after = registry.getSnapshot();
-    expect(after).not.toBe(before);
-    expect(after).toEqual(values);
-    expect(registry.getSnapshot()).toBe(after);
-    expect(parseThresholds(storage.data.get(THRESHOLDS_STORAGE_KEY))).toEqual(
-      values,
-    );
-    expect(THRESHOLDS_STORAGE_KEY).toBe("alertThresholds");
-    // Mengubah argumen sesudah menyimpan tidak mengubah yang tersimpan.
-    values.cpu.threshold = 99;
-    expect(registry.getSnapshot().cpu.threshold).toBe(70);
+    expect(registry.getServerSnapshot().values).toEqual(defaultThresholds());
   });
 
-  test("simpan nilai yang sama tidak mengganti objek snapshot", () => {
-    const { registry } = makeRegistry();
-    registry.save(custom());
+  test("tab difokus lagi: dimuat ulang, simpanan petugas lain ikut", async () => {
+    const { registry, server, fire } = makeRegistry();
+    registry.subscribe(() => {});
+    await flush();
+    const before = registry.getSnapshot();
+    server.setStored(custom());
+    fire();
+    await flush();
+    expect(registry.getSnapshot().values).toEqual(custom());
+    expect(registry.getSnapshot()).not.toBe(before);
+  });
+
+  test("gagal memuat: status error dengan bawaan; berhasil kemudian: ready", async () => {
+    const { registry, server } = makeRegistry();
+    server.state.failLoad = true;
+    registry.subscribe(() => {});
+    await flush();
+    expect(registry.getSnapshot()).toEqual({ values: defaultThresholds(), status: "error" });
+    server.state.failLoad = false;
+    server.setStored(custom());
+    await registry.refresh();
+    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
+  });
+
+  test("gagal memuat sesudah pernah berhasil: nilai terakhir tetap, status tetap ready", async () => {
+    const { registry, server } = makeRegistry();
+    server.setStored(custom());
+    registry.subscribe(() => {});
+    await flush();
     const snapshot = registry.getSnapshot();
-    registry.save(custom());
+    server.state.failLoad = true;
+    await registry.refresh();
     expect(registry.getSnapshot()).toBe(snapshot);
   });
 
-  test("simpan nilai tidak sah: ditolak seluruhnya, tidak ada yang berubah", () => {
-    const { registry, storage } = makeRegistry();
+  test("simpan nilai sah: terkirim, snapshot dari jawaban server, pelanggan diberi tahu", async () => {
+    const { registry, server } = makeRegistry();
+    registry.subscribe(() => {});
+    await flush();
     let notified = 0;
     registry.subscribe(() => {
       notified += 1;
     });
+    const values = custom();
+    expect(await registry.save(values)).toEqual({ ok: true });
+    expect(server.sent).toEqual([custom()]);
+    expect(notified).toBe(1);
+    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
+    // Mengubah argumen sesudah menyimpan tidak mengubah yang tersimpan.
+    values.cpu.threshold = 99;
+    expect(registry.getSnapshot().values.cpu.threshold).toBe(70);
+  });
+
+  test("simpan nilai yang sama tidak mengganti objek snapshot", async () => {
+    const { registry } = makeRegistry();
+    await registry.save(custom());
+    const snapshot = registry.getSnapshot();
+    await registry.save(custom());
+    expect(registry.getSnapshot()).toBe(snapshot);
+  });
+
+  test("simpan nilai tidak sah: ditolak seluruhnya tanpa dikirim", async () => {
+    const { registry, server } = makeRegistry();
+    let notified = 0;
+    registry.subscribe(() => {
+      notified += 1;
+    });
+    await flush();
+    notified = 0;
     const before = registry.getSnapshot();
     const values = custom();
     values.queue.threshold = 49;
     values.optical.forSeconds = 5;
-    const result = registry.save(values);
+    const result = await registry.save(values);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(Object.keys(result.errors)).toEqual(["queue", "optical"]);
-    }
+    if (!result.ok) expect(Object.keys(result.errors)).toEqual(["queue", "optical"]);
+    expect(server.calls).not.toContain("save");
     expect(notified).toBe(0);
     expect(registry.getSnapshot()).toBe(before);
-    expect(storage.data.has(THRESHOLDS_STORAGE_KEY)).toBe(false);
   });
 
-  test("reset: kunci dihapus, kembali bawaan, pelanggan diberi tahu", () => {
-    const { registry, storage } = makeRegistry();
-    registry.save(custom());
-    let notified = 0;
-    registry.subscribe(() => {
-      notified += 1;
-    });
-    expect(registry.reset()).toEqual({ ok: true, persisted: true });
-    expect(storage.data.has(THRESHOLDS_STORAGE_KEY)).toBe(false);
-    expect(registry.getSnapshot()).toEqual(defaultThresholds());
-    expect(notified).toBe(1);
-  });
-
-  test("tab lain menyimpan: pelanggan diberi tahu dan nilainya ikut", () => {
-    const { registry, storage, fire } = makeRegistry();
-    let notified = 0;
-    registry.subscribe(() => {
-      notified += 1;
-    });
+  test("server menolak: pesan diteruskan, tidak ada yang berubah", async () => {
+    const { registry, server } = makeRegistry();
+    registry.subscribe(() => {});
+    await flush();
     const before = registry.getSnapshot();
-    storage.data.set(THRESHOLDS_STORAGE_KEY, serializeThresholds(custom()));
-    fire();
-    expect(notified).toBe(1);
-    expect(registry.getSnapshot()).toEqual(custom());
-    expect(registry.getSnapshot()).not.toBe(before);
-  });
-
-  test("teks berubah tetapi isinya sama: objek snapshot tetap", () => {
-    const { registry, storage } = makeRegistry();
-    registry.save(custom());
-    const snapshot = registry.getSnapshot();
-    // Urutan kunci dan spasi berbeda, nilainya sama.
-    storage.data.set(
-      THRESHOLDS_STORAGE_KEY,
-      JSON.stringify(JSON.parse(serializeThresholds(custom())), null, 2),
-    );
-    expect(registry.getSnapshot()).toBe(snapshot);
-  });
-
-  test("isi rusak: bawaan tanpa galat; sebagian rusak: yang sah dipakai", () => {
-    for (const raw of ["{", "[]", "null", '{"cpu":"x"}', "\u0000"]) {
-      const { registry } = makeRegistry(
-        fakeStorage({ [THRESHOLDS_STORAGE_KEY]: raw }),
-      );
-      expect(registry.getSnapshot()).toEqual(defaultThresholds());
-    }
-    const partial = makeRegistry(
-      fakeStorage({
-        [THRESHOLDS_STORAGE_KEY]: JSON.stringify({
-          queue: { threshold: 80, forSeconds: 20 },
-          cpu: { threshold: 1, forSeconds: 1 },
-        }),
-      }),
-    );
-    const snapshot = partial.registry.getSnapshot();
-    expect(snapshot.queue).toEqual({ threshold: 80, forSeconds: 20 });
-    expect(snapshot.cpu).toEqual({ threshold: 85, forSeconds: 180 });
-    // Menyimpan di atas isi rusak menulis teks yang bersih.
-    partial.registry.save(custom());
-    expect(
-      JSON.parse(partial.storage.data.get(THRESHOLDS_STORAGE_KEY)!).cpu,
-    ).toEqual({ threshold: 70, forSeconds: 300 });
-  });
-
-  test("penyimpanan tidak ada: nilai di sesi ini saja, tidak ada galat", () => {
-    const registry = createThresholdRegistry({
-      storage: () => null,
-      listen: () => () => {},
+    server.state.failWrite = true;
+    expect(await registry.save(custom())).toEqual({
+      ok: false,
+      errors: {},
+      message: "Akun Anda tidak punya izin mengubah ambang batas.",
     });
-    expect(registry.getSnapshot()).toEqual(defaultThresholds());
+    expect(await registry.reset()).toEqual({ ok: false, errors: {}, message: "offline" });
+    expect(registry.getSnapshot()).toBe(before);
+  });
+
+  test("reset: server menghapus baris, kembali bawaan, pelanggan diberi tahu", async () => {
+    const { registry, server } = makeRegistry();
+    await registry.save(custom());
     let notified = 0;
     registry.subscribe(() => {
       notified += 1;
     });
-    expect(registry.save(custom())).toEqual({ ok: true, persisted: false });
+    await flush();
+    notified = 0;
+    expect(await registry.reset()).toEqual({ ok: true });
+    expect(server.calls).toContain("reset");
+    expect(registry.getSnapshot().values).toEqual(defaultThresholds());
     expect(notified).toBe(1);
-    expect(registry.getSnapshot()).toEqual(custom());
-    expect(registry.reset()).toEqual({ ok: true, persisted: false });
-    expect(registry.getSnapshot()).toEqual(defaultThresholds());
   });
 
-  test("membaca melempar galat (diblokir): bawaan dan tetap bisa menyimpan di memori", () => {
-    const registry = createThresholdRegistry({
-      storage: () => ({
-        getItem: () => {
-          throw new Error("SecurityError");
-        },
-        setItem: () => {
-          throw new Error("SecurityError");
-        },
-        removeItem: () => {
-          throw new Error("SecurityError");
-        },
-      }),
-      listen: () => () => {},
+  test("jawaban server rusak: bawaan tanpa galat; sebagian rusak: yang sah dipakai", async () => {
+    for (const junk of ["{", [], 7, { cpu: "x" }, { __proto__: { cpu: 1 } }]) {
+      const { registry, server } = makeRegistry();
+      server.setStored(junk);
+      await registry.refresh();
+      expect(registry.getSnapshot()).toEqual({ values: defaultThresholds(), status: "ready" });
+    }
+    const { registry, server } = makeRegistry();
+    server.setStored({
+      queue: { threshold: 80, forSeconds: 20 },
+      cpu: { threshold: 1, forSeconds: 1 },
     });
-    expect(registry.getSnapshot()).toEqual(defaultThresholds());
-    expect(registry.save(custom())).toEqual({ ok: true, persisted: false });
-    expect(registry.getSnapshot()).toEqual(custom());
+    await registry.refresh();
+    expect(registry.getSnapshot().values.queue).toEqual({ threshold: 80, forSeconds: 20 });
+    expect(registry.getSnapshot().values.cpu).toEqual({ threshold: 85, forSeconds: 180 });
   });
 
-  test("menulis melempar galat (penuh): nilai tetap berlaku di sesi ini", () => {
-    const data = new Map<string, string>();
-    const registry = createThresholdRegistry({
-      storage: () => ({
-        getItem: (key) => data.get(key) ?? null,
-        setItem: () => {
-          throw new Error("QuotaExceededError");
-        },
-        removeItem: () => {},
-      }),
-      listen: () => () => {},
-    });
-    expect(registry.save(custom())).toEqual({ ok: true, persisted: false });
-    expect(registry.getSnapshot()).toEqual(custom());
-    // Sesudah gagal sekali, tidak ada percobaan menulis lagi dan tidak ada galat.
-    expect(registry.save(defaultThresholds())).toEqual({
-      ok: true,
-      persisted: false,
-    });
-    expect(registry.getSnapshot()).toEqual(defaultThresholds());
-  });
-
-  test("mendengarkan tab lain hanya selama ada pelanggan", () => {
+  test("mendengarkan fokus hanya selama ada pelanggan", () => {
     const { registry, counts } = makeRegistry();
     const stopA = registry.subscribe(() => {});
     const stopB = registry.subscribe(() => {});
@@ -1182,13 +1166,12 @@ test.describe("registry (penyimpanan tiruan)", () => {
     expect(counts()).toEqual({ listens: 2, stops: 1 });
   });
 
-  test("tidak menyimpan rahasia: hanya lima aturan dan dua angkanya", () => {
-    const { registry, storage } = makeRegistry();
-    registry.save(custom());
-    const stored = JSON.parse(storage.data.get(THRESHOLDS_STORAGE_KEY)!);
-    expect(Object.keys(stored)).toEqual([...ruleKinds]);
-    for (const entry of Object.values(stored) as object[]) {
+  test("yang dikirim hanya lima aturan dan dua angkanya", async () => {
+    const { registry, server } = makeRegistry();
+    await registry.save(custom());
+    const body = server.sent[0] as Record<string, object>;
+    expect(Object.keys(body)).toEqual([...ruleKinds]);
+    for (const entry of Object.values(body))
       expect(Object.keys(entry)).toEqual(["threshold", "forSeconds"]);
-    }
   });
 });

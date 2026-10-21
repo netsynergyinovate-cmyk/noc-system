@@ -54,6 +54,7 @@ itu dengan sengaja dan buang kolom rahasianya.
 
 - Belum ada pembatas laju per key; aplikasi luar sebaiknya menarik bertahap.
 - Belum ada filter `updatedSince`; sinkron bertahap harus menarik ulang per halaman.
-- Data yang masih di `localStorage` peramban (lihat AGENTS.md: ambang, alert
-  ditangani, pengaturan WhatsApp, dll.) belum ada di database, jadi belum bisa
-  ditarik. Itu tahap berikutnya.
+- Ambang (`alert-thresholds`) dan alert ditangani (`alerts`, kolom `handledBy`/
+  `handledAt`) sudah di database. Yang masih di `localStorage` peramban
+  (pengaturan WhatsApp, tiket alert, catatan mismatch billing, status anomali,
+  mapping ONU, riwayat diagnosa CPE, pengaturan aplikasi) belum bisa ditarik.

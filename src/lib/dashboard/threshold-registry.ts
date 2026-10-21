@@ -3,86 +3,103 @@ import {
   defaultThresholds,
   parseThresholds,
   sameThresholds,
-  serializeThresholds,
   validateThresholds,
   type ThresholdErrors,
   type ThresholdValues,
 } from "./thresholds";
 
-// AMBANG ALERT YANG TERSIMPAN. Pada fase frontend, bagian ini adalah "database"
-// tiruan untuk halaman Pengaturan > Ambang Batas, dengan pola yang sama seperti
-// handled-registry.ts: disimpan di localStorage supaya nilai bertahan setelah
-// halaman dimuat ulang dan ikut berubah di tab lain; bila penyimpanan diblokir
-// atau penuh, nilai hanya berlaku di sesi ini dan halaman tidak boleh roboh.
+// AMBANG ALERT YANG TERSIMPAN, untuk halaman Pengaturan > Ambang Batas. Sumbernya
+// tabel `alert_thresholds` lewat /api/thresholds: GET untuk semua sesi login,
+// PUT/DELETE butuh izin threshold:manage (server yang memeriksa). Rule engine Go
+// membaca tabel itu saat backend dinyalakan (backend/cmd/server/main.go), jadi
+// ambang baru berlaku setelah backend di-restart.
 //
 // Yang disimpan hanya angka ambang dan durasi. Tidak ada rahasia di sini.
 //
-// PENTING (kejujuran): rule engine di backend BELUM membaca nilai ini, dan daftar
-// anomali serta alert tiruan di dashboard tetap memakai `anomalyRules`. Backend
-// sungguhan menggantinya dengan tabel pengaturan yang dibaca rule engine.
-//
 // Bentuknya untuk useSyncExternalStore: `subscribe`, `getSnapshot` (objek yang
-// SAMA selama isinya sama, jadi tidak ada render berlebih) dan
-// `getServerSnapshot` (selalu nilai bawaan, supaya HTML server dan render
-// pertama di browser sama; nilai tersimpan masuk sesudah hidrasi).
+// SAMA selama isi dan status sama, jadi tidak ada render berlebih) dan
+// `getServerSnapshot` (selalu bawaan dengan status "loading", supaya HTML server
+// dan render pertama di browser sama; nilai dari server masuk sesudah dimuat).
 
-export const THRESHOLDS_STORAGE_KEY = "alertThresholds";
+export type ThresholdLoadStatus = "loading" | "ready" | "error";
 
-export type ThresholdStorage = Pick<
-  Storage,
-  "getItem" | "setItem" | "removeItem"
->;
+export interface ThresholdSnapshot {
+  values: ThresholdValues;
+  status: ThresholdLoadStatus;
+}
+
+// Jawaban `data` dari server; dibaca ulang lewat parseThresholds, jadi isi yang
+// aneh jatuh ke bawaan per aturan, tidak merobohkan halaman.
+export interface ThresholdRemote {
+  load(): Promise<unknown>;
+  save(values: ThresholdValues): Promise<unknown>;
+  reset(): Promise<unknown>;
+}
 
 export interface ThresholdRegistryOptions {
-  storage?: () => ThresholdStorage | null;
-  // Mendengarkan perubahan dari tab lain; mengembalikan fungsi untuk berhenti.
+  remote?: ThresholdRemote;
+  // Kapan nilai dimuat ulang (mis. tab kembali difokus, supaya simpanan dari
+  // tab atau petugas lain ikut); mengembalikan fungsi untuk berhenti.
   listen?: (onChange: () => void) => () => void;
 }
 
 export type SaveResult =
-  | {
-      ok: true;
-      // Benar bila nilai benar-benar tertulis di penyimpanan peramban; salah
-      // bila hanya berlaku di sesi ini karena penyimpanan tidak bisa dipakai.
-      persisted: boolean;
-    }
-  | { ok: false; errors: ThresholdErrors };
+  | { ok: true }
+  // `errors` terisi bila nilai ditolak sebelum dikirim; kosong bila server
+  // menolak atau tidak terjangkau (pesan ada di `message`).
+  | { ok: false; errors: ThresholdErrors; message: string };
 
-function defaultStorage(): ThresholdStorage | null {
+async function request(method: "GET" | "PUT" | "DELETE", body?: ThresholdValues) {
+  let res: Response;
   try {
-    return typeof localStorage === "undefined" ? null : localStorage;
+    res = await fetch("/api/thresholds", {
+      method,
+      cache: "no-store",
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
   } catch {
-    return null;
+    throw new Error("Server tidak terjangkau. Ambang belum berubah; coba lagi.");
   }
+  const json = (await res.json().catch(() => null)) as {
+    data?: unknown;
+    error?: { message?: string };
+  } | null;
+  if (res.status === 403)
+    throw new Error("Akun Anda tidak punya izin mengubah ambang batas.");
+  if (!res.ok)
+    throw new Error(
+      json?.error?.message ?? `Server gagal memproses ambang (HTTP ${res.status}).`,
+    );
+  return json?.data;
 }
 
-// Event `storage` hanya datang dari tab LAIN; perubahan di tab ini diberi tahu
-// langsung oleh registry.
+export const apiThresholdRemote: ThresholdRemote = {
+  load: () => request("GET"),
+  save: (values) => request("PUT", values),
+  reset: () => request("DELETE"),
+};
+
 function defaultListen(onChange: () => void) {
   if (typeof window === "undefined") return () => {};
-  const handler = (event: StorageEvent) => {
-    if (event.key === null || event.key === THRESHOLDS_STORAGE_KEY) onChange();
-  };
-  window.addEventListener("storage", handler);
-  return () => window.removeEventListener("storage", handler);
+  window.addEventListener("focus", onChange);
+  return () => window.removeEventListener("focus", onChange);
 }
 
-function freeze(values: ThresholdValues): ThresholdValues {
-  for (const rule of Object.values(values)) Object.freeze(rule);
-  return Object.freeze(values);
+function freeze(snapshot: ThresholdSnapshot): ThresholdSnapshot {
+  for (const rule of Object.values(snapshot.values)) Object.freeze(rule);
+  Object.freeze(snapshot.values);
+  return Object.freeze(snapshot);
 }
+
+const fromServer = (data: unknown) => parseThresholds(JSON.stringify(data ?? null));
 
 export function createThresholdRegistry({
-  storage = defaultStorage,
+  remote = apiThresholdRemote,
   listen = defaultListen,
 }: ThresholdRegistryOptions = {}) {
-  // Nilai yang berlaku sekarang. Objek yang sama dikembalikan sampai ISINYA
-  // berubah, bukan sampai teksnya berubah.
-  let current: ThresholdValues = freeze(defaultThresholds());
-  // Teks terakhir yang dibaca dari penyimpanan; undefined = belum pernah dibaca.
-  let lastRaw: string | null | undefined;
-  // Penyimpanan tidak bisa dipakai (diblokir atau penuh): nilai di memori saja.
-  let memoryOnly = false;
+  let snapshot = freeze({ values: defaultThresholds(), status: "loading" });
+  let loading: Promise<void> | null = null;
   const listeners = new Set<() => void>();
   let stopListening: (() => void) | null = null;
 
@@ -90,67 +107,64 @@ export function createThresholdRegistry({
     for (const listener of [...listeners]) listener();
   }
 
-  // Nilai tersimpan. Isi yang rusak tidak melempar galat (lihat parseThresholds).
-  function getSnapshot(): ThresholdValues {
-    if (memoryOnly) return current;
-    let raw: string | null;
-    try {
-      const store = storage();
-      if (store === null) {
-        memoryOnly = true;
-        return current;
-      }
-      raw = store.getItem(THRESHOLDS_STORAGE_KEY);
-    } catch {
-      memoryOnly = true;
-      return current;
-    }
-    if (raw !== lastRaw) {
-      lastRaw = raw;
-      const next = parseThresholds(raw);
-      if (!sameThresholds(next, current)) current = freeze(next);
-    }
-    return current;
-  }
-
-  // Menetapkan nilai baru; `raw` null berarti menghapus kuncinya (kembali ke
-  // bawaan).
-  function commit(next: ThresholdValues, raw: string | null): SaveResult {
-    if (!sameThresholds(next, current)) current = freeze(cloneThresholds(next));
-    let persisted = false;
-    if (!memoryOnly) {
-      try {
-        const store = storage();
-        if (store === null) throw new Error("tidak ada penyimpanan");
-        if (raw === null) store.removeItem(THRESHOLDS_STORAGE_KEY);
-        else store.setItem(THRESHOLDS_STORAGE_KEY, raw);
-        lastRaw = raw;
-        persisted = true;
-      } catch {
-        memoryOnly = true;
-      }
-    }
+  // Objek baru hanya bila isi atau status benar-benar berubah.
+  function set(values: ThresholdValues, status: ThresholdLoadStatus) {
+    const same = sameThresholds(values, snapshot.values);
+    if (same && status === snapshot.status) return;
+    snapshot = freeze({
+      values: same ? snapshot.values : cloneThresholds(values),
+      status,
+    });
     emit();
-    return { ok: true, persisted };
   }
 
-  // Menyimpan nilai. Nilai yang tidak lolos validasi ditolak seluruhnya dan tidak
-  // ada yang berubah.
-  function save(values: ThresholdValues): SaveResult {
+  // Satu permintaan sekaligus. Gagal sesudah pernah berhasil: nilai terakhir
+  // tetap dipakai (status tetap "ready").
+  function refresh(): Promise<void> {
+    loading ??= remote
+      .load()
+      .then(
+        (data) => set(fromServer(data), "ready"),
+        () => set(snapshot.values, snapshot.status === "ready" ? "ready" : "error"),
+      )
+      .finally(() => {
+        loading = null;
+      });
+    return loading;
+  }
+
+  async function write(op: () => Promise<unknown>): Promise<SaveResult> {
+    try {
+      set(fromServer(await op()), "ready");
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        errors: {},
+        message: error instanceof Error ? error.message : "Gagal menyimpan ambang.",
+      };
+    }
+  }
+
+  // Nilai yang tidak lolos validasi ditolak seluruhnya tanpa dikirim.
+  function save(values: ThresholdValues): Promise<SaveResult> {
     const errors = validateThresholds(values);
-    if (Object.keys(errors).length > 0) return { ok: false, errors };
-    const next = cloneThresholds(values);
-    return commit(next, serializeThresholds(next));
+    if (Object.keys(errors).length > 0)
+      return Promise.resolve({ ok: false, errors, message: "Perbaiki isian yang salah." });
+    return write(() => remote.save(cloneThresholds(values)));
   }
 
-  // Mengembalikan semua aturan ke nilai bawaan dan menghapus yang tersimpan.
-  function reset(): SaveResult {
-    return commit(defaultThresholds(), null);
+  // Menghapus semua baris: setiap aturan kembali ke bawaan.
+  function reset(): Promise<SaveResult> {
+    return write(() => remote.reset());
   }
 
   function subscribe(listener: () => void) {
     listeners.add(listener);
-    if (listeners.size === 1) stopListening = listen(emit);
+    if (listeners.size === 1) {
+      stopListening = listen(() => void refresh());
+      void refresh();
+    }
     return () => {
       listeners.delete(listener);
       if (listeners.size === 0) {
@@ -160,26 +174,25 @@ export function createThresholdRegistry({
     };
   }
 
-  const serverSnapshot = freeze(defaultThresholds());
+  const serverSnapshot = freeze({ values: defaultThresholds(), status: "loading" });
 
   return {
-    getSaved: getSnapshot,
     save,
     reset,
+    refresh,
     subscribe,
-    getSnapshot,
-    // Server dan render pertama di browser: selalu nilai bawaan.
+    getSnapshot: () => snapshot,
+    // Server dan render pertama di browser: selalu bawaan, sedang dimuat.
     getServerSnapshot: () => serverSnapshot,
   };
 }
 
 export type ThresholdRegistry = ReturnType<typeof createThresholdRegistry>;
 
-// Satu registry untuk seluruh halaman. Tidak menyentuh penyimpanan sampai
-// dibutuhkan, jadi aman diimpor di server.
+// Satu registry untuk seluruh halaman. Tidak memanggil server sampai ada
+// pelanggan, jadi aman diimpor di server.
 export const thresholdRegistry = createThresholdRegistry();
 
-export const getSavedThresholds = thresholdRegistry.getSaved;
 export const saveThresholds = thresholdRegistry.save;
 export const resetSavedThresholds = thresholdRegistry.reset;
 export const subscribeThresholds = thresholdRegistry.subscribe;

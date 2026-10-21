@@ -1,0 +1,27 @@
+name: noc-9router
+
+services:
+  9router:
+    image: decolua/9router:latest
+    container_name: nocsystem-9router
+    restart: unless-stopped
+    ports:
+      # Port 20128 untuk Web UI Dashboard (http://localhost:20128) dan API AI proxy (http://localhost:20128/v1)
+      - "127.0.0.1:20128:20128"
+    environment:
+      - DATA_DIR=/app/data
+      - PORT=20128
+      - INITIAL_PASSWORD=${NINE_ROUTER_PASSWORD:-123456}
+    volumes:
+      - 9router_data:/app/data
+    networks:
+      - nocsystem_default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  9router_data:
+
+networks:
+  nocsystem_default:
+    external: true

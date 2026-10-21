@@ -1,10 +1,34 @@
 import { NextResponse } from "next/server";
 import { withApiSession } from "@/lib/api";
-import { getCableMapData, getCablesByZoom } from "@/services/cable-map.service";
+import { getCableMapData, getCablesByZoom, createCable } from "@/services/cable-map.service";
 import { cableZoomQuerySchema } from "@/validators/cable-query";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  return withApiSession(request, async () => {
+    try {
+      const body = await request.json().catch(() => null);
+      if (!body?.name || !body?.sourceId || !Array.isArray(body?.polyline) || body.polyline.length < 2) {
+        return NextResponse.json({ ok: false, error: "Data tidak lengkap." }, { status: 400 });
+      }
+      const result = await createCable({
+        name: String(body.name),
+        sourceId: String(body.sourceId),
+        targetId: body.targetId ? String(body.targetId) : null,
+        cableType: body.cableType || "distribution",
+        coreCapacity: Number(body.coreCapacity) || 12,
+        color: body.color || "#3b82f6",
+        polyline: body.polyline,
+      });
+      return NextResponse.json({ ok: true, data: result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    }
+  });
+}
 
 export async function GET(request: Request) {
   return withApiSession(request, async () => {

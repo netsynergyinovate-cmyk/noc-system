@@ -31,12 +31,12 @@ services:
       context: .
       target: runner
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3001}:3000"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-noc-system-secure-auth-secret-32-chars}
-      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
       DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
       DASHBOARD_DATA: ${DASHBOARD_DATA:-live}
       DATA_MODE: ${DATA_MODE:-nyata}
@@ -69,7 +69,7 @@ services:
       BACKEND_ADDR: 0.0.0.0:8080
       DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:3000}
       # Kunci yang sama dengan aplikasi: membuka kata sandi router terenkripsi di database.
       DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
       DASHBOARD_DATA: ${DASHBOARD_DATA:-live}

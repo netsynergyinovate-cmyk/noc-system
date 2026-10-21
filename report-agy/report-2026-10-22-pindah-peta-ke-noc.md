@@ -7,6 +7,25 @@ Sumber: `E:\Halaman Maps\pages-maps\ngodingpakeai-starter` commit `a70f427`.
 - Data lama dimigrasi ke model baru. Saat diperiksa, DB live hanya berisi 0 `network_cables`, 0 `network_routes`, 0 `map_drawing_layers`, 2 `network_infrastructure`, dan 1 pelanggan berkoordinat. Perangkat dan pelanggan itu otomatis tampil di peta baru (dibaca langsung dari tabel NOC), jadi tidak ada skrip salin data.
 - Edit di peta disimpan di lapisan `map_overrides`, bukan ditulis ke tabel inti NOC.
 
+## Pindah data aplikasi peta (koreksi)
+Awalnya data yang kamu titik di aplikasi peta belum ikut pindah, karena DB-nya terpisah: PostgreSQL 18 Windows di `127.0.0.1:5433`, bukan Docker. Sekarang semuanya sudah disalin ke DB NOC (`nocsystem-postgres-1`) dalam satu transaksi:
+
+| Tabel asal | Tabel NOC | Baris |
+| --- | --- | --- |
+| network_devices | map_devices | 25 |
+| customers | map_customers | 0 |
+| cable_routes | cable_routes | 10 |
+| cable_segments | cable_segments | 25 |
+| cable_segment_samples | cable_segment_samples | 253 |
+| map_layers | map_layers | 1 |
+| map_overrides | map_overrides | 72 |
+| map_undo_entries | map_undo_entries | 117 |
+
+- Sebelum menyalin: 72 koreksi, semua rujukan jalur/segmen/induk, dan 1 tautan OLT terbukti menunjuk ID yang ada di NOC (0 hilang). Kolom kedua sisi identik.
+- Waktu disalin sebagai teks, jadi presisi mikrodetik tetap utuh.
+- Verifikasi: semua tabel identik per kolom antara DB asal dan NOC. Selisih checksum agregat untuk `map_undo_entries` hanya karena urutan sortir teks berbeda antara PostgreSQL Windows dan Linux; perbandingan per baris menunjukkan 0 beda dari 117.
+- DB aplikasi peta asal tidak diubah.
+
 ## Perubahan
 - `src/services/map/`: logika server peta (adapter, central-mapper, topology, loss-budget, undo, geo, types). `client.ts` sekarang memanggil service NOC di proses yang sama (`readExternalDataset`, `listCpeDevices`, `getVlanPonTraffic`, `getRouterQueues`, `snapToRoads`), tanpa HTTP dan API key.
 - `src/components/peta/`: 21 komponen UI peta (Leaflet).

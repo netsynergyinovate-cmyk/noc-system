@@ -42,3 +42,6 @@ graphify-out/
 
 # cadangan konfigurasi UI GenieACS (dibuat npm run genieacs:config)
 docker/genieacs/config/.backup/
+
+# Data OSM dan hasil olahan OSRM (ratusan MB, dibuat npm run osrm:download/osrm:prepare)
+docker/osrm/data/

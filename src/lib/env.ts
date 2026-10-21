@@ -107,6 +107,9 @@ const schema = z.object({
   BILLING_USERNAME: z.string().optional(),
   BILLING_PASSWORD: z.string().optional(),
   TARGET_DATABASE_URL: z.string().optional(),
+  // OSRM self-host untuk POST /api/snap (lihat docs/noc/road-snap.md). Di Docker
+  // isi http://osrm:5000 (nama layanan di compose.osrm.yaml).
+  OSRM_BASE_URL: z.url().default("http://127.0.0.1:5000"),
 });
 
 // Kosong dianggap tidak diisi, supaya baris kosong di .env.example tidak gagal.
@@ -140,6 +143,7 @@ const parsedEnv = schema.parse({
   BILLING_USERNAME: blankToUndefined(process.env.BILLING_USERNAME),
   BILLING_PASSWORD: blankToUndefined(process.env.BILLING_PASSWORD),
   TARGET_DATABASE_URL: blankToUndefined(process.env.TARGET_DATABASE_URL),
+  OSRM_BASE_URL: blankToUndefined(process.env.OSRM_BASE_URL),
 });
 
 // BACKEND_INTERNAL_URL selalu terisi lewat Proxy di bawah (jatuh ke BACKEND_URL

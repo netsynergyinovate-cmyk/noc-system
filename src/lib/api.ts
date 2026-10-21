@@ -28,13 +28,16 @@ type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>> & {
 const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
 
 // `Authorization: Bearer noc_...` from an external app (see docs/noc/api-key.md).
-async function apiKeySession(request: Request): Promise<Session | null> {
+async function apiKeySession(
+  request: Request,
+  readsOnly: boolean,
+): Promise<Session | null> {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return null;
   const found = await findApiKeyOwner(header.slice(7).trim());
   if (!found)
     throw new ApiError(401, "INVALID_API_KEY", "API key is invalid or revoked.");
-  if (found.access === "read" && !SAFE_METHODS.includes(request.method))
+  if (found.access === "read" && !readsOnly && !SAFE_METHODS.includes(request.method))
     throw new ApiError(403, "READ_ONLY_API_KEY", "This API key is read-only.");
   const now = new Date();
   return {
@@ -54,14 +57,17 @@ async function apiKeySession(request: Request): Promise<Session | null> {
 }
 
 // Shared HTTP concerns only. Domain rules and Drizzle queries live in services.
+// `readsOnly`: the handler changes no data although it is a POST (a computation
+// such as /api/snap), so read-only API keys may call it.
 export async function withApiSession(
   request: Request,
   handler: (session: Session) => Promise<Response>,
+  { readsOnly = false }: { readsOnly?: boolean } = {},
 ) {
   let response: Response;
   try {
     const session: Session | null =
-      (await apiKeySession(request)) ??
+      (await apiKeySession(request, readsOnly)) ??
       (await auth.api.getSession({
         headers: request.headers,
         query: { disableCookieCache: true },

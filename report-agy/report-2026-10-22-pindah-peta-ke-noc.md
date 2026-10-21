@@ -21,7 +21,7 @@ Sumber: `E:\Halaman Maps\pages-maps\ngodingpakeai-starter` commit `a70f427`.
 - `npm run typecheck`: lulus, 0 error.
 - `npx eslint` berkas yang diubah: 0 error.
 - `node --test tests/peta-*.test.mjs`: 41/41 lulus.
-- `npm test`: tidak ada kegagalan baru dibanding HEAD. Sisa kegagalan sudah ada sebelumnya (56 di HEAD, sekarang 51 setelah test lama dibuang).
+- `npm test` akhir: 2029 test, 1977 lulus, 52 gagal (HEAD: 2127/2071/56). Semua kegagalan sudah ada di HEAD, kecuali `audit-service-integration` yang gagal sekali di level berkas lalu lulus 3x saat dijalankan sendiri (flaky, tidak menyentuh kode peta).
 - `npm run build`: sukses, rute `/app/peta` dan `/api/peta/*` terdaftar.
 - `docker compose build migrator app`, migrator: "PostgreSQL migrations applied."; 8 tabel ada; app healthy; backend dan postgres tidak di-restart.
 - `/app/peta` tanpa login 307 ke `/sign-in`; `/api/peta/data` tanpa login 401.

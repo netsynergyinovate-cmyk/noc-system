@@ -218,6 +218,13 @@
       "when": 1792555431893,
       "tag": "0030_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792608410308,
+      "tag": "0031_map_network",
+      "breakpoints": true
     }
   ]
 }

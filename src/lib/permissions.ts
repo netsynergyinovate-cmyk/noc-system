@@ -28,6 +28,8 @@ export const statement = {
   billing: ["manage"],
   // Membuat dan mencabut API key untuk aplikasi luar (/api/api-keys).
   apiKey: ["manage"],
+  // Mengubah peta jaringan /app/peta (perangkat, jalur kabel, anotasi, koreksi lokasi).
+  map: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -44,6 +46,7 @@ export const roles = {
     threshold: [],
     billing: [],
     apiKey: [],
+    map: [],
     audit: ["read"],
   }),
   admin: ac.newRole({
@@ -55,6 +58,7 @@ export const roles = {
     threshold: ["manage"],
     billing: ["manage"],
     apiKey: ["manage"],
+    map: ["manage"],
     audit: ["read"],
   }),
 } as const;

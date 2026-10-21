@@ -66,11 +66,7 @@ test("Muat tile peta dari env tanpa titik contoh di kode", async (t) => {
   });
 
   await t.test("4. Halaman peta /app/peta menyajikan UI data nyata tanpa data tiruan terselubung", () => {
-    assert.match(
-      pageContent,
-      /getNetworkMapData\(\)/,
-      "Halaman peta harus memanggil getNetworkMapData() dari database",
-    );
+    assert.match(pageContent, /<MapClient \/>/, "Halaman peta harus merender peta jaringan (MapClient)");
     assert.doesNotMatch(
       pageContent,
       /getLocalMockMapData/,

@@ -134,33 +134,6 @@ test("Task: Petakan Kapasitas Serat ke Ketebalan dan Warna", async (t) => {
     );
   });
 
-  await t.test("4. Integrasi CableMapBoard: Legenda Dinamis Sinkron dengan CABLE_CAPACITY_TIERS", () => {
-    const boardFile = path.join(
-      rootDir,
-      "src",
-      "components",
-      "map",
-      "cable-map-board.tsx",
-    );
-    const content = fs.readFileSync(boardFile, "utf-8");
-
-    assert.match(
-      content,
-      /import\s*\{[^}]*CABLE_CAPACITY_TIERS[^}]*\}\s*from\s*["']@\/config\/cable-capacity["']/,
-      "cable-map-board.tsx harus mengimpor CABLE_CAPACITY_TIERS",
-    );
-    assert.match(
-      content,
-      /CABLE_CAPACITY_TIERS\.map\(/,
-      "cable-map-board.tsx harus me-render legenda secara dinamis dari CABLE_CAPACITY_TIERS",
-    );
-    assert.match(
-      content,
-      /data-testid=\{`legend-tier-\$\{tier\.category\}`\}/,
-      "Legenda harus memiliki testid per tier category",
-    );
-  });
-
   await t.test("5. Integrasi Service cable-map.service.ts Menyertakan color dan baseWeight", () => {
     const serviceFile = path.join(
       rootDir,

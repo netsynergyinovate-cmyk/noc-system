@@ -77,61 +77,6 @@ test("Task: Tambah, Geser, Hapus Titik Belokan Jalur Kabel (Waypoints Editor)", 
     );
   });
 
-  await t.test(
-    "4. Kontrol Antarmuka UI Editor: Tambah, Geser, Hapus & Simpan Titik Belokan",
-    () => {
-      const boardFile = path.join(
-        rootDir,
-        "src",
-        "components",
-        "map",
-        "cable-map-board.tsx",
-      );
-      const content = fs.readFileSync(boardFile, "utf-8");
-
-      assert.match(
-        content,
-        /data-testid="edit-cable-waypoints-button"/,
-        "Wajib menyediakan tombol buka mode edit titik belokan",
-      );
-      assert.match(
-        content,
-        /data-testid="cable-edit-mode-badge"/,
-        "Wajib menampilkan indikator mode edit aktif",
-      );
-      assert.match(
-        content,
-        /data-testid="add-waypoint-button"/,
-        "Wajib menyediakan tombol tambah titik belokan (waypoint)",
-      );
-      assert.match(
-        content,
-        /data-testid=\{`input-lat-waypoint-\$\{idx\}`\}/,
-        "Wajib menyediakan kontrol input untuk menggeser latitude titik belokan",
-      );
-      assert.match(
-        content,
-        /data-testid=\{`input-lng-waypoint-\$\{idx\}`\}/,
-        "Wajib menyediakan kontrol input untuk menggeser longitude titik belokan",
-      );
-      assert.match(
-        content,
-        /data-testid=\{`remove-waypoint-button-\$\{idx\}`\}/,
-        "Wajib menyediakan tombol hapus titik belokan perantara",
-      );
-      assert.match(
-        content,
-        /data-testid="save-waypoints-button"/,
-        "Wajib menyediakan tombol simpan belokan ke backend",
-      );
-      assert.match(
-        content,
-        /data-testid="cancel-edit-waypoints-button"/,
-        "Wajib menyediakan tombol batal edit",
-      );
-    },
-  );
-
   await t.test("5. Simulasi In-Memory: Penambahan, Pergeseran & Penghapusan Titik Waypoint", () => {
     // Array rute awal: 2 titik (Awal dan Akhir)
     let waypoints = [

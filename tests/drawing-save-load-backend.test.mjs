@@ -16,10 +16,6 @@ describe("Save & Load Drawing Layers from Real Backend Suite (Fase 5)", () => {
     process.cwd(),
     "src/app/api/map/drawing-layers/route.ts",
   );
-  const boardPath = path.resolve(
-    process.cwd(),
-    "src/components/map/drawing-layer-map-board.tsx",
-  );
 
   it("1. Validator batchSaveDrawingLayersSchema harus ada dan memvalidasi payload batch", () => {
     assert.ok(
@@ -85,76 +81,6 @@ describe("Save & Load Drawing Layers from Real Backend Suite (Fase 5)", () => {
       content,
       /batchSaveMapDrawingLayers/,
       "Handler PUT wajib memanggil fungsi service batchSaveMapDrawingLayers",
-    );
-  });
-
-  it("4. DrawingLayerMapBoard harus menyediakan tombol Simpan dan Muat Ulang Lapisan", () => {
-    const content = fs.readFileSync(boardPath, "utf-8");
-
-    assert.match(
-      content,
-      /data-testid="save-layers-button"/,
-      "Board wajib memiliki tombol Simpan Lapisan",
-    );
-    assert.match(
-      content,
-      /data-testid="reload-layers-button"/,
-      "Board wajib memiliki tombol Muat Ulang Lapisan dari PostgreSQL",
-    );
-    assert.match(
-      content,
-      /data-testid="sync-status-badge"/,
-      "Board wajib memiliki badge indikator status sinkronisasi",
-    );
-  });
-
-  it("5. DrawingLayerMapBoard harus mengimplementasikan handleSaveAllLayers via PUT dan handleReloadLayers via GET", () => {
-    const content = fs.readFileSync(boardPath, "utf-8");
-
-    assert.match(
-      content,
-      /const handleSaveAllLayers = async \(\) =>/,
-      "Board wajib mengimplementasikan handleSaveAllLayers",
-    );
-    assert.match(
-      content,
-      /method:\s*"PUT"/,
-      "handleSaveAllLayers wajib mengirim request PUT batch ke API",
-    );
-    assert.match(
-      content,
-      /const handleReloadLayers = async \(\) =>/,
-      "Board wajib mengimplementasikan handleReloadLayers",
-    );
-    assert.match(
-      content,
-      /fetch\("\/api\/map\/drawing-layers"\)/,
-      "handleReloadLayers wajib mengambil data lapisan terbaru via GET API",
-    );
-  });
-
-  it("6. DrawingLayerMapBoard harus melacak state perubahan belum disimpan (hasUnsavedChanges)", () => {
-    const content = fs.readFileSync(boardPath, "utf-8");
-
-    assert.match(
-      content,
-      /const \[hasUnsavedChanges, setHasUnsavedChanges\] = useState/,
-      "Board wajib memiliki state hasUnsavedChanges",
-    );
-    assert.match(
-      content,
-      /const \[isReloading, setIsReloading\] = useState/,
-      "Board wajib memiliki state isReloading",
-    );
-    assert.match(
-      content,
-      /setHasUnsavedChanges\(true\)/,
-      "Mutasi bentuk atau lapisan wajib mengaktifkan flag hasUnsavedChanges",
-    );
-    assert.match(
-      content,
-      /setHasUnsavedChanges\(false\)/,
-      "Setelah berhasil disimpan atau dimuat ulang, flag hasUnsavedChanges wajib di-reset ke false",
     );
   });
 });

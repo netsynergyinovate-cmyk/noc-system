@@ -168,6 +168,28 @@
   }
 }
 
+/* Animasi alir jalur peta (path SVG Leaflet): dash bergerak dari asal ke tujuan */
+@keyframes map-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+.map-flow {
+  stroke-dasharray: 10 4;
+  animation: map-flow 1.2s linear infinite;
+}
+.map-flow-slow {
+  animation-duration: 4s;
+}
+.map-flow-off {
+  stroke-dasharray: 3 7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-flow {
+    animation: none;
+  }
+}
+
 
 /* uPlot menggambar di canvas; hanya kotak info kursor yang perlu gaya. */
 .traffic-tip {

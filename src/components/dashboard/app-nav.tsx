@@ -26,7 +26,6 @@ import {
   Compass,
   Radio,
   MapPin,
-  Share2,
   KeyRound,
   type LucideIcon,
 } from "lucide-react";
@@ -73,8 +72,6 @@ const navCategories: NavCategory[] = [
       { label: "Router", href: "/app/router", Icon: Router },
       { label: "OLT & Optik", href: "/app/cpe", Icon: Network },
       { label: "Peta Jaringan", href: "/app/peta", Icon: MapPin },
-      { label: "Jalur Kabel", href: "/app/peta/kabel", Icon: Share2 },
-      { label: "Lapisan Gambar", href: "/app/peta/gambar", Icon: Layers },
       { label: "GenieACS (TR-069)", href: "/app/genieacs", Icon: Radio },
       { label: "Integrasi Perangkat", href: "/app/pengaturan/perangkat", Icon: Server },
     ],

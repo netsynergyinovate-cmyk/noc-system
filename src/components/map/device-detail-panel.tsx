@@ -668,7 +668,7 @@ export function DeviceDetailPanel({
                 variant="outline"
                 className="h-9 sm:h-8 px-2.5 text-xs sm:text-[11px] gap-1.5 font-medium col-span-2 bg-background hover:bg-muted"
               >
-                <Link href="/app/pelanggan/peta">
+                <Link href="/app/peta">
                   <MapPin className="size-3.5 text-primary shrink-0" />
                   <span>Lihat di Peta Sebaran</span>
                 </Link>

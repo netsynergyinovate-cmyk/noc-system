@@ -32,3 +32,13 @@ export * from "./network-infrastructure";
 export * from "./map-drawing-layers";
 export * from "./network-routes";
 export * from "./api-keys";
+// Peta jaringan (/app/peta): jalur kabel, lapisan anotasi, koreksi atas data NOC,
+// serta pelanggan/perangkat yang dibuat langsung di peta.
+export * from "./map-devices";
+export * from "./map-customers";
+export * from "./cable-routes";
+export * from "./cable-segments";
+export * from "./cable-segment-samples";
+export * from "./map-layers";
+export * from "./map-overrides";
+export * from "./map-undo-entries";

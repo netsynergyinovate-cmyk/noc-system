@@ -1,7 +1,22 @@
 import { z } from "zod";
 
+const COMPLAINT_MAX_AGE_MS = 7 * 24 * 3600_000;
+
+// complaintAt: waktu keluhan dilaporkan (opsional, bawaan = saat diminta).
+// Tidak boleh di masa depan atau lebih tua dari 7 hari (di luar retensi log).
 export const startDiagnosticSchema = z
-  .object({ customerId: z.string().uuid() })
+  .object({
+    customerId: z.string().uuid(),
+    complaintAt: z
+      .string()
+      .datetime({ offset: true })
+      .transform((v) => new Date(v))
+      .refine(
+        (d) => d.getTime() <= Date.now() + 5 * 60_000 && d.getTime() >= Date.now() - COMPLAINT_MAX_AGE_MS,
+        "Waktu keluhan harus dalam 7 hari terakhir dan tidak di masa depan.",
+      )
+      .optional(),
+  })
   .strict();
 
 export const diagnosticListQuerySchema = z.object({

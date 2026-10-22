@@ -82,6 +82,13 @@ type SyslogListener struct {
 	cacheMu     sync.Mutex
 	cached      map[netip.Addr]string // alamat router -> id router
 	cachedUntil time.Time
+	warnedAt    map[netip.Addr]time.Time
+
+	// sources: alamat pengirim tambahan -> id router (SYSLOG_SOURCE_MAP), untuk
+	// router yang mengirim log lewat alamat lain (mis. WireGuard) dari Host-nya.
+	sources map[netip.Addr]string
+	// store menerima setiap baris dari router dikenal (bukan hanya PPP).
+	store func(SyslogLine)
 
 	received, unknownSource, notPPP, rejected, applied atomic.Uint64
 }
@@ -99,6 +106,12 @@ func ListenSyslog(addr string, presence Presence, notify func(state.Change), log
 	}
 	return &SyslogListener{conn: conn, presence: presence, notify: notify, logger: logger}, nil
 }
+
+// SetSources menambah pemetaan alamat pengirim -> id router. Panggil sebelum Serve.
+func (l *SyslogListener) SetSources(m map[netip.Addr]string) { l.sources = m }
+
+// SetStore memasang penyimpan baris log. Panggil sebelum Serve.
+func (l *SyslogListener) SetStore(fn func(SyslogLine)) { l.store = fn }
 
 // Addr adalah alamat yang sedang didengarkan.
 func (l *SyslogListener) Addr() net.Addr { return l.conn.LocalAddr() }
@@ -149,7 +162,12 @@ func (l *SyslogListener) handle(from net.Addr, message string) {
 	routerID, ok := l.routerFor(from)
 	if !ok {
 		l.unknownSource.Add(1)
+		l.warnUnknown(from)
 		return
+	}
+	if l.store != nil {
+		facility, severity, topics, text := ParseSyslogLine(message)
+		l.store(SyslogLine{RouterID: routerID, ReceivedAt: time.Now(), Facility: facility, Severity: severity, Topics: topics, Message: text})
 	}
 	event, ok := ParseSyslog(message)
 	if !ok {
@@ -182,6 +200,9 @@ func (l *SyslogListener) routerFor(from net.Addr) (string, bool) {
 		return "", false
 	}
 	source := udp.AddrPort().Addr().Unmap()
+	if id, ok := l.sources[source]; ok {
+		return id, true
+	}
 
 	l.cacheMu.Lock()
 	defer l.cacheMu.Unlock()
@@ -196,6 +217,25 @@ func (l *SyslogListener) routerFor(from net.Addr) (string, bool) {
 	}
 	id, ok := l.cached[source]
 	return id, ok
+}
+
+// warnUnknown mencatat pengirim tak dikenal paling sering sekali per 10 menit
+// per alamat, supaya alamat itu bisa dipetakan lewat SYSLOG_SOURCE_MAP.
+func (l *SyslogListener) warnUnknown(from net.Addr) {
+	udp, ok := from.(*net.UDPAddr)
+	if !ok {
+		return
+	}
+	addr := udp.AddrPort().Addr().Unmap()
+	l.cacheMu.Lock()
+	defer l.cacheMu.Unlock()
+	if l.warnedAt == nil {
+		l.warnedAt = make(map[netip.Addr]time.Time)
+	}
+	if now := time.Now(); now.Sub(l.warnedAt[addr]) > 10*time.Minute {
+		l.warnedAt[addr] = now
+		l.logger.Warn("syslog dari alamat yang bukan router terdaftar dibuang; petakan lewat SYSLOG_SOURCE_MAP bila ini router", "alamat", addr.String())
+	}
 }
 
 // routerAddr mengambil alamat IP dari Host router, yang boleh berbentuk

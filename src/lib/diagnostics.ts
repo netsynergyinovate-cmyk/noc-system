@@ -422,6 +422,8 @@ export interface DiagnosticRunDto {
   verdictLayer: string | null;
   verdictDetail: string | null;
   isSharedFault: boolean;
+  complaintAt: string | null;
+  timeline: { at: string; kind: string; label: string; detail: string; source: string }[];
   findings?: FindingDto[];
 }
 
@@ -976,4 +978,284 @@ export function evaluateBillingNetwork(input: {
     };
   }
   return { ...base, value: "selaras", status: "ok", detail: "Status billing sesuai keadaan sesi di router." };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 3: log RouterOS dan korelasi waktu terhadap keluhan.
+// Pola diambil dari bentuk pesan asli router produksi (RouterOS 7).
+// ---------------------------------------------------------------------------
+
+export interface LogLine {
+  at: Date;
+  topics: string;
+  message: string;
+}
+
+export type LogKind =
+  | "login"
+  | "logout"
+  | "no_address"
+  | "auth_fail"
+  | "link_down"
+  | "link_up"
+  | "addr_conflict"
+  | "firewall"
+  | "noise"
+  | "other";
+
+export interface TimelineEvent {
+  at: string;
+  kind: string;
+  label: string;
+  detail: string;
+  source: string;
+}
+
+// Putus berulang: 3 kali dalam jendela = gangguan, 1-2 kali = peringatan.
+export const FLAP_FAIL_COUNT = 3;
+export const AUTH_FAIL_COUNT = 3;
+// Jendela analisis sebelum keluhan, dan cakupan log minimal sebelum keluhan.
+export const LOG_LOOKBACK_MS = 6 * 3600_000;
+export const LOG_MIN_COVERAGE_MS = 3600_000;
+export const TIMELINE_MAX = 60;
+
+const NOISE: [RegExp, string][] = [
+  [/\bdetect (UNKNOWN|WAN|LAN|INTERNET)\b/, "detect-internet"],
+  [/^user \S+ logged (in|out)\b/, "login akun pengelola (api/winbox/web)"],
+  [/: (authenticated|connected|disconnected|terminating\.\.\.)$/, "langkah rutin sesi PPP"],
+  [/^PPPoE connection established from /, "langkah rutin sesi PPP"],
+  [/\b(assigned|deassigned) \S+ (to|from) /, "pemberian lease DHCP rutin"],
+];
+
+// Jenis satu baris log. `noiseGroup` diisi untuk baris derau supaya
+// penyaringan bisa ditunjukkan dan ditinjau.
+export function classifyLogLine(line: Pick<LogLine, "topics" | "message">): {
+  kind: LogKind;
+  noiseGroup?: string;
+  sessionSec?: number;
+} {
+  const m = line.message.trim();
+  for (const [re, group] of NOISE) if (re.test(m)) return { kind: "noise", noiseGroup: group };
+  const out = /\blogged out, (\d+) /.exec(m);
+  if (out) return { kind: "logout", sessionSec: Number(out[1]) };
+  if (/\blogged out\b/.test(m)) return { kind: "logout" };
+  if (/\blogged in, /.test(m)) return { kind: "login" };
+  if (/could not determine remote address/.test(m)) return { kind: "no_address" };
+  if (/authentication failed|login failed|bad password|peer refused|max sessions/i.test(m)) return { kind: "auth_fail" };
+  if (/^\S+ link down\b/.test(m)) return { kind: "link_down" };
+  if (/^\S+ link up\b/.test(m)) return { kind: "link_up" };
+  if (/conflict|already in use|duplicate address|mac address changed/i.test(m)) return { kind: "addr_conflict" };
+  if (/\bfirewall\b/.test(line.topics)) return { kind: "firewall" };
+  return { kind: "other" };
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Baris yang menyangkut pelanggan: username/antarmuka PPPoE-nya, MAC
+// (caller-id), IP sesinya, atau antarmuka jalur (VLAN PON dan induknya).
+export function logLineMatcher(t: {
+  username: string;
+  mac: string | null;
+  ip: string | null;
+  interfaces: string[];
+}) {
+  const parts = [escapeRe(t.username)];
+  if (t.mac) parts.push(escapeRe(t.mac));
+  if (t.ip) parts.push(`(?<![\\d.])${escapeRe(t.ip)}(?![\\d.])`);
+  const who = new RegExp(parts.join("|"), "i");
+  const links = t.interfaces.filter(Boolean).map((i) => new RegExp(`^${escapeRe(i)} link (down|up)\\b`));
+  return (line: Pick<LogLine, "message">) => who.test(line.message) || links.some((re) => re.test(line.message.trim()));
+}
+
+const kindLabel: Record<LogKind, string> = {
+  login: "Sesi PPPoE tersambung",
+  logout: "Sesi PPPoE putus",
+  no_address: "Sesi tanpa alamat IP",
+  auth_fail: "Login PPPoE ditolak",
+  link_down: "Link turun",
+  link_up: "Link naik",
+  addr_conflict: "Bentrok alamat",
+  firewall: "Log firewall",
+  noise: "Derau",
+  other: "Log router",
+};
+
+
+export function analyzeLog(input: {
+  lines: LogLine[];
+  matches: (line: LogLine) => boolean;
+  complaintAt: Date;
+  now: Date;
+  // Awal cakupan log yang tersedia (baris tertua yang dimiliki sumber).
+  coverageStart: Date | null;
+  sourceLabel: string;
+  sourceRef: string;
+}): { findings: Finding[]; timeline: TimelineEvent[] } {
+  const { complaintAt, now, coverageStart, sourceRef } = input;
+  const from = new Date(Math.max(complaintAt.getTime() - LOG_LOOKBACK_MS, coverageStart?.getTime() ?? 0));
+  const base = { layer: "log" as const, sourceRef, sampledAt: now };
+  const findings: Finding[] = [];
+
+  const covered = coverageStart !== null && coverageStart.getTime() <= complaintAt.getTime() - LOG_MIN_COVERAGE_MS;
+  const span = coverageStart ? `${fmtTime(coverageStart)} – ${fmtTime(now)}` : "tidak ada";
+  findings.push(
+    covered
+      ? {
+          ...base,
+          metric: "log_coverage",
+          label: "Cakupan log",
+          value: span,
+          threshold: "≥ 1 jam sebelum keluhan",
+          comparator: "mencakup",
+          status: "ok",
+          detail: `${input.sourceLabel}. Dianalisis sejak ${fmtTime(from)}.`,
+        }
+      : unchecked(
+          "log",
+          "log_coverage",
+          "Cakupan log",
+          coverageStart
+            ? `${input.sourceLabel} hanya mencakup ${span}, padahal perlu sejak 1 jam sebelum keluhan (${fmtTime(complaintAt)}); kejadian sebelum ${fmtTime(coverageStart)} tidak dapat diperiksa. Aktifkan syslog remote router ke NOC.`
+            : `${input.sourceLabel} tidak berisi baris log.`,
+          sourceRef,
+        ),
+  );
+  if (!coverageStart) return { findings, timeline: [] };
+
+  const noise = new Map<string, number>();
+  const relevant: (LogLine & { kind: LogKind; sessionSec?: number })[] = [];
+  for (const line of input.lines) {
+    if (line.at < from || !input.matches(line)) continue;
+    const c = classifyLogLine(line);
+    if (c.kind === "noise") {
+      noise.set(c.noiseGroup!, (noise.get(c.noiseGroup!) ?? 0) + 1);
+      continue;
+    }
+    relevant.push({ ...line, kind: c.kind, sessionSec: c.sessionSec });
+  }
+  const of = (k: LogKind) => relevant.filter((r) => r.kind === k);
+  const split = (list: LogLine[]) => {
+    const before = list.filter((l) => l.at <= complaintAt).length;
+    return `${before} sebelum, ${list.length - before} sesudah keluhan`;
+  };
+  const windowText = `sejak ${fmtTime(from)}`;
+  const count = (
+    metric: string,
+    label: string,
+    list: (LogLine & { sessionSec?: number })[],
+    failAt: number,
+    detailBad: string,
+    detailOk: string,
+    extra = "",
+  ): Finding => ({
+    ...base,
+    metric,
+    label,
+    value: `${list.length} kali (${split(list)})${extra}`,
+    threshold: `${failAt} kali ${windowText}`,
+    comparator: "<",
+    status: list.length >= failAt ? "fail" : list.length > 0 ? "warn" : "ok",
+    detail: list.length ? detailBad : detailOk,
+  });
+
+  const logouts = of("logout");
+  const shortest = logouts.reduce<number | null>((m, l) => (l.sessionSec === undefined ? m : m === null ? l.sessionSec : Math.min(m, l.sessionSec)), null);
+  findings.push(
+    count(
+      "ppp_flap",
+      "Sesi PPPoE putus",
+      logouts,
+      FLAP_FAIL_COUNT,
+      "Sesi putus-nyambung: indikasi kabel/optik, modem, atau kredensial/profil bermasalah.",
+      "Tidak ada sesi putus pada jendela log.",
+      shortest !== null ? `, sesi terpendek ${shortest} dtk` : "",
+    ),
+  );
+  const noAddr = of("no_address");
+  findings.push(
+    count(
+      "ppp_no_address",
+      "Sesi tanpa alamat IP",
+      noAddr,
+      1,
+      "Router tidak bisa memberi alamat IP ke sesi (\"could not determine remote address\"): pool IP habis atau RADIUS tidak mengirim Framed-IP-Address, sehingga sesi langsung putus.",
+      "Setiap sesi mendapat alamat IP.",
+    ),
+  );
+  findings.push(
+    count(
+      "ppp_auth_fail",
+      "Login PPPoE ditolak",
+      of("auth_fail"),
+      AUTH_FAIL_COUNT,
+      "Login ditolak: kredensial PPPoE di modem salah, akun nonaktif, atau batas sesi.",
+      "Tidak ada login yang ditolak.",
+    ),
+  );
+  const downs = of("link_down");
+  findings.push(
+    count(
+      "link_flap",
+      "Link jalur turun",
+      downs,
+      1,
+      `Link jalur pelanggan turun: ${[...new Set(downs.map((d) => d.message.split(" ")[0]))].join(", ")}.`,
+      "Link jalur ke OLT tidak turun pada jendela log.",
+    ),
+  );
+  findings.push(
+    count(
+      "addr_conflict",
+      "Bentrok alamat di log",
+      of("addr_conflict"),
+      FLAP_FAIL_COUNT,
+      "Router mencatat bentrok alamat/MAC yang menyangkut pelanggan.",
+      "Tidak ada bentrok alamat tercatat.",
+    ),
+  );
+  const fw = of("firewall");
+  if (fw.length) {
+    findings.push(count("firewall_log", "Log firewall untuk pelanggan", fw, FLAP_FAIL_COUNT, "Rule firewall yang di-log mengenai trafik pelanggan.", ""));
+  }
+  const noiseTotal = [...noise.values()].reduce((a, b) => a + b, 0);
+  findings.push({
+    ...base,
+    metric: "log_noise",
+    label: "Baris rutin yang disaring",
+    value: `${noiseTotal} baris`,
+    threshold: null,
+    comparator: null,
+    status: "ok",
+    detail: noiseTotal
+      ? `Tidak dihitung sebagai kejadian: ${[...noise].map(([g, n]) => `${n} ${g}`).join(", ")}.`
+      : "Tidak ada baris rutin.",
+  });
+
+  // Garis waktu: kejadian terdekat dengan waktu keluhan.
+  const events = relevant
+    .slice()
+    .sort((a, b) => Math.abs(a.at.getTime() - complaintAt.getTime()) - Math.abs(b.at.getTime() - complaintAt.getTime()))
+    .slice(0, TIMELINE_MAX)
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    .map((l) => ({
+      at: l.at.toISOString(),
+      kind: `log_${l.kind}`,
+      label: kindLabel[l.kind],
+      detail: l.message,
+      source: input.sourceLabel,
+    }));
+  return { findings, timeline: events };
+}
+
+// "2026-10-22 19:49:02" (jam router, WIB) atau "19:49:02" (hari ini) -> Date.
+export function parseRouterLogTime(value: string, now: Date, offset = "+07:00"): Date | null {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(now);
+  const full = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    ? value.replace(" ", "T")
+    : /^\d{2}:\d{2}:\d{2}$/.test(value)
+      ? `${today}T${value}`
+      : null;
+  if (!full) return null;
+  const d = new Date(`${full}${offset}`);
+  return Number.isNaN(d.getTime()) ? null : d;
 }

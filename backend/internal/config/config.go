@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"noc-isp/backend/internal/auth"
 )
@@ -38,6 +41,12 @@ type Config struct {
 	// SyslogAddr adalah alamat UDP untuk syslog dari router, mis. 0.0.0.0:514.
 	// Kosong berarti listener syslog dimatikan.
 	SyslogAddr string
+	// SyslogSources memetakan alamat pengirim syslog ke id router, untuk router
+	// yang mengirim log dari alamat selain Host-nya (mis. lewat WireGuard).
+	// Dari SYSLOG_SOURCE_MAP: "10.20.30.1=<uuid router>,..." .
+	SyslogSources map[netip.Addr]string
+	// SyslogRetention adalah umur log tersimpan (SYSLOG_RETENTION_DAYS, bawaan 14).
+	SyslogRetention time.Duration
 
 	// DatabaseURL adalah alamat PostgreSQL untuk arsip traffic (histori). Kosong
 	// berarti arsip dimatikan; pemantauan real-time tidak membutuhkannya.
@@ -152,6 +161,19 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
+	syslogSources, err := parseSyslogSources(getenv("SYSLOG_SOURCE_MAP"))
+	if err != nil {
+		return Config{}, err
+	}
+	syslogRetention := 14 * 24 * time.Hour
+	if raw := strings.TrimSpace(getenv("SYSLOG_RETENTION_DAYS")); raw != "" {
+		days, convErr := strconv.Atoi(raw)
+		if convErr != nil || days < 1 || days > 365 {
+			return Config{}, fmt.Errorf("SYSLOG_RETENTION_DAYS %q tidak valid (1-365)", raw)
+		}
+		syslogRetention = time.Duration(days) * 24 * time.Hour
+	}
+
 	databaseURL, err := parseDatabaseURL(getenv("DATABASE_URL"))
 	if err != nil {
 		return Config{}, err
@@ -216,8 +238,30 @@ func Load(getenv func(string) string) (Config, error) {
 		AllowedOrigins:  origins,
 		PPPWebhookToken: webhookToken,
 		SyslogAddr:      syslogAddr,
+		SyslogSources:   syslogSources,
+		SyslogRetention: syslogRetention,
 		DatabaseURL:     databaseURL,
 	}, nil
+}
+
+var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// parseSyslogSources membaca "alamat=uuid-router" dipisah koma. Kosong = tanpa peta.
+func parseSyslogSources(raw string) (map[netip.Addr]string, error) {
+	out := map[netip.Addr]string{}
+	for _, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		ip, id, ok := strings.Cut(item, "=")
+		addr, err := netip.ParseAddr(strings.TrimSpace(ip))
+		if !ok || err != nil || !uuidPattern.MatchString(strings.TrimSpace(id)) {
+			return nil, fmt.Errorf("SYSLOG_SOURCE_MAP %q tidak valid (contoh: 10.20.30.1=<uuid router>)", item)
+		}
+		out[addr.Unmap()] = strings.ToLower(strings.TrimSpace(id))
+	}
+	return out, nil
 }
 
 // parseDatabaseURL menerima kosong (arsip mati) atau URL postgres:// atau

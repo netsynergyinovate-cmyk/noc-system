@@ -65,8 +65,16 @@ services:
     ports:
       # Hanya loopback: browser di komputer ini. Ubah sadar bila perlu diakses dari jaringan.
       - "127.0.0.1:8080:8080"
+      # Syslog router (UDP) untuk diagnosa pelanggan. Tanpa autentikasi: listener
+      # hanya menerima alamat router terdaftar atau yang dipetakan di SYSLOG_SOURCE_MAP.
+      - "5514:5514/udp"
     environment:
       BACKEND_ADDR: 0.0.0.0:8080
+      SYSLOG_ADDR: ${SYSLOG_ADDR:-0.0.0.0:5514}
+      # Router yang mengirim log dari alamat lain (mis. WireGuard 10.20.30.1):
+      # "10.20.30.1=<uuid router>". Alamat tak dikenal dicatat di log backend.
+      SYSLOG_SOURCE_MAP: ${SYSLOG_SOURCE_MAP:-}
+      SYSLOG_RETENTION_DAYS: ${SYSLOG_RETENTION_DAYS:-14}
       DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:3000}

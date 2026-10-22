@@ -986,6 +986,23 @@ topik `ppp,account` ke backend (`/system logging action` tipe `remote`, lalu
 - Baris login sistem (`user admin logged in ... via winbox`, topik `system`)
   sengaja diabaikan.
 
+**Penyimpanan untuk diagnosa pelanggan.** Bila `DATABASE_URL` ada, *setiap* baris dari
+router dikenal (bukan hanya PPP) disimpan ke `syslog_events` (`syslog_store.go`,
+batch per detik, antrean 10.000 baris; penuh = baris dibuang dan dicatat) dan dihapus
+sesudah `SYSLOG_RETENTION_DAYS` (bawaan 14). Diagnosa `/app/anomali` membaca tabel
+ini; bila tidak ada baris baru 15 menit, ia memakai buffer memori router (`/log`,
+1000 baris, belasan menit pada router ramai) dan menyatakan cakupannya.
+
+- `SYSLOG_SOURCE_MAP=10.20.30.1=<uuid router>`: router yang mengirim log dari alamat
+  lain daripada `Host`-nya (router produksi terdaftar dengan IP publik, log datang
+  lewat WireGuard). Paket dari alamat tak dikenal dibuang dan alamatnya dicatat di log
+  backend paling sering sekali per 10 menit, supaya bisa dipetakan. Docker Desktop
+  dapat mengganti alamat sumber UDP; petakan alamat yang tercatat itu.
+- Format yang dikenali: PRI opsional, header BSD atau RFC 5424 opsional, lalu topik
+  RouterOS (boleh diakhiri `:`). Penyaringan derau dilakukan saat dibaca, bukan saat
+  disimpan.
+- `compose.yaml` menyalakan listener di `0.0.0.0:5514` dan menerbitkan `5514/udp`.
+
 **Belum diuji terhadap router sungguhan.** Format baris syslog di atas (topik lalu
 pesan) berdasarkan keluaran RouterOS yang umum, dan yang dikirim `/tool fetch`
 diuji tanpa asumsi Content-Type. Coba pada satu router sebelum diandalkan.

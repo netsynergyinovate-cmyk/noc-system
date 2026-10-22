@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -53,6 +54,13 @@ export const diagnosticRuns = pgTable(
       .notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    // Waktu keluhan/kejadian pemicu; acuan garis waktu. Kosong = waktu diminta.
+    complaintAt: timestamp("complaint_at", { withTimezone: true }),
+    // Kejadian log & alert di sekitar keluhan, potret saat diagnosa berjalan.
+    timeline: jsonb("timeline")
+      .$type<{ at: string; kind: string; label: string; detail: string; source: string }[]>()
+      .default([])
+      .notNull(),
     verdictLayer: text("verdict_layer"),
     verdictDetail: text("verdict_detail"),
     isSharedFault: boolean("is_shared_fault").default(false).notNull(),

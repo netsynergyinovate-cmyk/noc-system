@@ -160,6 +160,38 @@ test("billing RunsNet: status aktif, tunggakan, lapisan router & ONT tidak dapat
   assert.equal(run.verdictLayer, "billing");
 });
 
+test("log: syslog tersimpan dipakai, putus berulang = fail, garis waktu relatif keluhan", { skip }, async () => {
+  const { db, schema } = m;
+  const now = Date.now();
+  const at = (minAgo, sec = 0) => new Date(now - minAgo * 60_000 + sec * 1000);
+  const user = `a-${tag}`;
+  const rows = [];
+  // Cakupan 3 jam ke belakang, lalu 4 siklus putus-nyambung sekitar keluhan.
+  rows.push({ routerId: ids.router, receivedAt: at(180), topics: "system,info", message: "router mulai mengirim log" });
+  for (const minAgo of [40, 30, 20, 5]) {
+    rows.push({ routerId: ids.router, receivedAt: at(minAgo), topics: "pppoe,ppp,info,account", message: `${user} logged in, 0.0.0.0 from AA:BB:CC:DD:EE:FF` });
+    rows.push({ routerId: ids.router, receivedAt: at(minAgo, 1), topics: "pppoe,ppp,info", message: `<pppoe-${user}>: could not determine remote address, using 0.0.0.0` });
+    rows.push({ routerId: ids.router, receivedAt: at(minAgo, 2), topics: "interface,info", message: `<pppoe-${user}> detect UNKNOWN` });
+    rows.push({ routerId: ids.router, receivedAt: at(minAgo, 3), topics: "pppoe,ppp,info,account", message: `${user} logged out, 3 0 0 0 0 from AA:BB:CC:DD:EE:FF` });
+  }
+  rows.push({ routerId: ids.router, receivedAt: at(1), topics: "pppoe,ppp,info,account", message: "pelanggan-lain logged out, 9 0 0 0 0 from 11:22" });
+  await db.insert(schema.syslogEvents).values(rows);
+
+  const complaintAt = at(25);
+  const started = await m.startManualDiagnostic(ids.a, { id: "u1", name: "Operator Uji" }, complaintAt);
+  const run = await waitDone(started.run.id);
+  assert.equal(new Date(run.complaintAt).getTime(), complaintAt.getTime());
+  const by = Object.fromEntries(run.findings.map((f) => [f.metric, f]));
+  assert.equal(by.log_coverage.status, "ok");
+  assert.match(by.log_coverage.sourceRef, /syslog_events/);
+  assert.equal(by.ppp_flap.status, "fail");
+  assert.match(by.ppp_flap.value, /4 kali \(2 sebelum, 2 sesudah keluhan\)/);
+  assert.equal(by.ppp_no_address.status, "fail");
+  assert.equal(by.log_noise.value, "4 baris");
+  assert.ok(run.timeline.length >= 12);
+  assert.ok(run.timeline.every((e) => !e.detail.includes("pelanggan-lain")));
+});
+
 test("otomatis: gangguan massal menahan diagnosa per pelanggan", { skip }, async () => {
   const { db, schema } = m;
   await m.updateDiagnosticPolicy(policy({ massThreshold: 2 }), "test");

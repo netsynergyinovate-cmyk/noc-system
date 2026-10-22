@@ -109,10 +109,11 @@ func run() error {
 	// belum siap tidak menghalangi backend naik; pemantauan real-time tidak
 	// bergantung padanya.
 	var (
-		billingDB   billing.DB     // nil bila DATABASE_URL kosong
-		billingRead billing.ReadDB // pool yang sama, untuk endpoint /api/v1/billing
-		thresholdDB engine.Querier // pool yang sama, untuk ambang alert
-		alertDB     engine.Execer  // pool yang sama, untuk menyimpan alert engine
+		billingDB   billing.DB       // nil bila DATABASE_URL kosong
+		billingRead billing.ReadDB   // pool yang sama, untuk endpoint /api/v1/billing
+		thresholdDB engine.Querier   // pool yang sama, untuk ambang alert
+		alertDB     engine.Execer    // pool yang sama, untuk menyimpan alert engine
+		syslogDB    collector.Execer // pool yang sama, untuk menyimpan log router
 	)
 	if cfg.DatabaseURL == "" {
 		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
@@ -130,6 +131,7 @@ func run() error {
 		go collector.StartDatabaseWatcher(ctx, pool, manager, 15*time.Second, logger)
 		// Status online dari polling, webhook, dan syslog ikut ditulis ke
 		// customers.is_online; hub tetap menerima perubahan yang sama.
+		syslogDB = pool
 		onlineWriter := collector.NewOnlineWriter(pool, logger)
 		go onlineWriter.Run(ctx)
 		notifyHub := notify
@@ -233,7 +235,15 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		logger.Info("syslog UDP mendengarkan", "addr", syslog.Addr().String())
+		syslog.SetSources(cfg.SyslogSources)
+		if syslogDB != nil {
+			// Semua baris dari router dikenal disimpan untuk diagnosa pelanggan
+			// (buffer memori router hanya belasan menit).
+			syslogWriter := collector.NewSyslogWriter(syslogDB, cfg.SyslogRetention, logger)
+			go syslogWriter.Run(ctx)
+			syslog.SetStore(syslogWriter.Add)
+		}
+		logger.Info("syslog UDP mendengarkan", "addr", syslog.Addr().String(), "peta_sumber", len(cfg.SyslogSources), "simpan", syslogDB != nil)
 		go func() {
 			if err := syslog.Serve(ctx); err != nil {
 				logger.Error("listener syslog berhenti", "error", err)

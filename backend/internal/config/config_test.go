@@ -185,3 +185,32 @@ func TestLoadSyslogAddr(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadSyslogSourceMapAndRetention(t *testing.T) {
+	cfg, err := Load(envFrom(map[string]string{
+		"SYSLOG_SOURCE_MAP":     "10.20.30.1=6F1B2C3D-0000-4000-8000-000000000001, ",
+		"SYSLOG_RETENTION_DAYS": "7",
+	}))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(cfg.SyslogSources) != 1 {
+		t.Fatalf("SyslogSources = %v", cfg.SyslogSources)
+	}
+	for addr, id := range cfg.SyslogSources {
+		if addr.String() != "10.20.30.1" || id != "6f1b2c3d-0000-4000-8000-000000000001" {
+			t.Errorf("peta = %s=%s", addr, id)
+		}
+	}
+	if cfg.SyslogRetention.Hours() != 7*24 {
+		t.Errorf("SyslogRetention = %v", cfg.SyslogRetention)
+	}
+	for _, bad := range []string{"10.20.30.1", "x=6f1b2c3d-0000-4000-8000-000000000001", "10.20.30.1=bukan-uuid"} {
+		if _, err := Load(envFrom(map[string]string{"SYSLOG_SOURCE_MAP": bad})); err == nil {
+			t.Errorf("SYSLOG_SOURCE_MAP %q diterima", bad)
+		}
+	}
+	if _, err := Load(envFrom(map[string]string{"SYSLOG_RETENTION_DAYS": "0"})); err == nil {
+		t.Error("SYSLOG_RETENTION_DAYS 0 diterima")
+	}
+}

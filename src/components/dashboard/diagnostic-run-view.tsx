@@ -145,6 +145,69 @@ function FindingRow({ f }: { f: FindingDto }) {
   );
 }
 
+const eventTone: Record<string, string> = {
+  log_logout: "text-destructive",
+  log_no_address: "text-destructive",
+  log_auth_fail: "text-destructive",
+  log_link_down: "text-destructive",
+  log_addr_conflict: "text-warning",
+  log_firewall: "text-warning",
+  alert: "text-warning",
+  log_login: "text-success",
+  log_link_up: "text-success",
+  alert_end: "text-success",
+};
+
+function relative(ms: number) {
+  const sec = Math.round(Math.abs(ms) / 1000);
+  if (sec < 30) return "saat keluhan";
+  const text = sec < 3600 ? `${Math.round(sec / 60)} mnt` : `${(sec / 3600).toFixed(1)} jam`;
+  return ms < 0 ? `${text} sebelum` : `${text} sesudah`;
+}
+
+// Kejadian log dan alert diurut waktu, dengan penanda keluhan di posisinya.
+function Timeline({ run }: { run: DiagnosticRunDto }) {
+  const anchorIso = run.complaintAt ?? run.createdAt;
+  const anchor = new Date(anchorIso).getTime();
+  const items = run.timeline ?? [];
+  const before = items.filter((e) => new Date(e.at).getTime() <= anchor);
+  const after = items.filter((e) => new Date(e.at).getTime() > anchor);
+  const row = (e: DiagnosticRunDto["timeline"][number], i: number) => (
+    <li key={`${e.at}-${i}`} className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:gap-3" data-testid="timeline-event">
+      <span className="w-40 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
+        {formatWhen(e.at)}
+        <span className="block">{relative(new Date(e.at).getTime() - anchor)}</span>
+      </span>
+      <span className="min-w-0">
+        <span className={cn("font-medium", eventTone[e.kind])}>{e.label}</span>
+        <span className="block break-words text-xs text-muted-foreground">
+          {e.detail} · {e.source}
+        </span>
+      </span>
+    </li>
+  );
+  return (
+    <section aria-labelledby={`timeline-${run.id}`} className="rounded-md border px-3 py-2">
+      <h3 id={`timeline-${run.id}`} className="text-sm font-semibold">
+        Garis waktu terhadap keluhan
+      </h3>
+      {items.length === 0 ? (
+        <p className="py-2 text-sm text-muted-foreground">
+          Tidak ada kejadian log atau alert pelanggan di sekitar keluhan (lihat cakupan log di lapisan Log).
+        </p>
+      ) : (
+        <ol className="divide-y text-sm">
+          {before.map(row)}
+          <li className="py-1.5 text-xs font-semibold text-primary" data-testid="timeline-complaint">
+            ▶ Keluhan · {formatWhen(anchorIso)}
+          </li>
+          {after.map(row)}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 export function DiagnosticRunView({ runId }: { runId: string }) {
   const { run, error } = useDiagnosticRun(runId);
 
@@ -177,7 +240,8 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
         </div>
         <RunOrigin run={run} />
         <p className="text-xs text-muted-foreground">
-          Diminta {formatWhen(run.createdAt)} · mulai {formatWhen(run.startedAt)} · selesai{" "}
+          Keluhan {formatWhen(run.complaintAt ?? run.createdAt)} · diminta {formatWhen(run.createdAt)} · mulai{" "}
+          {formatWhen(run.startedAt)} · selesai{" "}
           {formatWhen(run.finishedAt)}
         </p>
       </div>
@@ -239,6 +303,7 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
           );
         })}
       </ol>
+      {!active && !run.isSharedFault && <Timeline run={run} />}
     </div>
   );
 }

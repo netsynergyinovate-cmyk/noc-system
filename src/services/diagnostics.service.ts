@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gt, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   alerts,
@@ -15,12 +15,15 @@ import {
   routers,
   runsnetCustomers,
   runsnetInvoices,
+  syslogEvents,
 } from "@/db/schema";
 import {
   AUTO_PRIORITY,
+  LOG_LOOKBACK_MS,
   MANUAL_PRIORITY,
   addressListMembership,
   alertTriggerReason,
+  analyzeLog,
   autoDedupeKey,
   createDiagnosticQueue,
   diagnosticLayers,
@@ -37,6 +40,8 @@ import {
   evaluatePppoe,
   evaluateQueue,
   evaluateRunsnetStatus,
+  logLineMatcher,
+  parseRouterLogTime,
   pendingLayer,
   pickVerdict,
   sharedDedupeKey,
@@ -46,7 +51,9 @@ import {
   type DiagnosticRunDto,
   type Finding,
   type FindingDto,
+  type LogLine,
   type Ros,
+  type TimelineEvent,
 } from "@/lib/diagnostics";
 import { GenieAcsClient } from "@/lib/genieacs/client";
 import { getGenieacsConfig } from "@/lib/genieacs/config";
@@ -119,6 +126,8 @@ interface RouterSnapshot {
   gapSec: number;
   reads: Record<string, Read>;
   membership: ReturnType<typeof addressListMembership> | null;
+  // Buffer log memori router; dibaca hanya bila syslog tersimpan tidak mengalir.
+  readLog: (() => Promise<Read>) | null;
 }
 
 // Satu pembacaan router per diagnosa, dipakai lapisan MikroTik, Firewall, dan
@@ -134,6 +143,7 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     gapSec: 0,
     reads: {},
     membership: null,
+    readLog: null,
   };
   if (c.routerStatus !== "aktif") {
     return { ...snapshot, error: `router berstatus "${c.routerStatus}", tidak dipoll` };
@@ -149,6 +159,7 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     mode: "real",
   });
   const { reads } = snapshot;
+  snapshot.readLog = () => attempt(() => client.read("/rest/log"));
   const read = async (key: string, path: string, filter?: Record<string, string>) => {
     reads[key] = await attempt(() => client.read(path, filter));
   };
@@ -169,7 +180,10 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
   await read("ppp1", "/rest/interface", { name: iface });
   await read("binding", "/rest/interface/pppoe-server", { name: iface });
   const vlanName = firstRow(reads.binding)?.interface || null;
-  if (vlanName) await read("vlan1", "/rest/interface", { name: vlanName });
+  if (vlanName) {
+    await read("vlan1", "/rest/interface", { name: vlanName });
+    await read("vlanDef", "/rest/interface/vlan", { name: vlanName });
+  }
   if (session.address) {
     await read("arp", "/rest/ip/arp", { address: session.address });
     await read("lease", "/rest/ip/dhcp-server/lease", { address: session.address });
@@ -424,6 +438,8 @@ async function readBilling(c: CustomerTarget, ctx: RunContext): Promise<Finding[
 type RunContext = {
   router: () => Promise<RouterSnapshot>;
   onu: () => Promise<OnuRow | null>;
+  complaintAt: Date;
+  timeline: TimelineEvent[];
 };
 
 function memo<T>(fn: () => Promise<T>) {
@@ -431,11 +447,130 @@ function memo<T>(fn: () => Promise<T>) {
   return () => (p ??= fn());
 }
 
+// Syslog tersimpan dianggap mengalir bila baris terbaru router lebih muda dari ini.
+const SYSLOG_FRESH_MS = 15 * 60_000;
+// shortcut: batas baris per diagnosa; pelanggan yang sangat flapping bisa
+// melewatinya, cukup untuk menilai (angkanya tetap jauh di atas ambang).
+const MAX_LOG_ROWS = 5_000;
+
+const fmtWib = (d: Date) =>
+  new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(d);
+const likeTerm = (s: string) => `%${s.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+
+// Log router untuk pelanggan: syslog tersimpan bila mengalir; bila tidak,
+// buffer memori router (/log) dengan cakupan yang dinyatakan apa adanya.
+async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+  const s = await ctx.router();
+  const session = s.session;
+  const vlan = firstRow(s.reads.binding)?.interface || null;
+  const parent = firstRow(s.reads.vlanDef)?.interface || null;
+  const target = {
+    username: session?.name || c.pppoeUsername,
+    mac: session?.["caller-id"] || null,
+    ip: session?.address && session.address !== "0.0.0.0" ? session.address : null,
+    interfaces: [vlan, parent].filter((x): x is string => !!x),
+  };
+  const matches = logLineMatcher(target);
+  const now = new Date();
+
+  const [stat] = await db
+    .select({
+      newest: sql<string | null>`max(${syslogEvents.receivedAt})`,
+      oldest: sql<string | null>`min(${syslogEvents.receivedAt})`,
+    })
+    .from(syslogEvents)
+    .where(eq(syslogEvents.routerId, c.routerId));
+  const newest = stat?.newest ? new Date(stat.newest) : null;
+
+  let result: ReturnType<typeof analyzeLog>;
+  if (newest && now.getTime() - newest.getTime() < SYSLOG_FRESH_MS) {
+    const from = new Date(ctx.complaintAt.getTime() - LOG_LOOKBACK_MS);
+    const terms = [target.username, target.mac, target.ip, ...target.interfaces.map((i) => `${i} link`)].filter(
+      (x): x is string => !!x,
+    );
+    const lines = await db
+      .select({ at: syslogEvents.receivedAt, topics: syslogEvents.topics, message: syslogEvents.message })
+      .from(syslogEvents)
+      .where(
+        and(
+          eq(syslogEvents.routerId, c.routerId),
+          gte(syslogEvents.receivedAt, from),
+          or(...terms.map((t) => ilike(syslogEvents.message, likeTerm(t)))),
+        ),
+      )
+      .orderBy(syslogEvents.receivedAt)
+      .limit(MAX_LOG_ROWS);
+    result = analyzeLog({
+      lines,
+      matches,
+      complaintAt: ctx.complaintAt,
+      now,
+      coverageStart: stat?.oldest ? new Date(stat.oldest) : null,
+      sourceLabel: `Syslog tersimpan dari router ${c.routerName}`,
+      sourceRef: `syslog_events · ${c.routerName}`,
+    });
+  } else {
+    const why = newest ? `syslog terakhir diterima ${fmtWib(newest)}` : "belum pernah ada syslog diterima";
+    if (s.error || !s.readLog) {
+      return [
+        unchecked("log", "log_coverage", "Cakupan log", `Syslog remote tidak mengalir ke NOC (${why}) dan router tidak terbaca${s.error ? `: ${s.error}` : ""}.`, s.source),
+      ];
+    }
+    const mem = await s.readLog();
+    if (!mem.ok) {
+      return [unchecked("log", "log_coverage", "Cakupan log", `Syslog remote tidak mengalir (${why}); buffer log router gagal dibaca: ${mem.error}`, s.source)];
+    }
+    const lines = rows(mem)
+      .map((e) => ({ at: parseRouterLogTime(e.time ?? "", now), topics: e.topics ?? "", message: e.message ?? "" }))
+      .filter((l): l is LogLine => l.at !== null);
+    result = analyzeLog({
+      lines,
+      matches,
+      complaintAt: ctx.complaintAt,
+      now,
+      coverageStart: lines[0]?.at ?? null,
+      sourceLabel: `Buffer memori router ${c.routerName} (${lines.length} baris terakhir; ${why})`,
+      sourceRef: `${s.source} · /log (jam router WIB)`,
+    });
+  }
+  ctx.timeline.push(...result.timeline);
+  return result.findings;
+}
+
+const alertKindText: Record<string, string> = {
+  offline: "pelanggan offline",
+  optical: "sinyal optik ONU",
+  queue: "antrean penuh",
+};
+
+// Alert pelanggan di sekitar keluhan, untuk garis waktu.
+async function alertTimeline(customerId: string, complaintAt: Date): Promise<TimelineEvent[]> {
+  const list = await db
+    .select({ type: alerts.type, severity: alerts.severity, title: alerts.title, startedAt: alerts.startedAt, endedAt: alerts.endedAt })
+    .from(alerts)
+    .where(and(eq(alerts.customerId, customerId), gte(alerts.startedAt, new Date(complaintAt.getTime() - LOG_LOOKBACK_MS))))
+    .orderBy(alerts.startedAt)
+    .limit(50);
+  return list.flatMap((a) => {
+    const what = alertKindText[a.type] ?? a.type;
+    const start: TimelineEvent = {
+      at: a.startedAt.toISOString(),
+      kind: "alert",
+      label: `Alert ${what} mulai`,
+      detail: a.title ?? `Tingkat ${a.severity}`,
+      source: "alerts",
+    };
+    return a.endedAt
+      ? [start, { ...start, at: a.endedAt.toISOString(), kind: "alert_end", label: `Alert ${what} selesai` }]
+      : [start];
+  });
+}
+
 // Satu langkah per lapisan, urut hulu ke hilir (sama dengan diagnosticLayers).
 const steps: Record<DiagnosticLayer, (c: CustomerTarget, ctx: RunContext) => Promise<Finding[]>> = {
   hulu: async () => [pendingLayer("hulu", "Utilisasi uplink, kualitas jalur hulu, BGP, IPv6")],
   mikrotik: readMikrotik,
-  log: async () => [pendingLayer("log", "Log RouterOS: PPPoE gagal, link flap, bentrok DHCP/ARP")],
+  log: readLog,
   firewall: readFirewall,
   optik: async (_c, ctx) => [evaluateOptical(await ctx.onu(), new Date())],
   ont: readOnt,
@@ -454,7 +589,13 @@ async function executeRun(runId: string) {
     const c = run.customerId ? await loadCustomer(run.customerId) : null;
     if (!c) throw new Error("Pelanggan tidak ditemukan.");
     const all: Finding[] = [];
-    const ctx: RunContext = { router: memo(() => readRouter(c)), onu: memo(() => readOnu(c.id)) };
+    const complaintAt = run.complaintAt ?? run.createdAt;
+    const ctx: RunContext = {
+      router: memo(() => readRouter(c)),
+      onu: memo(() => readOnu(c.id)),
+      complaintAt,
+      timeline: [],
+    };
     for (const layer of diagnosticLayers) {
       let found: Finding[];
       try {
@@ -474,6 +615,9 @@ async function executeRun(runId: string) {
         finishedAt: new Date(),
         verdictLayer: verdict.layer,
         verdictDetail: verdict.detail,
+        timeline: [...ctx.timeline, ...(await alertTimeline(c.id, complaintAt))].sort((a, b) =>
+          a.at.localeCompare(b.at),
+        ),
       })
       .where(eq(diagnosticRuns.id, runId));
   } catch (err) {
@@ -495,6 +639,7 @@ const queue = () => (g.nocDiagnosticQueue ??= createDiagnosticQueue(executeRun))
 export async function startManualDiagnostic(
   customerId: string,
   user: { id: string; name: string },
+  complaintAt: Date | null = null,
 ): Promise<{ run: DiagnosticRunDto; reused: boolean } | null> {
   const c = await loadCustomer(customerId);
   if (!c) return null;
@@ -508,6 +653,7 @@ export async function startManualDiagnostic(
         triggeredBy: user.name,
         triggeredByUserId: user.id,
         triggerReason: "manual",
+        complaintAt,
         priority: MANUAL_PRIORITY,
       })
       .onConflictDoNothing()
@@ -626,6 +772,8 @@ export async function requestAutoDiagnostic(input: {
   customerId: string;
   reason: string;
   sourceRef: string | null;
+  // Waktu kejadian pemicu (mulai alert); kosong = sekarang.
+  complaintAt?: Date;
 }): Promise<AutoOutcome> {
   const p = await getDiagnosticPolicy();
   if (!reasonEnabled(input.reason, p)) return "disabled";
@@ -650,6 +798,7 @@ export async function requestAutoDiagnostic(input: {
       triggerMode: "auto",
       triggerReason: input.reason,
       triggerSourceRef: input.sourceRef,
+      complaintAt: input.complaintAt ?? new Date(),
       dedupeKey: autoDedupeKey(c.id, Date.now(), p.dedupeMinutes),
       priority: AUTO_PRIORITY,
     })
@@ -694,7 +843,13 @@ export async function startDiagnosticAutoTrigger() {
   async function tick() {
     const p = await getDiagnosticPolicy();
     const fresh = await db
-      .select({ id: alerts.id, customerId: alerts.customerId, type: alerts.type, createdAt: alerts.createdAt })
+      .select({
+        id: alerts.id,
+        customerId: alerts.customerId,
+        type: alerts.type,
+        createdAt: alerts.createdAt,
+        startedAt: alerts.startedAt,
+      })
       .from(alerts)
       .where(
         and(
@@ -709,7 +864,12 @@ export async function startDiagnosticAutoTrigger() {
       alertCursor = a.createdAt;
       const reason = alertTriggerReason(a.type);
       if (p.triggerAlert && reason && a.customerId) {
-        await requestAutoDiagnostic({ customerId: a.customerId, reason, sourceRef: `alert:${a.id}` });
+        await requestAutoDiagnostic({
+          customerId: a.customerId,
+          reason,
+          sourceRef: `alert:${a.id}`,
+          complaintAt: a.startedAt,
+        });
       }
     }
 
@@ -769,6 +929,8 @@ function toDto(r: RunRow): DiagnosticRunDto {
     verdictLayer: r.verdictLayer,
     verdictDetail: r.verdictDetail,
     isSharedFault: r.isSharedFault,
+    complaintAt: iso(r.complaintAt),
+    timeline: r.timeline,
   };
 }
 

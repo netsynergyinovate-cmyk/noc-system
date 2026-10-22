@@ -321,6 +321,8 @@ export function DiagnosticPanel() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // datetime-local (jam peramban); kosong = keluhan dianggap sekarang.
+  const [complaintAt, setComplaintAt] = useState("");
 
   const open = useCallback((id: string) => {
     setRunId(id);
@@ -332,7 +334,9 @@ export function DiagnosticPanel() {
     setStarting(true);
     setError(null);
     try {
-      const { data, reused } = await requestDiagnostic(customer.id);
+      const when = complaintAt ? new Date(complaintAt) : null;
+      if (when && Number.isNaN(when.getTime())) throw new Error("Waktu keluhan tidak valid.");
+      const { data, reused } = await requestDiagnostic(customer.id, when?.toISOString());
       setRunId(data.id);
       setReused(reused);
       setRefreshKey((k) => k + 1);
@@ -355,6 +359,20 @@ export function DiagnosticPanel() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <CustomerPicker selected={customer} onSelect={setCustomer} />
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="diagnostic-complaint-at">Waktu keluhan (opsional)</Label>
+            <Input
+              id="diagnostic-complaint-at"
+              type="datetime-local"
+              className="w-full sm:w-64"
+              value={complaintAt}
+              onChange={(e) => setComplaintAt(e.target.value)}
+              aria-describedby="diagnostic-complaint-hint"
+            />
+            <p id="diagnostic-complaint-hint" className="text-xs text-muted-foreground">
+              Acuan garis waktu: kejadian log dan alert ditandai sebelum atau sesudah keluhan. Kosong = sekarang.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-sm">
               {customer ? (

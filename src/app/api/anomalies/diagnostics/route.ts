@@ -22,11 +22,12 @@ export function GET(request: Request) {
 // Diagnosa hanya membaca perangkat, jadi setiap sesi login boleh memintanya.
 export function POST(request: Request) {
   return withApiSession(request, async (session) => {
-    const { customerId } = startDiagnosticSchema.parse(await readJson(request));
-    const result = await startManualDiagnostic(customerId, {
-      id: session.user.id,
-      name: session.user.name || session.user.email,
-    });
+    const { customerId, complaintAt } = startDiagnosticSchema.parse(await readJson(request));
+    const result = await startManualDiagnostic(
+      customerId,
+      { id: session.user.id, name: session.user.name || session.user.email },
+      complaintAt ?? null,
+    );
     if (!result)
       throw new ApiError(404, "NOT_FOUND", "Pelanggan tidak ditemukan.");
     return Response.json(

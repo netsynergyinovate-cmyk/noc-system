@@ -13,11 +13,11 @@ import {
 import { DiagnosticRunView, errorMessage } from "./diagnostic-run-view";
 import type { DiagnosticRunDto } from "@/lib/diagnostics";
 
-export async function requestDiagnostic(customerId: string) {
+export async function requestDiagnostic(customerId: string, complaintAt?: string) {
   const res = await fetch("/api/anomalies/diagnostics", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ customerId }),
+    body: JSON.stringify({ customerId, complaintAt }),
   });
   if (!res.ok) throw new Error(await errorMessage(res, "Gagal memulai diagnosa"));
   return (await res.json()) as { data: DiagnosticRunDto; reused: boolean };

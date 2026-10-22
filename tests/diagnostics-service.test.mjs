@@ -134,6 +134,32 @@ test("otomatis: kejadian kedua dalam jendela digabung; kebijakan mati = tidak ja
   assert.equal(await m.requestAutoDiagnostic({ customerId: ids.a, reason: "alert_optical", sourceRef: null }), "disabled");
 });
 
+test("billing RunsNet: status aktif, tunggakan, lapisan router & ONT tidak dapat diperiksa", { skip }, async () => {
+  const { db, schema } = m;
+  await db.insert(schema.runsnetCustomers).values({ custId: `b-${tag}`, name: `B ${tag}`, status: "Active", connectivity: "Terhubung" });
+  await db.insert(schema.runsnetInvoices).values({
+    invoiceCode: `INV-${tag}`,
+    custId: `b-${tag}`,
+    custName: `B ${tag}`,
+    dueDate: "2020-01-20",
+    amount: 150000,
+    remainingAmount: 150000,
+    status: "unpaid",
+  });
+  const started = await m.startManualDiagnostic(ids.b, { id: "u1", name: "Operator Uji" });
+  const run = await waitDone(started.run.id);
+  const by = Object.fromEntries(run.findings.map((f) => [f.metric, f]));
+  assert.equal(by.billing_status.status, "ok");
+  assert.equal(by.billing_status.value, "Active");
+  assert.equal(by.arrears.status, "warn");
+  assert.equal(by.billing_network.status, "unchecked");
+  assert.equal(by.billing_mismatch.status, "unchecked");
+  assert.equal(by.ont_found.status, "unchecked");
+  assert.equal(by.ringkasan.status, "unchecked");
+  // Router tak terbaca dan tidak ada yang gagal: hanya peringatan tunggakan.
+  assert.equal(run.verdictLayer, "billing");
+});
+
 test("otomatis: gangguan massal menahan diagnosa per pelanggan", { skip }, async () => {
   const { db, schema } = m;
   await m.updateDiagnosticPolicy(policy({ massThreshold: 2 }), "test");

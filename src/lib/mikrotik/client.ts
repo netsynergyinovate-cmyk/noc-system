@@ -359,6 +359,18 @@ export class MikrotikRestClient {
     }));
   }
 
+  /**
+   * GET baca-saja mentah di bawah /rest untuk diagnosa pelanggan. `filter`
+   * dikirim sebagai query field=nilai (RouterOS mencocokkan persis), supaya
+   * router tidak mengirim seluruh tabel.
+   */
+  async read(path: string, filter: Record<string, string> = {}): Promise<unknown> {
+    if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
+    if (!path.startsWith("/rest/")) throw new Error(`Path REST tidak sah: ${path}`);
+    const query = new URLSearchParams(filter).toString();
+    return this.request(query ? `${path}?${query}` : path);
+  }
+
   async ping(target: string, count = 3): Promise<MikrotikPingPacket[]> {
     if (this.simulated) {
       const fail = this.simulatorFailure();

@@ -1,9 +1,11 @@
 import "server-only";
-import { and, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   alerts,
+  billingMismatches,
   billingStatus,
+  billingSyncRuns,
   customers,
   diagnosticFindings,
   diagnosticPolicy,
@@ -11,17 +13,30 @@ import {
   oltOnus,
   olts,
   routers,
+  runsnetCustomers,
+  runsnetInvoices,
 } from "@/db/schema";
 import {
   AUTO_PRIORITY,
   MANUAL_PRIORITY,
+  addressListMembership,
   alertTriggerReason,
   autoDedupeKey,
   createDiagnosticQueue,
   diagnosticLayers,
+  evaluateAddressLists,
+  evaluateArrears,
   evaluateBilling,
+  evaluateBillingNetwork,
+  evaluateConntrack,
+  evaluateIpConflict,
+  evaluateOnt,
   evaluateOptical,
+  evaluatePonVlan,
+  evaluatePppInterface,
   evaluatePppoe,
+  evaluateQueue,
+  evaluateRunsnetStatus,
   pendingLayer,
   pickVerdict,
   sharedDedupeKey,
@@ -31,7 +46,11 @@ import {
   type DiagnosticRunDto,
   type Finding,
   type FindingDto,
+  type Ros,
 } from "@/lib/diagnostics";
+import { GenieAcsClient } from "@/lib/genieacs/client";
+import { getGenieacsConfig } from "@/lib/genieacs/config";
+import { parseDeviceDetail } from "@/lib/genieacs/device-detail";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { getRouterDecryptedCredentials } from "@/services/device-credentials.service";
 import type { DiagnosticPolicyInput } from "@/validators/diagnostics";
@@ -68,40 +87,214 @@ async function loadCustomer(customerId: string): Promise<CustomerTarget | null> 
   return row ?? null;
 }
 
-// Baca /ppp/active langsung dari router pelanggan. Kegagalan baca menjadi
-// "tidak dapat diperiksa", tidak pernah "offline".
-async function readPppoe(c: CustomerTarget): Promise<Finding> {
-  const readAt = new Date();
-  const base = { routerName: c.routerName, username: c.pppoeUsername, readAt };
-  if (c.routerStatus !== "aktif") {
-    return evaluatePppoe({ ...base, session: null, error: `router berstatus "${c.routerStatus}", tidak dipoll` });
-  }
-  const creds = await getRouterDecryptedCredentials(c.routerId);
-  if (!creds) return evaluatePppoe({ ...base, session: null, error: "kredensial router tidak ditemukan" });
+type Read<T = unknown> = { ok: true; value: T } | { ok: false; error: string };
+
+async function attempt<T>(fn: () => Promise<T>): Promise<Read<T>> {
   try {
-    const client = new MikrotikRestClient({
-      host: creds.host,
-      port: creds.port,
-      username: creds.username,
-      password: creds.password,
-      useSsl: creds.useTls,
-      mode: "real",
-    });
-    const wanted = c.pppoeUsername.toLowerCase().trim();
-    const sessions = await client.getPppActive();
-    const s = sessions.find((x) => x.name.toLowerCase().trim() === wanted);
-    return evaluatePppoe({
-      ...base,
-      readAt: new Date(),
-      session: s ? { address: s.address, uptime: s.uptime, callerId: s.callerId } : null,
-      error: null,
-    });
+    return { ok: true, value: await fn() };
   } catch (err) {
-    return evaluatePppoe({ ...base, session: null, error: message(err) });
+    return { ok: false, error: message(err) };
   }
 }
 
-async function readOptical(customerId: string): Promise<Finding> {
+const rows = (r: Read | undefined): Ros[] =>
+  r?.ok && Array.isArray(r.value) ? (r.value as Ros[]) : [];
+const firstRow = (r: Read | undefined) => rows(r)[0] ?? null;
+// Galat pertama di antara beberapa pembacaan, atau null bila semuanya berhasil.
+const failed = (...reads: (Read | undefined)[]) =>
+  reads.find((r): r is { ok: false; error: string } => !!r && !r.ok)?.error ?? null;
+
+// Jarak dua sampel penghitung (byte, drop, error) untuk menghitung laju.
+const SAMPLE_GAP_MS = 2_000;
+// Address-list sebesar ini tidak dibaca utuh ke memori; tandai tidak terperiksa.
+const MAX_ADDRESS_LIST = 20_000;
+
+interface RouterSnapshot {
+  source: string;
+  readAt: Date;
+  // Router tidak bisa dibaca sama sekali; semua lapisan router "tidak dapat diperiksa".
+  error: string | null;
+  session: Ros | null;
+  iface: string;
+  gapSec: number;
+  reads: Record<string, Read>;
+  membership: ReturnType<typeof addressListMembership> | null;
+}
+
+// Satu pembacaan router per diagnosa, dipakai lapisan MikroTik, Firewall, dan
+// Billing. Semua GET, berurutan (bukan paralel) supaya layanan www router
+// produksi tidak dibanjiri.
+async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
+  const snapshot: RouterSnapshot = {
+    source: `Router ${c.routerName}`,
+    readAt: new Date(),
+    error: null,
+    session: null,
+    iface: `<pppoe-${c.pppoeUsername}>`,
+    gapSec: 0,
+    reads: {},
+    membership: null,
+  };
+  if (c.routerStatus !== "aktif") {
+    return { ...snapshot, error: `router berstatus "${c.routerStatus}", tidak dipoll` };
+  }
+  const creds = await getRouterDecryptedCredentials(c.routerId);
+  if (!creds) return { ...snapshot, error: "kredensial router tidak ditemukan" };
+  const client = new MikrotikRestClient({
+    host: creds.host,
+    port: creds.port,
+    username: creds.username,
+    password: creds.password,
+    useSsl: creds.useTls,
+    mode: "real",
+  });
+  const { reads } = snapshot;
+  const read = async (key: string, path: string, filter?: Record<string, string>) => {
+    reads[key] = await attempt(() => client.read(path, filter));
+  };
+
+  await read("active", "/rest/ppp/active");
+  if (!reads.active.ok) return { ...snapshot, error: reads.active.error };
+  const wanted = c.pppoeUsername.toLowerCase().trim();
+  const session = rows(reads.active).find((s) => (s.name ?? "").toLowerCase().trim() === wanted) ?? null;
+  await read("tracking", "/rest/ip/firewall/connection/tracking");
+  snapshot.readAt = new Date();
+  if (!session) return snapshot;
+
+  snapshot.session = session;
+  const iface = `<pppoe-${session.name}>`;
+  snapshot.iface = iface;
+  const t1 = Date.now();
+  await read("queue1", "/rest/queue/simple", { name: iface });
+  await read("ppp1", "/rest/interface", { name: iface });
+  await read("binding", "/rest/interface/pppoe-server", { name: iface });
+  const vlanName = firstRow(reads.binding)?.interface || null;
+  if (vlanName) await read("vlan1", "/rest/interface", { name: vlanName });
+  if (session.address) {
+    await read("arp", "/rest/ip/arp", { address: session.address });
+    await read("lease", "/rest/ip/dhcp-server/lease", { address: session.address });
+    await read("addressList", "/rest/ip/firewall/address-list");
+    const entries = rows(reads.addressList);
+    if (reads.addressList.ok && entries.length <= MAX_ADDRESS_LIST) {
+      snapshot.membership = addressListMembership(session.address, entries);
+    }
+  }
+  const wait = SAMPLE_GAP_MS - (Date.now() - t1);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  const t2 = Date.now();
+  await read("queue2", "/rest/queue/simple", { name: iface });
+  await read("ppp2", "/rest/interface", { name: iface });
+  if (vlanName) await read("vlan2", "/rest/interface", { name: vlanName });
+  snapshot.gapSec = (t2 - t1) / 1000;
+  snapshot.readAt = new Date();
+  return snapshot;
+}
+
+async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+  const s = await ctx.router();
+  const pppoe = evaluatePppoe({
+    routerName: c.routerName,
+    username: c.pppoeUsername,
+    readAt: s.readAt,
+    error: s.error,
+    session: s.session
+      ? { address: s.session.address ?? "", uptime: s.session.uptime ?? "", callerId: s.session["caller-id"] ?? "" }
+      : null,
+  });
+  if (s.error || !s.session) {
+    return [
+      pppoe,
+      unchecked(
+        "mikrotik",
+        "sesi_detail",
+        "Queue, antarmuka, jalur PON, bentrok IP",
+        s.error ? "Router tidak terbaca." : "Sesi PPPoE tidak aktif: queue dan antarmuka dinamis pelanggan tidak ada.",
+        s.source,
+      ),
+    ];
+  }
+  const { reads, gapSec, readAt: at } = s;
+  const out: Finding[] = [pppoe];
+
+  const qErr = failed(reads.queue1, reads.queue2);
+  out.push(
+    ...(qErr
+      ? [unchecked("mikrotik", "queue_limit", "Simple queue pelanggan", `Gagal membaca /queue/simple: ${qErr}`, s.source)]
+      : evaluateQueue(firstRow(reads.queue1), firstRow(reads.queue2), gapSec, `${s.source} · /queue/simple ${s.iface}`, at)),
+  );
+
+  const pErr = failed(reads.ppp1, reads.ppp2);
+  out.push(
+    pErr
+      ? unchecked("mikrotik", "iface_errors", "Error & drop antarmuka PPPoE", `Gagal membaca /interface: ${pErr}`, s.source)
+      : evaluatePppInterface(firstRow(reads.ppp1), firstRow(reads.ppp2), gapSec, `${s.source} · /interface ${s.iface}`, at),
+  );
+
+  const vlanName = firstRow(reads.binding)?.interface || null;
+  const vErr = failed(reads.binding, reads.vlan1, reads.vlan2);
+  out.push(
+    vErr
+      ? unchecked("mikrotik", "pon_vlan_rate", "Laju jalur PON", `Gagal membaca antarmuka asal sesi: ${vErr}`, s.source)
+      : evaluatePonVlan(vlanName, firstRow(reads.vlan1), firstRow(reads.vlan2), gapSec, `${s.source} · /interface ${vlanName ?? "—"}`, at),
+  );
+
+  const ip = s.session.address ?? "";
+  const aErr = failed(reads.arp, reads.lease);
+  out.push(
+    !ip
+      ? unchecked("mikrotik", "ip_conflict", "Bentrok alamat (ARP/DHCP)", "Sesi tidak punya alamat IP.", s.source)
+      : aErr
+        ? unchecked("mikrotik", "ip_conflict", "Bentrok alamat (ARP/DHCP)", `Gagal membaca ARP/DHCP: ${aErr}`, s.source)
+        : evaluateIpConflict(ip, s.iface, rows(reads.arp), rows(reads.lease), `${s.source} · /ip/arp, /ip/dhcp-server/lease`, at),
+  );
+  return out;
+}
+
+async function readFirewall(_c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+  const s = await ctx.router();
+  const deep = pendingLayer("firewall", "Urutan rule filter/raw, NAT & port forward, fasttrack, mangle");
+  if (s.error) {
+    return [unchecked("firewall", "ringkasan", "Address-list & connection tracking", `Router tidak terbaca: ${s.error}`, s.source), deep];
+  }
+  const out: Finding[] = [];
+  const ip = s.session?.address;
+  if (!ip) {
+    out.push(unchecked("firewall", "address_list", "Address-list yang memuat IP pelanggan", "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui.", s.source));
+  } else if (!s.membership) {
+    out.push(
+      unchecked(
+        "firewall",
+        "address_list",
+        "Address-list yang memuat IP pelanggan",
+        failed(s.reads.addressList)
+          ? `Gagal membaca address-list: ${failed(s.reads.addressList)}`
+          : `Address-list lebih dari ${MAX_ADDRESS_LIST} entri, tidak dibaca utuh.`,
+        s.source,
+      ),
+    );
+  } else {
+    out.push(evaluateAddressLists(ip, s.membership, `${s.source} · /ip/firewall/address-list`, s.readAt));
+  }
+  const t = s.reads.tracking;
+  out.push(
+    t?.ok && t.value && typeof t.value === "object" && !Array.isArray(t.value)
+      ? evaluateConntrack(t.value as Ros, `${s.source} · /ip/firewall/connection/tracking`, s.readAt)
+      : unchecked("firewall", "conntrack", "Tabel connection tracking", `Gagal membaca connection tracking${failed(t) ? `: ${failed(t)}` : ""}.`, s.source),
+  );
+  out.push(deep);
+  return out;
+}
+
+type OnuRow = {
+  oltName: string;
+  ponIndex: number;
+  onuIndex: number;
+  status: string;
+  rxPower: number | null;
+  capturedAt: Date;
+};
+
+async function readOnu(customerId: string): Promise<OnuRow | null> {
   const [onu] = await db
     .select({
       oltName: olts.name,
@@ -115,42 +308,139 @@ async function readOptical(customerId: string): Promise<Finding> {
     .innerJoin(olts, eq(olts.id, oltOnus.oltId))
     .where(eq(oltOnus.customerId, customerId))
     .limit(1);
-  return evaluateOptical(onu ?? null, new Date());
+  return onu ?? null;
 }
 
-async function readBilling(customerId: string): Promise<Finding[]> {
-  const [row] = await db
-    .select({
-      status: billingStatus.status,
-      syncedAt: billingStatus.syncedAt,
-      billingName: billingStatus.billingName,
-    })
-    .from(billingStatus)
-    .where(eq(billingStatus.customerId, customerId))
+async function readOnt(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+  const config = getGenieacsConfig();
+  if (config.mode === "simulator") {
+    return [
+      unchecked("ont", "ont_found", "Modem di GenieACS", "GenieACS berjalan dalam mode simulator (bukan DASHBOARD_DATA=live): tidak ada data modem nyata.", "GenieACS"),
+    ];
+  }
+  const client = new GenieAcsClient(config);
+  const wanted = c.pppoeUsername.toLowerCase().trim();
+  // Cepat lewat query WANPPPConnection.1; cadangan: cocokkan semua WAN seperti halaman CPE.
+  const deviceId =
+    (await client.findDeviceIdByPppoe(c.pppoeUsername)) ??
+    (await client.listDevices()).find((d) => d.pppoeUsername.trim().toLowerCase() === wanted)?.deviceId ??
+    null;
+  const raw = deviceId ? await client.getRawDevice(deviceId) : null;
+  const d = raw ? parseDeviceDetail(raw) : null;
+  const onu = await ctx.onu();
+  return evaluateOnt(
+    d && {
+      deviceId: d.deviceId,
+      lastInform: d.lastInform,
+      uptimeSeconds: d.uptimeSeconds,
+      activeClients: d.activeClients,
+      rxDbm: d.optical.rxDbm,
+      wans: d.wans,
+    },
+    c.pppoeUsername,
+    onu?.rxPower ?? null,
+    new Date(),
+  );
+}
+
+const todayWib = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+
+// Ketidakcocokan hasil sinkron billing backend Go (billing_mismatches).
+async function readGoMismatches(customerId: string): Promise<Finding> {
+  const label = "Ketidaksesuaian sinkron billing";
+  const [run] = await db
+    .select({ id: billingSyncRuns.id, finishedAt: billingSyncRuns.finishedAt })
+    .from(billingSyncRuns)
+    .where(eq(billingSyncRuns.status, "success"))
+    .orderBy(desc(billingSyncRuns.finishedAt))
     .limit(1);
-  return [
-    evaluateBilling(row ?? null),
-    pendingLayer("billing", "Ketidaksesuaian data billing (billing_mismatches)"),
-  ];
+  if (!run) {
+    return unchecked("billing", "billing_mismatch", label, "Sinkron billing backend Go belum pernah berhasil, jadi billing_mismatches kosong. Kecocokan dicek lewat RunsNet ↔ router.", "billing_sync_runs");
+  }
+  const found = await db
+    .select({ reason: billingMismatches.reason, invoiceName: billingMismatches.invoiceName })
+    .from(billingMismatches)
+    .where(and(eq(billingMismatches.runId, run.id), sql`${billingMismatches.customerIds} @> array[${customerId}]::uuid[]`));
+  return {
+    layer: "billing",
+    metric: "billing_mismatch",
+    label,
+    value: found.length ? `${found.length} tagihan` : "tidak ada",
+    threshold: "0",
+    comparator: "=",
+    status: found.length ? "warn" : "ok",
+    detail: found.length
+      ? `Tagihan bertabrakan dengan pelanggan ini: ${found.map((f) => `${f.invoiceName} (${f.reason})`).join(", ")}.`
+      : "Tidak ada tagihan yang bertabrakan dengan pelanggan ini.",
+    sourceRef: `billing_mismatches · sinkron ${run.finishedAt?.toISOString() ?? "—"}`,
+    sampledAt: run.finishedAt,
+  };
+}
+
+async function readBilling(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+  // ID RunsNet = username PPPoE tanpa "@domain" (sama dengan halaman detail pelanggan).
+  const custId = c.pppoeUsername.split("@")[0].trim();
+  const [rn] = await db
+    .select({
+      custId: runsnetCustomers.custId,
+      status: runsnetCustomers.status,
+      connectivity: runsnetCustomers.connectivity,
+      syncedAt: runsnetCustomers.syncedAt,
+    })
+    .from(runsnetCustomers)
+    .where(eq(runsnetCustomers.custId, custId))
+    .limit(1);
+  const [bs] = await db
+    .select({ status: billingStatus.status, syncedAt: billingStatus.syncedAt, billingName: billingStatus.billingName })
+    .from(billingStatus)
+    .where(eq(billingStatus.customerId, c.id))
+    .limit(1);
+
+  const out: Finding[] = [rn ? evaluateRunsnetStatus(rn) : evaluateBilling(bs ?? null)];
+  if (rn) {
+    const invoices = await db
+      .select({ dueDate: runsnetInvoices.dueDate, status: runsnetInvoices.status, remainingAmount: runsnetInvoices.remainingAmount })
+      .from(runsnetInvoices)
+      .where(and(eq(runsnetInvoices.custId, custId), ne(runsnetInvoices.status, "paid")));
+    out.push(evaluateArrears(invoices, todayWib(), `RunsNet · tagihan ID ${custId}`, rn.syncedAt));
+  } else {
+    out.push(unchecked("billing", "arrears", "Tagihan lewat jatuh tempo", `ID ${custId} tidak ada di data RunsNet.`, "RunsNet"));
+  }
+  const s = await ctx.router();
+  out.push(
+    evaluateBillingNetwork({
+      billingStatus: rn?.status ?? (bs ? (bs.status === "isolir" ? "Isolir" : "Active") : null),
+      sessionActive: s.error ? null : s.session !== null,
+      isolatedInRouter: s.membership ? s.membership.isolated : null,
+      sourceRef: `${rn ? "RunsNet" : "billing_status"} ↔ ${s.source} address-list`,
+      sampledAt: s.readAt,
+    }),
+  );
+  out.push(await readGoMismatches(c.id));
+  return out;
+}
+
+type RunContext = {
+  router: () => Promise<RouterSnapshot>;
+  onu: () => Promise<OnuRow | null>;
+};
+
+function memo<T>(fn: () => Promise<T>) {
+  let p: Promise<T> | undefined;
+  return () => (p ??= fn());
 }
 
 // Satu langkah per lapisan, urut hulu ke hilir (sama dengan diagnosticLayers).
-const steps: Record<DiagnosticLayer, (c: CustomerTarget) => Promise<Finding[]>> = {
+const steps: Record<DiagnosticLayer, (c: CustomerTarget, ctx: RunContext) => Promise<Finding[]>> = {
   hulu: async () => [pendingLayer("hulu", "Utilisasi uplink, kualitas jalur hulu, BGP, IPv6")],
-  mikrotik: async (c) => [
-    await readPppoe(c),
-    pendingLayer("mikrotik", "Simple queue, utilisasi interface, DHCP/ARP, ringkasan firewall"),
-  ],
+  mikrotik: readMikrotik,
   log: async () => [pendingLayer("log", "Log RouterOS: PPPoE gagal, link flap, bentrok DHCP/ARP")],
-  firewall: async () => [
-    pendingLayer("firewall", "Filter/raw, NAT, address-list, fasttrack, conntrack, mangle"),
-  ],
-  optik: async (c) => [await readOptical(c.id)],
-  ont: async () => [
-    pendingLayer("ont", "WAN/PPPoE ONT, uptime, host Wi-Fi, redaman sisi ONT (GenieACS)"),
-  ],
+  firewall: readFirewall,
+  optik: async (_c, ctx) => [evaluateOptical(await ctx.onu(), new Date())],
+  ont: readOnt,
   trafik: async () => [pendingLayer("trafik", "Tren trafik pelanggan dan aliran NetFlow")],
-  billing: (c) => readBilling(c.id),
+  billing: readBilling,
 };
 
 async function executeRun(runId: string) {
@@ -164,10 +454,11 @@ async function executeRun(runId: string) {
     const c = run.customerId ? await loadCustomer(run.customerId) : null;
     if (!c) throw new Error("Pelanggan tidak ditemukan.");
     const all: Finding[] = [];
+    const ctx: RunContext = { router: memo(() => readRouter(c)), onu: memo(() => readOnu(c.id)) };
     for (const layer of diagnosticLayers) {
       let found: Finding[];
       try {
-        found = await steps[layer.id](c);
+        found = await steps[layer.id](c, ctx);
       } catch (err) {
         found = [unchecked(layer.id, "galat", layer.label, `Gagal membaca lapisan: ${message(err)}`)];
       }

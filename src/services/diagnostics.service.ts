@@ -8,6 +8,8 @@ import {
   billingSyncRuns,
   customers,
   diagnosticFindings,
+  firewallRuleHits,
+  firewallSnapshots,
   diagnosticPolicy,
   diagnosticRuns,
   oltOnus,
@@ -24,6 +26,7 @@ import {
   addressListMembership,
   alertTriggerReason,
   analyzeLog,
+  auditRules,
   autoDedupeKey,
   createDiagnosticQueue,
   diagnosticLayers,
@@ -32,6 +35,14 @@ import {
   evaluateBilling,
   evaluateBillingNetwork,
   evaluateConntrack,
+  evaluateCustomerConnections,
+  evaluateFasttrack,
+  evaluateFilterBlock,
+  evaluateMangle,
+  evaluatePortForward,
+  evaluateRaw,
+  evaluateSrcNat,
+  evaluateStaleRules,
   evaluateIpConflict,
   evaluateOnt,
   evaluateOptical,
@@ -51,7 +62,9 @@ import {
   type DiagnosticRunDto,
   type Finding,
   type FindingDto,
+  type FirewallTable,
   type LogLine,
+  type RuleHit,
   type Ros,
   type TimelineEvent,
 } from "@/lib/diagnostics";
@@ -111,6 +124,8 @@ const firstRow = (r: Read | undefined) => rows(r)[0] ?? null;
 const failed = (...reads: (Read | undefined)[]) =>
   reads.find((r): r is { ok: false; error: string } => !!r && !r.ok)?.error ?? null;
 
+const FIREWALL_TABLES: FirewallTable[] = ["filter", "raw", "nat", "mangle"];
+
 // Jarak dua sampel penghitung (byte, drop, error) untuk menghitung laju.
 const SAMPLE_GAP_MS = 2_000;
 // Address-list sebesar ini tidak dibaca utuh ke memori; tandai tidak terperiksa.
@@ -128,6 +143,8 @@ interface RouterSnapshot {
   membership: ReturnType<typeof addressListMembership> | null;
   // Buffer log memori router; dibaca hanya bila syslog tersimpan tidak mengalir.
   readLog: (() => Promise<Read>) | null;
+  // Audit firewall (Fase 4); kosong bila IP/address-list/rule tidak terbaca.
+  firewall: { hits: RuleHit[]; fasttrack: boolean; outbound: Ros[]; inbound: Ros[] } | null;
 }
 
 // Satu pembacaan router per diagnosa, dipakai lapisan MikroTik, Firewall, dan
@@ -144,6 +161,7 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     reads: {},
     membership: null,
     readLog: null,
+    firewall: null,
   };
   if (c.routerStatus !== "aktif") {
     return { ...snapshot, error: `router berstatus "${c.routerStatus}", tidak dipoll` };
@@ -192,6 +210,25 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     if (reads.addressList.ok && entries.length <= MAX_ADDRESS_LIST) {
       snapshot.membership = addressListMembership(session.address, entries);
     }
+    // Konfigurasi firewall dan koneksi pelanggan (proplist: hanya kolom yang dinilai).
+    for (const table of FIREWALL_TABLES) await read(`fw_${table}`, `/rest/ip/firewall/${table}`);
+    const props = { ".proplist": "fasttrack,connection-mark,protocol" };
+    await read("connOut", "/rest/ip/firewall/connection", { "src-address": session.address, ...props });
+    await read("connIn", "/rest/ip/firewall/connection", { "dst-address": session.address, ...props });
+    if (snapshot.membership && !failed(...FIREWALL_TABLES.map((t) => reads[`fw_${t}`]), reads.connOut, reads.connIn)) {
+      const hits = auditRules(
+        Object.fromEntries(FIREWALL_TABLES.map((t) => [t, rows(reads[`fw_${t}`])])),
+        { ip: session.address, iface, lists: snapshot.membership.lists },
+      );
+      const outbound = rows(reads.connOut);
+      const inbound = rows(reads.connIn);
+      snapshot.firewall = {
+        hits,
+        outbound,
+        inbound,
+        fasttrack: evaluateFasttrack(hits, [...outbound, ...inbound], "", new Date()).status === "fail",
+      };
+    }
   }
   const wait = SAMPLE_GAP_MS - (Date.now() - t1);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -234,7 +271,13 @@ async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding
   out.push(
     ...(qErr
       ? [unchecked("mikrotik", "queue_limit", "Simple queue pelanggan", `Gagal membaca /queue/simple: ${qErr}`, s.source)]
-      : evaluateQueue(firstRow(reads.queue1), firstRow(reads.queue2), gapSec, `${s.source} · /queue/simple ${s.iface}`, at)),
+      : evaluateQueue(firstRow(reads.queue1), firstRow(reads.queue2), gapSec, `${s.source} · /queue/simple ${s.iface}`, at).map(
+          // PRD: fasttrack diperiksa sebelum menyimpulkan soal queue.
+          (f): Finding =>
+            s.firewall?.fasttrack && f.status === "ok"
+              ? { ...f, status: "warn", detail: `Fasttrack aktif: batas ini TIDAK dieksekusi untuk koneksi yang di-fasttrack. ${f.detail}` }
+              : f,
+        )),
   );
 
   const pErr = failed(reads.ppp1, reads.ppp2);
@@ -264,11 +307,10 @@ async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding
   return out;
 }
 
-async function readFirewall(_c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+async function readFirewall(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
   const s = await ctx.router();
-  const deep = pendingLayer("firewall", "Urutan rule filter/raw, NAT & port forward, fasttrack, mangle");
   if (s.error) {
-    return [unchecked("firewall", "ringkasan", "Address-list & connection tracking", `Router tidak terbaca: ${s.error}`, s.source), deep];
+    return [unchecked("firewall", "ringkasan", "Firewall, NAT & connection tracking", `Router tidak terbaca: ${s.error}`, s.source)];
   }
   const out: Finding[] = [];
   const ip = s.session?.address;
@@ -295,8 +337,81 @@ async function readFirewall(_c: CustomerTarget, ctx: RunContext): Promise<Findin
       ? evaluateConntrack(t.value as Ros, `${s.source} · /ip/firewall/connection/tracking`, s.readAt)
       : unchecked("firewall", "conntrack", "Tabel connection tracking", `Gagal membaca connection tracking${failed(t) ? `: ${failed(t)}` : ""}.`, s.source),
   );
-  out.push(deep);
+  out.push(...(await auditFirewall(c, ctx, s)));
   return out;
+}
+
+// Audit rule (Fase 4) dan simpan potretnya ke firewall_snapshots/_rule_hits.
+async function auditFirewall(c: CustomerTarget, ctx: RunContext, s: RouterSnapshot): Promise<Finding[]> {
+  const label = "Audit rule firewall & NAT";
+  const ip = s.session?.address;
+  if (!ip) {
+    return [unchecked("firewall", "audit", label, "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui, rule tidak bisa dicocokkan.", s.source)];
+  }
+  if (!s.firewall) {
+    const err = failed(...FIREWALL_TABLES.map((t) => s.reads[`fw_${t}`]), s.reads.connOut, s.reads.connIn);
+    return [
+      unchecked(
+        "firewall",
+        "audit",
+        label,
+        err ? `Gagal membaca firewall: ${err}` : "Address-list tidak terbaca utuh, keanggotaan pelanggan tidak diketahui.",
+        s.source,
+      ),
+    ];
+  }
+  const { hits, outbound, inbound } = s.firewall;
+  const ref = `${s.source} · /ip/firewall/{filter,raw,nat,mangle}`;
+  const at = s.readAt;
+  const t = s.reads.tracking;
+  const tracking = t?.ok && t.value && typeof t.value === "object" && !Array.isArray(t.value) ? (t.value as Ros) : null;
+  const connections = [...outbound, ...inbound];
+  const findings = [
+    evaluateFasttrack(hits, connections, `${ref}, /ip/firewall/connection`, at),
+    evaluateFilterBlock(hits, ref, at),
+    evaluateRaw(hits, ref, at),
+    evaluateSrcNat(hits, ip, ref, at),
+    evaluatePortForward(hits, rows(s.reads.fw_nat), ip, ref, at),
+    evaluateMangle(hits, firstRow(s.reads.queue2) ?? firstRow(s.reads.queue1), connections, ref, at),
+    evaluateCustomerConnections(outbound, inbound, tracking, `${s.source} · /ip/firewall/connection`, at),
+    evaluateStaleRules(hits, ref, at),
+  ];
+  const [snap] = await db
+    .insert(firewallSnapshots)
+    .values({
+      runId: ctx.runId,
+      routerId: c.routerId,
+      customerId: c.id,
+      takenAt: at,
+      customerIp: ip,
+      fasttrackActive: s.firewall.fasttrack,
+      conntrackCount: connections.length,
+      conntrackTotal: tracking ? Number(tracking["total-entries"]) || null : null,
+      conntrackMax: tracking ? Number(tracking["max-entries"]) || null : null,
+      rawDropMatched: hits.some((h) => h.table === "raw" && !h.disabled && ["drop", "reject"].includes(h.action)),
+      addressListMatched: s.membership?.lists ?? [],
+    })
+    .returning({ id: firewallSnapshots.id });
+  if (hits.length) {
+    await db.insert(firewallRuleHits).values(
+      hits.map((h) => ({
+        snapshotId: snap.id,
+        table: h.table,
+        chain: h.chain,
+        ruleIndex: h.index,
+        ruleId: h.ruleId,
+        action: h.action,
+        scope: h.scope,
+        summary: h.summary,
+        comment: h.comment,
+        disabled: h.disabled,
+        matchedPackets: h.packets,
+        matchedBytes: h.bytes,
+        isStale: h.stale,
+      })),
+    );
+  }
+  return findings;
 }
 
 type OnuRow = {
@@ -436,6 +551,7 @@ async function readBilling(c: CustomerTarget, ctx: RunContext): Promise<Finding[
 }
 
 type RunContext = {
+  runId: string;
   router: () => Promise<RouterSnapshot>;
   onu: () => Promise<OnuRow | null>;
   complaintAt: Date;
@@ -593,6 +709,7 @@ async function executeRun(runId: string) {
     const all: Finding[] = [];
     const complaintAt = run.complaintAt ?? run.createdAt;
     const ctx: RunContext = {
+      runId,
       router: memo(() => readRouter(c)),
       onu: memo(() => readOnu(c.id)),
       complaintAt,
@@ -965,8 +1082,26 @@ export async function getDiagnosticRun(id: string): Promise<DiagnosticRunDto | n
     .from(diagnosticFindings)
     .where(eq(diagnosticFindings.runId, id))
     .orderBy(diagnosticFindings.checkedAt);
+  const firewallRules = await db
+    .select({
+      table: firewallRuleHits.table,
+      chain: firewallRuleHits.chain,
+      ruleIndex: firewallRuleHits.ruleIndex,
+      action: firewallRuleHits.action,
+      scope: firewallRuleHits.scope,
+      summary: firewallRuleHits.summary,
+      comment: firewallRuleHits.comment,
+      disabled: firewallRuleHits.disabled,
+      matchedPackets: firewallRuleHits.matchedPackets,
+      isStale: firewallRuleHits.isStale,
+    })
+    .from(firewallRuleHits)
+    .innerJoin(firewallSnapshots, eq(firewallSnapshots.id, firewallRuleHits.snapshotId))
+    .where(eq(firewallSnapshots.runId, id))
+    .orderBy(firewallRuleHits.table, firewallRuleHits.ruleIndex);
   return {
     ...toDto({ ...r.run, customerName: r.customerName, pppoeUsername: r.pppoeUsername }),
+    firewallRules,
     findings: findings
       .map(
         (f): FindingDto => ({

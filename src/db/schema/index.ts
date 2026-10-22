@@ -46,3 +46,4 @@ export * from "./map-undo-entries";
 // Diagnosa pelanggan berlapis (/app/anomali).
 export * from "./diagnostics";
 export * from "./syslog-events";
+export * from "./firewall-snapshots";

@@ -165,6 +165,52 @@ function relative(ms: number) {
   return ms < 0 ? `${text} sebelum` : `${text} sesudah`;
 }
 
+const scopeLabel: Record<string, string> = {
+  khusus: "khusus pelanggan",
+  umum: "semua pelanggan",
+  mungkin: "mungkin (syarat tak terbaca)",
+};
+
+// Rule firewall/NAT yang mengenai pelanggan, urut tabel dan posisi.
+function FirewallRuleTable({ rules }: { rules: NonNullable<DiagnosticRunDto["firewallRules"]> }) {
+  return (
+    <div className="mt-2 overflow-auto rounded-md border" role="region" aria-label="Rule firewall yang mengenai pelanggan" tabIndex={0}>
+      <table className="w-full min-w-[40rem] text-left text-xs">
+        <caption className="sr-only">Rule firewall dan NAT yang mengenai trafik pelanggan</caption>
+        <thead className="text-muted-foreground">
+          <tr>
+            <th scope="col" className="px-2 py-1.5 font-medium">Rule</th>
+            <th scope="col" className="px-2 py-1.5 font-medium">Aksi</th>
+            <th scope="col" className="px-2 py-1.5 font-medium">Berlaku untuk</th>
+            <th scope="col" className="px-2 py-1.5 font-medium">Syarat</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">Hit paket</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rules.map((r) => (
+            <tr key={`${r.table}-${r.ruleIndex}`} className={cn("border-t align-top", r.disabled && "text-muted-foreground line-through")}>
+              <td className="px-2 py-1.5 font-mono whitespace-nowrap">
+                {r.table} {r.chain} #{r.ruleIndex}
+                {r.comment && <span className="block font-sans text-muted-foreground no-underline">{r.comment}</span>}
+              </td>
+              <td className="px-2 py-1.5 whitespace-nowrap">
+                {r.action}
+                {r.disabled && <span className="ml-1 no-underline">(nonaktif)</span>}
+              </td>
+              <td className="px-2 py-1.5">{scopeLabel[r.scope] ?? r.scope}</td>
+              <td className="px-2 py-1.5 font-mono break-all">{r.summary || "—"}</td>
+              <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">
+                {new Intl.NumberFormat("id-ID").format(r.matchedPackets)}
+                {r.isStale && <span className="block text-warning">tidak pernah kena</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // Kejadian log dan alert diurut waktu, dengan penanda keluhan di posisinya.
 function Timeline({ run }: { run: DiagnosticRunDto }) {
   const anchorIso = run.complaintAt ?? run.createdAt;
@@ -289,11 +335,14 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                 {i + 1}. {layer.label}
               </h3>
               {list ? (
-                <ul className="divide-y text-sm">
-                  {list.map((f) => (
-                    <FindingRow key={f.id} f={f} />
-                  ))}
-                </ul>
+                <>
+                  <ul className="divide-y text-sm">
+                    {list.map((f) => (
+                      <FindingRow key={f.id} f={f} />
+                    ))}
+                  </ul>
+                  {layer.id === "firewall" && !!run.firewallRules?.length && <FirewallRuleTable rules={run.firewallRules} />}
+                </>
               ) : (
                 <p className="py-2 text-sm text-muted-foreground">
                   {active ? "Menunggu giliran…" : "Tidak ada data untuk lapisan ini."}

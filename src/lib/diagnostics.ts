@@ -266,12 +266,15 @@ export function pickVerdict(findings: Finding[]): {
   for (const status of ["fail", "warn"] as const) {
     // Billing pasti hanya saat gagal (isolir/putus); peringatannya (tunggakan,
     // pending) tidak menjelaskan lambat, jadi diperiksa paling akhir.
-    const order = status === "fail" ? VERDICT_ORDER : [...VERDICT_ORDER.filter((l) => l !== "billing"), "billing" as const];
+    const order =
+      status === "fail"
+        ? VERDICT_ORDER
+        : [...VERDICT_ORDER.filter((l) => l !== "billing"), "billing" as const];
     for (const layer of order) {
       const f = findings.find((x) => x.layer === layer && x.status === status);
       if (f) {
         const numbers = f.value
-          ? ` ${f.value} (ambang ${f.comparator ?? ""} ${f.threshold ?? ""})`.trimEnd()
+          ? ` ${f.value} (ambang ${[f.comparator, f.threshold].filter(Boolean).join(" ")})`
           : "";
         return {
           layer,
@@ -301,8 +304,11 @@ export function pickVerdict(findings: Finding[]): {
 
 // shortcut: jendela tetap (bukan geser); dua kejadian yang mengapit batas
 // jendela bisa menghasilkan dua run. Cukup untuk menahan flapping per 15 menit.
-export const autoDedupeKey = (customerId: string, nowMs: number, minutes: number) =>
-  `auto:${customerId}:${Math.floor(nowMs / (minutes * 60_000))}`;
+export const autoDedupeKey = (
+  customerId: string,
+  nowMs: number,
+  minutes: number,
+) => `auto:${customerId}:${Math.floor(nowMs / (minutes * 60_000))}`;
 
 export const sharedDedupeKey = (nowMs: number, minutes: number) =>
   `shared:${Math.floor(nowMs / (minutes * 60_000))}`;
@@ -354,7 +360,11 @@ export function createDiagnosticQueue(
             continue;
           }
         }
-        if (!best || job.priority < best.priority || (job.priority === best.priority && job.seq < best.seq)) {
+        if (
+          !best ||
+          job.priority < best.priority ||
+          (job.priority === best.priority && job.seq < best.seq)
+        ) {
           best = job;
         }
       }
@@ -374,7 +384,10 @@ export function createDiagnosticQueue(
       busy.set(job.routerKey, (busy.get(job.routerKey) ?? 0) + 1);
       run(job.runId)
         .catch((err) =>
-          console.error("Diagnosa gagal dijalankan:", err instanceof Error ? err.message : err),
+          console.error(
+            "Diagnosa gagal dijalankan:",
+            err instanceof Error ? err.message : err,
+          ),
         )
         .finally(() => {
           running--;
@@ -388,7 +401,8 @@ export function createDiagnosticQueue(
 
   return {
     enqueue(job: QueueJob) {
-      if (active.has(job.runId) || waiting.some((w) => w.runId === job.runId)) return;
+      if (active.has(job.runId) || waiting.some((w) => w.runId === job.runId))
+        return;
       waiting.push({ ...job, seq: seq++ });
       pump();
     },
@@ -423,7 +437,13 @@ export interface DiagnosticRunDto {
   verdictDetail: string | null;
   isSharedFault: boolean;
   complaintAt: string | null;
-  timeline: { at: string; kind: string; label: string; detail: string; source: string }[];
+  timeline: {
+    at: string;
+    kind: string;
+    label: string;
+    detail: string;
+    source: string;
+  }[];
   findings?: FindingDto[];
   // Rule firewall/NAT yang mengenai pelanggan (potret Fase 4), urut tabel & posisi.
   firewallRules?: {
@@ -506,7 +526,8 @@ export function evaluateQueue(
         threshold: "ada",
         comparator: "=",
         status: "warn",
-        detail: "Tidak ada simple queue untuk sesi ini: batas kecepatan tidak terpasang di router ini.",
+        detail:
+          "Tidak ada simple queue untuk sesi ini: batas kecepatan tidak terpasang di router ini.",
       },
     ];
   }
@@ -531,7 +552,13 @@ export function evaluateQueue(
   const [rateUp, rateDown] = pair(latest.rate);
   let usage: Finding;
   if (limUp <= 0 || limDown <= 0) {
-    usage = unchecked("mikrotik", "queue_usage", "Pemakaian terhadap batas", "max-limit 0 (tanpa batas): persentase tidak bisa dihitung.", sourceRef);
+    usage = unchecked(
+      "mikrotik",
+      "queue_usage",
+      "Pemakaian terhadap batas",
+      "max-limit 0 (tanpa batas): persentase tidak bisa dihitung.",
+      sourceRef,
+    );
   } else {
     const pUp = pct(rateUp, limUp);
     const pDown = pct(rateDown, limDown);
@@ -560,10 +587,21 @@ export function evaluateQueue(
   const [dUp, dDown] = delta("dropped");
   const [pUp, pDown] = delta("packets");
   if (dUp < 0 || dDown < 0 || pUp < 0 || pDown < 0) {
-    return [limit, usage, unchecked("mikrotik", "queue_drop", "Paket dibuang antrean", "Penghitung queue kembali ke nol di antara dua sampel (sesi tersambung ulang).", sourceRef)];
+    return [
+      limit,
+      usage,
+      unchecked(
+        "mikrotik",
+        "queue_drop",
+        "Paket dibuang antrean",
+        "Penghitung queue kembali ke nol di antara dua sampel (sesi tersambung ulang).",
+        sourceRef,
+      ),
+    ];
   }
   // Persen dari paket yang datang ke antrean (lewat + dibuang), bukan jumlah mentah.
-  const lossPct = (drop: number, passed: number) => (drop + passed > 0 ? (drop / (drop + passed)) * 100 : 0);
+  const lossPct = (drop: number, passed: number) =>
+    drop + passed > 0 ? (drop / (drop + passed)) * 100 : 0;
   const lUp = lossPct(dUp, pUp);
   const lDown = lossPct(dDown, pDown);
   const lossy = Math.max(lUp, lDown) >= QUEUE_DROP_WARN_PCT;
@@ -591,13 +629,25 @@ export function evaluatePppInterface(
 ): Finding {
   const label = "Error & drop antarmuka PPPoE";
   if (!first || !second) {
-    return unchecked("mikrotik", "iface_errors", label, "Antarmuka <pppoe-…> tidak terbaca pada kedua sampel.", sourceRef);
+    return unchecked(
+      "mikrotik",
+      "iface_errors",
+      label,
+      "Antarmuka <pppoe-…> tidak terbaca pada kedua sampel.",
+      sourceRef,
+    );
   }
   const d = (k: string) => n(second[k]) - n(first[k]);
   const errors = d("rx-error") + d("tx-error");
   const drops = d("rx-drop") + d("tx-drop");
   if (errors < 0 || drops < 0) {
-    return unchecked("mikrotik", "iface_errors", label, "Penghitung antarmuka kembali ke nol di antara dua sampel (sesi tersambung ulang).", sourceRef);
+    return unchecked(
+      "mikrotik",
+      "iface_errors",
+      label,
+      "Penghitung antarmuka kembali ke nol di antara dua sampel (sesi tersambung ulang).",
+      sourceRef,
+    );
   }
   return {
     layer: "mikrotik",
@@ -622,12 +672,33 @@ export function evaluatePonVlan(
   sampledAt: Date,
 ): Finding {
   const label = `Laju jalur PON${vlanName ? ` ${vlanName}` : ""}`;
-  if (!vlanName) return unchecked("mikrotik", "pon_vlan_rate", label, "Binding PPPoE server tidak menyebut antarmuka asal sesi.", sourceRef);
-  if (!first || !second || gapSec <= 0) return unchecked("mikrotik", "pon_vlan_rate", label, `Antarmuka ${vlanName} tidak terbaca pada kedua sampel.`, sourceRef);
+  if (!vlanName)
+    return unchecked(
+      "mikrotik",
+      "pon_vlan_rate",
+      label,
+      "Binding PPPoE server tidak menyebut antarmuka asal sesi.",
+      sourceRef,
+    );
+  if (!first || !second || gapSec <= 0)
+    return unchecked(
+      "mikrotik",
+      "pon_vlan_rate",
+      label,
+      `Antarmuka ${vlanName} tidak terbaca pada kedua sampel.`,
+      sourceRef,
+    );
   // tx router = menuju OLT (unduh pelanggan), rx = unggah.
   const down = ((n(second["tx-byte"]) - n(first["tx-byte"])) * 8) / gapSec;
   const up = ((n(second["rx-byte"]) - n(first["rx-byte"])) * 8) / gapSec;
-  if (down < 0 || up < 0) return unchecked("mikrotik", "pon_vlan_rate", label, "Penghitung antarmuka kembali ke nol di antara dua sampel.", sourceRef);
+  if (down < 0 || up < 0)
+    return unchecked(
+      "mikrotik",
+      "pon_vlan_rate",
+      label,
+      "Penghitung antarmuka kembali ke nol di antara dua sampel.",
+      sourceRef,
+    );
   const used = pct(Math.max(down, up), PON_CAPACITY_MBPS * 1e6);
   return {
     layer: "mikrotik",
@@ -636,7 +707,8 @@ export function evaluatePonVlan(
     value: `unduh ${mbps(down)} Mbps, unggah ${mbps(up)} Mbps (${used}% dari ${PON_CAPACITY_MBPS} Mbps)`,
     threshold: `${PON_WARN_PCT}%`,
     comparator: "<",
-    status: used >= PON_FAIL_PCT ? "fail" : used >= PON_WARN_PCT ? "warn" : "ok",
+    status:
+      used >= PON_FAIL_PCT ? "fail" : used >= PON_WARN_PCT ? "warn" : "ok",
     detail:
       used >= PON_WARN_PCT
         ? "Jalur PON yang dipakai bersama pelanggan satu port hampir penuh: lambat bisa karena berbagi jalur."
@@ -657,8 +729,12 @@ export function evaluateIpConflict(
   const others = [
     ...arp
       .filter((a) => a.interface !== pppInterface)
-      .map((a) => `ARP di ${a.interface || "?"} MAC ${a["mac-address"] || "?"}`),
-    ...leases.map((l) => `lease DHCP ${l.server || "?"} MAC ${l["mac-address"] || "?"}`),
+      .map(
+        (a) => `ARP di ${a.interface || "?"} MAC ${a["mac-address"] || "?"}`,
+      ),
+    ...leases.map(
+      (l) => `lease DHCP ${l.server || "?"} MAC ${l["mac-address"] || "?"}`,
+    ),
   ];
   return {
     layer: "mikrotik",
@@ -698,7 +774,8 @@ export function addressContains(entry: string, ip: string): boolean {
   const [base, len] = entry.split("/");
   const start = ipNum(base);
   const bits = len === undefined ? 32 : Number(len);
-  if (start === null || !Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+  if (start === null || !Number.isInteger(bits) || bits < 0 || bits > 32)
+    return false;
   const size = 2 ** (32 - bits);
   return Math.floor(target / size) === Math.floor(start / size);
 }
@@ -707,7 +784,9 @@ export function addressListMembership(ip: string, entries: Ros[]) {
   const lists = [
     ...new Set(
       entries
-        .filter((e) => e.disabled !== "true" && addressContains(e.address ?? "", ip))
+        .filter(
+          (e) => e.disabled !== "true" && addressContains(e.address ?? "", ip),
+        )
         .map((e) => e.list),
     ),
   ];
@@ -740,10 +819,21 @@ export function evaluateAddressLists(
   };
 }
 
-export function evaluateConntrack(tracking: Ros, sourceRef: string, sampledAt: Date): Finding {
+export function evaluateConntrack(
+  tracking: Ros,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
   const total = n(tracking["total-entries"]);
   const max = n(tracking["max-entries"]);
-  if (max <= 0) return unchecked("firewall", "conntrack", "Tabel connection tracking", "Router tidak melaporkan max-entries.", sourceRef);
+  if (max <= 0)
+    return unchecked(
+      "firewall",
+      "conntrack",
+      "Tabel connection tracking",
+      "Router tidak melaporkan max-entries.",
+      sourceRef,
+    );
   const used = pct(total, max);
   return {
     layer: "firewall",
@@ -752,7 +842,12 @@ export function evaluateConntrack(tracking: Ros, sourceRef: string, sampledAt: D
     value: `${total} dari ${max} (${used}%)`,
     threshold: `${CONNTRACK_WARN_PCT}%`,
     comparator: "<",
-    status: used >= CONNTRACK_FAIL_PCT ? "fail" : used >= CONNTRACK_WARN_PCT ? "warn" : "ok",
+    status:
+      used >= CONNTRACK_FAIL_PCT
+        ? "fail"
+        : used >= CONNTRACK_WARN_PCT
+          ? "warn"
+          : "ok",
     detail:
       used >= CONNTRACK_WARN_PCT
         ? "Tabel hampir penuh: koneksi baru bisa gagal acak (kadang jalan, kadang tidak)."
@@ -798,14 +893,20 @@ export function evaluateOnt(
   const sourceRef = `GenieACS · ${ont.deviceId}`;
   const informAt = new Date(ont.lastInform);
   const age = now.getTime() - informAt.getTime();
-  const base = { layer: "ont" as const, sourceRef, sampledAt: Number.isNaN(age) ? null : informAt };
+  const base = {
+    layer: "ont" as const,
+    sourceRef,
+    sampledAt: Number.isNaN(age) ? null : informAt,
+  };
   if (Number.isNaN(age) || age > ONT_STALE_MS) {
     return [
       {
         ...base,
         metric: "ont_inform",
         label: "Laporan terakhir modem",
-        value: Number.isNaN(age) ? "tidak ada" : `${Math.round(age / 60_000)} menit lalu`,
+        value: Number.isNaN(age)
+          ? "tidak ada"
+          : `${Math.round(age / 60_000)} menit lalu`,
         threshold: `${ONT_STALE_MS / 60_000} menit`,
         comparator: "≤",
         status: "warn",
@@ -835,11 +936,23 @@ export function evaluateOnt(
               ? `Modem tersambung PPPoE, IP ${wan.ip || "—"}.`
               : "Modem tidak tersambung PPPoE: cek kredensial, VLAN, atau sinyal.",
         }
-      : unchecked("ont", "ont_wan", "WAN PPPoE di modem", "Modem tidak melaporkan WAN PPPoE (mode bridge atau PPPoE dijalankan perangkat lain).", sourceRef),
+      : unchecked(
+          "ont",
+          "ont_wan",
+          "WAN PPPoE di modem",
+          "Modem tidak melaporkan WAN PPPoE (mode bridge atau PPPoE dijalankan perangkat lain).",
+          sourceRef,
+        ),
   );
   out.push(
     ont.uptimeSeconds === null
-      ? unchecked("ont", "ont_uptime", "Uptime modem", "Modem tidak melaporkan uptime.", sourceRef)
+      ? unchecked(
+          "ont",
+          "ont_uptime",
+          "Uptime modem",
+          "Modem tidak melaporkan uptime.",
+          sourceRef,
+        )
       : {
           ...base,
           metric: "ont_uptime",
@@ -865,7 +978,15 @@ export function evaluateOnt(
     detail: "Konteks: semua perangkat aktif berbagi kecepatan paket yang sama.",
   });
   if (ont.rxDbm === null) {
-    out.push(unchecked("ont", "ont_rx", "Rx optik sisi modem", "Modem tidak melaporkan Rx optik.", sourceRef));
+    out.push(
+      unchecked(
+        "ont",
+        "ont_rx",
+        "Rx optik sisi modem",
+        "Modem tidak melaporkan Rx optik.",
+        sourceRef,
+      ),
+    );
   } else {
     const s = getOpticalSignalStatus(ont.rxDbm);
     const diff = oltRxDbm === null ? null : Math.abs(ont.rxDbm - oltRxDbm);
@@ -877,7 +998,14 @@ export function evaluateOnt(
       value: `${ont.rxDbm} dBm${oltRxDbm === null ? "" : ` (OLT ${oltRxDbm} dBm)`}`,
       threshold: "-24 s.d. -8 dBm",
       comparator: "dalam rentang",
-      status: s.level === "ideal" ? (mismatch ? "warn" : "ok") : s.tone === "danger" ? "fail" : "warn",
+      status:
+        s.level === "ideal"
+          ? mismatch
+            ? "warn"
+            : "ok"
+          : s.tone === "danger"
+            ? "fail"
+            : "warn",
       detail: `${s.label}.${
         mismatch
           ? ` Selisih dengan pembacaan OLT ${diff!.toFixed(1)} dB (ambang ${OLT_ONT_RX_DIFF_DB} dB): salah satu pembacaan meleset atau ONU yang dipetakan berbeda.`
@@ -919,21 +1047,35 @@ export function evaluateRunsnetStatus(c: RunsnetInput): Finding {
 }
 
 export function evaluateArrears(
-  invoices: { dueDate: string | null; status: string; remainingAmount: number }[],
+  invoices: {
+    dueDate: string | null;
+    status: string;
+    remainingAmount: number;
+  }[],
   today: string,
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
   const overdue = invoices.filter(
-    (i) => i.status !== "paid" && i.remainingAmount > 0 && !!i.dueDate && i.dueDate < today,
+    (i) =>
+      i.status !== "paid" &&
+      i.remainingAmount > 0 &&
+      !!i.dueDate &&
+      i.dueDate < today,
   );
   const total = overdue.reduce((sum, i) => sum + i.remainingAmount, 0);
-  const rupiah = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
+  const rupiah = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  });
   return {
     layer: "billing",
     metric: "arrears",
     label: "Tagihan lewat jatuh tempo",
-    value: overdue.length ? `${overdue.length} tagihan, ${rupiah.format(total)}` : "tidak ada",
+    value: overdue.length
+      ? `${overdue.length} tagihan, ${rupiah.format(total)}`
+      : "tidak ada",
     threshold: "0 tagihan",
     comparator: "=",
     status: overdue.length ? "warn" : "ok",
@@ -955,10 +1097,22 @@ export function evaluateBillingNetwork(input: {
 }): Finding {
   const label = "Kecocokan billing dengan router";
   if (!input.billingStatus) {
-    return unchecked("billing", "billing_network", label, "Status billing pelanggan tidak diketahui.", input.sourceRef);
+    return unchecked(
+      "billing",
+      "billing_network",
+      label,
+      "Status billing pelanggan tidak diketahui.",
+      input.sourceRef,
+    );
   }
   if (input.sessionActive === null) {
-    return unchecked("billing", "billing_network", label, "Router tidak terbaca.", input.sourceRef);
+    return unchecked(
+      "billing",
+      "billing_network",
+      label,
+      "Router tidak terbaca.",
+      input.sourceRef,
+    );
   }
   const s = input.billingStatus.toLowerCase();
   const base = {
@@ -971,16 +1125,39 @@ export function evaluateBillingNetwork(input: {
     sampledAt: input.sampledAt,
   };
   if (s === "terminate" && input.sessionActive) {
-    return { ...base, value: "tidak selaras", status: "warn", detail: "Layanan diputus di billing tetapi sesi PPPoE masih aktif di router." };
+    return {
+      ...base,
+      value: "tidak selaras",
+      status: "warn",
+      detail:
+        "Layanan diputus di billing tetapi sesi PPPoE masih aktif di router.",
+    };
   }
   if (!input.sessionActive) {
-    return { ...base, value: "sesi tidak aktif", status: "ok", detail: "Tidak ada sesi aktif untuk dibandingkan dengan billing." };
+    return {
+      ...base,
+      value: "sesi tidak aktif",
+      status: "ok",
+      detail: "Tidak ada sesi aktif untuk dibandingkan dengan billing.",
+    };
   }
   if (input.isolatedInRouter === null) {
-    return unchecked("billing", "billing_network", label, "Address-list router tidak terbaca.", input.sourceRef);
+    return unchecked(
+      "billing",
+      "billing_network",
+      label,
+      "Address-list router tidak terbaca.",
+      input.sourceRef,
+    );
   }
   if (s === "isolir" && !input.isolatedInRouter) {
-    return { ...base, value: "tidak selaras", status: "warn", detail: "Billing isolir tetapi IP sesi tidak di daftar isolir router: isolir belum diterapkan." };
+    return {
+      ...base,
+      value: "tidak selaras",
+      status: "warn",
+      detail:
+        "Billing isolir tetapi IP sesi tidak di daftar isolir router: isolir belum diterapkan.",
+    };
   }
   if (s !== "isolir" && input.isolatedInRouter) {
     return {
@@ -990,7 +1167,12 @@ export function evaluateBillingNetwork(input: {
       detail: `IP sesi ada di daftar isolir router padahal billing ${input.billingStatus}: pelanggan terisolir tanpa sebab billing.`,
     };
   }
-  return { ...base, value: "selaras", status: "ok", detail: "Status billing sesuai keadaan sesi di router." };
+  return {
+    ...base,
+    value: "selaras",
+    status: "ok",
+    detail: "Status billing sesuai keadaan sesi di router.",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1035,7 +1217,10 @@ export const TIMELINE_MAX = 60;
 const NOISE: [RegExp, string][] = [
   [/\bdetect (UNKNOWN|WAN|LAN|INTERNET)\b/, "detect-internet"],
   [/^user \S+ logged (in|out)\b/, "login akun pengelola (api/winbox/web)"],
-  [/: (authenticated|connected|disconnected|terminating\.\.\.)$/, "langkah rutin sesi PPP"],
+  [
+    /: (authenticated|connected|disconnected|terminating\.\.\.)$/,
+    "langkah rutin sesi PPP",
+  ],
   [/^PPPoE connection established from /, "langkah rutin sesi PPP"],
   [/\b(assigned|deassigned) \S+ (to|from) /, "pemberian lease DHCP rutin"],
 ];
@@ -1048,16 +1233,24 @@ export function classifyLogLine(line: Pick<LogLine, "topics" | "message">): {
   sessionSec?: number;
 } {
   const m = line.message.trim();
-  for (const [re, group] of NOISE) if (re.test(m)) return { kind: "noise", noiseGroup: group };
+  for (const [re, group] of NOISE)
+    if (re.test(m)) return { kind: "noise", noiseGroup: group };
   const out = /\blogged out, (\d+) /.exec(m);
   if (out) return { kind: "logout", sessionSec: Number(out[1]) };
   if (/\blogged out\b/.test(m)) return { kind: "logout" };
   if (/\blogged in, /.test(m)) return { kind: "login" };
-  if (/could not determine remote address/.test(m)) return { kind: "no_address" };
-  if (/authentication failed|login failed|bad password|peer refused|max sessions/i.test(m)) return { kind: "auth_fail" };
+  if (/could not determine remote address/.test(m))
+    return { kind: "no_address" };
+  if (
+    /authentication failed|login failed|bad password|peer refused|max sessions/i.test(
+      m,
+    )
+  )
+    return { kind: "auth_fail" };
   if (/^\S+ link down\b/.test(m)) return { kind: "link_down" };
   if (/^\S+ link up\b/.test(m)) return { kind: "link_up" };
-  if (/conflict|already in use|duplicate address|mac address changed/i.test(m)) return { kind: "addr_conflict" };
+  if (/conflict|already in use|duplicate address|mac address changed/i.test(m))
+    return { kind: "addr_conflict" };
   if (/\bfirewall\b/.test(line.topics)) return { kind: "firewall" };
   return { kind: "other" };
 }
@@ -1076,8 +1269,11 @@ export function logLineMatcher(t: {
   if (t.mac) parts.push(escapeRe(t.mac));
   if (t.ip) parts.push(`(?<![\\d.])${escapeRe(t.ip)}(?![\\d.])`);
   const who = new RegExp(parts.join("|"), "i");
-  const links = t.interfaces.filter(Boolean).map((i) => new RegExp(`^${escapeRe(i)} link (down|up)\\b`));
-  return (line: Pick<LogLine, "message">) => who.test(line.message) || links.some((re) => re.test(line.message.trim()));
+  const links = t.interfaces
+    .filter(Boolean)
+    .map((i) => new RegExp(`^${escapeRe(i)} link (down|up)\\b`));
+  return (line: Pick<LogLine, "message">) =>
+    who.test(line.message) || links.some((re) => re.test(line.message.trim()));
 }
 
 const kindLabel: Record<LogKind, string> = {
@@ -1093,7 +1289,6 @@ const kindLabel: Record<LogKind, string> = {
   other: "Log router",
 };
 
-
 export function analyzeLog(input: {
   lines: LogLine[];
   matches: (line: LogLine) => boolean;
@@ -1107,12 +1302,21 @@ export function analyzeLog(input: {
   coverageHint: string;
 }): { findings: Finding[]; timeline: TimelineEvent[] } {
   const { complaintAt, now, coverageStart, sourceRef } = input;
-  const from = new Date(Math.max(complaintAt.getTime() - LOG_LOOKBACK_MS, coverageStart?.getTime() ?? 0));
+  const from = new Date(
+    Math.max(
+      complaintAt.getTime() - LOG_LOOKBACK_MS,
+      coverageStart?.getTime() ?? 0,
+    ),
+  );
   const base = { layer: "log" as const, sourceRef, sampledAt: now };
   const findings: Finding[] = [];
 
-  const covered = coverageStart !== null && coverageStart.getTime() <= complaintAt.getTime() - LOG_MIN_COVERAGE_MS;
-  const span = coverageStart ? `${fmtTime(coverageStart)} – ${fmtTime(now)}` : "tidak ada";
+  const covered =
+    coverageStart !== null &&
+    coverageStart.getTime() <= complaintAt.getTime() - LOG_MIN_COVERAGE_MS;
+  const span = coverageStart
+    ? `${fmtTime(coverageStart)} – ${fmtTime(now)}`
+    : "tidak ada";
   findings.push(
     covered
       ? {
@@ -1174,7 +1378,15 @@ export function analyzeLog(input: {
   });
 
   const logouts = of("logout");
-  const shortest = logouts.reduce<number | null>((m, l) => (l.sessionSec === undefined ? m : m === null ? l.sessionSec : Math.min(m, l.sessionSec)), null);
+  const shortest = logouts.reduce<number | null>(
+    (m, l) =>
+      l.sessionSec === undefined
+        ? m
+        : m === null
+          ? l.sessionSec
+          : Math.min(m, l.sessionSec),
+    null,
+  );
   findings.push(
     count(
       "ppp_flap",
@@ -1193,7 +1405,7 @@ export function analyzeLog(input: {
       "Sesi tanpa alamat IP",
       noAddr,
       1,
-      "Router tidak bisa memberi alamat IP ke sesi (\"could not determine remote address\"): pool IP habis atau RADIUS tidak mengirim Framed-IP-Address, sehingga sesi langsung putus.",
+      'Router tidak bisa memberi alamat IP ke sesi ("could not determine remote address"): pool IP habis atau RADIUS tidak mengirim Framed-IP-Address, sehingga sesi langsung putus.',
       "Setiap sesi mendapat alamat IP.",
     ),
   );
@@ -1230,7 +1442,16 @@ export function analyzeLog(input: {
   );
   const fw = of("firewall");
   if (fw.length) {
-    findings.push(count("firewall_log", "Log firewall untuk pelanggan", fw, FLAP_FAIL_COUNT, "Rule firewall yang di-log mengenai trafik pelanggan.", ""));
+    findings.push(
+      count(
+        "firewall_log",
+        "Log firewall untuk pelanggan",
+        fw,
+        FLAP_FAIL_COUNT,
+        "Rule firewall yang di-log mengenai trafik pelanggan.",
+        "",
+      ),
+    );
   }
   const noiseTotal = [...noise.values()].reduce((a, b) => a + b, 0);
   findings.push({
@@ -1249,7 +1470,11 @@ export function analyzeLog(input: {
   // Garis waktu: kejadian terdekat dengan waktu keluhan.
   const events = relevant
     .slice()
-    .sort((a, b) => Math.abs(a.at.getTime() - complaintAt.getTime()) - Math.abs(b.at.getTime() - complaintAt.getTime()))
+    .sort(
+      (a, b) =>
+        Math.abs(a.at.getTime() - complaintAt.getTime()) -
+        Math.abs(b.at.getTime() - complaintAt.getTime()),
+    )
     .slice(0, TIMELINE_MAX)
     .sort((a, b) => a.at.getTime() - b.at.getTime())
     .map((l) => ({
@@ -1263,8 +1488,14 @@ export function analyzeLog(input: {
 }
 
 // "2026-10-22 19:49:02" (jam router, WIB) atau "19:49:02" (hari ini) -> Date.
-export function parseRouterLogTime(value: string, now: Date, offset = "+07:00"): Date | null {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(now);
+export function parseRouterLogTime(
+  value: string,
+  now: Date,
+  offset = "+07:00",
+): Date | null {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+  }).format(now);
   const full = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
     ? value.replace(" ", "T")
     : /^\d{2}:\d{2}:\d{2}$/.test(value)
@@ -1366,15 +1597,23 @@ const SUMMARY_KEYS = [
   "new-packet-mark",
 ];
 
-const negated = (v: string): [boolean, string] => (v.startsWith("!") ? [true, v.slice(1)] : [false, v]);
+const negated = (v: string): [boolean, string] =>
+  v.startsWith("!") ? [true, v.slice(1)] : [false, v];
 
 // Satu sisi rule (src = pelanggan sebagai pengirim, dst = sebagai tujuan).
-function sideMatch(rule: Ros, side: "src" | "dst", t: FirewallTarget): "spec" | "excl" | "neutral" {
+function sideMatch(
+  rule: Ros,
+  side: "src" | "dst",
+  t: FirewallTarget,
+): "spec" | "excl" | "neutral" {
   let spec = false;
   const checks: [string | undefined, (v: string) => boolean][] = [
     [rule[`${side}-address`], (v) => addressContains(v, t.ip)],
     [rule[`${side}-address-list`], (v) => t.lists.includes(v)],
-    [rule[side === "src" ? "in-interface" : "out-interface"], (v) => v === t.iface],
+    [
+      rule[side === "src" ? "in-interface" : "out-interface"],
+      (v) => v === t.iface,
+    ],
   ];
   for (const [raw, test] of checks) {
     if (!raw) continue;
@@ -1387,20 +1626,31 @@ function sideMatch(rule: Ros, side: "src" | "dst", t: FirewallTarget): "spec" | 
 
 export function ruleScope(rule: Ros, t: FirewallTarget): RuleScope | null {
   // Port forward yang menunjuk pelanggan selalu khusus.
-  if ((rule.action === "dst-nat" || rule.action === "netmap") && rule["to-addresses"] && addressContains(rule["to-addresses"], t.ip)) {
+  if (
+    (rule.action === "dst-nat" || rule.action === "netmap") &&
+    rule["to-addresses"] &&
+    addressContains(rule["to-addresses"], t.ip)
+  ) {
     return "khusus";
   }
   const chain = rule.chain ?? "";
   // input = pelanggan ke router (pengirim); output = router ke pelanggan.
   // srcnat/dstnat: pelanggan di balik NAT hanya relevan sebagai pengirim;
   // port forward ke pelanggan sudah tertangkap lewat to-addresses di atas.
-  const sides: ("src" | "dst")[] = ["input", "srcnat", "dstnat"].includes(chain) ? ["src"] : chain === "output" ? ["dst"] : ["src", "dst"];
+  const sides: ("src" | "dst")[] = ["input", "srcnat", "dstnat"].includes(chain)
+    ? ["src"]
+    : chain === "output"
+      ? ["dst"]
+      : ["src", "dst"];
   const results = sides.map((s) => {
     const r = sideMatch(rule, s, t);
     // Sisi lawan dibatasi ke jaringan privat (modem, OLT, VPN): trafik internal,
     // bukan trafik internet pelanggan, jadi tidak dihitung "umum".
     const peer = rule[`${s === "src" ? "dst" : "src"}-address`];
-    const internal = !!peer && !peer.startsWith("!") && PRIVATE_NETS.some((net) => addressContains(net, peer.split("/")[0]));
+    const internal =
+      !!peer &&
+      !peer.startsWith("!") &&
+      PRIVATE_NETS.some((net) => addressContains(net, peer.split("/")[0]));
     return r === "neutral" && internal ? "excl" : r;
   });
   if (results.includes("spec")) return "khusus";
@@ -1413,7 +1663,10 @@ const n0 = (v: string | undefined) => {
   return Number.isFinite(x) ? x : 0;
 };
 
-export function auditRules(tables: Partial<Record<FirewallTable, Ros[]>>, t: FirewallTarget): RuleHit[] {
+export function auditRules(
+  tables: Partial<Record<FirewallTable, Ros[]>>,
+  t: FirewallTarget,
+): RuleHit[] {
   const out: RuleHit[] = [];
   for (const table of ["raw", "filter", "mangle", "nat"] as FirewallTable[]) {
     (tables[table] ?? []).forEach((rule, index) => {
@@ -1435,7 +1688,9 @@ export function auditRules(tables: Partial<Record<FirewallTable, Ros[]>>, t: Fir
         packets,
         bytes: n0(rule.bytes),
         comment: rule.comment ?? "",
-        summary: SUMMARY_KEYS.filter((k) => rule[k]).map((k) => `${k}=${rule[k]}`).join(" "),
+        summary: SUMMARY_KEYS.filter((k) => rule[k])
+          .map((k) => `${k}=${rule[k]}`)
+          .join(" "),
         stale: !disabled && scope === "khusus" && packets === 0,
       });
     });
@@ -1448,20 +1703,45 @@ const ruleName = (h: RuleHit) =>
   `${h.table} ${h.chain} #${h.index} ${h.action}${h.comment ? ` "${h.comment}"` : ""}${h.summary ? ` (${h.summary})` : ""}`;
 const active = (h: RuleHit) => !h.disabled;
 
-export function evaluateFilterBlock(hits: RuleHit[], sourceRef: string, sampledAt: Date): Finding {
-  const blocks = hits.filter((h) => h.table === "filter" && active(h) && BLOCK_ACTIONS.has(h.action));
+export function evaluateFilterBlock(
+  hits: RuleHit[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const blocks = hits.filter(
+    (h) => h.table === "filter" && active(h) && BLOCK_ACTIONS.has(h.action),
+  );
   const own = blocks.filter((h) => h.scope === "khusus");
   const firing = own.filter((h) => h.packets > 0);
   const general = blocks.filter((h) => h.scope !== "khusus");
   // Accept khusus di atas drop khusus pada chain yang sama = drop tidak tercapai.
   const shadowed = own.filter((d) =>
-    hits.some((a) => a.table === "filter" && active(a) && a.scope === "khusus" && a.action === "accept" && a.chain === d.chain && a.index < d.index),
+    hits.some(
+      (a) =>
+        a.table === "filter" &&
+        active(a) &&
+        a.scope === "khusus" &&
+        a.action === "accept" &&
+        a.chain === d.chain &&
+        a.index < d.index,
+    ),
   );
   const parts = [
-    firing.length ? `Memblokir dan sedang kena: ${firing.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.` : "",
-    own.length - firing.length > 0 ? `Siaga (belum pernah kena): ${own.filter((h) => h.packets === 0).map(ruleName).join("; ")}.` : "",
-    shadowed.length ? `Tertutup accept di atasnya: ${shadowed.map(ruleName).join("; ")}.` : "",
-    general.length ? `Kebijakan umum yang juga berlaku: ${general.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.` : "",
+    firing.length
+      ? `Memblokir dan sedang kena: ${firing.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.`
+      : "",
+    own.length - firing.length > 0
+      ? `Siaga (belum pernah kena): ${own
+          .filter((h) => h.packets === 0)
+          .map(ruleName)
+          .join("; ")}.`
+      : "",
+    shadowed.length
+      ? `Tertutup accept di atasnya: ${shadowed.map(ruleName).join("; ")}.`
+      : "",
+    general.length
+      ? `Kebijakan umum yang juga berlaku: ${general.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.`
+      : "",
   ].filter(Boolean);
   return {
     layer: "firewall",
@@ -1471,15 +1751,23 @@ export function evaluateFilterBlock(hits: RuleHit[], sourceRef: string, sampledA
     threshold: "0 rule khusus yang kena",
     comparator: "=",
     status: firing.length ? "fail" : own.length ? "warn" : "ok",
-    detail: parts.join(" ") || "Tidak ada rule filter drop/reject yang mengenai pelanggan.",
+    detail:
+      parts.join(" ") ||
+      "Tidak ada rule filter drop/reject yang mengenai pelanggan.",
     sourceRef,
     sampledAt,
   };
 }
 
-export function evaluateRaw(hits: RuleHit[], sourceRef: string, sampledAt: Date): Finding {
+export function evaluateRaw(
+  hits: RuleHit[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
   const raw = hits.filter((h) => h.table === "raw" && active(h));
-  const drops = raw.filter((h) => BLOCK_ACTIONS.has(h.action) && h.scope === "khusus");
+  const drops = raw.filter(
+    (h) => BLOCK_ACTIONS.has(h.action) && h.scope === "khusus",
+  );
   const notrack = raw.filter((h) => h.action === "notrack");
   return {
     layer: "firewall",
@@ -1488,30 +1776,58 @@ export function evaluateRaw(hits: RuleHit[], sourceRef: string, sampledAt: Date)
     value: `${drops.length} drop, ${notrack.length} notrack`,
     threshold: "0",
     comparator: "=",
-    status: drops.some((h) => h.packets > 0) ? "fail" : drops.length || notrack.length ? "warn" : "ok",
+    status: drops.some((h) => h.packets > 0)
+      ? "fail"
+      : drops.length || notrack.length
+        ? "warn"
+        : "ok",
     detail:
       drops.length || notrack.length
         ? [
-            drops.length ? `Raw drop (sebelum connection tracking, tidak tampak di monitoring): ${drops.map(ruleName).join("; ")}.` : "",
-            notrack.length ? `Notrack: koneksi tidak dilacak sehingga NAT tidak berlaku: ${notrack.map(ruleName).join("; ")}.` : "",
-          ].filter(Boolean).join(" ")
+            drops.length
+              ? `Raw drop (sebelum connection tracking, tidak tampak di monitoring): ${drops.map(ruleName).join("; ")}.`
+              : "",
+            notrack.length
+              ? `Notrack: koneksi tidak dilacak sehingga NAT tidak berlaku: ${notrack.map(ruleName).join("; ")}.`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")
         : "Tidak ada rule raw yang mengenai pelanggan.",
     sourceRef,
     sampledAt,
   };
 }
 
-const PRIVATE_NETS = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10"];
+const PRIVATE_NETS = [
+  "10.0.0.0/8",
+  "172.16.0.0/12",
+  "192.168.0.0/16",
+  "100.64.0.0/10",
+];
 
-export function evaluateSrcNat(hits: RuleHit[], ip: string, sourceRef: string, sampledAt: Date): Finding {
-  const nat = hits.filter((h) => h.table === "nat" && h.chain === "srcnat" && active(h) && (h.action === "masquerade" || h.action === "src-nat"));
+export function evaluateSrcNat(
+  hits: RuleHit[],
+  ip: string,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const nat = hits.filter(
+    (h) =>
+      h.table === "nat" &&
+      h.chain === "srcnat" &&
+      active(h) &&
+      (h.action === "masquerade" || h.action === "src-nat"),
+  );
   const isPrivate = PRIVATE_NETS.some((net) => addressContains(net, ip));
   const first = nat[0];
   return {
     layer: "firewall",
     metric: "nat_src",
     label: "NAT keluar (masquerade/src-nat)",
-    value: first ? `${ruleName(first)}, hit ${fmtCount(first.packets)}` : "tidak ada",
+    value: first
+      ? `${ruleName(first)}, hit ${fmtCount(first.packets)}`
+      : "tidak ada",
     threshold: isPrivate ? "ada untuk IP privat" : "tidak wajib (IP publik)",
     comparator: "=",
     status: first || !isPrivate ? "ok" : "fail",
@@ -1525,24 +1841,62 @@ export function evaluateSrcNat(hits: RuleHit[], ip: string, sourceRef: string, s
   };
 }
 
-const ports = (v: string | undefined) => (v ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+const ports = (v: string | undefined) =>
+  (v ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
 
-export function evaluatePortForward(hits: RuleHit[], natRules: Ros[], ip: string, sourceRef: string, sampledAt: Date): Finding {
-  const forwards = hits.filter((h) => h.table === "nat" && h.chain === "dstnat" && active(h) && (h.action === "dst-nat" || h.action === "netmap") && h.scope === "khusus");
+export function evaluatePortForward(
+  hits: RuleHit[],
+  natRules: Ros[],
+  ip: string,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const forwards = hits.filter(
+    (h) =>
+      h.table === "nat" &&
+      h.chain === "dstnat" &&
+      active(h) &&
+      (h.action === "dst-nat" || h.action === "netmap") &&
+      h.scope === "khusus",
+  );
   // Forward lain (ke tujuan mana pun) yang sama protokol & port & tujuan awal
   // dan berada lebih atas: forward pelanggan tidak pernah tercapai.
   const clashes: string[] = [];
   for (const f of forwards) {
     const mine = natRules[f.index];
     natRules.forEach((other, i) => {
-      if (i === f.index || other.disabled === "true" || other.chain !== "dstnat" || !["dst-nat", "netmap", "redirect"].includes(other.action ?? "")) return;
-      const samePort = ports(other["dst-port"]).some((p) => ports(mine["dst-port"]).includes(p));
+      if (
+        i === f.index ||
+        other.disabled === "true" ||
+        other.chain !== "dstnat" ||
+        !["dst-nat", "netmap", "redirect"].includes(other.action ?? "")
+      )
+        return;
+      const samePort = ports(other["dst-port"]).some((p) =>
+        ports(mine["dst-port"]).includes(p),
+      );
       const sameProto = (other.protocol ?? "") === (mine.protocol ?? "");
-      const sameDst = (other["dst-address"] ?? "") === (mine["dst-address"] ?? "") || !other["dst-address"] || !mine["dst-address"];
-      if (samePort && sameProto && sameDst) clashes.push(`#${Math.min(i, f.index)} menutupi #${Math.max(i, f.index)} (port ${mine["dst-port"]})`);
+      const sameDst =
+        (other["dst-address"] ?? "") === (mine["dst-address"] ?? "") ||
+        !other["dst-address"] ||
+        !mine["dst-address"];
+      if (samePort && sameProto && sameDst)
+        clashes.push(
+          `#${Math.min(i, f.index)} menutupi #${Math.max(i, f.index)} (port ${mine["dst-port"]})`,
+        );
     });
   }
-  const redirects = hits.filter((h) => h.table === "nat" && h.chain === "dstnat" && active(h) && h.action === "redirect" && h.scope === "khusus");
+  const redirects = hits.filter(
+    (h) =>
+      h.table === "nat" &&
+      h.chain === "dstnat" &&
+      active(h) &&
+      h.action === "redirect" &&
+      h.scope === "khusus",
+  );
   const unique = [...new Set(clashes)];
   return {
     layer: "firewall",
@@ -1553,17 +1907,33 @@ export function evaluatePortForward(hits: RuleHit[], natRules: Ros[], ip: string
     comparator: "=",
     status: unique.length ? "warn" : "ok",
     detail: [
-      forwards.length ? `Port forward ke ${ip}: ${forwards.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.` : `Tidak ada port forward ke ${ip}.`,
-      unique.length ? `Tabrakan port forward: ${unique.join(", ")}; hanya rule teratas yang berlaku.` : "",
-      redirects.length ? `Redirect yang mengenai pelanggan: ${redirects.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.` : "",
-    ].filter(Boolean).join(" "),
+      forwards.length
+        ? `Port forward ke ${ip}: ${forwards.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.`
+        : `Tidak ada port forward ke ${ip}.`,
+      unique.length
+        ? `Tabrakan port forward: ${unique.join(", ")}; hanya rule teratas yang berlaku.`
+        : "",
+      redirects.length
+        ? `Redirect yang mengenai pelanggan: ${redirects.map((h) => `${ruleName(h)} hit ${fmtCount(h.packets)}`).join("; ")}.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
     sourceRef,
     sampledAt,
   };
 }
 
-export function evaluateFasttrack(hits: RuleHit[], connections: Ros[], sourceRef: string, sampledAt: Date): Finding {
-  const rules = hits.filter((h) => h.table === "filter" && active(h) && h.action === "fasttrack-connection");
+export function evaluateFasttrack(
+  hits: RuleHit[],
+  connections: Ros[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const rules = hits.filter(
+    (h) =>
+      h.table === "filter" && active(h) && h.action === "fasttrack-connection",
+  );
   const fast = connections.filter((c) => c.fasttrack === "true").length;
   const on = rules.length > 0 || fast > 0;
   return {
@@ -1582,7 +1952,13 @@ export function evaluateFasttrack(hits: RuleHit[], connections: Ros[], sourceRef
   };
 }
 
-export function evaluateCustomerConnections(outbound: Ros[], inbound: Ros[], tracking: Ros | null, sourceRef: string, sampledAt: Date): Finding {
+export function evaluateCustomerConnections(
+  outbound: Ros[],
+  inbound: Ros[],
+  tracking: Ros | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
   if (tracking && tracking.enabled === "no") {
     return {
       layer: "firewall",
@@ -1592,7 +1968,8 @@ export function evaluateCustomerConnections(outbound: Ros[], inbound: Ros[], tra
       threshold: "aktif",
       comparator: "=",
       status: "fail",
-      detail: "Connection tracking dimatikan: NAT dan rule berbasis state tidak berjalan.",
+      detail:
+        "Connection tracking dimatikan: NAT dan rule berbasis state tidak berjalan.",
       sourceRef,
       sampledAt,
     };
@@ -1615,14 +1992,29 @@ export function evaluateCustomerConnections(outbound: Ros[], inbound: Ros[], tra
   };
 }
 
-export function evaluateMangle(hits: RuleHit[], queue: Ros | null, connections: Ros[], sourceRef: string, sampledAt: Date): Finding {
-  const marks = hits.filter((h) => h.table === "mangle" && active(h) && h.action.startsWith("mark-"));
-  const needed = (queue?.["packet-marks"] ?? "").split(",").map((m) => m.trim()).filter(Boolean);
+export function evaluateMangle(
+  hits: RuleHit[],
+  queue: Ros | null,
+  connections: Ros[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const marks = hits.filter(
+    (h) => h.table === "mangle" && active(h) && h.action.startsWith("mark-"),
+  );
+  const needed = (queue?.["packet-marks"] ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
   const produced = new Set(
-    marks.flatMap((h) => [...h.summary.matchAll(/new-packet-mark=(\S+)/g)].map((m) => m[1])),
+    marks.flatMap((h) =>
+      [...h.summary.matchAll(/new-packet-mark=(\S+)/g)].map((m) => m[1]),
+    ),
   );
   const missing = needed.filter((m) => !produced.has(m));
-  const connMarks = [...new Set(connections.map((c) => c["connection-mark"]).filter(Boolean))];
+  const connMarks = [
+    ...new Set(connections.map((c) => c["connection-mark"]).filter(Boolean)),
+  ];
   return {
     layer: "firewall",
     metric: "mangle",
@@ -1638,14 +2030,22 @@ export function evaluateMangle(hits: RuleHit[], queue: Ros | null, connections: 
           ? "Mark yang dipakai queue dipasang mangle."
           : "Queue tidak bergantung pada mark.",
       marks.length ? `Rule mark: ${marks.map(ruleName).join("; ")}.` : "",
-      connMarks.length ? `Connection-mark pada koneksi pelanggan: ${connMarks.join(", ")}.` : "",
-    ].filter(Boolean).join(" "),
+      connMarks.length
+        ? `Connection-mark pada koneksi pelanggan: ${connMarks.join(", ")}.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" "),
     sourceRef,
     sampledAt,
   };
 }
 
-export function evaluateStaleRules(hits: RuleHit[], sourceRef: string, sampledAt: Date): Finding {
+export function evaluateStaleRules(
+  hits: RuleHit[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
   const stale = hits.filter((h) => h.stale);
   return {
     layer: "firewall",
@@ -1660,5 +2060,394 @@ export function evaluateStaleRules(hits: RuleHit[], sourceRef: string, sampledAt
       : "Semua rule khusus yang aktif pernah kena.",
     sourceRef,
     sampledAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 5: jalur hulu (uplink ke ISP/Metro, kualitas jalur, BGP, IPv6). Semua
+// diukur dari router; masalah di sini adalah gangguan bersama, bukan
+// kesalahan perangkat pelanggan.
+// ---------------------------------------------------------------------------
+
+export const UPLINK_WARN_PCT = 80;
+export const UPLINK_FAIL_PCT = 95;
+export const LOSS_WARN_PCT = 1;
+export const LOSS_FAIL_PCT = 5;
+export const JITTER_WARN_MS = 20;
+export const JITTER_FAIL_MS = 50;
+// Hop berikutnya semestinya dekat; tujuan internet boleh lebih jauh.
+export const RTT_LIMITS = {
+  gateway: { warn: 20, fail: 100 },
+  internet: { warn: 80, fail: 200 },
+} as const;
+// Pelanggan dianggap terdampak berbagi jalur bila trafiknya saat keluhan
+// turun di bawah separuh rata-ratanya sendiri.
+export const CONTENTION_DROP_RATIO = 0.5;
+
+// "22ms379us", "1s5ms", "850us" -> milidetik.
+export function rosDurationMs(v: string | undefined): number | null {
+  if (!v) return null;
+  let total = 0;
+  let matched = false;
+  for (const m of v.matchAll(/(\d+(?:\.\d+)?)(ms|us|s)/g)) {
+    matched = true;
+    const x = Number(m[1]);
+    total += m[2] === "s" ? x * 1000 : m[2] === "ms" ? x : x / 1000;
+  }
+  return matched ? total : null;
+}
+
+// "1Gbps", "100Mbps", "10Gbps", "2.5Gbps" -> bit per detik.
+export function rosRateBps(v: string | undefined): number | null {
+  const m = /^(\d+(?:\.\d+)?)(G|M|K)bps$/.exec(v ?? "");
+  if (!m) return null;
+  return Number(m[1]) * (m[2] === "G" ? 1e9 : m[2] === "M" ? 1e6 : 1e3);
+}
+
+export function evaluateDefaultRoute(
+  routes: Ros[],
+  uplink: Ros | null,
+  monitor: Ros | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const active = routes.filter(
+    (r) => r.active === "true" && r.disabled !== "true",
+  );
+  const base = {
+    layer: "hulu" as const,
+    metric: "default_route",
+    label: "Default route & link uplink",
+    sourceRef,
+    sampledAt,
+  };
+  if (!active.length) {
+    return {
+      ...base,
+      value: "tidak ada route aktif",
+      threshold: "aktif",
+      comparator: "=",
+      status: "fail",
+      detail:
+        "Tidak ada default route aktif: semua pelanggan kehilangan internet.",
+    };
+  }
+  const iface = uplink?.name ?? "—";
+  const linkOk = !monitor || monitor.status === "link-ok";
+  return {
+    ...base,
+    value: `${iface}, ${monitor?.status ?? (uplink?.running === "true" ? "running" : "tidak running")}${monitor?.rate ? ` ${monitor.rate}` : ""}`,
+    threshold: "link-ok",
+    comparator: "=",
+    status: uplink?.running === "false" || !linkOk ? "fail" : "ok",
+    detail: `${active.length} default route aktif lewat ${active.map((r) => r["immediate-gw"] || r.gateway).join(", ")}. Link-down sejak router menyala: ${uplink?.["link-downs"] ?? "—"}.`,
+  };
+}
+
+export function evaluateUplinkRate(
+  name: string,
+  first: Ros | null,
+  second: Ros | null,
+  gapSec: number,
+  capacityBps: number | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const label = `Utilisasi uplink ${name}`;
+  if (!first || !second || gapSec <= 0)
+    return unchecked(
+      "hulu",
+      "uplink_util",
+      label,
+      `Antarmuka ${name} tidak terbaca pada kedua sampel.`,
+      sourceRef,
+    );
+  // Sisi uplink: rx = dari internet (unduh pelanggan), tx = unggah.
+  const down = ((n(second["rx-byte"]) - n(first["rx-byte"])) * 8) / gapSec;
+  const up = ((n(second["tx-byte"]) - n(first["tx-byte"])) * 8) / gapSec;
+  if (down < 0 || up < 0)
+    return unchecked(
+      "hulu",
+      "uplink_util",
+      label,
+      "Penghitung antarmuka kembali ke nol di antara dua sampel.",
+      sourceRef,
+    );
+  if (!capacityBps) {
+    return unchecked(
+      "hulu",
+      "uplink_util",
+      label,
+      `Laju unduh ${mbps(down)} Mbps, unggah ${mbps(up)} Mbps, tetapi kapasitas ${name} tidak diketahui (bukan antarmuka ethernet), jadi utilisasi tidak bisa dinilai.`,
+      sourceRef,
+    );
+  }
+  const used = pct(Math.max(down, up), capacityBps);
+  return {
+    layer: "hulu",
+    metric: "uplink_util",
+    label,
+    value: `unduh ${mbps(down)} Mbps, unggah ${mbps(up)} Mbps (${used}% dari ${mbps(capacityBps)} Mbps)`,
+    threshold: `${UPLINK_WARN_PCT}%`,
+    comparator: "<",
+    status:
+      used >= UPLINK_FAIL_PCT
+        ? "fail"
+        : used >= UPLINK_WARN_PCT
+          ? "warn"
+          : "ok",
+    detail:
+      used >= UPLINK_WARN_PCT
+        ? "Uplink ke ISP/Metro hampir penuh: semua pelanggan berbagi kemacetan ini."
+        : "Uplink masih longgar.",
+    sourceRef,
+    sampledAt,
+  };
+}
+
+export function evaluatePing(
+  kind: "gateway" | "internet",
+  target: string,
+  rows: Ros[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const metric = kind === "gateway" ? "upstream_gateway" : "upstream_internet";
+  const label =
+    kind === "gateway"
+      ? `Kualitas ke hop ISP (${target})`
+      : `Kualitas ke internet (${target})`;
+  const last = rows[rows.length - 1];
+  const sent = n(last?.sent);
+  const received = n(last?.received);
+  if (!last || sent === 0)
+    return unchecked(
+      "hulu",
+      metric,
+      label,
+      "Ping dari router tidak menghasilkan data.",
+      sourceRef,
+    );
+  const loss = Math.round(((sent - received) / sent) * 100);
+  if (received === 0 && kind === "gateway") {
+    return unchecked(
+      "hulu",
+      metric,
+      label,
+      `Hop ${target} tidak membalas ${sent} ping (ICMP mungkin dibatasi ISP); dinilai lewat ping ke internet.`,
+      sourceRef,
+    );
+  }
+  const rtts = rows
+    .map((r) => rosDurationMs(r.time))
+    .filter((x): x is number => x !== null);
+  const avg = rtts.length
+    ? rtts.reduce((a, b) => a + b, 0) / rtts.length
+    : null;
+  const jitter =
+    rtts.length > 1
+      ? rtts.slice(1).reduce((s, x, i) => s + Math.abs(x - rtts[i]), 0) /
+        (rtts.length - 1)
+      : 0;
+  const lim = RTT_LIMITS[kind];
+  const bad = (warn: boolean) =>
+    (warn ? loss >= LOSS_WARN_PCT : loss >= LOSS_FAIL_PCT) ||
+    (avg !== null && avg > (warn ? lim.warn : lim.fail)) ||
+    jitter > (warn ? JITTER_WARN_MS : JITTER_FAIL_MS);
+  const status: FindingStatus = bad(false) ? "fail" : bad(true) ? "warn" : "ok";
+  return {
+    layer: "hulu",
+    metric,
+    label,
+    value: `loss ${loss}% (${received}/${sent}), rata-rata ${avg === null ? "—" : avg.toFixed(1)} ms, jitter ${jitter.toFixed(1)} ms`,
+    threshold: `loss < ${LOSS_WARN_PCT}%, rtt ≤ ${lim.warn} ms, jitter ≤ ${JITTER_WARN_MS} ms`,
+    comparator: "",
+    status,
+    detail:
+      status === "ok"
+        ? "Jalur dari router sehat."
+        : kind === "gateway"
+          ? "Jalur router ke hop ISP/Metro bermasalah: gangguan di sisi hulu, menerpa semua pelanggan."
+          : "Jalur ke internet bermasalah walau hop ISP mungkin sehat: gangguan di jaringan ISP/upstream.",
+    sourceRef,
+    sampledAt,
+  };
+}
+
+export interface UplinkHistory {
+  // Puncak dan rata-rata laju uplink (Mbps) di sekitar keluhan dan 24 jam sebelumnya.
+  peakMbps: number | null;
+  avgMbps: number | null;
+  dayAvgMbps: number | null;
+  samples: number;
+  // Laju unduh pelanggan saat keluhan dan rata-rata 24 jam (bucket aktif saja).
+  customerMbps: number | null;
+  customerDayMbps: number | null;
+}
+
+export function evaluateUplinkHistory(
+  h: UplinkHistory,
+  capacityBps: number | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding[] {
+  const label = "Uplink di sekitar waktu keluhan";
+  if (!h.samples || h.peakMbps === null) {
+    return [
+      unchecked(
+        "hulu",
+        "uplink_history",
+        label,
+        "Tidak ada sampel trafik uplink tersimpan di sekitar waktu keluhan.",
+        sourceRef,
+      ),
+    ];
+  }
+  const capMbps = capacityBps ? capacityBps / 1e6 : null;
+  const peakPct = capMbps ? pct(h.peakMbps, capMbps) : null;
+  const history: Finding = {
+    layer: "hulu",
+    metric: "uplink_history",
+    label,
+    value: `puncak ${h.peakMbps.toFixed(1)} Mbps${peakPct !== null ? ` (${peakPct}%)` : ""}, rata-rata ${(h.avgMbps ?? 0).toFixed(1)} Mbps; rata-rata 24 jam ${(h.dayAvgMbps ?? 0).toFixed(1)} Mbps`,
+    threshold: capMbps
+      ? `${UPLINK_WARN_PCT}% dari ${capMbps.toFixed(0)} Mbps`
+      : null,
+    comparator: capMbps ? "<" : null,
+    status:
+      peakPct === null
+        ? "ok"
+        : peakPct >= UPLINK_FAIL_PCT
+          ? "fail"
+          : peakPct >= UPLINK_WARN_PCT
+            ? "warn"
+            : "ok",
+    detail:
+      peakPct !== null && peakPct >= UPLINK_WARN_PCT
+        ? "Uplink jenuh saat keluhan: kemungkinan gangguan bersama karena berbagi bandwidth."
+        : `Uplink tidak jenuh saat keluhan (${h.samples} sampel per detik ±15 menit).`,
+    sourceRef,
+    sampledAt,
+  };
+  if (h.customerMbps === null || !h.customerDayMbps) return [history];
+  const dropped = h.customerMbps < h.customerDayMbps * CONTENTION_DROP_RATIO;
+  const saturated = peakPct !== null && peakPct >= UPLINK_WARN_PCT;
+  return [
+    history,
+    {
+      layer: "hulu",
+      metric: "contention",
+      label: "Beban berbagi (pelanggan vs uplink)",
+      value: `pelanggan ${h.customerMbps.toFixed(1)} Mbps saat keluhan, rata-rata 24 jam ${h.customerDayMbps.toFixed(1)} Mbps`,
+      threshold: `≥ ${CONTENTION_DROP_RATIO * 100}% rata-rata sendiri`,
+      comparator: "",
+      status: dropped && saturated ? "fail" : "ok",
+      detail:
+        dropped && saturated
+          ? "Trafik pelanggan turun bersamaan dengan jenuhnya uplink: penyebabnya berbagi bandwidth, bukan perangkat pelanggan."
+          : dropped
+            ? "Trafik pelanggan turun tetapi uplink tidak jenuh: penyebab bukan berbagi jalur hulu."
+            : "Trafik pelanggan tidak turun dibanding kebiasaannya.",
+      sourceRef,
+      sampledAt,
+    },
+  ];
+}
+
+export function evaluateBgp(
+  connections: Ros[],
+  sessions: Ros[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const base = {
+    layer: "hulu" as const,
+    metric: "bgp",
+    label: "Peer BGP",
+    sourceRef,
+    sampledAt,
+  };
+  const configured = connections.filter((c) => c.disabled !== "true");
+  if (!configured.length && !sessions.length) {
+    return {
+      ...base,
+      value: "tidak dipakai",
+      threshold: null,
+      comparator: null,
+      status: "ok",
+      detail:
+        "Router tidak memakai BGP (routing ke ISP lewat default route statis).",
+    };
+  }
+  const established = sessions.filter((s) => s.established === "true");
+  const down = configured.filter(
+    (c) =>
+      !established.some(
+        (s) =>
+          (s.name ?? "").startsWith(c.name ?? "\u0000") ||
+          s["remote.address"] === c["remote.address"],
+      ),
+  );
+  const prefixes = established.map(
+    (s) =>
+      `${s.name ?? s["remote.address"]}: ${s["prefix-count"] ?? "?"} prefix, uptime ${s.uptime ?? "?"}`,
+  );
+  return {
+    ...base,
+    value: `${established.length} dari ${Math.max(configured.length, sessions.length)} peer established`,
+    threshold: "semua established",
+    comparator: "=",
+    status: down.length ? "fail" : "ok",
+    detail: down.length
+      ? `Peer turun: ${down.map((c) => `${c.name} (${c["remote.address"] ?? "?"})`).join(", ")}. Gangguan hulu yang menerpa banyak pelanggan sekaligus.${prefixes.length ? ` Aktif: ${prefixes.join("; ")}.` : ""}`
+      : `Semua peer established. ${prefixes.join("; ")}.`,
+  };
+}
+
+export function evaluateIpv6(
+  addresses: Ros[],
+  defaultRoutes: Ros[],
+  bindings: Ros[],
+  iface: string | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const global = addresses.filter(
+    (a) =>
+      a.disabled !== "true" &&
+      a["link-local"] !== "true" &&
+      !(a.address ?? "").startsWith("::1"),
+  );
+  const base = {
+    layer: "hulu" as const,
+    metric: "ipv6",
+    label: "IPv6 pelanggan",
+    sourceRef,
+    sampledAt,
+  };
+  if (!global.length) {
+    return {
+      ...base,
+      value: "tidak dilayankan",
+      threshold: null,
+      comparator: null,
+      status: "ok",
+      detail:
+        "Router tidak punya alamat IPv6 global: pelanggan memakai IPv4 saja, jadi tidak ada jalur IPv6 yang bisa gagal.",
+    };
+  }
+  const route = defaultRoutes.some((r) => r.active === "true");
+  const mine = iface ? bindings.filter((b) => b.server === iface) : [];
+  return {
+    ...base,
+    value: `${route ? "default route ::/0 aktif" : "tanpa default route ::/0"}; prefix pelanggan ${mine.map((b) => b.address).join(", ") || "tidak ada"}`,
+    threshold: "route aktif & prefix terdelegasi",
+    comparator: "=",
+    status: !route ? "fail" : mine.length ? "ok" : "warn",
+    detail: !route
+      ? "IPv6 dilayankan tetapi router tidak punya default route IPv6: aplikasi yang memilih IPv6 gagal walau IPv4 normal."
+      : mine.length
+        ? "Pelanggan mendapat prefix IPv6."
+        : "IPv6 dilayankan tetapi pelanggan tidak mendapat prefix (DHCPv6-PD): sebagian aplikasi bisa gagal di jalur IPv6.",
   };
 }

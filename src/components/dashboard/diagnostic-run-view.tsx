@@ -36,16 +36,25 @@ const when = new Intl.DateTimeFormat("id-ID", {
   hour12: false,
   timeZone: "Asia/Jakarta",
 });
-export const formatWhen = (iso: string | null) => (iso ? when.format(new Date(iso)) : "—");
+export const formatWhen = (iso: string | null) =>
+  iso ? when.format(new Date(iso)) : "—";
 
 const statusView: Record<
   FindingStatus,
-  { label: string; tone: keyof typeof OPTICAL_TONE_CLASS; Icon: typeof CheckCircle2 }
+  {
+    label: string;
+    tone: keyof typeof OPTICAL_TONE_CLASS;
+    Icon: typeof CheckCircle2;
+  }
 > = {
   ok: { label: "Normal", tone: "success", Icon: CheckCircle2 },
   warn: { label: "Peringatan", tone: "warning", Icon: AlertTriangle },
   fail: { label: "Bermasalah", tone: "danger", Icon: XOctagon },
-  unchecked: { label: "Tidak dapat diperiksa", tone: "neutral", Icon: CircleHelp },
+  unchecked: {
+    label: "Tidak dapat diperiksa",
+    tone: "neutral",
+    Icon: CircleHelp,
+  },
 };
 
 export function FindingStatusPill({ status }: { status: FindingStatus }) {
@@ -75,7 +84,9 @@ export function RunOrigin({ run }: { run: DiagnosticRunDto }) {
         {run.triggerMode === "manual" ? "Manual" : "Otomatis"}
       </Badge>
       <span className="text-xs text-muted-foreground">
-        {run.triggerMode === "manual" ? `oleh ${run.triggeredBy ?? "—"}` : reason}
+        {run.triggerMode === "manual"
+          ? `oleh ${run.triggeredBy ?? "—"}`
+          : reason}
         {run.mergedCount > 0 && ` · digabung ${run.mergedCount} kejadian`}
       </span>
     </span>
@@ -92,10 +103,14 @@ function useDiagnosticRun(runId: string) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     async function load() {
       try {
-        const res = await fetch(`/api/anomalies/diagnostics/${encodeURIComponent(runId)}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(await errorMessage(res, "Gagal memuat diagnosa"));
+        const res = await fetch(
+          `/api/anomalies/diagnostics/${encodeURIComponent(runId)}`,
+          {
+            cache: "no-store",
+          },
+        );
+        if (!res.ok)
+          throw new Error(await errorMessage(res, "Gagal memuat diagnosa"));
         const { data } = (await res.json()) as { data: DiagnosticRunDto };
         if (stopped) return;
         setRun(data);
@@ -118,7 +133,11 @@ function useDiagnosticRun(runId: string) {
 
 function FindingRow({ f }: { f: FindingDto }) {
   return (
-    <li className="flex flex-col gap-1 py-2" data-testid="diagnostic-finding" data-status={f.status}>
+    <li
+      className="flex flex-col gap-1 py-2"
+      data-testid="diagnostic-finding"
+      data-status={f.status}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{f.label}</span>
         <FindingStatusPill status={f.status} />
@@ -129,7 +148,7 @@ function FindingRow({ f }: { f: FindingDto }) {
           {f.threshold !== null && (
             <span className="text-muted-foreground">
               {" "}
-              · ambang {f.comparator} {f.threshold}
+              · ambang {[f.comparator, f.threshold].filter(Boolean).join(" ")}
             </span>
           )}
         </div>
@@ -161,7 +180,10 @@ const eventTone: Record<string, string> = {
 function relative(ms: number) {
   const sec = Math.round(Math.abs(ms) / 1000);
   if (sec < 30) return "saat keluhan";
-  const text = sec < 3600 ? `${Math.round(sec / 60)} mnt` : `${(sec / 3600).toFixed(1)} jam`;
+  const text =
+    sec < 3600
+      ? `${Math.round(sec / 60)} mnt`
+      : `${(sec / 3600).toFixed(1)} jam`;
   return ms < 0 ? `${text} sebelum` : `${text} sesudah`;
 }
 
@@ -172,36 +194,73 @@ const scopeLabel: Record<string, string> = {
 };
 
 // Rule firewall/NAT yang mengenai pelanggan, urut tabel dan posisi.
-function FirewallRuleTable({ rules }: { rules: NonNullable<DiagnosticRunDto["firewallRules"]> }) {
+function FirewallRuleTable({
+  rules,
+}: {
+  rules: NonNullable<DiagnosticRunDto["firewallRules"]>;
+}) {
   return (
-    <div className="mt-2 overflow-auto rounded-md border" role="region" aria-label="Rule firewall yang mengenai pelanggan" tabIndex={0}>
+    <div
+      className="mt-2 overflow-auto rounded-md border"
+      role="region"
+      aria-label="Rule firewall yang mengenai pelanggan"
+      tabIndex={0}
+    >
       <table className="w-full min-w-[40rem] text-left text-xs">
-        <caption className="sr-only">Rule firewall dan NAT yang mengenai trafik pelanggan</caption>
+        <caption className="sr-only">
+          Rule firewall dan NAT yang mengenai trafik pelanggan
+        </caption>
         <thead className="text-muted-foreground">
           <tr>
-            <th scope="col" className="px-2 py-1.5 font-medium">Rule</th>
-            <th scope="col" className="px-2 py-1.5 font-medium">Aksi</th>
-            <th scope="col" className="px-2 py-1.5 font-medium">Berlaku untuk</th>
-            <th scope="col" className="px-2 py-1.5 font-medium">Syarat</th>
-            <th scope="col" className="px-2 py-1.5 text-right font-medium">Hit paket</th>
+            <th scope="col" className="px-2 py-1.5 font-medium">
+              Rule
+            </th>
+            <th scope="col" className="px-2 py-1.5 font-medium">
+              Aksi
+            </th>
+            <th scope="col" className="px-2 py-1.5 font-medium">
+              Berlaku untuk
+            </th>
+            <th scope="col" className="px-2 py-1.5 font-medium">
+              Syarat
+            </th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">
+              Hit paket
+            </th>
           </tr>
         </thead>
         <tbody>
           {rules.map((r) => (
-            <tr key={`${r.table}-${r.ruleIndex}`} className={cn("border-t align-top", r.disabled && "text-muted-foreground line-through")}>
+            <tr
+              key={`${r.table}-${r.ruleIndex}`}
+              className={cn(
+                "border-t align-top",
+                r.disabled && "text-muted-foreground line-through",
+              )}
+            >
               <td className="px-2 py-1.5 font-mono whitespace-nowrap">
                 {r.table} {r.chain} #{r.ruleIndex}
-                {r.comment && <span className="block font-sans text-muted-foreground no-underline">{r.comment}</span>}
+                {r.comment && (
+                  <span className="block font-sans text-muted-foreground no-underline">
+                    {r.comment}
+                  </span>
+                )}
               </td>
               <td className="px-2 py-1.5 whitespace-nowrap">
                 {r.action}
-                {r.disabled && <span className="ml-1 no-underline">(nonaktif)</span>}
+                {r.disabled && (
+                  <span className="ml-1 no-underline">(nonaktif)</span>
+                )}
               </td>
               <td className="px-2 py-1.5">{scopeLabel[r.scope] ?? r.scope}</td>
-              <td className="px-2 py-1.5 font-mono break-all">{r.summary || "—"}</td>
+              <td className="px-2 py-1.5 font-mono break-all">
+                {r.summary || "—"}
+              </td>
               <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">
                 {new Intl.NumberFormat("id-ID").format(r.matchedPackets)}
-                {r.isStale && <span className="block text-warning">tidak pernah kena</span>}
+                {r.isStale && (
+                  <span className="block text-warning">tidak pernah kena</span>
+                )}
               </td>
             </tr>
           ))}
@@ -219,10 +278,16 @@ function Timeline({ run }: { run: DiagnosticRunDto }) {
   const before = items.filter((e) => new Date(e.at).getTime() <= anchor);
   const after = items.filter((e) => new Date(e.at).getTime() > anchor);
   const row = (e: DiagnosticRunDto["timeline"][number], i: number) => (
-    <li key={`${e.at}-${i}`} className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:gap-3" data-testid="timeline-event">
+    <li
+      key={`${e.at}-${i}`}
+      className="flex flex-col gap-0.5 py-1.5 sm:flex-row sm:gap-3"
+      data-testid="timeline-event"
+    >
       <span className="w-40 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
         {formatWhen(e.at)}
-        <span className="block">{relative(new Date(e.at).getTime() - anchor)}</span>
+        <span className="block">
+          {relative(new Date(e.at).getTime() - anchor)}
+        </span>
       </span>
       <span className="min-w-0">
         <span className={cn("font-medium", eventTone[e.kind])}>{e.label}</span>
@@ -233,18 +298,25 @@ function Timeline({ run }: { run: DiagnosticRunDto }) {
     </li>
   );
   return (
-    <section aria-labelledby={`timeline-${run.id}`} className="rounded-md border px-3 py-2">
+    <section
+      aria-labelledby={`timeline-${run.id}`}
+      className="rounded-md border px-3 py-2"
+    >
       <h3 id={`timeline-${run.id}`} className="text-sm font-semibold">
         Garis waktu terhadap keluhan
       </h3>
       {items.length === 0 ? (
         <p className="py-2 text-sm text-muted-foreground">
-          Tidak ada kejadian log atau alert pelanggan di sekitar keluhan (lihat cakupan log di lapisan Log).
+          Tidak ada kejadian log atau alert pelanggan di sekitar keluhan (lihat
+          cakupan log di lapisan Log).
         </p>
       ) : (
         <ol className="divide-y text-sm">
           {before.map(row)}
-          <li className="py-1.5 text-xs font-semibold text-primary" data-testid="timeline-complaint">
+          <li
+            className="py-1.5 text-xs font-semibold text-primary"
+            data-testid="timeline-complaint"
+          >
             ▶ Keluhan · {formatWhen(anchorIso)}
           </li>
           {after.map(row)}
@@ -260,35 +332,48 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
   if (!run) {
     return (
       <div className="text-sm text-muted-foreground" role="status">
-        {error ? <span className="text-destructive">{error}</span> : "Memuat diagnosa…"}
+        {error ? (
+          <span className="text-destructive">{error}</span>
+        ) : (
+          "Memuat diagnosa…"
+        )}
       </div>
     );
   }
 
   const findings = run.findings ?? [];
   const byLayer = new Map<string, FindingDto[]>();
-  for (const f of findings) byLayer.set(f.layer, [...(byLayer.get(f.layer) ?? []), f]);
+  for (const f of findings)
+    byLayer.set(f.layer, [...(byLayer.get(f.layer) ?? []), f]);
   const layers = run.isSharedFault
     ? diagnosticLayers.filter((l) => byLayer.has(l.id))
     : diagnosticLayers;
   const active = isRunActive(run);
 
   return (
-    <div className="flex flex-col gap-4" data-testid="diagnostic-run" data-status={run.status}>
+    <div
+      className="flex flex-col gap-4"
+      data-testid="diagnostic-run"
+      data-status={run.status}
+    >
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">
-            {run.isSharedFault ? "Gangguan bersama" : (run.customerName ?? "Pelanggan terhapus")}
+            {run.isSharedFault
+              ? "Gangguan bersama"
+              : (run.customerName ?? "Pelanggan terhapus")}
           </span>
           {run.pppoeUsername && (
-            <span className="font-mono text-xs text-muted-foreground">{run.pppoeUsername}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {run.pppoeUsername}
+            </span>
           )}
         </div>
         <RunOrigin run={run} />
         <p className="text-xs text-muted-foreground">
-          Keluhan {formatWhen(run.complaintAt ?? run.createdAt)} · diminta {formatWhen(run.createdAt)} · mulai{" "}
-          {formatWhen(run.startedAt)} · selesai{" "}
-          {formatWhen(run.finishedAt)}
+          Keluhan {formatWhen(run.complaintAt ?? run.createdAt)} · diminta{" "}
+          {formatWhen(run.createdAt)} · mulai {formatWhen(run.startedAt)} ·
+          selesai {formatWhen(run.finishedAt)}
         </p>
       </div>
 
@@ -297,8 +382,11 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
         aria-live="polite"
         className={cn(
           "rounded-md border p-3 text-sm",
-          run.status === "failed" && "border-destructive/40 bg-destructive/10 text-destructive",
-          run.status === "done" && run.verdictLayer && "border-destructive/30 bg-destructive/5",
+          run.status === "failed" &&
+            "border-destructive/40 bg-destructive/10 text-destructive",
+          run.status === "done" &&
+            run.verdictLayer &&
+            "border-destructive/30 bg-destructive/5",
         )}
       >
         {run.status === "queued" && (
@@ -310,17 +398,27 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
         {run.status === "running" && (
           <span className="inline-flex items-center gap-2">
             <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            Memeriksa lapisan {Math.min(byLayer.size + 1, diagnosticLayers.length)} dari{" "}
+            Memeriksa lapisan{" "}
+            {Math.min(byLayer.size + 1, diagnosticLayers.length)} dari{" "}
             {diagnosticLayers.length}…
           </span>
         )}
-        {run.status === "failed" && <>Diagnosa gagal: {run.error ?? "alasan tidak diketahui"}</>}
+        {run.status === "failed" && (
+          <>Diagnosa gagal: {run.error ?? "alasan tidak diketahui"}</>
+        )}
         {run.status === "done" && (
           <>
             <span className="font-medium">
-              Kesimpulan{run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
+              Kesimpulan
+              {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
             </span>{" "}
             {run.verdictDetail}
+            {run.isSharedFault && run.customerId && (
+              <span className="mt-1 block font-medium">
+                Gangguan bersama di sisi hulu: bukan masalah perangkat
+                pelanggan.
+              </span>
+            )}
           </>
         )}
       </div>
@@ -330,7 +428,12 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
         {layers.map((layer, i) => {
           const list = byLayer.get(layer.id);
           return (
-            <li key={layer.id} className="rounded-md border px-3 py-2" data-testid="diagnostic-layer" data-layer={layer.id}>
+            <li
+              key={layer.id}
+              className="rounded-md border px-3 py-2"
+              data-testid="diagnostic-layer"
+              data-layer={layer.id}
+            >
               <h3 className="text-sm font-semibold">
                 {i + 1}. {layer.label}
               </h3>
@@ -341,11 +444,15 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                       <FindingRow key={f.id} f={f} />
                     ))}
                   </ul>
-                  {layer.id === "firewall" && !!run.firewallRules?.length && <FirewallRuleTable rules={run.firewallRules} />}
+                  {layer.id === "firewall" && !!run.firewallRules?.length && (
+                    <FirewallRuleTable rules={run.firewallRules} />
+                  )}
                 </>
               ) : (
                 <p className="py-2 text-sm text-muted-foreground">
-                  {active ? "Menunggu giliran…" : "Tidak ada data untuk lapisan ini."}
+                  {active
+                    ? "Menunggu giliran…"
+                    : "Tidak ada data untuk lapisan ini."}
                 </p>
               )}
             </li>

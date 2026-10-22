@@ -13,13 +13,17 @@ import {
 import { DiagnosticRunView, errorMessage } from "./diagnostic-run-view";
 import type { DiagnosticRunDto } from "@/lib/diagnostics";
 
-export async function requestDiagnostic(customerId: string, complaintAt?: string) {
+export async function requestDiagnostic(
+  customerId: string,
+  complaintAt?: string,
+) {
   const res = await fetch("/api/anomalies/diagnostics", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customerId, complaintAt }),
   });
-  if (!res.ok) throw new Error(await errorMessage(res, "Gagal memulai diagnosa"));
+  if (!res.ok)
+    throw new Error(await errorMessage(res, "Gagal memulai diagnosa"));
   return (await res.json()) as { data: DiagnosticRunDto; reused: boolean };
 }
 
@@ -79,7 +83,11 @@ export function DiagnoseButton({
               Pemeriksaan berlapis hulu ke hilir, hanya membaca perangkat.
             </DialogDescription>
           </DialogHeader>
-          {starting && !runId && <p className="text-sm text-muted-foreground" role="status">Memulai diagnosa…</p>}
+          {starting && !runId && (
+            <p className="text-sm text-muted-foreground" role="status">
+              Memulai diagnosa…
+            </p>
+          )}
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -87,7 +95,8 @@ export function DiagnoseButton({
           )}
           {reused && (
             <p className="text-sm text-muted-foreground">
-              Diagnosa manual pelanggan ini masih berjalan; yang tampil adalah pemeriksaan tersebut.
+              Diagnosa manual pelanggan ini masih berjalan; yang tampil adalah
+              pemeriksaan tersebut.
             </p>
           )}
           {runId && <DiagnosticRunView key={runId} runId={runId} />}

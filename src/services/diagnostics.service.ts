@@ -1,5 +1,18 @@
 import "server-only";
-import { and, desc, eq, gt, gte, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  gte,
+  lte,
+  ilike,
+  inArray,
+  isNotNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   alerts,
@@ -18,6 +31,8 @@ import {
   runsnetCustomers,
   runsnetInvoices,
   syslogEvents,
+  customerTrafficSamples,
+  trafficSamples,
 } from "@/db/schema";
 import {
   AUTO_PRIORITY,
@@ -27,6 +42,13 @@ import {
   alertTriggerReason,
   analyzeLog,
   auditRules,
+  evaluateBgp,
+  evaluateDefaultRoute,
+  evaluateIpv6,
+  evaluatePing,
+  evaluateUplinkHistory,
+  evaluateUplinkRate,
+  rosRateBps,
   autoDedupeKey,
   createDiagnosticQueue,
   diagnosticLayers,
@@ -63,6 +85,7 @@ import {
   type Finding,
   type FindingDto,
   type FirewallTable,
+  type UplinkHistory,
   type LogLine,
   type RuleHit,
   type Ros,
@@ -88,9 +111,12 @@ type CustomerTarget = {
   routerStatus: string;
 };
 
-const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const message = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
 
-async function loadCustomer(customerId: string): Promise<CustomerTarget | null> {
+async function loadCustomer(
+  customerId: string,
+): Promise<CustomerTarget | null> {
   const [row] = await db
     .select({
       id: customers.id,
@@ -122,9 +148,14 @@ const rows = (r: Read | undefined): Ros[] =>
 const firstRow = (r: Read | undefined) => rows(r)[0] ?? null;
 // Galat pertama di antara beberapa pembacaan, atau null bila semuanya berhasil.
 const failed = (...reads: (Read | undefined)[]) =>
-  reads.find((r): r is { ok: false; error: string } => !!r && !r.ok)?.error ?? null;
+  reads.find((r): r is { ok: false; error: string } => !!r && !r.ok)?.error ??
+  null;
 
 const FIREWALL_TABLES: FirewallTable[] = ["filter", "raw", "nat", "mangle"];
+// Ping dari router: 10 paket berjarak 0,2 dtk (±2 dtk per tujuan).
+const PING_COUNT = 10;
+// shortcut: satu tujuan internet tetap; jadikan pengaturan bila ISP memblokirnya.
+const INTERNET_PROBE = "8.8.8.8";
 
 // Jarak dua sampel penghitung (byte, drop, error) untuk menghitung laju.
 const SAMPLE_GAP_MS = 2_000;
@@ -138,13 +169,21 @@ interface RouterSnapshot {
   error: string | null;
   session: Ros | null;
   iface: string;
-  gapSec: number;
   reads: Record<string, Read>;
+  // Waktu (ms) tiap bacaan, untuk selang nyata antara dua sampel penghitung.
+  at: Record<string, number>;
+  // Antarmuka uplink dari default route aktif (Fase 5).
+  uplinkName: string | null;
   membership: ReturnType<typeof addressListMembership> | null;
   // Buffer log memori router; dibaca hanya bila syslog tersimpan tidak mengalir.
   readLog: (() => Promise<Read>) | null;
   // Audit firewall (Fase 4); kosong bila IP/address-list/rule tidak terbaca.
-  firewall: { hits: RuleHit[]; fasttrack: boolean; outbound: Ros[]; inbound: Ros[] } | null;
+  firewall: {
+    hits: RuleHit[];
+    fasttrack: boolean;
+    outbound: Ros[];
+    inbound: Ros[];
+  } | null;
 }
 
 // Satu pembacaan router per diagnosa, dipakai lapisan MikroTik, Firewall, dan
@@ -157,17 +196,22 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     error: null,
     session: null,
     iface: `<pppoe-${c.pppoeUsername}>`,
-    gapSec: 0,
     reads: {},
+    at: {},
+    uplinkName: null,
     membership: null,
     readLog: null,
     firewall: null,
   };
   if (c.routerStatus !== "aktif") {
-    return { ...snapshot, error: `router berstatus "${c.routerStatus}", tidak dipoll` };
+    return {
+      ...snapshot,
+      error: `router berstatus "${c.routerStatus}", tidak dipoll`,
+    };
   }
   const creds = await getRouterDecryptedCredentials(c.routerId);
-  if (!creds) return { ...snapshot, error: "kredensial router tidak ditemukan" };
+  if (!creds)
+    return { ...snapshot, error: "kredensial router tidak ditemukan" };
   const client = new MikrotikRestClient({
     host: creds.host,
     port: creds.port,
@@ -178,70 +222,149 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
   });
   const { reads } = snapshot;
   snapshot.readLog = () => attempt(() => client.read("/rest/log"));
-  const read = async (key: string, path: string, filter?: Record<string, string>) => {
+  const read = async (
+    key: string,
+    path: string,
+    filter?: Record<string, string>,
+  ) => {
+    snapshot.at[key] = Date.now();
     reads[key] = await attempt(() => client.read(path, filter));
+  };
+  const ping = async (key: string, address: string) => {
+    reads[key] = await attempt(() =>
+      client.measure("/rest/tool/ping", {
+        address,
+        count: String(PING_COUNT),
+        interval: "0.2",
+      }),
+    );
   };
 
   await read("active", "/rest/ppp/active");
   if (!reads.active.ok) return { ...snapshot, error: reads.active.error };
   const wanted = c.pppoeUsername.toLowerCase().trim();
-  const session = rows(reads.active).find((s) => (s.name ?? "").toLowerCase().trim() === wanted) ?? null;
+  const session =
+    rows(reads.active).find(
+      (s) => (s.name ?? "").toLowerCase().trim() === wanted,
+    ) ?? null;
   await read("tracking", "/rest/ip/firewall/connection/tracking");
-  snapshot.readAt = new Date();
-  if (!session) return snapshot;
-
-  snapshot.session = session;
-  const iface = `<pppoe-${session.name}>`;
-  snapshot.iface = iface;
   const t1 = Date.now();
-  await read("queue1", "/rest/queue/simple", { name: iface });
-  await read("ppp1", "/rest/interface", { name: iface });
-  await read("binding", "/rest/interface/pppoe-server", { name: iface });
-  const vlanName = firstRow(reads.binding)?.interface || null;
-  if (vlanName) {
-    await read("vlan1", "/rest/interface", { name: vlanName });
-    await read("vlanDef", "/rest/interface/vlan", { name: vlanName });
-  }
-  if (session.address) {
-    await read("arp", "/rest/ip/arp", { address: session.address });
-    await read("lease", "/rest/ip/dhcp-server/lease", { address: session.address });
-    await read("addressList", "/rest/ip/firewall/address-list");
-    const entries = rows(reads.addressList);
-    if (reads.addressList.ok && entries.length <= MAX_ADDRESS_LIST) {
-      snapshot.membership = addressListMembership(session.address, entries);
-    }
-    // Konfigurasi firewall dan koneksi pelanggan (proplist: hanya kolom yang dinilai).
-    for (const table of FIREWALL_TABLES) await read(`fw_${table}`, `/rest/ip/firewall/${table}`);
-    const props = { ".proplist": "fasttrack,connection-mark,protocol" };
-    await read("connOut", "/rest/ip/firewall/connection", { "src-address": session.address, ...props });
-    await read("connIn", "/rest/ip/firewall/connection", { "dst-address": session.address, ...props });
-    if (snapshot.membership && !failed(...FIREWALL_TABLES.map((t) => reads[`fw_${t}`]), reads.connOut, reads.connIn)) {
-      const hits = auditRules(
-        Object.fromEntries(FIREWALL_TABLES.map((t) => [t, rows(reads[`fw_${t}`])])),
-        { ip: session.address, iface, lists: snapshot.membership.lists },
+
+  // Hulu (Fase 5): dibaca juga saat pelanggan offline, karena gangguan hulu
+  // justru sering membuat pelanggan putus.
+  await read("route", "/rest/ip/route", { "dst-address": "0.0.0.0/0" });
+  const route = rows(reads.route).find((r) => r.active === "true") ?? null;
+  const [gatewayIp, uplinkName] = (route?.["immediate-gw"] ?? "").split("%");
+  snapshot.uplinkName = uplinkName || null;
+  if (uplinkName) {
+    await read("uplink1", "/rest/interface", { name: uplinkName });
+    if (firstRow(reads.uplink1)?.type === "ether") {
+      reads.uplinkMonitor = await attempt(() =>
+        client.measure("/rest/interface/ethernet/monitor", {
+          numbers: uplinkName,
+          once: "",
+        }),
       );
-      const outbound = rows(reads.connOut);
-      const inbound = rows(reads.connIn);
-      snapshot.firewall = {
-        hits,
-        outbound,
-        inbound,
-        fasttrack: evaluateFasttrack(hits, [...outbound, ...inbound], "", new Date()).status === "fail",
-      };
     }
   }
+  await read("bgpConn", "/rest/routing/bgp/connection");
+  await read("bgpSess", "/rest/routing/bgp/session");
+  await read("ipv6Addr", "/rest/ipv6/address");
+  await read("ipv6Route", "/rest/ipv6/route", { "dst-address": "::/0" });
+  await read("ipv6Bind", "/rest/ipv6/dhcp-server/binding");
+
+  const iface = session ? `<pppoe-${session.name}>` : snapshot.iface;
+  let vlanName: string | null = null;
+  if (session) {
+    snapshot.session = session;
+    snapshot.iface = iface;
+    await readCustomerPass1(session, iface);
+    vlanName = firstRow(reads.binding)?.interface || null;
+  }
+
+  // Ping dari router mengisi jeda antar-sampel penghitung.
+  if (gatewayIp) await ping("pingGateway", gatewayIp);
+  await ping("pingInternet", INTERNET_PROBE);
   const wait = SAMPLE_GAP_MS - (Date.now() - t1);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  const t2 = Date.now();
-  await read("queue2", "/rest/queue/simple", { name: iface });
-  await read("ppp2", "/rest/interface", { name: iface });
-  if (vlanName) await read("vlan2", "/rest/interface", { name: vlanName });
-  snapshot.gapSec = (t2 - t1) / 1000;
+  if (uplinkName)
+    await read("uplink2", "/rest/interface", { name: uplinkName });
+  if (session) {
+    await read("queue2", "/rest/queue/simple", { name: iface });
+    await read("ppp2", "/rest/interface", { name: iface });
+    if (vlanName) await read("vlan2", "/rest/interface", { name: vlanName });
+  }
   snapshot.readAt = new Date();
   return snapshot;
+
+  async function readCustomerPass1(session: Ros, iface: string) {
+    await read("queue1", "/rest/queue/simple", { name: iface });
+    await read("ppp1", "/rest/interface", { name: iface });
+    await read("binding", "/rest/interface/pppoe-server", { name: iface });
+    const vlanName = firstRow(reads.binding)?.interface || null;
+    if (vlanName) {
+      await read("vlan1", "/rest/interface", { name: vlanName });
+      await read("vlanDef", "/rest/interface/vlan", { name: vlanName });
+    }
+    if (session.address) {
+      await read("arp", "/rest/ip/arp", { address: session.address });
+      await read("lease", "/rest/ip/dhcp-server/lease", {
+        address: session.address,
+      });
+      await read("addressList", "/rest/ip/firewall/address-list");
+      const entries = rows(reads.addressList);
+      if (reads.addressList.ok && entries.length <= MAX_ADDRESS_LIST) {
+        snapshot.membership = addressListMembership(session.address, entries);
+      }
+      // Konfigurasi firewall dan koneksi pelanggan (proplist: hanya kolom yang dinilai).
+      for (const table of FIREWALL_TABLES)
+        await read(`fw_${table}`, `/rest/ip/firewall/${table}`);
+      const props = { ".proplist": "fasttrack,connection-mark,protocol" };
+      await read("connOut", "/rest/ip/firewall/connection", {
+        "src-address": session.address,
+        ...props,
+      });
+      await read("connIn", "/rest/ip/firewall/connection", {
+        "dst-address": session.address,
+        ...props,
+      });
+      if (
+        snapshot.membership &&
+        !failed(
+          ...FIREWALL_TABLES.map((t) => reads[`fw_${t}`]),
+          reads.connOut,
+          reads.connIn,
+        )
+      ) {
+        const hits = auditRules(
+          Object.fromEntries(
+            FIREWALL_TABLES.map((t) => [t, rows(reads[`fw_${t}`])]),
+          ),
+          { ip: session.address, iface, lists: snapshot.membership.lists },
+        );
+        const outbound = rows(reads.connOut);
+        const inbound = rows(reads.connIn);
+        snapshot.firewall = {
+          hits,
+          outbound,
+          inbound,
+          fasttrack:
+            evaluateFasttrack(hits, [...outbound, ...inbound], "", new Date())
+              .status === "fail",
+        };
+      }
+    }
+  }
 }
 
-async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+// Selang nyata (detik) antara dua bacaan yang sama.
+const gapOf = (s: RouterSnapshot, a: string, b: string) =>
+  s.at[a] && s.at[b] ? (s.at[b] - s.at[a]) / 1000 : 0;
+
+async function readMikrotik(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
   const s = await ctx.router();
   const pppoe = evaluatePppoe({
     routerName: c.routerName,
@@ -249,7 +372,11 @@ async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding
     readAt: s.readAt,
     error: s.error,
     session: s.session
-      ? { address: s.session.address ?? "", uptime: s.session.uptime ?? "", callerId: s.session["caller-id"] ?? "" }
+      ? {
+          address: s.session.address ?? "",
+          uptime: s.session.uptime ?? "",
+          callerId: s.session["caller-id"] ?? "",
+        }
       : null,
   });
   if (s.error || !s.session) {
@@ -259,23 +386,43 @@ async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding
         "mikrotik",
         "sesi_detail",
         "Queue, antarmuka, jalur PON, bentrok IP",
-        s.error ? "Router tidak terbaca." : "Sesi PPPoE tidak aktif: queue dan antarmuka dinamis pelanggan tidak ada.",
+        s.error
+          ? "Router tidak terbaca."
+          : "Sesi PPPoE tidak aktif: queue dan antarmuka dinamis pelanggan tidak ada.",
         s.source,
       ),
     ];
   }
-  const { reads, gapSec, readAt: at } = s;
+  const { reads, readAt: at } = s;
   const out: Finding[] = [pppoe];
 
   const qErr = failed(reads.queue1, reads.queue2);
   out.push(
     ...(qErr
-      ? [unchecked("mikrotik", "queue_limit", "Simple queue pelanggan", `Gagal membaca /queue/simple: ${qErr}`, s.source)]
-      : evaluateQueue(firstRow(reads.queue1), firstRow(reads.queue2), gapSec, `${s.source} · /queue/simple ${s.iface}`, at).map(
+      ? [
+          unchecked(
+            "mikrotik",
+            "queue_limit",
+            "Simple queue pelanggan",
+            `Gagal membaca /queue/simple: ${qErr}`,
+            s.source,
+          ),
+        ]
+      : evaluateQueue(
+          firstRow(reads.queue1),
+          firstRow(reads.queue2),
+          gapOf(s, "queue1", "queue2"),
+          `${s.source} · /queue/simple ${s.iface}`,
+          at,
+        ).map(
           // PRD: fasttrack diperiksa sebelum menyimpulkan soal queue.
           (f): Finding =>
             s.firewall?.fasttrack && f.status === "ok"
-              ? { ...f, status: "warn", detail: `Fasttrack aktif: batas ini TIDAK dieksekusi untuk koneksi yang di-fasttrack. ${f.detail}` }
+              ? {
+                  ...f,
+                  status: "warn",
+                  detail: `Fasttrack aktif: batas ini TIDAK dieksekusi untuk koneksi yang di-fasttrack. ${f.detail}`,
+                }
               : f,
         )),
   );
@@ -283,39 +430,102 @@ async function readMikrotik(c: CustomerTarget, ctx: RunContext): Promise<Finding
   const pErr = failed(reads.ppp1, reads.ppp2);
   out.push(
     pErr
-      ? unchecked("mikrotik", "iface_errors", "Error & drop antarmuka PPPoE", `Gagal membaca /interface: ${pErr}`, s.source)
-      : evaluatePppInterface(firstRow(reads.ppp1), firstRow(reads.ppp2), gapSec, `${s.source} · /interface ${s.iface}`, at),
+      ? unchecked(
+          "mikrotik",
+          "iface_errors",
+          "Error & drop antarmuka PPPoE",
+          `Gagal membaca /interface: ${pErr}`,
+          s.source,
+        )
+      : evaluatePppInterface(
+          firstRow(reads.ppp1),
+          firstRow(reads.ppp2),
+          gapOf(s, "ppp1", "ppp2"),
+          `${s.source} · /interface ${s.iface}`,
+          at,
+        ),
   );
 
   const vlanName = firstRow(reads.binding)?.interface || null;
   const vErr = failed(reads.binding, reads.vlan1, reads.vlan2);
   out.push(
     vErr
-      ? unchecked("mikrotik", "pon_vlan_rate", "Laju jalur PON", `Gagal membaca antarmuka asal sesi: ${vErr}`, s.source)
-      : evaluatePonVlan(vlanName, firstRow(reads.vlan1), firstRow(reads.vlan2), gapSec, `${s.source} · /interface ${vlanName ?? "—"}`, at),
+      ? unchecked(
+          "mikrotik",
+          "pon_vlan_rate",
+          "Laju jalur PON",
+          `Gagal membaca antarmuka asal sesi: ${vErr}`,
+          s.source,
+        )
+      : evaluatePonVlan(
+          vlanName,
+          firstRow(reads.vlan1),
+          firstRow(reads.vlan2),
+          gapOf(s, "vlan1", "vlan2"),
+          `${s.source} · /interface ${vlanName ?? "—"}`,
+          at,
+        ),
   );
 
   const ip = s.session.address ?? "";
   const aErr = failed(reads.arp, reads.lease);
   out.push(
     !ip
-      ? unchecked("mikrotik", "ip_conflict", "Bentrok alamat (ARP/DHCP)", "Sesi tidak punya alamat IP.", s.source)
+      ? unchecked(
+          "mikrotik",
+          "ip_conflict",
+          "Bentrok alamat (ARP/DHCP)",
+          "Sesi tidak punya alamat IP.",
+          s.source,
+        )
       : aErr
-        ? unchecked("mikrotik", "ip_conflict", "Bentrok alamat (ARP/DHCP)", `Gagal membaca ARP/DHCP: ${aErr}`, s.source)
-        : evaluateIpConflict(ip, s.iface, rows(reads.arp), rows(reads.lease), `${s.source} · /ip/arp, /ip/dhcp-server/lease`, at),
+        ? unchecked(
+            "mikrotik",
+            "ip_conflict",
+            "Bentrok alamat (ARP/DHCP)",
+            `Gagal membaca ARP/DHCP: ${aErr}`,
+            s.source,
+          )
+        : evaluateIpConflict(
+            ip,
+            s.iface,
+            rows(reads.arp),
+            rows(reads.lease),
+            `${s.source} · /ip/arp, /ip/dhcp-server/lease`,
+            at,
+          ),
   );
   return out;
 }
 
-async function readFirewall(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+async function readFirewall(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
   const s = await ctx.router();
   if (s.error) {
-    return [unchecked("firewall", "ringkasan", "Firewall, NAT & connection tracking", `Router tidak terbaca: ${s.error}`, s.source)];
+    return [
+      unchecked(
+        "firewall",
+        "ringkasan",
+        "Firewall, NAT & connection tracking",
+        `Router tidak terbaca: ${s.error}`,
+        s.source,
+      ),
+    ];
   }
   const out: Finding[] = [];
   const ip = s.session?.address;
   if (!ip) {
-    out.push(unchecked("firewall", "address_list", "Address-list yang memuat IP pelanggan", "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui.", s.source));
+    out.push(
+      unchecked(
+        "firewall",
+        "address_list",
+        "Address-list yang memuat IP pelanggan",
+        "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui.",
+        s.source,
+      ),
+    );
   } else if (!s.membership) {
     out.push(
       unchecked(
@@ -329,33 +539,68 @@ async function readFirewall(c: CustomerTarget, ctx: RunContext): Promise<Finding
       ),
     );
   } else {
-    out.push(evaluateAddressLists(ip, s.membership, `${s.source} · /ip/firewall/address-list`, s.readAt));
+    out.push(
+      evaluateAddressLists(
+        ip,
+        s.membership,
+        `${s.source} · /ip/firewall/address-list`,
+        s.readAt,
+      ),
+    );
   }
   const t = s.reads.tracking;
   out.push(
     t?.ok && t.value && typeof t.value === "object" && !Array.isArray(t.value)
-      ? evaluateConntrack(t.value as Ros, `${s.source} · /ip/firewall/connection/tracking`, s.readAt)
-      : unchecked("firewall", "conntrack", "Tabel connection tracking", `Gagal membaca connection tracking${failed(t) ? `: ${failed(t)}` : ""}.`, s.source),
+      ? evaluateConntrack(
+          t.value as Ros,
+          `${s.source} · /ip/firewall/connection/tracking`,
+          s.readAt,
+        )
+      : unchecked(
+          "firewall",
+          "conntrack",
+          "Tabel connection tracking",
+          `Gagal membaca connection tracking${failed(t) ? `: ${failed(t)}` : ""}.`,
+          s.source,
+        ),
   );
   out.push(...(await auditFirewall(c, ctx, s)));
   return out;
 }
 
 // Audit rule (Fase 4) dan simpan potretnya ke firewall_snapshots/_rule_hits.
-async function auditFirewall(c: CustomerTarget, ctx: RunContext, s: RouterSnapshot): Promise<Finding[]> {
+async function auditFirewall(
+  c: CustomerTarget,
+  ctx: RunContext,
+  s: RouterSnapshot,
+): Promise<Finding[]> {
   const label = "Audit rule firewall & NAT";
   const ip = s.session?.address;
   if (!ip) {
-    return [unchecked("firewall", "audit", label, "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui, rule tidak bisa dicocokkan.", s.source)];
-  }
-  if (!s.firewall) {
-    const err = failed(...FIREWALL_TABLES.map((t) => s.reads[`fw_${t}`]), s.reads.connOut, s.reads.connIn);
     return [
       unchecked(
         "firewall",
         "audit",
         label,
-        err ? `Gagal membaca firewall: ${err}` : "Address-list tidak terbaca utuh, keanggotaan pelanggan tidak diketahui.",
+        "Sesi PPPoE tidak aktif: IP pelanggan tidak diketahui, rule tidak bisa dicocokkan.",
+        s.source,
+      ),
+    ];
+  }
+  if (!s.firewall) {
+    const err = failed(
+      ...FIREWALL_TABLES.map((t) => s.reads[`fw_${t}`]),
+      s.reads.connOut,
+      s.reads.connIn,
+    );
+    return [
+      unchecked(
+        "firewall",
+        "audit",
+        label,
+        err
+          ? `Gagal membaca firewall: ${err}`
+          : "Address-list tidak terbaca utuh, keanggotaan pelanggan tidak diketahui.",
         s.source,
       ),
     ];
@@ -364,7 +609,10 @@ async function auditFirewall(c: CustomerTarget, ctx: RunContext, s: RouterSnapsh
   const ref = `${s.source} · /ip/firewall/{filter,raw,nat,mangle}`;
   const at = s.readAt;
   const t = s.reads.tracking;
-  const tracking = t?.ok && t.value && typeof t.value === "object" && !Array.isArray(t.value) ? (t.value as Ros) : null;
+  const tracking =
+    t?.ok && t.value && typeof t.value === "object" && !Array.isArray(t.value)
+      ? (t.value as Ros)
+      : null;
   const connections = [...outbound, ...inbound];
   const findings = [
     evaluateFasttrack(hits, connections, `${ref}, /ip/firewall/connection`, at),
@@ -372,8 +620,20 @@ async function auditFirewall(c: CustomerTarget, ctx: RunContext, s: RouterSnapsh
     evaluateRaw(hits, ref, at),
     evaluateSrcNat(hits, ip, ref, at),
     evaluatePortForward(hits, rows(s.reads.fw_nat), ip, ref, at),
-    evaluateMangle(hits, firstRow(s.reads.queue2) ?? firstRow(s.reads.queue1), connections, ref, at),
-    evaluateCustomerConnections(outbound, inbound, tracking, `${s.source} · /ip/firewall/connection`, at),
+    evaluateMangle(
+      hits,
+      firstRow(s.reads.queue2) ?? firstRow(s.reads.queue1),
+      connections,
+      ref,
+      at,
+    ),
+    evaluateCustomerConnections(
+      outbound,
+      inbound,
+      tracking,
+      `${s.source} · /ip/firewall/connection`,
+      at,
+    ),
     evaluateStaleRules(hits, ref, at),
   ];
   const [snap] = await db
@@ -386,9 +646,16 @@ async function auditFirewall(c: CustomerTarget, ctx: RunContext, s: RouterSnapsh
       customerIp: ip,
       fasttrackActive: s.firewall.fasttrack,
       conntrackCount: connections.length,
-      conntrackTotal: tracking ? Number(tracking["total-entries"]) || null : null,
+      conntrackTotal: tracking
+        ? Number(tracking["total-entries"]) || null
+        : null,
       conntrackMax: tracking ? Number(tracking["max-entries"]) || null : null,
-      rawDropMatched: hits.some((h) => h.table === "raw" && !h.disabled && ["drop", "reject"].includes(h.action)),
+      rawDropMatched: hits.some(
+        (h) =>
+          h.table === "raw" &&
+          !h.disabled &&
+          ["drop", "reject"].includes(h.action),
+      ),
       addressListMatched: s.membership?.lists ?? [],
     })
     .returning({ id: firewallSnapshots.id });
@@ -444,7 +711,13 @@ async function readOnt(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
   const config = getGenieacsConfig();
   if (config.mode === "simulator") {
     return [
-      unchecked("ont", "ont_found", "Modem di GenieACS", "GenieACS berjalan dalam mode simulator (bukan DASHBOARD_DATA=live): tidak ada data modem nyata.", "GenieACS"),
+      unchecked(
+        "ont",
+        "ont_found",
+        "Modem di GenieACS",
+        "GenieACS berjalan dalam mode simulator (bukan DASHBOARD_DATA=live): tidak ada data modem nyata.",
+        "GenieACS",
+      ),
     ];
   }
   const client = new GenieAcsClient(config);
@@ -452,7 +725,9 @@ async function readOnt(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
   // Cepat lewat query WANPPPConnection.1; cadangan: cocokkan semua WAN seperti halaman CPE.
   const deviceId =
     (await client.findDeviceIdByPppoe(c.pppoeUsername)) ??
-    (await client.listDevices()).find((d) => d.pppoeUsername.trim().toLowerCase() === wanted)?.deviceId ??
+    (await client.listDevices()).find(
+      (d) => d.pppoeUsername.trim().toLowerCase() === wanted,
+    )?.deviceId ??
     null;
   const raw = deviceId ? await client.getRawDevice(deviceId) : null;
   const d = raw ? parseDeviceDetail(raw) : null;
@@ -473,7 +748,9 @@ async function readOnt(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
 }
 
 const todayWib = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(
+    new Date(),
+  );
 
 // Ketidakcocokan hasil sinkron billing backend Go (billing_mismatches).
 async function readGoMismatches(customerId: string): Promise<Finding> {
@@ -485,12 +762,26 @@ async function readGoMismatches(customerId: string): Promise<Finding> {
     .orderBy(desc(billingSyncRuns.finishedAt))
     .limit(1);
   if (!run) {
-    return unchecked("billing", "billing_mismatch", label, "Sinkron billing backend Go belum pernah berhasil, jadi billing_mismatches kosong. Kecocokan dicek lewat RunsNet ↔ router.", "billing_sync_runs");
+    return unchecked(
+      "billing",
+      "billing_mismatch",
+      label,
+      "Sinkron billing backend Go belum pernah berhasil, jadi billing_mismatches kosong. Kecocokan dicek lewat RunsNet ↔ router.",
+      "billing_sync_runs",
+    );
   }
   const found = await db
-    .select({ reason: billingMismatches.reason, invoiceName: billingMismatches.invoiceName })
+    .select({
+      reason: billingMismatches.reason,
+      invoiceName: billingMismatches.invoiceName,
+    })
     .from(billingMismatches)
-    .where(and(eq(billingMismatches.runId, run.id), sql`${billingMismatches.customerIds} @> array[${customerId}]::uuid[]`));
+    .where(
+      and(
+        eq(billingMismatches.runId, run.id),
+        sql`${billingMismatches.customerIds} @> array[${customerId}]::uuid[]`,
+      ),
+    );
   return {
     layer: "billing",
     metric: "billing_mismatch",
@@ -507,7 +798,10 @@ async function readGoMismatches(customerId: string): Promise<Finding> {
   };
 }
 
-async function readBilling(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
+async function readBilling(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
   // ID RunsNet = username PPPoE tanpa "@domain" (sama dengan halaman detail pelanggan).
   const custId = c.pppoeUsername.split("@")[0].trim();
   const [rn] = await db
@@ -521,25 +815,57 @@ async function readBilling(c: CustomerTarget, ctx: RunContext): Promise<Finding[
     .where(eq(runsnetCustomers.custId, custId))
     .limit(1);
   const [bs] = await db
-    .select({ status: billingStatus.status, syncedAt: billingStatus.syncedAt, billingName: billingStatus.billingName })
+    .select({
+      status: billingStatus.status,
+      syncedAt: billingStatus.syncedAt,
+      billingName: billingStatus.billingName,
+    })
     .from(billingStatus)
     .where(eq(billingStatus.customerId, c.id))
     .limit(1);
 
-  const out: Finding[] = [rn ? evaluateRunsnetStatus(rn) : evaluateBilling(bs ?? null)];
+  const out: Finding[] = [
+    rn ? evaluateRunsnetStatus(rn) : evaluateBilling(bs ?? null),
+  ];
   if (rn) {
     const invoices = await db
-      .select({ dueDate: runsnetInvoices.dueDate, status: runsnetInvoices.status, remainingAmount: runsnetInvoices.remainingAmount })
+      .select({
+        dueDate: runsnetInvoices.dueDate,
+        status: runsnetInvoices.status,
+        remainingAmount: runsnetInvoices.remainingAmount,
+      })
       .from(runsnetInvoices)
-      .where(and(eq(runsnetInvoices.custId, custId), ne(runsnetInvoices.status, "paid")));
-    out.push(evaluateArrears(invoices, todayWib(), `RunsNet · tagihan ID ${custId}`, rn.syncedAt));
+      .where(
+        and(
+          eq(runsnetInvoices.custId, custId),
+          ne(runsnetInvoices.status, "paid"),
+        ),
+      );
+    out.push(
+      evaluateArrears(
+        invoices,
+        todayWib(),
+        `RunsNet · tagihan ID ${custId}`,
+        rn.syncedAt,
+      ),
+    );
   } else {
-    out.push(unchecked("billing", "arrears", "Tagihan lewat jatuh tempo", `ID ${custId} tidak ada di data RunsNet.`, "RunsNet"));
+    out.push(
+      unchecked(
+        "billing",
+        "arrears",
+        "Tagihan lewat jatuh tempo",
+        `ID ${custId} tidak ada di data RunsNet.`,
+        "RunsNet",
+      ),
+    );
   }
   const s = await ctx.router();
   out.push(
     evaluateBillingNetwork({
-      billingStatus: rn?.status ?? (bs ? (bs.status === "isolir" ? "Isolir" : "Active") : null),
+      billingStatus:
+        rn?.status ??
+        (bs ? (bs.status === "isolir" ? "Isolir" : "Active") : null),
       sessionActive: s.error ? null : s.session !== null,
       isolatedInRouter: s.membership ? s.membership.isolated : null,
       sourceRef: `${rn ? "RunsNet" : "billing_status"} ↔ ${s.source} address-list`,
@@ -570,7 +896,11 @@ const SYSLOG_FRESH_MS = 15 * 60_000;
 const MAX_LOG_ROWS = 5_000;
 
 const fmtWib = (d: Date) =>
-  new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(d);
+  new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "short",
+    timeStyle: "medium",
+    timeZone: "Asia/Jakarta",
+  }).format(d);
 const likeTerm = (s: string) => `%${s.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
 
 // Log router untuk pelanggan: syslog tersimpan bila mengalir; bila tidak,
@@ -583,7 +913,10 @@ async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
   const target = {
     username: session?.name || c.pppoeUsername,
     mac: session?.["caller-id"] || null,
-    ip: session?.address && session.address !== "0.0.0.0" ? session.address : null,
+    ip:
+      session?.address && session.address !== "0.0.0.0"
+        ? session.address
+        : null,
     interfaces: [vlan, parent].filter((x): x is string => !!x),
   };
   const matches = logLineMatcher(target);
@@ -601,11 +934,18 @@ async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
   let result: ReturnType<typeof analyzeLog>;
   if (newest && now.getTime() - newest.getTime() < SYSLOG_FRESH_MS) {
     const from = new Date(ctx.complaintAt.getTime() - LOG_LOOKBACK_MS);
-    const terms = [target.username, target.mac, target.ip, ...target.interfaces.map((i) => `${i} link`)].filter(
-      (x): x is string => !!x,
-    );
+    const terms = [
+      target.username,
+      target.mac,
+      target.ip,
+      ...target.interfaces.map((i) => `${i} link`),
+    ].filter((x): x is string => !!x);
     const lines = await db
-      .select({ at: syslogEvents.receivedAt, topics: syslogEvents.topics, message: syslogEvents.message })
+      .select({
+        at: syslogEvents.receivedAt,
+        topics: syslogEvents.topics,
+        message: syslogEvents.message,
+      })
       .from(syslogEvents)
       .where(
         and(
@@ -624,21 +964,42 @@ async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
       coverageStart: stat?.oldest ? new Date(stat.oldest) : null,
       sourceLabel: `Syslog tersimpan dari router ${c.routerName}`,
       sourceRef: `syslog_events · ${c.routerName}`,
-      coverageHint: "Syslog tersimpan masih baru; cakupannya bertambah seiring waktu sampai batas retensi.",
+      coverageHint:
+        "Syslog tersimpan masih baru; cakupannya bertambah seiring waktu sampai batas retensi.",
     });
   } else {
-    const why = newest ? `syslog terakhir diterima ${fmtWib(newest)}` : "belum pernah ada syslog diterima";
+    const why = newest
+      ? `syslog terakhir diterima ${fmtWib(newest)}`
+      : "belum pernah ada syslog diterima";
     if (s.error || !s.readLog) {
       return [
-        unchecked("log", "log_coverage", "Cakupan log", `Syslog remote tidak mengalir ke NOC (${why}) dan router tidak terbaca${s.error ? `: ${s.error}` : ""}.`, s.source),
+        unchecked(
+          "log",
+          "log_coverage",
+          "Cakupan log",
+          `Syslog remote tidak mengalir ke NOC (${why}) dan router tidak terbaca${s.error ? `: ${s.error}` : ""}.`,
+          s.source,
+        ),
       ];
     }
     const mem = await s.readLog();
     if (!mem.ok) {
-      return [unchecked("log", "log_coverage", "Cakupan log", `Syslog remote tidak mengalir (${why}); buffer log router gagal dibaca: ${mem.error}`, s.source)];
+      return [
+        unchecked(
+          "log",
+          "log_coverage",
+          "Cakupan log",
+          `Syslog remote tidak mengalir (${why}); buffer log router gagal dibaca: ${mem.error}`,
+          s.source,
+        ),
+      ];
     }
     const lines = rows(mem)
-      .map((e) => ({ at: parseRouterLogTime(e.time ?? "", now), topics: e.topics ?? "", message: e.message ?? "" }))
+      .map((e) => ({
+        at: parseRouterLogTime(e.time ?? "", now),
+        topics: e.topics ?? "",
+        message: e.message ?? "",
+      }))
       .filter((l): l is LogLine => l.at !== null);
     result = analyzeLog({
       lines,
@@ -662,11 +1023,28 @@ const alertKindText: Record<string, string> = {
 };
 
 // Alert pelanggan di sekitar keluhan, untuk garis waktu.
-async function alertTimeline(customerId: string, complaintAt: Date): Promise<TimelineEvent[]> {
+async function alertTimeline(
+  customerId: string,
+  complaintAt: Date,
+): Promise<TimelineEvent[]> {
   const list = await db
-    .select({ type: alerts.type, severity: alerts.severity, title: alerts.title, startedAt: alerts.startedAt, endedAt: alerts.endedAt })
+    .select({
+      type: alerts.type,
+      severity: alerts.severity,
+      title: alerts.title,
+      startedAt: alerts.startedAt,
+      endedAt: alerts.endedAt,
+    })
     .from(alerts)
-    .where(and(eq(alerts.customerId, customerId), gte(alerts.startedAt, new Date(complaintAt.getTime() - LOG_LOOKBACK_MS))))
+    .where(
+      and(
+        eq(alerts.customerId, customerId),
+        gte(
+          alerts.startedAt,
+          new Date(complaintAt.getTime() - LOG_LOOKBACK_MS),
+        ),
+      ),
+    )
     .orderBy(alerts.startedAt)
     .limit(50);
   return list.flatMap((a) => {
@@ -679,20 +1057,252 @@ async function alertTimeline(customerId: string, complaintAt: Date): Promise<Tim
       source: "alerts",
     };
     return a.endedAt
-      ? [start, { ...start, at: a.endedAt.toISOString(), kind: "alert_end", label: `Alert ${what} selesai` }]
+      ? [
+          start,
+          {
+            ...start,
+            at: a.endedAt.toISOString(),
+            kind: "alert_end",
+            label: `Alert ${what} selesai`,
+          },
+        ]
       : [start];
   });
 }
 
 // Satu langkah per lapisan, urut hulu ke hilir (sama dengan diagnosticLayers).
-const steps: Record<DiagnosticLayer, (c: CustomerTarget, ctx: RunContext) => Promise<Finding[]>> = {
-  hulu: async () => [pendingLayer("hulu", "Utilisasi uplink, kualitas jalur hulu, BGP, IPv6")],
+// Riwayat uplink (traffic_samples = counter antarmuka UPLINK per detik, rx =
+// unduh) dan trafik pelanggan (customer_traffic_samples, bucket 5 menit) di
+// sekitar waktu keluhan.
+async function readUplinkHistory(
+  c: CustomerTarget,
+  complaintAt: Date,
+): Promise<UplinkHistory> {
+  const around = {
+    from: new Date(complaintAt.getTime() - 15 * 60_000),
+    to: new Date(complaintAt.getTime() + 15 * 60_000),
+  };
+  const dayFrom = new Date(complaintAt.getTime() - 24 * 3600_000);
+  const rate = sql<number>`greatest(${trafficSamples.rxMbps}, ${trafficSamples.txMbps})`;
+  const [near] = await db
+    .select({
+      peak: sql<number | null>`max(${rate})`,
+      avg: sql<number | null>`avg(${rate})`,
+      samples: sql<number>`count(*)::int`,
+    })
+    .from(trafficSamples)
+    .where(
+      and(
+        eq(trafficSamples.routerId, c.routerId),
+        gte(trafficSamples.sampledAt, around.from),
+        lte(trafficSamples.sampledAt, around.to),
+      ),
+    );
+  const [day] = await db
+    .select({ avg: sql<number | null>`avg(${rate})` })
+    .from(trafficSamples)
+    .where(
+      and(
+        eq(trafficSamples.routerId, c.routerId),
+        gte(trafficSamples.sampledAt, dayFrom),
+        lte(trafficSamples.sampledAt, complaintAt),
+      ),
+    );
+  const [cust] = await db
+    .select({
+      avg: sql<number | null>`avg(${customerTrafficSamples.downloadMbpsAvg})`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(
+          customerTrafficSamples.bucketStart,
+          new Date(complaintAt.getTime() - 10 * 60_000),
+        ),
+        lte(customerTrafficSamples.bucketStart, complaintAt),
+      ),
+    );
+  // Rata-rata kebiasaan pelanggan: hanya bucket aktif (> 0,1 Mbps).
+  const [custDay] = await db
+    .select({
+      avg: sql<number | null>`avg(${customerTrafficSamples.downloadMbpsAvg})`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(customerTrafficSamples.bucketStart, dayFrom),
+        lte(customerTrafficSamples.bucketStart, around.from),
+        gt(customerTrafficSamples.downloadMbpsAvg, 0.1),
+      ),
+    );
+  const num = (v: number | string | null | undefined) =>
+    v === null || v === undefined ? null : Number(v);
+  return {
+    peakMbps: num(near?.peak),
+    avgMbps: num(near?.avg),
+    dayAvgMbps: num(day?.avg),
+    samples: near?.samples ?? 0,
+    customerMbps: num(cust?.avg),
+    customerDayMbps: num(custDay?.avg),
+  };
+}
+
+// Lapisan hulu: default route & link, utilisasi uplink, ping dari router,
+// riwayat uplink, BGP, IPv6. Masalah di sini adalah gangguan bersama.
+async function readHulu(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
+  const s = await ctx.router();
+  if (s.error) {
+    return [
+      unchecked(
+        "hulu",
+        "ringkasan",
+        "Jalur hulu",
+        `Router tidak terbaca: ${s.error}`,
+        s.source,
+      ),
+    ];
+  }
+  const { reads } = s;
+  const at = s.readAt;
+  const mon = reads.uplinkMonitor?.ok ? reads.uplinkMonitor.value : null;
+  const monitor = (Array.isArray(mon) ? mon[0] : mon) as Ros | null;
+  const capacity = rosRateBps(monitor?.rate);
+  const up = s.uplinkName ?? "uplink";
+  const out: Finding[] = [];
+
+  const routeErr = failed(reads.route);
+  out.push(
+    routeErr
+      ? unchecked(
+          "hulu",
+          "default_route",
+          "Default route & link uplink",
+          `Gagal membaca /ip/route: ${routeErr}`,
+          s.source,
+        )
+      : evaluateDefaultRoute(
+          rows(reads.route),
+          firstRow(reads.uplink1),
+          monitor,
+          `${s.source} · /ip/route, /interface ${up}`,
+          at,
+        ),
+  );
+  if (s.uplinkName) {
+    const uErr = failed(reads.uplink1, reads.uplink2);
+    out.push(
+      uErr
+        ? unchecked(
+            "hulu",
+            "uplink_util",
+            `Utilisasi uplink ${up}`,
+            `Gagal membaca /interface ${up}: ${uErr}`,
+            s.source,
+          )
+        : evaluateUplinkRate(
+            up,
+            firstRow(reads.uplink1),
+            firstRow(reads.uplink2),
+            gapOf(s, "uplink1", "uplink2"),
+            capacity,
+            `${s.source} · /interface ${up}, ethernet/monitor`,
+            at,
+          ),
+    );
+  }
+  for (const [key, kind] of [
+    ["pingGateway", "gateway"],
+    ["pingInternet", "internet"],
+  ] as const) {
+    const r = reads[key];
+    if (!r) continue;
+    const target =
+      kind === "gateway"
+        ? (firstRow(reads.route)?.["immediate-gw"] ?? "").split("%")[0]
+        : INTERNET_PROBE;
+    out.push(
+      r.ok
+        ? evaluatePing(
+            kind,
+            target,
+            rows(r),
+            `${s.source} · /tool/ping ${target}`,
+            at,
+          )
+        : unchecked(
+            "hulu",
+            kind === "gateway" ? "upstream_gateway" : "upstream_internet",
+            `Ping ke ${target}`,
+            `Ping dari router gagal: ${r.error}`,
+            s.source,
+          ),
+    );
+  }
+  out.push(
+    ...evaluateUplinkHistory(
+      await readUplinkHistory(c, ctx.complaintAt),
+      capacity,
+      `traffic_samples · ${c.routerName} (${up}) & customer_traffic_samples`,
+      at,
+    ),
+  );
+  const bErr = failed(reads.bgpConn, reads.bgpSess);
+  out.push(
+    bErr
+      ? unchecked(
+          "hulu",
+          "bgp",
+          "Peer BGP",
+          `Gagal membaca /routing/bgp: ${bErr}`,
+          s.source,
+        )
+      : evaluateBgp(
+          rows(reads.bgpConn),
+          rows(reads.bgpSess),
+          `${s.source} · /routing/bgp/{connection,session}`,
+          at,
+        ),
+  );
+  const vErr = failed(reads.ipv6Addr, reads.ipv6Route);
+  out.push(
+    vErr
+      ? unchecked(
+          "hulu",
+          "ipv6",
+          "IPv6 pelanggan",
+          `Gagal membaca /ipv6: ${vErr}`,
+          s.source,
+        )
+      : evaluateIpv6(
+          rows(reads.ipv6Addr),
+          rows(reads.ipv6Route),
+          rows(reads.ipv6Bind),
+          s.session ? s.iface : null,
+          `${s.source} · /ipv6/{address,route,dhcp-server/binding}`,
+          at,
+        ),
+  );
+  return out;
+}
+
+const steps: Record<
+  DiagnosticLayer,
+  (c: CustomerTarget, ctx: RunContext) => Promise<Finding[]>
+> = {
+  hulu: readHulu,
   mikrotik: readMikrotik,
   log: readLog,
   firewall: readFirewall,
   optik: async (_c, ctx) => [evaluateOptical(await ctx.onu(), new Date())],
   ont: readOnt,
-  trafik: async () => [pendingLayer("trafik", "Tren trafik pelanggan dan aliran NetFlow")],
+  trafik: async () => [
+    pendingLayer("trafik", "Tren trafik pelanggan dan aliran NetFlow"),
+  ],
   billing: readBilling,
 };
 
@@ -700,7 +1310,9 @@ async function executeRun(runId: string) {
   const [run] = await db
     .update(diagnosticRuns)
     .set({ status: "running", startedAt: new Date() })
-    .where(and(eq(diagnosticRuns.id, runId), eq(diagnosticRuns.status, "queued")))
+    .where(
+      and(eq(diagnosticRuns.id, runId), eq(diagnosticRuns.status, "queued")),
+    )
     .returning();
   if (!run) return;
   try {
@@ -720,11 +1332,20 @@ async function executeRun(runId: string) {
       try {
         found = await steps[layer.id](c, ctx);
       } catch (err) {
-        found = [unchecked(layer.id, "galat", layer.label, `Gagal membaca lapisan: ${message(err)}`)];
+        found = [
+          unchecked(
+            layer.id,
+            "galat",
+            layer.label,
+            `Gagal membaca lapisan: ${message(err)}`,
+          ),
+        ];
       }
       all.push(...found);
       // Ditulis per lapisan supaya tampilan bisa menunjukkan progres.
-      await db.insert(diagnosticFindings).values(found.map((f) => ({ ...f, runId })));
+      await db
+        .insert(diagnosticFindings)
+        .values(found.map((f) => ({ ...f, runId })));
     }
     const verdict = pickVerdict(all);
     await db
@@ -734,9 +1355,12 @@ async function executeRun(runId: string) {
         finishedAt: new Date(),
         verdictLayer: verdict.layer,
         verdictDetail: verdict.detail,
-        timeline: [...ctx.timeline, ...(await alertTimeline(c.id, complaintAt))].sort((a, b) =>
-          a.at.localeCompare(b.at),
-        ),
+        // Hulu bermasalah = gangguan bersama, bukan perangkat pelanggan.
+        isSharedFault: verdict.layer === "hulu",
+        timeline: [
+          ...ctx.timeline,
+          ...(await alertTimeline(c.id, complaintAt)),
+        ].sort((a, b) => a.at.localeCompare(b.at)),
       })
       .where(eq(diagnosticRuns.id, runId));
   } catch (err) {
@@ -751,7 +1375,8 @@ const g = globalThis as unknown as {
   nocDiagnosticQueue?: ReturnType<typeof createDiagnosticQueue>;
   nocDiagnosticTrigger?: ReturnType<typeof setInterval>;
 };
-const queue = () => (g.nocDiagnosticQueue ??= createDiagnosticQueue(executeRun));
+const queue = () =>
+  (g.nocDiagnosticQueue ??= createDiagnosticQueue(executeRun));
 
 // Tombol manual. Bila run manual pelanggan ini masih berjalan, kembalikan run
 // itu (reused) alih-alih memulai yang baru.
@@ -778,7 +1403,11 @@ export async function startManualDiagnostic(
       .onConflictDoNothing()
       .returning({ id: diagnosticRuns.id });
     if (created) {
-      queue().enqueue({ runId: created.id, routerKey: c.routerId, priority: MANUAL_PRIORITY });
+      queue().enqueue({
+        runId: created.id,
+        routerKey: c.routerId,
+        priority: MANUAL_PRIORITY,
+      });
       return { run: (await getDiagnosticRun(created.id))!, reused: false };
     }
     const [running] = await db
@@ -793,17 +1422,24 @@ export async function startManualDiagnostic(
       )
       .limit(1);
     // Kosong = run itu baru saja selesai di antara dua query; coba sisipkan lagi.
-    if (running) return { run: (await getDiagnosticRun(running.id))!, reused: true };
+    if (running)
+      return { run: (await getDiagnosticRun(running.id))!, reused: true };
   }
   throw new Error("Gagal memulai diagnosa manual.");
 }
 
 export async function getDiagnosticPolicy(): Promise<DiagnosticPolicyDto> {
-  let [p] = await db.select().from(diagnosticPolicy).where(eq(diagnosticPolicy.id, 1));
+  let [p] = await db
+    .select()
+    .from(diagnosticPolicy)
+    .where(eq(diagnosticPolicy.id, 1));
   if (!p) {
     // Baris bawaan ditanam migrasi 0033; ini hanya bila baris itu terhapus.
     await db.insert(diagnosticPolicy).values({ id: 1 }).onConflictDoNothing();
-    [p] = await db.select().from(diagnosticPolicy).where(eq(diagnosticPolicy.id, 1));
+    [p] = await db
+      .select()
+      .from(diagnosticPolicy)
+      .where(eq(diagnosticPolicy.id, 1));
   }
   return {
     triggerAlert: p.triggerAlert,
@@ -865,7 +1501,10 @@ async function recordSharedFault(affected: number, p: DiagnosticPolicyDto) {
         verdictDetail: detail,
       },
     })
-    .returning({ id: diagnosticRuns.id, mergedCount: diagnosticRuns.mergedCount });
+    .returning({
+      id: diagnosticRuns.id,
+      mergedCount: diagnosticRuns.mergedCount,
+    });
   if (row.mergedCount === 0) {
     await db.insert(diagnosticFindings).values({
       runId: row.id,
@@ -883,7 +1522,8 @@ async function recordSharedFault(affected: number, p: DiagnosticPolicyDto) {
   }
 }
 
-export type AutoOutcome = "disabled" | "held" | "unknown_customer" | "queued" | "merged";
+export type AutoOutcome =
+  "disabled" | "held" | "unknown_customer" | "queued" | "merged";
 
 // Pemicu otomatis untuk satu pelanggan. Urutan: kebijakan, penahan gangguan
 // massal, lalu penggabungan per jendela (dedupe_key).
@@ -899,7 +1539,9 @@ export async function requestAutoDiagnostic(input: {
 
   const since = new Date(Date.now() - p.massWindowMinutes * 60_000);
   const [{ affected }] = await db
-    .select({ affected: sql<number>`count(distinct ${alerts.customerId})::int` })
+    .select({
+      affected: sql<number>`count(distinct ${alerts.customerId})::int`,
+    })
     .from(alerts)
     .where(and(isNotNull(alerts.customerId), gt(alerts.startedAt, since)));
   if (affected >= p.massThreshold) {
@@ -923,11 +1565,21 @@ export async function requestAutoDiagnostic(input: {
     })
     .onConflictDoUpdate({
       target: diagnosticRuns.dedupeKey,
-      set: { mergedCount: sql`${diagnosticRuns.mergedCount} + 1`, lastMergedAt: new Date() },
+      set: {
+        mergedCount: sql`${diagnosticRuns.mergedCount} + 1`,
+        lastMergedAt: new Date(),
+      },
     })
-    .returning({ id: diagnosticRuns.id, mergedCount: diagnosticRuns.mergedCount });
+    .returning({
+      id: diagnosticRuns.id,
+      mergedCount: diagnosticRuns.mergedCount,
+    });
   if (row.mergedCount > 0) return "merged";
-  queue().enqueue({ runId: row.id, routerKey: c.routerId, priority: AUTO_PRIORITY });
+  queue().enqueue({
+    runId: row.id,
+    routerKey: c.routerId,
+    priority: AUTO_PRIORITY,
+  });
   return "queued";
 }
 
@@ -939,7 +1591,11 @@ export async function requestAutoDiagnosticForTicket(alertId: string) {
     .where(eq(alerts.id, alertId))
     .limit(1);
   if (!a?.customerId) return "unknown_customer" as const;
-  return requestAutoDiagnostic({ customerId: a.customerId, reason: "ticket", sourceRef: `alert:${alertId}` });
+  return requestAutoDiagnostic({
+    customerId: a.customerId,
+    reason: "ticket",
+    sourceRef: `alert:${alertId}`,
+  });
 }
 
 const POLL_MS = 15_000;
@@ -953,7 +1609,11 @@ export async function startDiagnosticAutoTrigger() {
   // mengunci tombol manual pelanggan itu).
   await db
     .update(diagnosticRuns)
-    .set({ status: "failed", finishedAt: new Date(), error: "Server dimulai ulang sebelum diagnosa selesai." })
+    .set({
+      status: "failed",
+      finishedAt: new Date(),
+      error: "Server dimulai ulang sebelum diagnosa selesai.",
+    })
     .where(inArray(diagnosticRuns.status, ["queued", "running"]));
 
   let alertCursor = new Date();
@@ -993,11 +1653,18 @@ export async function startDiagnosticAutoTrigger() {
     }
 
     const rows = await db
-      .select({ customerId: billingStatus.customerId, status: billingStatus.status, runId: billingStatus.runId })
+      .select({
+        customerId: billingStatus.customerId,
+        status: billingStatus.status,
+        runId: billingStatus.runId,
+      })
       .from(billingStatus);
     if (billingSeen && p.triggerBilling) {
       for (const r of rows) {
-        if (r.status === "isolir" && billingSeen.get(r.customerId) !== "isolir") {
+        if (
+          r.status === "isolir" &&
+          billingSeen.get(r.customerId) !== "isolir"
+        ) {
           await requestAutoDiagnostic({
             customerId: r.customerId,
             reason: "billing_isolir",
@@ -1014,7 +1681,9 @@ export async function startDiagnosticAutoTrigger() {
     if (busy) return;
     busy = true;
     tick()
-      .catch((err) => console.error("Pemicu diagnosa otomatis gagal:", message(err)))
+      .catch((err) =>
+        console.error("Pemicu diagnosa otomatis gagal:", message(err)),
+      )
       .finally(() => {
         busy = false;
       });
@@ -1064,17 +1733,32 @@ function selectRuns() {
     .leftJoin(customers, eq(customers.id, diagnosticRuns.customerId));
 }
 
-export async function listDiagnosticRuns(q: { customerId?: string; limit: number }) {
+export async function listDiagnosticRuns(q: {
+  customerId?: string;
+  limit: number;
+}) {
   const rows = await selectRuns()
-    .where(q.customerId ? eq(diagnosticRuns.customerId, q.customerId) : undefined)
+    .where(
+      q.customerId ? eq(diagnosticRuns.customerId, q.customerId) : undefined,
+    )
     .orderBy(desc(diagnosticRuns.createdAt))
     .limit(q.limit);
-  return rows.map((r) => toDto({ ...r.run, customerName: r.customerName, pppoeUsername: r.pppoeUsername }));
+  return rows.map((r) =>
+    toDto({
+      ...r.run,
+      customerName: r.customerName,
+      pppoeUsername: r.pppoeUsername,
+    }),
+  );
 }
 
-const layerIndex = new Map<string, number>(diagnosticLayers.map((l, i) => [l.id, i]));
+const layerIndex = new Map<string, number>(
+  diagnosticLayers.map((l, i) => [l.id, i]),
+);
 
-export async function getDiagnosticRun(id: string): Promise<DiagnosticRunDto | null> {
+export async function getDiagnosticRun(
+  id: string,
+): Promise<DiagnosticRunDto | null> {
   const [r] = await selectRuns().where(eq(diagnosticRuns.id, id)).limit(1);
   if (!r) return null;
   const findings = await db
@@ -1096,29 +1780,37 @@ export async function getDiagnosticRun(id: string): Promise<DiagnosticRunDto | n
       isStale: firewallRuleHits.isStale,
     })
     .from(firewallRuleHits)
-    .innerJoin(firewallSnapshots, eq(firewallSnapshots.id, firewallRuleHits.snapshotId))
+    .innerJoin(
+      firewallSnapshots,
+      eq(firewallSnapshots.id, firewallRuleHits.snapshotId),
+    )
     .where(eq(firewallSnapshots.runId, id))
     .orderBy(firewallRuleHits.table, firewallRuleHits.ruleIndex);
   return {
-    ...toDto({ ...r.run, customerName: r.customerName, pppoeUsername: r.pppoeUsername }),
+    ...toDto({
+      ...r.run,
+      customerName: r.customerName,
+      pppoeUsername: r.pppoeUsername,
+    }),
     firewallRules,
     findings: findings
-      .map(
-        (f): FindingDto => ({
-          id: f.id,
-          layer: f.layer as DiagnosticLayer,
-          metric: f.metric,
-          label: f.label,
-          value: f.value,
-          threshold: f.threshold,
-          comparator: f.comparator,
-          status: f.status,
-          detail: f.detail,
-          sourceRef: f.sourceRef,
-          sampledAt: iso(f.sampledAt),
-          checkedAt: f.checkedAt.toISOString(),
-        }),
-      )
-      .sort((a, b) => (layerIndex.get(a.layer) ?? 99) - (layerIndex.get(b.layer) ?? 99)),
+      .map((f): FindingDto => ({
+        id: f.id,
+        layer: f.layer as DiagnosticLayer,
+        metric: f.metric,
+        label: f.label,
+        value: f.value,
+        threshold: f.threshold,
+        comparator: f.comparator,
+        status: f.status,
+        detail: f.detail,
+        sourceRef: f.sourceRef,
+        sampledAt: iso(f.sampledAt),
+        checkedAt: f.checkedAt.toISOString(),
+      }))
+      .sort(
+        (a, b) =>
+          (layerIndex.get(a.layer) ?? 99) - (layerIndex.get(b.layer) ?? 99),
+      ),
   };
 }

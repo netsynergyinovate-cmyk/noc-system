@@ -371,6 +371,18 @@ export class MikrotikRestClient {
     return this.request(query ? `${path}?${query}` : path);
   }
 
+  /**
+   * Perintah ukur untuk diagnosa: POST, tetapi tidak mengubah konfigurasi.
+   * Hanya perintah di daftar ini yang boleh lewat.
+   */
+  async measure(
+    path: "/rest/tool/ping" | "/rest/interface/ethernet/monitor",
+    body: Record<string, string>,
+  ): Promise<unknown> {
+    if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
+    return this.request(path, "POST", body);
+  }
+
   async ping(target: string, count = 3): Promise<MikrotikPingPacket[]> {
     if (this.simulated) {
       const fail = this.simulatorFailure();

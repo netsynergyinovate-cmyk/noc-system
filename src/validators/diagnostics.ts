@@ -12,7 +12,9 @@ export const startDiagnosticSchema = z
       .datetime({ offset: true })
       .transform((v) => new Date(v))
       .refine(
-        (d) => d.getTime() <= Date.now() + 5 * 60_000 && d.getTime() >= Date.now() - COMPLAINT_MAX_AGE_MS,
+        (d) =>
+          d.getTime() <= Date.now() + 5 * 60_000 &&
+          d.getTime() >= Date.now() - COMPLAINT_MAX_AGE_MS,
         "Waktu keluhan harus dalam 7 hari terakhir dan tidak di masa depan.",
       )
       .optional(),

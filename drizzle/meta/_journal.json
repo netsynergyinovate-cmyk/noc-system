@@ -232,6 +232,13 @@
       "when": 1792660311645,
       "tag": "0032_customer_traffic",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792669622063,
+      "tag": "0033_diagnostics",
+      "breakpoints": true
     }
   ]
 }

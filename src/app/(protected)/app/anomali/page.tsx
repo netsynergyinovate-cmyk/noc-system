@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AnomalyBoard } from "@/components/dashboard/anomaly-board";
+import { DiagnosticPanel } from "@/components/dashboard/diagnostic-panel";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { requireSession } from "@/lib/session";
 
@@ -18,9 +19,11 @@ export default async function AnomalyPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           Gangguan yang terdeteksi otomatis: jalur penuh, router terbebani,
-          error port, sinyal optik lemah, dan pelanggan offline.
+          error port, sinyal optik lemah, dan pelanggan offline. Diagnosa
+          pelanggan memeriksa satu pelanggan lapis demi lapis.
         </p>
       </div>
+      <DiagnosticPanel />
       <AnomalyBoard />
     </div>
   );

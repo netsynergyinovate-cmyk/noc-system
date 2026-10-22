@@ -43,3 +43,5 @@ export * from "./cable-segment-samples";
 export * from "./map-layers";
 export * from "./map-overrides";
 export * from "./map-undo-entries";
+// Diagnosa pelanggan berlapis (/app/anomali).
+export * from "./diagnostics";

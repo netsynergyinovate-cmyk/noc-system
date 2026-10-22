@@ -15,6 +15,7 @@ import { BillingBadge, HealthBadge } from "@/components/dashboard/status-badge";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
 import { CustomerTrafficPanel } from "@/components/dashboard/customer-traffic-panel";
 import { CustomerCpeSummary } from "@/components/dashboard/customer-cpe-summary";
+import { DiagnoseButton } from "@/components/dashboard/diagnose-button";
 import { requireSession } from "@/lib/session";
 import { getCustomerHealth } from "@/lib/dashboard/health";
 import { mapFocusHref } from "@/lib/dashboard/map-focus";
@@ -98,14 +99,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <BillingBadge status={detail.billingStatus} />
             </div>
           </div>
-          {mapHref && (
-            <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-              <Link href={mapHref}>
-                <MapPin className="size-3.5 text-primary" />
-                Lihat di Peta
-              </Link>
-            </Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <DiagnoseButton customerId={detail.id} customerName={detail.name} className="h-8 gap-1.5 text-xs" />
+            {mapHref && (
+              <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                <Link href={mapHref}>
+                  <MapPin className="size-3.5 text-primary" />
+                  Lihat di Peta
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

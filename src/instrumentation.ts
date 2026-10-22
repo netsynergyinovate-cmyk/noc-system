@@ -38,6 +38,15 @@ export async function register() {
       } catch (err) {
         console.error("Gagal memulai background collector VLAN:", err);
       }
+
+      try {
+        const { startDiagnosticAutoTrigger } = await import(
+          "@/services/diagnostics.service"
+        );
+        await startDiagnosticAutoTrigger();
+      } catch (err) {
+        console.error("Gagal memulai pemicu diagnosa otomatis:", err);
+      }
     }
   }
 }

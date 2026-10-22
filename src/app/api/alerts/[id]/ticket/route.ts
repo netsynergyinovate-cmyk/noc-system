@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readJson, withApiSession } from "@/lib/api";
 import { getAlertTicket, updateAlertTicket } from "@/services/alerts.service";
+import { requestAutoDiagnosticForTicket } from "@/services/diagnostics.service";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
@@ -43,6 +44,11 @@ export function POST(request: Request, context: Context) {
         { status: 400 },
       );
     }
+    // Keluhan masuk = diagnosa otomatis (sesudah tiket tersimpan; gagal di sini
+    // tidak membatalkan tiket, tetapi dicatat).
+    void requestAutoDiagnosticForTicket(id).catch((err) =>
+      console.error("Pemicu diagnosa dari tiket gagal:", err instanceof Error ? err.message : err),
+    );
     return NextResponse.json({ ok: true, data: result.data });
   });
 }

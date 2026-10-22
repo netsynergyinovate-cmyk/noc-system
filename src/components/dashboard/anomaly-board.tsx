@@ -63,9 +63,11 @@ import { AnomalyDetailDialog } from "./anomaly-detail-dialog";
 import { IncidentCardList } from "./incident-card-list";
 import {
   AnomalySubject,
+  subjectLabel,
   useSubjectLookup,
   type SubjectLookup,
 } from "./anomaly-subject";
+import { DiagnoseButton } from "./diagnose-button";
 import { MetricCard } from "./metric-card";
 import { RunningDuration } from "./running-duration";
 import { SeverityBadge } from "./status-badge";
@@ -398,15 +400,23 @@ function AnomalyTable({
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid="view-anomaly-detail-btn"
-                      onClick={() => onDetail(anomaly)}
-                    >
-                      Rincian
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="view-anomaly-detail-btn"
+                        onClick={() => onDetail(anomaly)}
+                      >
+                        Rincian
+                      </Button>
+                      {anomaly.customerId && (
+                        <DiagnoseButton
+                          customerId={anomaly.customerId}
+                          customerName={subjectLabel(anomaly, lookup)}
+                        />
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

@@ -508,6 +508,7 @@ async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
       coverageStart: stat?.oldest ? new Date(stat.oldest) : null,
       sourceLabel: `Syslog tersimpan dari router ${c.routerName}`,
       sourceRef: `syslog_events · ${c.routerName}`,
+      coverageHint: "Syslog tersimpan masih baru; cakupannya bertambah seiring waktu sampai batas retensi.",
     });
   } else {
     const why = newest ? `syslog terakhir diterima ${fmtWib(newest)}` : "belum pernah ada syslog diterima";
@@ -531,6 +532,7 @@ async function readLog(c: CustomerTarget, ctx: RunContext): Promise<Finding[]> {
       coverageStart: lines[0]?.at ?? null,
       sourceLabel: `Buffer memori router ${c.routerName} (${lines.length} baris terakhir; ${why})`,
       sourceRef: `${s.source} · /log (jam router WIB)`,
+      coverageHint: "Aktifkan syslog remote router ke NOC.",
     });
   }
   ctx.timeline.push(...result.timeline);

@@ -1090,6 +1090,8 @@ export function analyzeLog(input: {
   coverageStart: Date | null;
   sourceLabel: string;
   sourceRef: string;
+  // Saran bila cakupan kurang (berbeda untuk buffer router dan syslog tersimpan).
+  coverageHint: string;
 }): { findings: Finding[]; timeline: TimelineEvent[] } {
   const { complaintAt, now, coverageStart, sourceRef } = input;
   const from = new Date(Math.max(complaintAt.getTime() - LOG_LOOKBACK_MS, coverageStart?.getTime() ?? 0));
@@ -1115,7 +1117,7 @@ export function analyzeLog(input: {
           "log_coverage",
           "Cakupan log",
           coverageStart
-            ? `${input.sourceLabel} hanya mencakup ${span}, padahal perlu sejak 1 jam sebelum keluhan (${fmtTime(complaintAt)}); kejadian sebelum ${fmtTime(coverageStart)} tidak dapat diperiksa. Aktifkan syslog remote router ke NOC.`
+            ? `${input.sourceLabel} hanya mencakup ${span}, padahal perlu sejak 1 jam sebelum keluhan (${fmtTime(complaintAt)}); kejadian sebelum ${fmtTime(coverageStart)} tidak dapat diperiksa. ${input.coverageHint}`
             : `${input.sourceLabel} tidak berisi baris log.`,
           sourceRef,
         ),

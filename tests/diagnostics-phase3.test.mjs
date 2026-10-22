@@ -58,6 +58,7 @@ const analyze = (lines, over = {}) =>
     coverageStart: new Date(Date.UTC(2026, 9, 22, 10, 0)),
     sourceLabel: "Syslog tersimpan",
     sourceRef: "syslog_events",
+    coverageHint: "Syslog tersimpan masih baru.",
     ...over,
   });
 
@@ -88,7 +89,7 @@ test("link jalur turun = fail; pelanggan lain tidak ikut terhitung", () => {
 });
 
 test("buffer router yang pendek: cakupan tidak dapat diperiksa, bukan normal", () => {
-  const { findings } = analyze(cycle(4), { coverageStart: new Date(Date.UTC(2026, 9, 22, 11, 50)), sourceLabel: "Buffer memori router" });
+  const { findings } = analyze(cycle(4), { coverageStart: new Date(Date.UTC(2026, 9, 22, 11, 50)), sourceLabel: "Buffer memori router", coverageHint: "Aktifkan syslog remote router ke NOC." });
   const cov = findings.find((f) => f.metric === "log_coverage");
   assert.equal(cov.status, "unchecked");
   assert.match(cov.detail, /Aktifkan syslog remote/);

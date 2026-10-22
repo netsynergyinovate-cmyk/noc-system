@@ -5,7 +5,7 @@
 //   3. deskripsi ONU = nama pelanggan                 -> exact_name
 //   4. nama ONU memuat nomor PPPoE pelanggan utuh     -> name_pppoe
 //      (mis. "1861-PPPoE Cust 17060001861" untuk 17060001861@runsnet.id)
-//   5. kode di awal nama ONU ("1103-ALDI FAREZI") = ekor nomor PPPoE pelanggan
+//   5. kode di awal nama ONU ("1103-ALDI FAREZI", atau kode saja "1103") = ekor nomor PPPoE pelanggan
 //      -> code_suffix. Hanya bila kode itu tidak dipakai ONU lain (nama ONU yang
 //      kembar berarti kodenya tidak bisa dipakai membedakan), dan hanya untuk
 //      nomor PPPoE yang seluruhnya angka.
@@ -45,9 +45,9 @@ const hw = (v: string | null | undefined) => text(v).replace(/[^0-9a-z]/g, "");
 // Nomor PPPoE tanpa "@domain".
 const pppoeLocal = (u: string) => text(u).split("@")[0];
 const MIN_PPPOE_DIGITS = 8; // nomor pendek terlalu mudah kebetulan ada di nama
-const CODE_RE = /^(\d{3,6})\s*-/;
+const CODE_RE = /^(\d{3,6})\s*(?:-|$)/;
 
-/** Kode di awal nama ONU ("1103-ALDI" -> "1103"), atau null. */
+/** Kode di awal nama ONU ("1103-ALDI" atau "1103" -> "1103"), atau null. */
 export function onuNameCode(name: string | null | undefined): string | null {
   const m = CODE_RE.exec((name ?? "").trim());
   return m ? m[1] : null;

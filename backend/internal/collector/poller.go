@@ -93,7 +93,10 @@ type PollerOptions struct {
 	// goroutine job. Dipakai untuk melacak keterjangkauan router. Tidak dipanggil
 	// untuk putaran yang dibatalkan karena router dihentikan. Boleh nil.
 	OnResult func(routerID, job string, err error)
-	Now    func() time.Time
+	// OnQueues menerima seluruh simple queue tiap polling queue yang berhasil (mis. arsip
+	// trafik per pelanggan), dari goroutine job; tidak boleh memblokir. Boleh nil.
+	OnQueues func(routerID string, at time.Time, samples []QueueSample)
+	Now      func() time.Time
 }
 
 // Status adalah kondisi satu job polling pada satu router, untuk rule engine
@@ -367,6 +370,9 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 	samples, err := w.client.Queues(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if p.opts.OnQueues != nil {
+		p.opts.OnQueues(w.routerID, started, samples)
 	}
 	down, up, counted := Totals(samples)
 	// Trafik dashboard dari counter interface (sama dengan Winbox, tanpa jeda); jumlah queue hanya

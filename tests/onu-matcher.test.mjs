@@ -53,6 +53,7 @@ test("kode di awal nama ONU = ekor nomor PPPoE -> code_suffix, dengan pengaman",
     { id: "c", name: "budi", pppoeUsername: "budi01" }, // bukan nomor: tidak dicocokkan lewat kode
   ];
   assert.deepEqual(m({ description: "1103-ALDI FAREZI" }, cs), { status: "code_suffix", customerId: "a" });
+  assert.deepEqual(m({ description: "1103" }, cs), { status: "code_suffix", customerId: "a" });
   // Kode kembar di OLT (dua ONU berkode 1103) tidak boleh dipakai.
   assert.deepEqual(m({ description: "1103-ALDI FAREZI" }, cs, { duplicateCodes: new Set(["1103"]) }), { status: "unmatched" });
   // Tidak ada ekor yang cocok.

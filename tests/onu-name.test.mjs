@@ -20,6 +20,8 @@ test("nama bawaan OLT dan kosong bukan nama orang", () => {
 
 test("kode nama ONU", () => {
   assert.equal(onuNameCode("1103-ALDI"), "1103");
+  assert.equal(onuNameCode("1798"), "1798"); // ONU yang diberi kode saja, tanpa nama
+  assert.equal(onuNameCode("1798 BARU"), null);
   assert.equal(onuNameCode("ONU01/23"), null);
   assert.equal(onuNameCode(null), null);
   assert.equal(onuNameCode("12-AB"), null); // terlalu pendek untuk kode

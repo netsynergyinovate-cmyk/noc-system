@@ -48,7 +48,7 @@ export function LiveAlertSync() {
         ]);
         if (!alive) return;
         const { routers, customers } = useDashboardStore.getState();
-        const directory = buildLiveDirectory(routers, customers);
+        const directory = buildLiveDirectory(routers, customers, [...active, ...resolved]);
         const activeAlerts = toLiveActiveAlerts(active, directory);
         const lists = reconcileAlertLists(activeAlerts, toLiveResolvedAlerts(resolved));
         useAlertStore.getState().applySnapshot(lists, now);

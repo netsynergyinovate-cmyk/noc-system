@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,9 @@ import { CustomerCpeDialog } from "./customer-cpe-dialog";
 import { DashboardEmptyView } from "./dashboard-empty-view";
 import { resolveDashboardEmptyState } from "@/lib/dashboard/dashboard-empty-state";
 
+// Pelanggan tiruan (mode demo) tidak punya baris database, jadi tidak punya halaman detail.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const statusOptions: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "Semua status" },
   { value: "online", label: "Online" },
@@ -49,7 +53,16 @@ const CustomerRow = memo(function CustomerRow({
   return (
     <tr className="border-t">
       <td className="px-4 py-3">
-        <div className="font-medium">{customer.name}</div>
+        {UUID.test(customer.id) ? (
+          <Link
+            href={`/app/pelanggan/${customer.id}`}
+            className="font-medium underline-offset-4 hover:underline"
+          >
+            {customer.name}
+          </Link>
+        ) : (
+          <div className="font-medium">{customer.name}</div>
+        )}
         <div className="font-mono text-xs text-muted-foreground">
           {customer.pppoeUsername}
         </div>

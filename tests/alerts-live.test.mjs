@@ -98,3 +98,16 @@ test("tindakan nyata menandai ditangani: sukses, 409, 403, jaringan putus", asyn
     globalThis.fetch = real;
   }
 });
+
+test("nama dari baris alert dipakai bila store belum memuat pelanggan/router", () => {
+  const rows = [
+    item({ id: "n1", customerId: "c9", location: loc("SARIJO") }),
+    item({ id: "n2", routerId: "r9", customerId: null, location: loc("Core Baru") }),
+  ];
+  const dir = live.buildLiveDirectory([], [], rows);
+  assert.equal(dir.customerName("c9"), "SARIJO");
+  assert.equal(dir.routerName("r9"), "Core Baru");
+  // Store tetap menang (nama terbaru setelah sinkron billing).
+  const fresh = live.buildLiveDirectory([], [{ id: "c9", name: "SARIJO B", routerId: "r9", odpName: "" }], rows);
+  assert.equal(fresh.customerName("c9"), "SARIJO B");
+});

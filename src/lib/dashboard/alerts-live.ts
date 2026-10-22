@@ -42,13 +42,22 @@ const source = (v: string | null | undefined, fallback: "event" | "poll") =>
   v === "event" || v === "poll" ? v : fallback;
 
 // Direktori nama dan hitungan dari data yang sudah ada di store dashboard
-// (router dan pelanggan dari backend Go).
+// (router dan pelanggan dari backend Go). Bila store belum memuat pelanggan atau
+// router itu, nama diambil dari lokasi yang ditulis rule engine di baris alert
+// (nama pelanggan, atau nama router untuk alert tingkat router), bukan UUID.
 export function buildLiveDirectory(
   routers: readonly DashboardRouter[],
   customers: readonly DashboardCustomer[],
+  items: readonly Pick<LiveAlertItem, "routerId" | "customerId" | "location">[] = [],
 ): ServiceDirectory {
-  const routerNames = new Map(routers.map((r) => [r.id, r.name]));
-  const customerNames = new Map(customers.map((c) => [c.id, c.name]));
+  const routerNames = new Map<string, string>();
+  const customerNames = new Map<string, string>();
+  for (const item of items) {
+    if (item.customerId) customerNames.set(item.customerId, item.location.name);
+    else if (item.routerId) routerNames.set(item.routerId, item.location.name);
+  }
+  for (const r of routers) routerNames.set(r.id, r.name);
+  for (const c of customers) customerNames.set(c.id, c.name);
   return {
     routerName: (id) => routerNames.get(id) ?? id,
     customerName: (id) => customerNames.get(id) ?? id,

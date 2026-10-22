@@ -291,7 +291,7 @@ export function CustomerCpeDialog({
                 onClick={() => canReboot && setConfirmReboot(true)}
               >
                 {rebooting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Power className="mr-2 size-4" />}
-                {rebooting ? "Mengirim perintahÃ¢â‚¬Â¦" : "Reboot CPE"}
+                {rebooting ? "Mengirim perintah…" : "Reboot CPE"}
               </Button>
             </div>
             <AlertDialog open={confirmReboot} onOpenChange={setConfirmReboot}>
@@ -318,7 +318,7 @@ export function CustomerCpeDialog({
             />
             {cpe && (
               <p className="text-xs text-muted-foreground">
-                Radio {cpe.wifi.radioFrequency} Â· kanal {cpe.wifi.channel} Â· {cpe.wifi.security} Â·{" "}
+                Radio {cpe.wifi.radioFrequency} · kanal {cpe.wifi.channel} · {cpe.wifi.security} ·{" "}
                 {cpe.wifi.clientCount} klien aktif
               </p>
             )}

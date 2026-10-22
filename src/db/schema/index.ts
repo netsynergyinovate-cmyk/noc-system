@@ -17,6 +17,7 @@ export * from "./network-logs";
 export * from "./cpe-tasks";
 export * from "./audit-log";
 export * from "./traffic-samples";
+export * from "./customer-traffic-samples";
 export * from "./alert-thresholds";
 export * from "./netflow-samples";
 export * from "./whatsapp";

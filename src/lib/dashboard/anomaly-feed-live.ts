@@ -20,7 +20,6 @@ export async function loadLiveAnomalies(
     get(`status=resolved&from=${nowSec - ANOMALY_WINDOW_SECONDS}&limit=200`),
   ]);
   const { routers, customers } = useDashboardStore.getState();
-  return sortAnomalies(
-    toLiveAnomalies([...active, ...resolved], buildLiveDirectory(routers, customers)),
-  );
+  const items = [...active, ...resolved];
+  return sortAnomalies(toLiveAnomalies(items, buildLiveDirectory(routers, customers, items)));
 }

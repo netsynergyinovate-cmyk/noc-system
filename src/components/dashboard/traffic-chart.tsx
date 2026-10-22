@@ -199,11 +199,18 @@ export function TrafficChart({
   history,
   incidents,
   onInspect,
+  followLive = true,
+  label,
 }: {
   rangeId: TrafficRangeId;
   history?: HistoryWindow;
   incidents: Incident[];
   onInspect?: (point: InspectedTrafficPoint | null) => void;
+  // false: histori ini bukan trafik router (mis. satu pelanggan), jadi titik live
+  // dari store dashboard tidak ditempelkan ke ujung grafik.
+  followLive?: boolean;
+  // Rentang untuk label aksesibel bila berbeda dari rangeId (mis. "30 hari").
+  label?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<uPlot | null>(null);
@@ -335,7 +342,7 @@ export function TrafficChart({
 
       let frame = 0;
       const unsubscribe = useDashboardStore.subscribe((state, previous) => {
-        if (state.traffic === previous.traffic || frame) return;
+        if (!followLive || state.traffic === previous.traffic || frame) return;
         frame = requestAnimationFrame(() => {
           frame = 0;
           if (!chartRef.current) return;
@@ -420,7 +427,7 @@ export function TrafficChart({
   return (
     <div
       role="img"
-      aria-label={`Grafik traffic unduh dan unggah, ${getRange(rangeId).label} terakhir`}
+      aria-label={`Grafik traffic unduh dan unggah, ${label ?? getRange(rangeId).label} terakhir`}
       className="relative min-h-64 w-full flex-1"
     >
       <div ref={containerRef} className="traffic-chart absolute inset-0" />

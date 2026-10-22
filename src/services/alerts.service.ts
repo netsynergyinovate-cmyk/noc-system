@@ -252,6 +252,18 @@ export async function getAlertsList(
   }
 }
 
+// Alert terbaru satu pelanggan (halaman detail pelanggan), terbaru dulu.
+export async function listCustomerAlerts(customerId: string, limit = 10): Promise<AlertItem[]> {
+  if (!UUID.test(customerId)) return [];
+  const rows = await db
+    .select()
+    .from(alerts)
+    .where(eq(alerts.customerId, customerId))
+    .orderBy(desc(alerts.startedAt))
+    .limit(limit);
+  return rows.map(toItem);
+}
+
 export type HandleResult =
   | { ok: true; data: AlertItem }
   | { ok: false; error: "not_active" | "not_found" };

@@ -52,6 +52,9 @@ func startRouterPolling(
 	// berbatch dan asinkron, jadi database yang lambat tidak menahan polling.
 	writer := archive.NewWriter(archive.NewPGStore(pool), archive.Options{Logger: logger})
 	go writer.Run(ctx)
+	// Trafik per pelanggan (rata-rata 5 menit) dari queue dinamis "<pppoe-USERNAME>".
+	customerTraffic := archive.NewCustomerTraffic(archive.NewCustomerPGStore(pool), time.Second, logger)
+	go customerTraffic.Run(ctx)
 	recorder := archivingRecorder{
 		Manager: manager,
 		archive: archive.Recorder{Next: manager, Writer: writer},
@@ -70,6 +73,15 @@ func startRouterPolling(
 		TrafficInterface:    strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE")),
 		TrafficComment:      strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_COMMENT")),
 		TrafficCustomerSide: strings.EqualFold(strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_CUSTOMER_SIDE")), "true"),
+		OnQueues: func(_ string, at time.Time, samples []collector.QueueSample) {
+			rates := make([]archive.CustomerRate, 0, len(samples))
+			for _, s := range samples {
+				if user, ok := archive.CustomerUsername(s.Name); ok && !s.Disabled && s.TopLevel() {
+					rates = append(rates, archive.CustomerRate{Username: user, DownBps: s.DownBps, UpBps: s.UpBps})
+				}
+			}
+			customerTraffic.Add(at, rates)
+		},
 		OnResult: func(routerID, _ string, err error) {
 			now := time.Now().Unix()
 			if err != nil {

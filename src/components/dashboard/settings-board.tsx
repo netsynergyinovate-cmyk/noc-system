@@ -20,6 +20,7 @@ import {
   FlaskConical,
   Gauge,
   Globe,
+  KeyRound,
   Laptop,
   Loader2,
   MessageSquare,
@@ -210,6 +211,46 @@ export function SettingsBoard() {
       });
     }
   }, [sessionUser, userRoleInfo]);
+  // State ganti kata sandi akun sendiri
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [changePasswordMsg, setChangePasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleChangeOwnPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setChangePasswordMsg({ type: "error", text: "Konfirmasi kata sandi baru tidak cocok." });
+      return;
+    }
+    setChangingPassword(true);
+    setChangePasswordMsg(null);
+    try {
+      const res = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: true,
+      });
+      if (res.error) {
+        setChangePasswordMsg({ type: "error", text: res.error.message || "Gagal mengubah kata sandi." });
+      } else {
+        setChangePasswordMsg({ type: "success", text: "Kata sandi Anda berhasil diperbarui." });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => {
+          setShowChangePassword(false);
+          setChangePasswordMsg(null);
+        }, 2000);
+      }
+    } catch (err) {
+      setChangePasswordMsg({ type: "error", text: err instanceof Error ? err.message : "Terjadi kesalahan." });
+    } finally {
+      setChangingPassword(false);
+    }
+  }
 
   // Sinkronkan status runtime & peran akun dari API
   useEffect(() => {
@@ -744,6 +785,106 @@ export function SettingsBoard() {
                   </p>
                 </div>
               </div>
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowChangePassword((prev) => !prev)}
+                  className="h-8 gap-1.5 text-xs"
+                >
+                  <KeyRound className="size-3.5" />
+                  <span>{showChangePassword ? "Tutup Form Sandi" : "Ganti Kata Sandi Saya"}</span>
+                </Button>
+              </div>
+
+              {showChangePassword && (
+                <form onSubmit={handleChangeOwnPassword} className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <KeyRound className="size-3.5 text-primary" />
+                    <span>Form Ganti Kata Sandi Akun</span>
+                  </div>
+                  {changePasswordMsg && (
+                    <div
+                      className={cn(
+                        "rounded-md p-2.5 text-xs flex items-center gap-2",
+                        changePasswordMsg.type === "success"
+                          ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "border border-destructive/30 bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {changePasswordMsg.type === "success" ? <Check className="size-4 shrink-0" /> : <ShieldAlert className="size-4 shrink-0" />}
+                      <span>{changePasswordMsg.text}</span>
+                    </div>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="current-pass" className="text-xs">Kata Sandi Saat Ini</Label>
+                      <Input
+                        id="current-pass"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Kata sandi aktif"
+                        required
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="new-pass" className="text-xs">Kata Sandi Baru</Label>
+                      <Input
+                        id="new-pass"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 8 karakter"
+                        required
+                        minLength={8}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="confirm-pass" className="text-xs">Konfirmasi Sandi Baru</Label>
+                      <Input
+                        id="confirm-pass"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Ulangi sandi baru"
+                        required
+                        minLength={8}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowChangePassword(false)}
+                      className="h-8 text-xs"
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={changingPassword}
+                      className="h-8 text-xs font-medium"
+                    >
+                      {changingPassword ? (
+                        <>
+                          <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                          Memperbarui...
+                        </>
+                      ) : (
+                        "Perbarui Kata Sandi"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              )}
 
               {!userRoleInfo?.isSuperAdmin && (
                 <p className="text-xs text-muted-foreground leading-relaxed">

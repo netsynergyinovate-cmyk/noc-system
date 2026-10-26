@@ -43,7 +43,7 @@ export const auth = betterAuth({
           clientId: env.LOGTO_CLIENT_ID || "logto-client-id",
           clientSecret: env.LOGTO_CLIENT_SECRET || "logto-client-secret",
           scopes: ["openid", "profile", "email"],
-          authorizationUrl: `${env.LOGTO_ENDPOINT}/oidc/auth`,
+          authorizationUrl: `${env.LOGTO_ENDPOINT}/oidc/auth?direct_sign_in=social:google`,
           tokenUrl: `${env.LOGTO_INTERNAL_ENDPOINT || env.LOGTO_ENDPOINT}/oidc/token`,
           userInfoUrl: `${env.LOGTO_INTERNAL_ENDPOINT || env.LOGTO_ENDPOINT}/oidc/me`,
         },

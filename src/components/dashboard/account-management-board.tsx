@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  KeyRound,
   Loader2,
   RotateCcw,
   Shield,
@@ -80,6 +81,45 @@ export function AccountManagementBoard() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+
+  // State untuk Reset Password Pengguna oleh Super Admin
+  const [resetTargetUser, setResetTargetUser] = useState<AdminListedUser | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordResetMsg, setPasswordResetMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+    setResettingPassword(true);
+    setPasswordResetMsg(null);
+    try {
+      const res = await authClient.admin.setUserPassword({
+        userId: resetTargetUser.id,
+        newPassword: newPasswordInput,
+      });
+      if (res.error) {
+        setPasswordResetMsg({ type: "error", text: res.error.message || "Gagal mereset kata sandi." });
+      } else {
+        setPasswordResetMsg({
+          type: "success",
+          text: `Kata sandi untuk ${resetTargetUser.email} berhasil diperbarui.`,
+        });
+        setNewPasswordInput("");
+        setTimeout(() => {
+          setResetTargetUser(null);
+          setPasswordResetMsg(null);
+        }, 2000);
+      }
+    } catch (err) {
+      setPasswordResetMsg({
+        type: "error",
+        text: err instanceof Error ? err.message : "Terjadi kesalahan saat mereset kata sandi.",
+      });
+    } finally {
+      setResettingPassword(false);
+    }
+  }
 
   // Ambil data peran akun aktif dari API
   useEffect(() => {
@@ -445,6 +485,82 @@ export function AccountManagementBoard() {
             </Card>
           )}
 
+          {/* Form Reset Password Pengguna */}
+          {resetTargetUser && (
+            <Card className="border border-blue-500/30 bg-card shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <KeyRound className="size-4 text-blue-500" />
+                  <span>Reset Kata Sandi: {resetTargetUser.email}</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Atur kata sandi baru untuk akun {resetTargetUser.name ? `"${resetTargetUser.name}"` : ""} ({resetTargetUser.email}).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleResetPassword} className="space-y-3">
+                  {passwordResetMsg && (
+                    <div
+                      className={cn(
+                        "rounded-md p-2.5 text-xs flex items-center gap-2",
+                        passwordResetMsg.type === "success"
+                          ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "border border-destructive/30 bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {passwordResetMsg.type === "success" ? <Check className="size-4 shrink-0" /> : <ShieldAlert className="size-4 shrink-0" />}
+                      <span>{passwordResetMsg.text}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1 flex-1 min-w-[200px]">
+                      <Label htmlFor="admin-new-password" className="text-xs">Kata Sandi Baru</Label>
+                      <Input
+                        id="admin-new-password"
+                        type="password"
+                        value={newPasswordInput}
+                        onChange={(e) => setNewPasswordInput(e.target.value)}
+                        placeholder="Minimal 8 karakter"
+                        required
+                        minLength={8}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setResetTargetUser(null);
+                          setPasswordResetMsg(null);
+                        }}
+                        className="h-8 text-xs"
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={resettingPassword}
+                        className="h-8 text-xs font-medium"
+                      >
+                        {resettingPassword ? (
+                          <>
+                            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                            Menyimpan...
+                          </>
+                        ) : (
+                          "Simpan Kata Sandi"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Tabel Pengguna */}
           <Card className="border border-border bg-card shadow-sm">
             <CardHeader className="pb-3">
@@ -559,6 +675,20 @@ export function AccountManagementBoard() {
                                     ) : (
                                       "Terapkan Peran"
                                     )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                    title={`Reset kata sandi ${u.email}`}
+                                    onClick={() => {
+                                      setResetTargetUser(u);
+                                      setNewPasswordInput("");
+                                      setPasswordResetMsg(null);
+                                    }}
+                                  >
+                                    <KeyRound className="size-3.5" />
+                                    <span className="hidden sm:inline">Reset Sandi</span>
                                   </Button>
                                 </div>
                                 {userFeedback && (

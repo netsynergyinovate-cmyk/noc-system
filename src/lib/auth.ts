@@ -1,6 +1,8 @@
 import "server-only";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq, sql } from "drizzle-orm";
 import { admin } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
@@ -25,6 +27,8 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    // Tanpa ini siapa pun yang membuka aplikasi bisa membuat akun sendiri.
+    disableSignUp: !env.ALLOW_SIGN_UP,
     minPasswordLength: 8,
     maxPasswordLength: 128,
     // Add an email provider before enabling verification or password recovery.
@@ -43,4 +47,67 @@ export const auth = betterAuth({
     // Keep nextCookies() last so it observes every other plugin's cookies.
     nextCookies(),
   ],
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          return {
+            data: {
+              ...user,
+              role: user.role || DEFAULT_ROLE,
+            },
+          };
+        },
+      },
+    },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      const body = typeof ctx.body === "object" && ctx.body !== null ? ctx.body : null;
+      const targetUserId = body && "userId" in body && typeof body.userId === "string" ? body.userId : undefined;
+      const newRole = body && "role" in body && typeof body.role === "string" ? body.role : undefined;
+
+      if (ctx.path === "/admin/set-role") {
+        if (targetUserId && newRole && newRole !== "superadmin") {
+          const [target] = await db
+            .select({ role: schema.user.role })
+            .from(schema.user)
+            .where(eq(schema.user.id, targetUserId))
+            .limit(1);
+          if (target?.role === "superadmin") {
+            const [countRow] = await db
+              .select({ count: sql<number>`count(*)::int` })
+              .from(schema.user)
+              .where(eq(schema.user.role, "superadmin"));
+            if ((countRow?.count ?? 0) <= 1) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Tidak dapat menurunkan peran Super Admin terakhir.",
+              });
+            }
+          }
+        }
+      }
+
+      if (ctx.path === "/admin/remove-user") {
+        if (targetUserId) {
+          const [target] = await db
+            .select({ role: schema.user.role })
+            .from(schema.user)
+            .where(eq(schema.user.id, targetUserId))
+            .limit(1);
+          if (target?.role === "superadmin") {
+            const [countRow] = await db
+              .select({ count: sql<number>`count(*)::int` })
+              .from(schema.user)
+              .where(eq(schema.user.role, "superadmin"));
+            if ((countRow?.count ?? 0) <= 1) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Tidak dapat menghapus Super Admin terakhir.",
+              });
+            }
+          }
+        }
+      }
+    }),
+  },
 });

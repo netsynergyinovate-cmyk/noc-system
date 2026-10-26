@@ -30,6 +30,9 @@ export const statement = {
   apiKey: ["manage"],
   // Mengubah peta jaringan /app/peta (perangkat, jalur kabel, anotasi, koreksi lokasi).
   map: ["manage"],
+  // Operasi server: ganti mode demo/live (menulis .env.local), transfer data
+  // antar-database, seed, cadangan/rollback/health deploy, dan benchmark.
+  system: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -47,9 +50,26 @@ export const roles = {
     billing: [],
     apiKey: [],
     map: [],
+    system: [],
     audit: ["read"],
+    user: [],
+    session: [],
   }),
   admin: ac.newRole({
+    notes: ["read-any", "delete-any"],
+    cpe: ["manage"],
+    router: ["manage"],
+    alert: ["handle"],
+    threshold: ["manage"],
+    billing: ["manage"],
+    apiKey: ["manage"],
+    map: ["manage"],
+    system: ["manage"],
+    audit: ["read"],
+    user: [],
+    session: [],
+  }),
+  superadmin: ac.newRole({
     ...adminAc.statements,
     notes: ["read-any", "delete-any"],
     cpe: ["manage"],
@@ -59,6 +79,7 @@ export const roles = {
     billing: ["manage"],
     apiKey: ["manage"],
     map: ["manage"],
+    system: ["manage"],
     audit: ["read"],
   }),
 } as const;
@@ -68,8 +89,7 @@ export type AppRole = keyof typeof roles;
 // Roles live in the `user.role` column as a string. Better Auth reads a
 // comma-separated list, so "admin,support" grants the union of both.
 export const DEFAULT_ROLE = "user" satisfies AppRole;
-export const ADMIN_ROLES = ["admin"] satisfies AppRole[];
-
+export const ADMIN_ROLES = ["superadmin"] satisfies AppRole[];
 // The shape accepted by permission checks, e.g. { notes: ["read-any"] }.
 export type Permissions = Partial<{
   [Resource in keyof typeof statement]: (typeof statement)[Resource][number][];

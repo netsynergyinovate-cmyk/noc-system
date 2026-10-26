@@ -5,8 +5,9 @@
 // berkas, tidak mencetak apa pun, dan tidak pernah menyimpan kata sandi.
 //
 // Peran (src/lib/permissions.ts):
-//   - admin   -> peran `admin`: boleh mengubah data (router, alert, CPE).
-//   - viewer  -> peran bawaan `user`: tanpa satu pun izin mengubah.
+//   - superadmin -> peran `superadmin`: kontrol penuh akun dan peran via Better Auth admin.
+//   - admin      -> peran `admin`: boleh mengubah data (router, alert, CPE).
+//   - viewer     -> peran bawaan `user`: tanpa satu pun izin mengubah.
 //
 // Kata sandi di-hash dengan fungsi milik Better Auth sendiri (scrypt, format
 // `salt:key`), jadi POST /api/auth/sign-in/email menerimanya tanpa jalan lain.
@@ -55,6 +56,8 @@ export const PASSWORD_ALPHABET =
 // Peran tiap jenis akun. Hanya-lihat memakai peran bawaan `user`, yang
 // sengaja kosong di permissions.ts.
 export const ROLE_BY_KIND = Object.freeze({ admin: "admin", viewer: "user" });
+export const ALLOWED_ROLES = Object.freeze(["superadmin", "admin", "user"]);
+export const ALLOWED_ADMIN_ROLES = Object.freeze(["superadmin", "admin"]);
 const KINDS = Object.keys(ROLE_BY_KIND);
 
 export class SeedError extends Error {
@@ -182,6 +185,14 @@ export function validateAccountSpecs(
       name: normalizeName(account.name, `Nama ${label}`),
       resetPassword: account.resetPassword === true,
     };
+    if (account.role !== undefined) {
+      if (!ALLOWED_ROLES.includes(account.role))
+        throw new SeedError(
+          "INVALID_ROLE",
+          `Peran harus salah satu dari: ${ALLOWED_ROLES.join(", ")}.`,
+        );
+      spec.role = account.role;
+    }
     if (production && isReservedEmail(email))
       throw new SeedError(
         "RESERVED_EMAIL_IN_PRODUCTION",
@@ -209,6 +220,8 @@ const FLAGS = {
   "admin-name": "adminName",
   "viewer-name": "viewerName",
   "reset-password": "reset",
+  role: "role",
+  "admin-role": "role",
 };
 
 export const USAGE = `Pemakaian: npm run seed:accounts -- [pilihan]
@@ -221,6 +234,8 @@ Pilihan (atau variabel lingkungan di kurung):
   --viewer-email <email>   (SEED_VIEWER_EMAIL)   bawaan ${DEFAULT_VIEWER_EMAIL}
   --admin-name <nama>      (SEED_ADMIN_NAME)     bawaan "${DEFAULT_ADMIN_NAME}"
   --viewer-name <nama>     (SEED_VIEWER_NAME)    bawaan "${DEFAULT_VIEWER_NAME}"
+  --role <superadmin|admin>
+                           (SEED_ADMIN_ROLE)     bawaan admin
   --reset-password <admin|viewer|both>
                            buat kata sandi BARU untuk akun yang sudah ada dan
                            cabut semua sesi lamanya
@@ -235,7 +250,7 @@ admin dan hanya-lihat harus diisi eksplisit.`;
 
 /**
  * @param {string[]} argv Argumen tanpa node dan nama skrip.
- * @returns {{ help?: boolean, adminEmail?: string, viewerEmail?: string, adminName?: string, viewerName?: string, reset: Set<AccountKind> }}
+ * @returns {{ help?: boolean, adminEmail?: string, viewerEmail?: string, adminName?: string, viewerName?: string, role?: string, reset: Set<AccountKind> }}
  */
 export function parseArgs(argv) {
   const parsed = { reset: new Set() };
@@ -276,6 +291,13 @@ export function parseArgs(argv) {
         );
       for (const kind of value === "both" ? KINDS : [value])
         parsed.reset.add(kind);
+    } else if (key === "role") {
+      if (!ALLOWED_ADMIN_ROLES.includes(value))
+        throw new SeedError(
+          "USAGE",
+          `--role harus berisi ${ALLOWED_ADMIN_ROLES.join(" atau ")}.`,
+        );
+      parsed.role = value;
     } else {
       parsed[key] = value;
     }
@@ -306,18 +328,26 @@ export function buildAccountSpecs({
       "Di produksi email admin dan hanya-lihat harus diisi eksplisit (--admin-email dan --viewer-email, atau SEED_ADMIN_EMAIL dan SEED_VIEWER_EMAIL).",
     );
   const reset = args.reset ?? new Set();
+  const rawRole = filled(args.role) ?? filled(env.SEED_ADMIN_ROLE);
+  if (rawRole !== undefined && !ALLOWED_ADMIN_ROLES.includes(rawRole))
+    throw new SeedError(
+      "USAGE",
+      `--role harus berisi ${ALLOWED_ADMIN_ROLES.join(" atau ")}.`,
+    );
+  const adminSpec = {
+    kind: "admin",
+    email: adminEmail ?? DEFAULT_ADMIN_EMAIL,
+    name:
+      filled(args.adminName) ??
+      filled(env.SEED_ADMIN_NAME) ??
+      DEFAULT_ADMIN_NAME,
+    password: filled(env.SEED_ADMIN_PASSWORD),
+    resetPassword: reset.has("admin"),
+  };
+  if (rawRole !== undefined) adminSpec.role = rawRole;
   const specs = validateAccountSpecs(
     [
-      {
-        kind: "admin",
-        email: adminEmail ?? DEFAULT_ADMIN_EMAIL,
-        name:
-          filled(args.adminName) ??
-          filled(env.SEED_ADMIN_NAME) ??
-          DEFAULT_ADMIN_NAME,
-        password: filled(env.SEED_ADMIN_PASSWORD),
-        resetPassword: reset.has("admin"),
-      },
+      adminSpec,
       {
         kind: "viewer",
         email: viewerEmail ?? DEFAULT_VIEWER_EMAIL,
@@ -353,13 +383,18 @@ const rolesOf = (role) =>
  * @param {string | null | undefined} current
  * @returns {{ role: string, changed: boolean }}
  */
-export function decideRole(kind, current) {
+export function decideRole(kind, current, targetRole = ROLE_BY_KIND[kind]) {
   const roles = rolesOf(current);
   if (kind === "admin") {
-    if (roles.includes("admin")) return { role: current, changed: false };
-    return { role: "admin", changed: true };
+    if (targetRole === "superadmin") {
+      if (roles.includes("superadmin")) return { role: current, changed: false };
+      return { role: "superadmin", changed: true };
+    }
+    if (roles.includes("superadmin") || roles.includes("admin"))
+      return { role: current, changed: false };
+    return { role: targetRole || "admin", changed: true };
   }
-  if (roles.includes("admin"))
+  if (roles.includes("admin") || roles.includes("superadmin"))
     throw new SeedError(
       "VIEWER_IS_ADMIN",
       "Email hanya-lihat ini sudah berperan admin. Seed tidak menurunkan peran diam-diam: pakai email lain untuk akun hanya-lihat, atau turunkan dulu dengan `npm run role:set -- <email> user` bila memang disengaja.",
@@ -388,7 +423,7 @@ async function seedInTransaction(client, spec, now) {
       `Ada lebih dari satu akun dengan email ${spec.email} (beda huruf besar-kecil). Rapikan dulu secara manual.`,
     );
   const supplied = spec.password !== undefined;
-  const role = ROLE_BY_KIND[spec.kind];
+  const role = spec.role ?? ROLE_BY_KIND[spec.kind];
 
   if (rows.length === 0) {
     const password = supplied ? spec.password : generatePassword();
@@ -423,7 +458,7 @@ async function seedInTransaction(client, spec, now) {
 
   const existing = rows[0];
   const warnings = [];
-  const decision = decideRole(spec.kind, existing.role);
+  const decision = decideRole(spec.kind, existing.role, spec.role);
   if (decision.changed)
     await client.query(
       'UPDATE "user" SET role = $2, updated_at = $3 WHERE id = $1',

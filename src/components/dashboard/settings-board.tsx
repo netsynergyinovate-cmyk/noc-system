@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore, useCallback } from "react";
+import { cn } from "cn";
 import {
   getWhatsappConfig,
   getWhatsappServerSnapshot,
@@ -20,6 +21,7 @@ import {
   Gauge,
   Globe,
   Laptop,
+  Loader2,
   MessageSquare,
   Radio,
   RotateCcw,
@@ -30,10 +32,19 @@ import {
   ShieldCheck,
   Sliders,
   User,
-  UserCheck,
+  UserPlus,
+  Users,
   Volume2,
   VolumeX,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +57,18 @@ import { ThresholdSettings } from "./threshold-settings";
 import { WhatsappSettings } from "./whatsapp-settings";
 import Link from "next/link";
 import { useSessionUser } from "@/components/session-provider";
-import { roleNames } from "@/lib/roles";
+import { isSuperAdmin, isAdmin, isUser, roleLabel, roleNames } from "@/lib/roles";
+import { authClient } from "@/lib/auth-client";
+
+interface UserRoleInfo {
+  isSuperAdmin?: boolean;
+  isUser?: boolean;
+  isAdmin: boolean;
+  role: string;
+  email: string;
+  name?: string;
+  userId?: string;
+}
 
 interface SettingsState {
   // 1. Umum
@@ -85,10 +107,10 @@ const DEFAULT_SETTINGS: SettingsState = {
   alertSoundEnabled: true,
   alertSoundSeverity: "all",
   alertVolume: 80,
-  telegramBotToken: "6291823901:AAHk8w209kjsdf90123jklsd0",
-  telegramChatId: "-1001928374650",
-  waWebhookUrl: "https://api.nusantara.net.id/webhook/wa-noc",
-  waAdminPhone: "081234567890",
+  telegramBotToken: "",
+  telegramChatId: "",
+  waWebhookUrl: "",
+  waAdminPhone: "",
 
   wsHubUrl: "ws://localhost:8080/ws",
   mikrotikTimeoutMs: 3000,
@@ -168,29 +190,31 @@ export function SettingsBoard() {
   const [dbStats, setDbStats] = useState<{ routers: number; olts: number; alerts: number } | null>(null);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
   const sessionUser = useSessionUser();
-  const [userRoleInfo, setUserRoleInfo] = useState<{
-    email: string;
-    role: string;
-    isAdmin: boolean;
-  } | null>(() => {
+  const [userRoleInfo, setUserRoleInfo] = useState<UserRoleInfo | null>(() => {
     if (!sessionUser) return null;
     const role = sessionUser.role ?? "user";
     return {
+      userId: sessionUser.id,
       email: sessionUser.email,
+      name: sessionUser.name,
       role,
-      isAdmin: roleNames(role).includes("admin"),
+      isSuperAdmin: isSuperAdmin(role),
+      isAdmin: isAdmin(role),
+      isUser: isUser(role),
     };
   });
-  const [roleUpdating, setRoleUpdating] = useState(false);
-  const [roleMessage, setRoleMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionUser && !userRoleInfo) {
       const role = sessionUser.role ?? "user";
       setUserRoleInfo({
+        userId: sessionUser.id,
         email: sessionUser.email,
+        name: sessionUser.name,
         role,
-        isAdmin: roleNames(role).includes("admin"),
+        isSuperAdmin: isSuperAdmin(role),
+        isAdmin: isAdmin(role),
+        isUser: isUser(role),
       });
     }
   }, [sessionUser, userRoleInfo]);
@@ -227,30 +251,6 @@ export function SettingsBoard() {
       })
       .catch(() => null);
   }, []);
-
-  async function handleSetRole(targetRole: "admin" | "user") {
-    setRoleUpdating(true);
-    setRoleMessage(null);
-    try {
-      const res = await fetch("/api/settings/role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: targetRole }),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setUserRoleInfo(json.data);
-        setRoleMessage(json.message);
-        setTimeout(() => {
-          window.location.reload();
-        }, 1200);
-      }
-    } catch {
-      setRoleMessage("Gagal memperbarui peran akun di database.");
-    } finally {
-      setRoleUpdating(false);
-    }
-  }
 
   async function handleToggleMode(nextMode: "demo" | "live") {
     setSettings((prev) => ({ ...prev, dataMode: nextMode }));
@@ -291,9 +291,17 @@ export function SettingsBoard() {
         setTimeout(() => {
           window.location.reload();
         }, 400);
+      } else {
+        setSettings((prev) => ({ ...prev, dataMode: settings.dataMode }));
+        setModeNotice(
+          res.status === 403
+            ? "Hanya Admin yang boleh mengganti mode data. Mode tidak diubah."
+            : "Mode gagal diganti di server. Mode tidak diubah.",
+        );
       }
     } catch {
-      // Abaikan jika fetch gagal
+      setSettings((prev) => ({ ...prev, dataMode: settings.dataMode }));
+      setModeNotice("Server tidak terjangkau. Mode tidak diubah.");
     }
   }
 
@@ -702,10 +710,18 @@ export function SettingsBoard() {
                 </div>
                 {userRoleInfo && (
                   <Badge
-                    variant={userRoleInfo.isAdmin ? "default" : "secondary"}
-                    className="px-3 py-1 text-xs font-semibold"
+                    variant={userRoleInfo.isSuperAdmin ? "default" : userRoleInfo.isAdmin ? "default" : "secondary"}
+                    className={
+                      userRoleInfo.isSuperAdmin
+                        ? "px-3 py-1 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
+                        : "px-3 py-1 text-xs font-semibold"
+                    }
                   >
-                    {userRoleInfo.isAdmin ? "ADMINISTRATOR (HAK PENUH)" : "PETUGAS (USER BIASA)"}
+                    {userRoleInfo.isSuperAdmin
+                      ? "SUPER ADMIN (KONTROL PENUH)"
+                      : userRoleInfo.isAdmin
+                        ? "ADMINISTRATOR (OPERASIONAL UTAMA)"
+                        : "PETUGAS (USER BIASA)"}
                   </Badge>
                 )}
               </div>
@@ -720,56 +736,35 @@ export function SettingsBoard() {
                     </span>
                   </div>
                   <p className="text-muted-foreground leading-relaxed">
-                    {userRoleInfo?.isAdmin ? (
+                    {userRoleInfo?.isSuperAdmin ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                        ✓ Akun Super Admin memegang kontrol penuh seluruh sistem dan berwenang memberikan/mengubah peran pengguna (Admin dan User) di database.
+                      </span>
+                    ) : userRoleInfo?.isAdmin ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                        ✓ Akun memiliki izin penuh (router:manage, cpe:manage, threshold:manage, billing:manage). Anda bebas menambah perangkat dan menguji koneksi.
+                        ✓ Akun Admin operasional utama (router, cpe, threshold, billing, system). Manajemen akun dan pengangkatan peran dikontrol penuh oleh Super Admin.
                       </span>
                     ) : (
                       <span className="text-amber-600 dark:text-amber-400 font-medium">
-                        ⚠ Akun Anda saat ini hanya memiliki peran Petugas biasa (`user`). Menu &ldquo;Lihat sebagai&rdquo; di sidebar hanya tiruan visual; server menolak pengisian router jika bukan Admin asli.
+                        ⚠ Akun Petugas biasa (User). Hak akses terbatas untuk melihat pemantauan operasional.
                       </span>
                     )}
                   </p>
                 </div>
-
-                <div className="shrink-0 flex items-center gap-2">
-                  {!userRoleInfo?.isAdmin ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => handleSetRole("admin")}
-                      disabled={roleUpdating}
-                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs cursor-pointer"
-                    >
-                      <UserCheck className="size-3.5" />
-                      <span>{roleUpdating ? "Menyetel Admin..." : "Jadikan Akun Ini Admin"}</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetRole("user")}
-                      disabled={roleUpdating}
-                      className="text-xs text-muted-foreground cursor-pointer"
-                    >
-                      <span>{roleUpdating ? "Menyetel User..." : "Ubah ke User Biasa"}</span>
-                    </Button>
-                  )}
-                </div>
               </div>
 
-              {roleMessage && (
-                <div
-                  role="status"
-                  className="rounded-lg border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary flex items-center gap-2"
-                >
-                  <Check className="size-4 shrink-0" />
-                  <span>{roleMessage}</span>
-                </div>
+              {!userRoleInfo?.isSuperAdmin && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Pengelolaan peran akun hanya dapat dilakukan oleh Super Admin.
+                </p>
               )}
             </CardContent>
           </Card>
+
+          {/* KARTU KELOLA PENGGUNA & PERAN AKUN (KHUSUS SUPER ADMIN) */}
+          {userRoleInfo?.isSuperAdmin && (
+            <SuperAdminUserManager currentUserId={userRoleInfo.userId} />
+          )}
         </TabsContent>
 
         {/* ============================================================== */}
@@ -1308,5 +1303,413 @@ export function SettingsBoard() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+interface AdminListedUser {
+  id: string;
+  name?: string | null;
+  email: string;
+  role?: string | null;
+  createdAt?: string | Date;
+}
+
+function SuperAdminUserManager({ currentUserId }: { currentUserId?: string }) {
+  const [users, setUsers] = useState<AdminListedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+    userId: string;
+  } | null>(null);
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createRole, setCreateRole] = useState<"superadmin" | "admin" | "user">("user");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setCreateError(null);
+    setCreateSuccess(null);
+    try {
+      const res = await authClient.admin.createUser({
+        name: createName.trim(),
+        email: createEmail.trim(),
+        password: createPassword,
+        role: createRole,
+      });
+      if (res.error) {
+        setCreateError(res.error.message || "Gagal membuat akun.");
+      } else {
+        setCreateSuccess(`Akun ${createEmail} berhasil dibuat dengan peran ${roleLabel(createRole)}.`);
+        setCreateName("");
+        setCreateEmail("");
+        setCreatePassword("");
+        setCreateRole("user");
+        setShowCreateForm(false);
+        await fetchUsers();
+      }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Terjadi kesalahan saat membuat akun.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authClient.admin.listUsers({
+        query: { limit: 100 },
+      });
+      if (res.error) {
+        setError(res.error.message || "Gagal memuat daftar pengguna.");
+      } else if (res.data?.users) {
+        const userList = res.data.users as AdminListedUser[];
+        setUsers(userList);
+        setSelectedRoles((prev) => {
+          const next = { ...prev };
+          for (const u of userList) {
+            next[u.id] = u.role ?? "user";
+          }
+          return next;
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat pengguna.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  async function handleSetRole(userId: string) {
+    const targetRole = selectedRoles[userId] ?? "user";
+    setSavingUserId(userId);
+    setFeedback(null);
+    try {
+      const res = await authClient.admin.setRole({
+        userId,
+        role: targetRole as "user" | "admin" | "superadmin",
+      });
+      if (res.error) {
+        setFeedback({
+          type: "error",
+          message: res.error.message || "Gagal mengubah peran akun.",
+          userId,
+        });
+      } else {
+        setFeedback({
+          type: "success",
+          message: `Peran berhasil diubah menjadi ${roleLabel(targetRole)}.`,
+          userId,
+        });
+        await fetchUsers();
+      }
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Terjadi kesalahan saat memperbarui peran.",
+        userId,
+      });
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  function formatRegistrationDate(val?: string | Date | null) {
+    if (!val) return "-";
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return "-";
+      return d.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
+    }
+  }
+
+  return (
+    <Card className="border border-border bg-card shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="size-4 text-amber-500" />
+              <span>Kelola Pengguna &amp; Peran Akun (Khusus Super Admin)</span>
+            </CardTitle>
+            <CardDescription>
+              Daftar seluruh akun pengguna yang terdaftar di sistem. Anda dapat menetapkan peran Super Admin, Admin, atau Petugas langsung ke database.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showCreateForm ? "secondary" : "default"}
+              size="sm"
+              onClick={() => setShowCreateForm((prev) => !prev)}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <UserPlus className="size-3.5" />
+              <span>{showCreateForm ? "Tutup Form" : "Beri Akun Baru"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchUsers()}
+              disabled={loading}
+              className="h-8 gap-1.5 text-xs"
+            >
+              <RotateCcw className={cn("size-3.5", loading && "animate-spin")} />
+              Segarkan
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-1">
+        {createSuccess && (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <Check className="size-4 shrink-0" />
+            <span>{createSuccess}</span>
+          </div>
+        )}
+        {createError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+            <ShieldAlert className="size-4 shrink-0" />
+            <span>{createError}</span>
+          </div>
+        )}
+
+        {showCreateForm && (
+          <form
+            onSubmit={handleCreateUser}
+            className="rounded-lg border border-border bg-muted/20 p-4 space-y-3"
+          >
+            <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <UserPlus className="size-3.5 text-amber-500" />
+              <span>Form Tambah / Berikan Akun oleh Super Admin</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1">
+                <Label htmlFor="admin-create-name" className="text-xs">Nama Petugas</Label>
+                <Input
+                  id="admin-create-name"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="Nama Lengkap"
+                  required
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="admin-create-email" className="text-xs">Email</Label>
+                <Input
+                  id="admin-create-email"
+                  type="email"
+                  value={createEmail}
+                  onChange={(e) => setCreateEmail(e.target.value)}
+                  placeholder="email@noc.local"
+                  required
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="admin-create-password" className="text-xs">Kata Sandi</Label>
+                <Input
+                  id="admin-create-password"
+                  type="password"
+                  value={createPassword}
+                  onChange={(e) => setCreatePassword(e.target.value)}
+                  placeholder="Min. 8 karakter"
+                  required
+                  minLength={8}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="admin-create-role" className="text-xs">Peran Akun</Label>
+                <select
+                  id="admin-create-role"
+                  value={createRole}
+                  onChange={(e) => setCreateRole(e.target.value as "superadmin" | "admin" | "user")}
+                  className={cn(selectClassName, "h-8 w-full text-xs")}
+                >
+                  <option value="user">Petugas / User Biasa</option>
+                  <option value="admin">Admin (Operasional)</option>
+                  <option value="superadmin">Super Admin (Kontrol Penuh)</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCreateForm(false)}
+                className="h-8 text-xs"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={creating}
+                className="h-8 text-xs font-medium"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                    Membuat Akun...
+                  </>
+                ) : (
+                  "Buat & Berikan Akun"
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
+            <ShieldAlert className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {loading && users.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <span>Memuat data pengguna...</span>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-6 text-center text-xs text-muted-foreground">
+            Tidak ada pengguna terdaftar.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="text-xs font-semibold">Nama</TableHead>
+                  <TableHead className="text-xs font-semibold">Email</TableHead>
+                  <TableHead className="text-xs font-semibold">Tanggal Terdaftar</TableHead>
+                  <TableHead className="text-xs font-semibold">Role Saat Ini</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">Aksi Ubah Peran</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((u) => {
+                  const currentRole = u.role ?? "user";
+                  const selectedRole = selectedRoles[u.id] ?? currentRole;
+                  const isSaving = savingUserId === u.id;
+                  const userFeedback = feedback?.userId === u.id ? feedback : null;
+
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell className="text-xs font-medium text-foreground py-3">
+                        <span className="flex items-center gap-1.5">
+                          {u.name || "-"}
+                          {currentUserId === u.id && (
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                              Anda
+                            </span>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-3">
+                        {u.email}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-3 whitespace-nowrap">
+                        {formatRegistrationDate(u.createdAt)}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <Badge
+                          variant={isSuperAdmin(currentRole) ? "default" : isAdmin(currentRole) ? "default" : "secondary"}
+                          className={
+                            isSuperAdmin(currentRole)
+                              ? "bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700 text-[11px]"
+                              : "text-[11px]"
+                          }
+                        >
+                          {roleLabel(currentRole)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 text-right">
+                        <div className="flex flex-col items-end gap-1.5">
+                          <div className="flex items-center justify-end gap-2">
+                            <select
+                              value={selectedRole}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedRoles((prev) => ({
+                                  ...prev,
+                                  [u.id]: val,
+                                }));
+                                if (feedback?.userId === u.id) {
+                                  setFeedback(null);
+                                }
+                              }}
+                              disabled={isSaving}
+                              className={cn(selectClassName, "h-8 w-40 text-xs")}
+                            >
+                              <option value="superadmin">Super Admin</option>
+                              <option value="admin">Admin</option>
+                              <option value="user">Petugas / User</option>
+                            </select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs font-medium"
+                              disabled={isSaving}
+                              onClick={() => void handleSetRole(u.id)}
+                            >
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                                  Menyimpan...
+                                </>
+                              ) : (
+                                "Terapkan Peran"
+                              )}
+                            </Button>
+                          </div>
+                          {userFeedback && (
+                            <p
+                              className={cn(
+                                "text-[11px] leading-tight",
+                                userFeedback.type === "success"
+                                  ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                                  : "text-destructive font-medium",
+                              )}
+                            >
+                              {userFeedback.type === "success" ? "✓ " : "✕ "}
+                              {userFeedback.message}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

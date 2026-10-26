@@ -44,10 +44,10 @@ export function roleCan(
 // adanya. Sengaja Partial: peran baru di permissions.ts tetap tampil dengan
 // namanya sendiri sampai ada yang memberinya nama bagus.
 const labels: Partial<Record<AppRole, string>> = {
+  superadmin: "Super Admin",
   admin: "Admin",
   user: "Petugas",
 };
-
 // Dipakai bila daftar peran tidak memuat satu nama pun (mis. "," atau " ").
 const NO_ROLE_LABEL = "Tanpa peran";
 
@@ -66,8 +66,7 @@ export function roleLabel(role: string | null | undefined): string {
 // `roles`. Urutannya tetap, dari hak terbanyak ke paling sedikit (admin lebih
 // dulu, lalu user); peran lain yang kelak ditambahkan menyusul sesuai urutan
 // deklarasinya di permissions.ts.
-const previewOrder: readonly string[] = ["admin", "user"];
-
+const previewOrder: readonly string[] = ["superadmin", "admin", "user"];
 export const previewableRoles: readonly AppRole[] = Object.freeze([
   ...previewOrder.filter(isDeclaredRole),
   ...(Object.keys(roles) as AppRole[]).filter(
@@ -79,4 +78,23 @@ export const previewableRoles: readonly AppRole[] = Object.freeze([
 // yang tak dikenal, dan nama prototipe ("constructor") ditolak.
 export function isPreviewableRole(name: unknown): name is AppRole {
   return typeof name === "string" && isDeclaredRole(name);
+}
+
+export function isSuperAdmin(role: string | null | undefined): boolean {
+  return roleNames(role).includes("superadmin");
+}
+
+export function isAdmin(role: string | null | undefined): boolean {
+  const names = roleNames(role);
+  return names.includes("superadmin") || names.includes("admin");
+}
+
+export function isStrictAdmin(role: string | null | undefined): boolean {
+  const names = roleNames(role);
+  return names.includes("admin") && !names.includes("superadmin");
+}
+
+export function isUser(role: string | null | undefined): boolean {
+  const names = roleNames(role);
+  return !names.includes("superadmin") && !names.includes("admin");
 }

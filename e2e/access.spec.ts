@@ -25,6 +25,7 @@ const expectedCapabilities: Capability[] = [
   "manageThresholds",
   "viewAuditLog",
   "manageBilling",
+  "manageUsers",
 ];
 
 // Kebijakan SAAT INI per peran dasar. Record<Capability, ...> membuat kemampuan
@@ -35,6 +36,7 @@ const policy: Record<Capability, { admin: boolean; user: boolean }> = {
   manageThresholds: { admin: true, user: false },
   viewAuditLog: { admin: true, user: true },
   manageBilling: { admin: true, user: false },
+  manageUsers: { admin: false, user: false },
 };
 
 const allCapabilities = Object.keys(capabilities) as Capability[];

@@ -28,6 +28,8 @@ const table = {
   viewAuditLog: { audit: ["read"] },
   // Mengatur kredensial scraper billing.
   manageBilling: { billing: ["manage"] },
+  // Mengelola pengguna dan peran akun (khusus Super Admin).
+  manageUsers: { user: ["set-role"] },
 } as const satisfies Record<string, Permissions>;
 
 // Dibekukan sampai ke dalam daftar aksinya: kode lain yang mengimpor tabel ini

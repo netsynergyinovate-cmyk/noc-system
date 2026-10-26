@@ -40,6 +40,13 @@ const schema = z.object({
   // (router atau OLT) sudah terpasang dan berhasil dihubungi; selain itu
   // pengguna dialihkan ke /setup. Ganti ke "live" setelah data nyata tersedia.
   DASHBOARD_DATA: z.enum(["demo", "live"]).default("demo"),
+  // Pendaftaran akun mandiri lewat /sign-up. Bawaan tertutup: akun dibuat
+  // lewat `npm run seed:accounts` dan peran lewat `npm run role:set`. Hanya
+  // "true" yang membuka (dipakai tes E2E).
+  ALLOW_SIGN_UP: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
   // Kunci 32 byte untuk mengenkripsi kredensial perangkat (AES-256-GCM).
   DEVICE_SECRET: z
     .string()
@@ -125,6 +132,7 @@ const parsedEnv = schema.parse({
   BACKEND_URL: blankToUndefined(process.env.BACKEND_URL),
   BACKEND_INTERNAL_URL: blankToUndefined(process.env.BACKEND_INTERNAL_URL),
   DASHBOARD_DATA: blankToUndefined(process.env.DASHBOARD_DATA),
+  ALLOW_SIGN_UP: blankToUndefined(process.env.ALLOW_SIGN_UP),
   TRUSTED_PROXIES: blankToUndefined(process.env.TRUSTED_PROXIES),
   MIKROTIK_REST_HOST: blankToUndefined(process.env.MIKROTIK_REST_HOST),
   MIKROTIK_REST_PORT: blankToUndefined(process.env.MIKROTIK_REST_PORT),

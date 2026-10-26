@@ -403,6 +403,18 @@ test("decideRole covers every case", () => {
     role: "admin",
     changed: true,
   });
+  assert.deepEqual(decideRole("admin", "superadmin"), {
+    role: "superadmin",
+    changed: false,
+  });
+  assert.deepEqual(decideRole("admin", "admin", "superadmin"), {
+    role: "superadmin",
+    changed: true,
+  });
+  assert.deepEqual(decideRole("admin", null, "superadmin"), {
+    role: "superadmin",
+    changed: true,
+  });
   assert.deepEqual(decideRole("viewer", "user"), {
     role: "user",
     changed: false,
@@ -417,6 +429,9 @@ test("decideRole covers every case", () => {
     code: "VIEWER_IS_ADMIN",
   });
   assert.throws(() => decideRole("viewer", "user,admin"), {
+    code: "VIEWER_IS_ADMIN",
+  });
+  assert.throws(() => decideRole("viewer", "superadmin"), {
     code: "VIEWER_IS_ADMIN",
   });
   assert.throws(() => decideRole("viewer", "Admin"), {
@@ -907,7 +922,12 @@ test("parseArgs understands both option forms and refuses passwords and stranger
   ]);
   assert.equal(parseArgs(["--help"]).help, true);
   assert.deepEqual(parseArgs([]).reset.size, 0);
-
+  assert.equal(parseArgs(["--role", "superadmin"]).role, "superadmin");
+  assert.equal(parseArgs(["--role=admin"]).role, "admin");
+  assert.throws(
+    () => parseArgs(["--role", "invalid"]),
+    (error) => error.code === "USAGE",
+  );
   const secret = "RahasiaSekali-12345";
   for (const argv of [
     ["--admin-password", secret],

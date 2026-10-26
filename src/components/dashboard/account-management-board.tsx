@@ -146,13 +146,13 @@ export function AccountManagementBoard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authClient.admin.listUsers({
-        query: { limit: 100 },
-      });
-      if (res.error) {
-        setError(res.error.message || "Gagal memuat daftar pengguna.");
-      } else if (res.data?.users) {
-        const userList = res.data.users as AdminListedUser[];
+      const res = await fetch("/api/settings/users/overview");
+      if (!res.ok) {
+        throw new Error("Gagal memuat daftar pengguna.");
+      }
+      const json = await res.json();
+      if (json?.data) {
+        const userList = json.data as AdminListedUser[];
         setUsers(userList);
         setSelectedRoles((prev) => {
           const next = { ...prev };
@@ -170,12 +170,8 @@ export function AccountManagementBoard() {
   }, []);
 
   useEffect(() => {
-    if (currentUserRole?.isSuperAdmin) {
-      void fetchUsers();
-    } else {
-      setLoading(false);
-    }
-  }, [currentUserRole?.isSuperAdmin, fetchUsers]);
+    void fetchUsers();
+  }, [fetchUsers]);
 
   async function handleSetRole(userId: string) {
     const targetRole = selectedRoles[userId] ?? "user";
@@ -444,28 +440,23 @@ export function AccountManagementBoard() {
         </CardContent>
       </Card>
 
-      {/* Jika Bukan Super Admin: Tampilkan Pesan Informasi */}
+      {/* Keterangan bagi Non-Super Admin */}
       {!currentUserRole?.isSuperAdmin && !loading && (
-        <Card className="border border-border bg-card shadow-sm">
-          <CardContent className="py-8 text-center space-y-2">
-            <Shield className="size-8 mx-auto text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Akses Khusus Super Admin</h3>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Halaman manajemen dan pengangkatan peran akun ini hanya dapat diakses oleh akun Super Admin. Akun Anda saat ini tidak memiliki wewenang untuk mengubah peran atau mengelola pengguna lain.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs flex items-center gap-3 text-muted-foreground">
+          <Shield className="size-5 text-primary shrink-0" />
+          <span>
+            Anda masuk sebagai <strong className="text-foreground">{currentUserRole?.isAdmin ? "Admin Utama (AI)" : "User / Petugas"}</strong>. Anda dapat melihat hierarki seluruh akun pengguna di bawah ini. Pengubahan peran dan penambahan akun baru sepenuhnya dikontrol oleh Super Admin.
+          </span>
+        </div>
       )}
 
-      {/* Bagian Manajemen Akun Khusus Super Admin */}
-      {currentUserRole?.isSuperAdmin && (
-        <div className="space-y-4">
-          {createSuccess && (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <Check className="size-4 shrink-0" />
-              <span>{createSuccess}</span>
-            </div>
-          )}
+      <div className="space-y-4">
+        {createSuccess && (
+          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <Check className="size-4 shrink-0" />
+            <span>{createSuccess}</span>
+          </div>
+        )}
           {createError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center gap-2">
               <ShieldAlert className="size-4 shrink-0" />
@@ -729,72 +720,78 @@ export function AccountManagementBoard() {
                               )}
                             </TableCell>
                             <TableCell className="py-3 text-right">
-                              <div className="flex flex-col items-end gap-1.5">
-                                <div className="flex items-center justify-end gap-2">
-                                  <select
-                                    value={selectedRole}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setSelectedRoles((prev) => ({
-                                        ...prev,
-                                        [u.id]: val,
-                                      }));
-                                      if (feedback?.userId === u.id) {
-                                        setFeedback(null);
-                                      }
-                                    }}
-                                    disabled={isSaving}
-                                    className={cn(selectClassName, "h-8 w-44 text-xs")}
-                                  >
-                                    <option value="superadmin">👑 Super Admin (Kontrol Penuh)</option>
-                                    <option value="admin">🛡️ Admin Utama (Operasional NOC)</option>
-                                    <option value="user">👤 Petugas / User Biasa</option>
-                                  </select>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs font-medium"
-                                    disabled={isSaving}
-                                    onClick={() => void handleSetRole(u.id)}
-                                  >
-                                    {isSaving ? (
-                                      <>
-                                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                                        Menyimpan...
-                                      </>
-                                    ) : (
-                                      "Terapkan Peran"
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-                                    title={`Reset kata sandi ${u.email}`}
-                                    onClick={() => {
-                                      setResetTargetUser(u);
-                                      setNewPasswordInput("");
-                                      setPasswordResetMsg(null);
-                                    }}
-                                  >
-                                    <KeyRound className="size-3.5" />
-                                    <span className="hidden sm:inline">Reset Sandi</span>
-                                  </Button>
+                              {currentUserRole?.isSuperAdmin ? (
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <select
+                                      value={selectedRole}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedRoles((prev) => ({
+                                          ...prev,
+                                          [u.id]: val,
+                                        }));
+                                        if (feedback?.userId === u.id) {
+                                          setFeedback(null);
+                                        }
+                                      }}
+                                      disabled={isSaving}
+                                      className={cn(selectClassName, "h-8 w-44 text-xs")}
+                                    >
+                                      <option value="superadmin">👑 Super Admin (Kontrol Penuh)</option>
+                                      <option value="admin">🛡️ Admin Utama (Operasional NOC)</option>
+                                      <option value="user">👤 Petugas / User Biasa</option>
+                                    </select>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs font-medium"
+                                      disabled={isSaving}
+                                      onClick={() => void handleSetRole(u.id)}
+                                    >
+                                      {isSaving ? (
+                                        <>
+                                          <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                                          Menyimpan...
+                                        </>
+                                      ) : (
+                                        "Terapkan Peran"
+                                      )}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                      title={`Reset kata sandi ${u.email}`}
+                                      onClick={() => {
+                                        setResetTargetUser(u);
+                                        setNewPasswordInput("");
+                                        setPasswordResetMsg(null);
+                                      }}
+                                    >
+                                      <KeyRound className="size-3.5" />
+                                      <span className="hidden sm:inline">Reset Sandi</span>
+                                    </Button>
+                                  </div>
+                                  {userFeedback && (
+                                    <p
+                                      className={cn(
+                                        "text-[11px] leading-tight",
+                                        userFeedback.type === "success"
+                                          ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                                          : "text-destructive font-medium",
+                                      )}
+                                    >
+                                      {userFeedback.type === "success" ? "✓ " : "✕ "}
+                                      {userFeedback.message}
+                                    </p>
+                                  )}
                                 </div>
-                                {userFeedback && (
-                                  <p
-                                    className={cn(
-                                      "text-[11px] leading-tight",
-                                      userFeedback.type === "success"
-                                        ? "text-emerald-600 dark:text-emerald-400 font-medium"
-                                        : "text-destructive font-medium",
-                                    )}
-                                  >
-                                    {userFeedback.type === "success" ? "✓ " : "✕ "}
-                                    {userFeedback.message}
-                                  </p>
-                                )}
-                              </div>
+                              ) : (
+                                <Badge variant="outline" className="text-[11px] text-muted-foreground">
+                                  Dikelola Super Admin
+                                </Badge>
+                              )}
                             </TableCell>
                           </TableRow>
                         );
@@ -806,7 +803,6 @@ export function AccountManagementBoard() {
             </CardContent>
           </Card>
         </div>
-      )}
     </div>
   );
 }

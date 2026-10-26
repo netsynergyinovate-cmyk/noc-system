@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   description: "Kelola akun pengguna, berikan akses baru, dan atur peran Super Admin, Admin, atau User.",
 };
 
-export default async function AccountSettingsPage() {
-  await requirePermission({ user: ["list"] });
+export default function AccountSettingsPage() {
   return <AccountManagementBoard />;
 }

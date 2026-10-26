@@ -893,25 +893,23 @@ export function SettingsBoard() {
               )}
             </CardContent>
           </Card>
-          {userRoleInfo?.isSuperAdmin && (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 flex flex-wrap items-center justify-between gap-4 mt-2">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold flex items-center gap-2">
-                  <Users className="size-4 text-amber-500" />
-                  <span>Halaman Manajemen Akun &amp; Pengguna (Khusus Super Admin)</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Kelola akun petugas NOC, berikan akun baru, dan atur peran Super Admin, Admin, atau User di halaman terpisah.
-                </p>
-              </div>
-              <Button asChild size="sm" className="gap-2 shrink-0">
-                <Link href="/app/pengaturan/akun">
-                  <span>Buka Manajemen Akun</span>
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 flex flex-wrap items-center justify-between gap-4 mt-2">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <Users className="size-4 text-amber-500" />
+                <span>Halaman Manajemen Akun &amp; Pengguna</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Lihat daftar hierarki akun, status peran Super Admin, Admin Utama, dan User di halaman terpisah.
+              </p>
             </div>
-          )}
+            <Button asChild size="sm" className="gap-2 shrink-0">
+              <Link href="/app/pengaturan/akun">
+                <span>Buka Manajemen Akun</span>
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
         </TabsContent>
 
         {/* ============================================================== */}

@@ -121,15 +121,15 @@ export const MOCK_ONBOARDING_STEPS: readonly OnboardingStep[] = [
       "Langkah terpandu opsional: Hubungkan NBI URL GenieACS untuk membaca parameter modem/CPE pelanggan dan memicu tugas diagnostik.",
     type: "opsional",
     status: "belum-mulai",
-    targetUrl: "/app/pengaturan/perangkat",
-    targetLabel: "Integrasi GenieACS",
+    targetUrl: "/app/genieacs",
+    targetLabel: "GenieACS (TR-069)",
     prerequisites: ["step-olt-hsgq"],
     prerequisiteTitles: ["3. Integrasikan OLT HSGQ & Port PON"],
     prerequisiteId: "step-olt-hsgq",
     estimatedMinutes: 10,
     category: "perangkat",
     instruction:
-      "Masukkan URL NBI GenieACS (port 7557) di menu Integrasi Perangkat untuk manajemen TR-069.",
+      "Masukkan URL NBI GenieACS (port 7557) di halaman GenieACS untuk manajemen TR-069.",
   },
   {
     id: "step-netflow-traffic",
@@ -193,8 +193,8 @@ export const MOCK_ONBOARDING_STEPS: readonly OnboardingStep[] = [
       "Jalankan health check menyeluruh, cadangkan snapshot konfigurasi, dan pastikan verifikasi nol data dummy lulus sebelum promosi.",
     type: "wajib",
     status: "belum-mulai",
-    targetUrl: "/app/pengaman-deploy",
-    targetLabel: "Periksa Pengaman Deploy",
+    targetUrl: "/app/uji-stack",
+    targetLabel: "Periksa Uji Stack",
     prerequisites: [
       "step-router-mikrotik",
       "step-test-router-polling",
@@ -207,7 +207,7 @@ export const MOCK_ONBOARDING_STEPS: readonly OnboardingStep[] = [
     estimatedMinutes: 5,
     category: "deploy",
     instruction:
-      "Buka menu Pengaman Deploy, jalankan tombol 'Uji Ulang Health Check' dan pastikan semua baris berstatus SEHAT.",
+      "Buka menu Uji Stack dan pastikan seluruh komponen sistem berstatus SEHAT.",
     cliCommand: "npm run deploy:verify:zero-dummy",
   },
 ];

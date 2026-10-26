@@ -684,23 +684,6 @@ export function SettingsBoard() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 flex flex-wrap items-center justify-between gap-4 mt-2">
-                <div className="space-y-1">
-                  <p className="text-sm font-semibold flex items-center gap-2">
-                    <Server className="size-4 text-primary" />
-                    <span>Konfigurasi Integrasi Perangkat Jaringan</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Kelola alamat host env, port, kredensial, dan saklar simulator untuk MikroTik REST, OLT HSGQ, GenieACS NBI, dan Billing.
-                  </p>
-                </div>
-                <Button asChild size="sm" className="gap-2 shrink-0">
-                  <Link href="/app/pengaturan/perangkat">
-                    <span>Buka Konfigurasi Perangkat</span>
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              </div>
             </CardContent>
           </Card>
 

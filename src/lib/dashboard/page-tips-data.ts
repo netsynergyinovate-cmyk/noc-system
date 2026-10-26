@@ -171,7 +171,7 @@ export const PAGE_TIPS_REGISTRY: Record<string, PageTipItem> = {
     troubleshooting: [
       {
         issue: "Username PPPoE tidak muncul",
-        solution: "Jalankan sinkronisasi ulang data pelanggan dari menu Sinkronisasi Data.",
+        solution: "Periksa kembali status sesi PPPoE aktif pada router MikroTik.",
       },
     ],
   },

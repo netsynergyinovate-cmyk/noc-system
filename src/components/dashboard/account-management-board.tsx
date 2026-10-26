@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSessionUser } from "@/components/session-provider";
-import { isSuperAdmin, isAdmin, isUser, roleLabel, roleNames } from "@/lib/roles";
+import { isSuperAdmin, isAdmin, isStrictAdmin, isUser, roleLabel, roleNames } from "@/lib/roles";
 import { authClient } from "@/lib/auth-client";
 import { selectClassName } from "./select-class";
 
@@ -306,9 +306,13 @@ export function AccountManagementBoard() {
               <Crown className="size-4" />
               <span>SUPER ADMIN (OWNER)</span>
             </span>
-            <Badge className="bg-amber-500 text-white text-[10px] font-bold">TINGKAT 1</Badge>
+            <Badge className="bg-amber-500 text-white text-[10px] font-bold">
+              {users.filter((u) => isSuperAdmin(u.role)).length} AKUN
+            </Badge>
           </div>
-          <div className="text-sm font-bold text-foreground">admin@noc.local</div>
+          <div className="text-sm font-bold text-foreground truncate">
+            {users.filter((u) => isSuperAdmin(u.role)).map((u) => u.email).join(", ") || "admin@noc.local"}
+          </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Dipegang penuh oleh Anda (Owner). Wewenang mutasi role, reset sandi, dan buat akun baru.
           </p>
@@ -320,9 +324,13 @@ export function AccountManagementBoard() {
               <ShieldCheck className="size-4" />
               <span>ADMIN UTAMA (AI)</span>
             </span>
-            <Badge className="bg-blue-600 text-white text-[10px] font-bold">TINGKAT 2</Badge>
+            <Badge className="bg-blue-600 text-white text-[10px] font-bold">
+              {users.filter((u) => isStrictAdmin(u.role)).length} AKUN
+            </Badge>
           </div>
-          <div className="text-sm font-bold text-foreground">admin-utama@noc.local</div>
+          <div className="text-sm font-bold text-foreground truncate">
+            {users.filter((u) => isStrictAdmin(u.role)).map((u) => u.email).join(", ") || "admin-utama@noc.local"}
+          </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Peran utama asisten AI &amp; operasional NOC teknis (MikroTik, OLT, Alert, Billing, Map).
           </p>
@@ -334,9 +342,13 @@ export function AccountManagementBoard() {
               <User className="size-4" />
               <span>USER / PETUGAS</span>
             </span>
-            <Badge variant="secondary" className="text-[10px] font-bold">TINGKAT 3</Badge>
+            <Badge variant="secondary" className="text-[10px] font-bold">
+              {users.filter((u) => isUser(u.role)).length} AKUN
+            </Badge>
           </div>
-          <div className="text-sm font-bold text-foreground">user@noc.local</div>
+          <div className="text-sm font-bold text-foreground truncate">
+            {users.filter((u) => isUser(u.role)).map((u) => u.email).join(", ") || "user@noc.local"}
+          </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Akses pemantauan &amp; pengawas lapangan (read-only telemetri, redaman, dan dashboard).
           </p>

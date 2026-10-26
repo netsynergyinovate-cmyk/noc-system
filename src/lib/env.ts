@@ -54,6 +54,7 @@ const schema = z.object({
     .optional(),
   // Logto OIDC / OAuth Configuration
   LOGTO_ENDPOINT: z.string().default("http://localhost:3301"),
+  LOGTO_INTERNAL_ENDPOINT: z.string().default("http://nocsystem-logto:3001"),
   LOGTO_CLIENT_ID: z.string().optional(),
   LOGTO_CLIENT_SECRET: z.string().optional(),
   // Alamat backend Go YANG DIBUKA BROWSER (WebSocket dan panggilan REST langsung
@@ -139,6 +140,7 @@ const parsedEnv = schema.parse({
   ALLOW_SIGN_UP: blankToUndefined(process.env.ALLOW_SIGN_UP),
   TRUSTED_PROXIES: blankToUndefined(process.env.TRUSTED_PROXIES),
   LOGTO_ENDPOINT: blankToUndefined(process.env.LOGTO_ENDPOINT),
+  LOGTO_INTERNAL_ENDPOINT: blankToUndefined(process.env.LOGTO_INTERNAL_ENDPOINT),
   LOGTO_CLIENT_ID: blankToUndefined(process.env.LOGTO_CLIENT_ID),
   LOGTO_CLIENT_SECRET: blankToUndefined(process.env.LOGTO_CLIENT_SECRET),
   MIKROTIK_REST_HOST: blankToUndefined(process.env.MIKROTIK_REST_HOST),

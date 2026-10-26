@@ -53,6 +53,7 @@ services:
       # OSRM untuk POST /api/snap (compose.osrm.yaml, jaringan yang sama).
       OSRM_BASE_URL: ${OSRM_BASE_URL:-http://osrm:5000}
       LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+      LOGTO_INTERNAL_ENDPOINT: ${LOGTO_INTERNAL_ENDPOINT:-http://nocsystem-logto:3001}
       LOGTO_CLIENT_ID: ${LOGTO_CLIENT_ID:-}
       LOGTO_CLIENT_SECRET: ${LOGTO_CLIENT_SECRET:-}
       PORT: 3000

@@ -26,9 +26,9 @@ services:
     entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
     ports:
       # Logto Core Service / OIDC Endpoint (http://localhost:3301)
-      - "3301:3001"
+      - "127.0.0.1:3301:3001"
       # Logto Interactive Admin Console (http://localhost:3002)
-      - "3002:3002"
+      - "127.0.0.1:3002:3002"
     environment:
       DB_URL: postgres://logto:logto_password@logto-postgres:5432/logto
       ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}

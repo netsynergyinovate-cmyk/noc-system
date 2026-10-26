@@ -10,7 +10,7 @@ export interface ConfigurationBadgeSummary {
   isLiveMode: boolean;
   hasConnectedRouter: boolean;
   mandatoryDevice: "router";
-  redirectUrl: "/app/onboarding";
+  redirectUrl: "/setup";
   notice: string;
   checkedAt: string;
 }
@@ -59,9 +59,9 @@ export async function getConfigurationBadgeSummary(): Promise<ConfigurationBadge
     isLiveMode: isLive,
     hasConnectedRouter: hasConnected,
     mandatoryDevice: "router",
-    redirectUrl: "/app/onboarding",
+    redirectUrl: "/setup",
     notice: incomplete
-      ? "Konfigurasi router wajib belum lengkap. Klik untuk membuka Pusat Onboarding."
+      ? "Konfigurasi router wajib belum lengkap. Klik untuk membuka Konfigurasi Router."
       : "Konfigurasi perangkat wajib telah selesai dan terverifikasi.",
     checkedAt: new Date().toISOString(),
   };

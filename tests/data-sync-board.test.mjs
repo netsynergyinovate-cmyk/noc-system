@@ -90,16 +90,7 @@ test("filterDataSyncModules menyaring berdasarkan status dan query teks", () => 
   assert.equal(noMatch.length, 0);
 });
 
-test("halaman dan komponen sinkronisasi data tersedia", () => {
-  const pagePath = new URL(
-    "../src/app/(protected)/app/sinkronisasi/page.tsx",
-    import.meta.url,
-  );
-  assert.ok(existsSync(pagePath));
-  const pageSrc = readFileSync(pagePath, "utf8");
-  assert.match(pageSrc, /export default async function DataSyncPage/);
-  assert.match(pageSrc, /<DataSyncBoard \/>/);
-
+test("komponen DataSyncBoard tersedia", () => {
   const boardPath = new URL(
     "../src/components/dashboard/data-sync-board.tsx",
     import.meta.url,

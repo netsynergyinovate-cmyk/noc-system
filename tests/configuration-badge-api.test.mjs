@@ -27,7 +27,7 @@ test("getConfigurationBadgeSummary menghasilkan status badge lengkap", async () 
   );
   assert.ok(typeof summary.isGateLocked === "boolean");
   assert.equal(summary.mandatoryDevice, "router");
-  assert.equal(summary.redirectUrl, "/app/onboarding");
+  assert.equal(summary.redirectUrl, "/setup");
   assert.ok(summary.notice);
   assert.ok(summary.checkedAt);
 });

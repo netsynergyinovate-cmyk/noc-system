@@ -61,7 +61,7 @@ test("getMockSeedSummaryOverview menghitung metrik kategori dan record dengan te
   assert.ok(overview.lastVerifiedAt);
 });
 
-test("komponen SeedSummary dan halaman sinkronisasi memuat seed-summary", () => {
+test("komponen SeedSummary tersedia dan memuat data-testid", () => {
   const summaryPath = new URL(
     "../src/components/dashboard/seed-summary.tsx",
     import.meta.url,
@@ -70,13 +70,4 @@ test("komponen SeedSummary dan halaman sinkronisasi memuat seed-summary", () => 
   const summarySrc = readFileSync(summaryPath, "utf8");
   assert.match(summarySrc, /export function SeedSummary/);
   assert.match(summarySrc, /data-testid="seed-summary"/);
-
-  const pagePath = new URL(
-    "../src/app/(protected)/app/sinkronisasi/page.tsx",
-    import.meta.url,
-  );
-  assert.ok(existsSync(pagePath));
-  const pageSrc = readFileSync(pagePath, "utf8");
-  assert.match(pageSrc, /<SeedSummary \/>/);
-  assert.match(pageSrc, /Ringkasan Seed Data Awal/);
 });

@@ -1,9 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeviceOutcomeAlert } from "@/components/dashboard/device-outcome-alert";
 import { DeviceStatusBadge } from "@/components/dashboard/device-status-badge";
@@ -18,7 +15,6 @@ import {
 } from "@/lib/dashboard/device-config";
 
 // Kartu ringkas 4 perangkat untuk tab "Perangkat" di /app/pengaturan.
-// Konfigurasi lengkap (ubah host/port/mode) ada di /app/pengaturan/perangkat.
 export function DeviceQuickCards() {
   const [devices, setDevices] = useState<DeviceConfig[]>(MOCK_DEVICE_CONFIGS);
   const [testingIds, setTestingIds] = useState<string[]>([]);
@@ -37,16 +33,10 @@ export function DeviceQuickCards() {
 
   return (
     <div className="space-y-4" data-testid="device-quick-cards">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
         <p className="text-xs text-muted-foreground">
           Data tiruan. Uji koneksi memakai API bila tersedia, bila tidak memakai simulasi lokal.
         </p>
-        <Button asChild size="sm" className="gap-2">
-          <Link href="/app/pengaturan/perangkat">
-            <span>Konfigurasi Lanjutan</span>
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
       </div>
 
       <div

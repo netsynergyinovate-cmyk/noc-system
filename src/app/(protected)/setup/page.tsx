@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Compass, FlaskConical, Network, Plus, Router, Server } from "lucide-react";
+import { ArrowRight, FlaskConical, Network, Plus, Router } from "lucide-react";
 import { ConfigValidationPanel } from "@/components/dashboard/config-validation-panel";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { MockRegistryCard } from "@/components/dashboard/mock-registry-card";
@@ -98,18 +98,6 @@ export default async function SetupPage() {
               <Plus className="size-4" />
               <span>Tambah Router MikroTik</span>
               <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/app/onboarding">
-              <Compass className="size-4" />
-              <span>Pusat Onboarding</span>
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/app/pengaturan/perangkat">
-              <Server className="size-4" />
-              <span>Integrasi Perangkat</span>
             </Link>
           </Button>
         </div>

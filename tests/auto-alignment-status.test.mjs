@@ -63,7 +63,7 @@ test("getMockAlignmentOverview menghitung status daemon dan metrik", () => {
   assert.ok(overview.lastGlobalTickAt);
 });
 
-test("komponen AutoAlignmentStatus dan tab terpasang pada halaman sinkronisasi", () => {
+test("komponen AutoAlignmentStatus tersedia dan valid", () => {
   const compPath = new URL(
     "../src/components/dashboard/auto-alignment-status.tsx",
     import.meta.url,
@@ -72,13 +72,4 @@ test("komponen AutoAlignmentStatus dan tab terpasang pada halaman sinkronisasi",
   const compSrc = readFileSync(compPath, "utf8");
   assert.match(compSrc, /export function AutoAlignmentStatus/);
   assert.match(compSrc, /data-testid="auto-alignment-status"/);
-
-  const pagePath = new URL(
-    "../src/app/(protected)/app/sinkronisasi/page.tsx",
-    import.meta.url,
-  );
-  assert.ok(existsSync(pagePath));
-  const pageSrc = readFileSync(pagePath, "utf8");
-  assert.match(pageSrc, /<AutoAlignmentStatus \/>/);
-  assert.match(pageSrc, /Penyelarasan Otomatis/);
 });

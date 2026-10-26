@@ -39,13 +39,11 @@ test("evaluateOnboardingGate tidak menahan di mode demo kecuali di-force", () =>
   assert.equal(forcedGate.isLocked, true);
 });
 
-test("isPathExemptFromGate mengecualikan rute setup, onboarding, dan router", () => {
-  assert.equal(isPathExemptFromGate("/app/onboarding"), true);
+test("isPathExemptFromGate mengecualikan rute setup, router, dan pengaturan", () => {
+  assert.equal(isPathExemptFromGate("/setup"), true);
   assert.equal(isPathExemptFromGate("/app/router"), true);
   assert.equal(isPathExemptFromGate("/app/pengaturan"), true);
-  assert.equal(isPathExemptFromGate("/app/pengaturan/perangkat"), true);
-  assert.equal(isPathExemptFromGate("/setup"), true);
-
+  assert.equal(isPathExemptFromGate("/app/onboarding"), false);
   // Halaman fungsi utama ditahan
   assert.equal(isPathExemptFromGate("/app"), false);
   assert.equal(isPathExemptFromGate("/app/alert"), false);

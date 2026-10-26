@@ -13,9 +13,7 @@ export interface OnboardingGateState {
 
 export const ONBOARDING_GATE_UNLOCKED_PATHS: readonly string[] = [
   "/setup",
-  "/app/onboarding",
   "/app/router",
-  "/app/pengaturan/perangkat",
   "/app/pengaturan",
 ];
 

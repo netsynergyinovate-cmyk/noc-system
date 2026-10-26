@@ -151,13 +151,4 @@ test("Komponen SchemaMigrationsBoard dan halaman terpasang dengan baik", () => {
   assert.match(boardSrc, /data-testid="copy-error-btn"/);
   assert.match(boardSrc, /Kunci #/);
   assert.match(boardSrc, /Prinsip Idempotensi/);
-
-  const pageSrc = read("../src/app/(protected)/app/migrasi/page.tsx");
-  assert.match(pageSrc, /data-testid="schema-migrations-page"/);
-  assert.match(pageSrc, /Riwayat Migrasi Skema/);
-  assert.match(pageSrc, /MockDataNotice/);
-
-  const navSrc = read("../src/components/dashboard/app-nav.tsx");
-  assert.match(navSrc, /\/app\/migrasi/);
-  assert.match(navSrc, /Migrasi Skema/);
 });

@@ -12,8 +12,8 @@ const {
 
 test("isPathExempt mengidentifikasi rute pengecualian dengan benar", () => {
   assert.equal(isPathExempt("/setup"), true);
-  assert.equal(isPathExempt("/app/onboarding"), true);
   assert.equal(isPathExempt("/app/router"), true);
+  assert.equal(isPathExempt("/app/onboarding"), false);
   assert.equal(isPathExempt("/api/auth/signin"), true);
   assert.equal(isPathExempt("/api/onboarding/steps"), true);
   assert.equal(isPathExempt("/api/routers/test"), true);
@@ -40,7 +40,7 @@ test("enforceOnboardingGate pada mode live tanpa router memblokir API dengan HTT
   const json = await res.json();
   assert.equal(json.error, "CONFIGURATION_GATE_LOCKED");
   assert.equal(json.code, "GATE_LOCKED");
-  assert.equal(json.redirectUrl, "/app/onboarding");
+  assert.equal(json.redirectUrl, "/setup");
 });
 
 test("enforceOnboardingGate pada mode live tanpa router mengarahkan halaman web ke /setup", () => {

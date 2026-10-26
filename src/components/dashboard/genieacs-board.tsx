@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import Link from "next/link";
 import {
   ExternalLink,
   HardDrive,
@@ -597,17 +596,6 @@ export function GenieacsBoard() {
                 </div>
               </div>
 
-              <div className="rounded-lg border bg-primary/5 p-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h4 className="font-semibold text-sm">Ingin Mengubah Host atau Port NBI?</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Anda dapat mengubah host, port, atau menambahkan HTTP Basic Auth melalui menu integrasi perangkat.
-                  </p>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/app/pengaturan/perangkat">Buka Pengaturan Perangkat →</Link>
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

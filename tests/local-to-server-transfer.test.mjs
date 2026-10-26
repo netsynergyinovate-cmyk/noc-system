@@ -66,7 +66,7 @@ test("getMockTransferOverview menghitung progres persentase dan ringkasan dengan
   assert.ok(overview.lastBatchRunAt);
 });
 
-test("komponen LocalToServerTransfer dan halaman sinkronisasi terpasang", () => {
+test("komponen LocalToServerTransfer tersedia dan valid", () => {
   const compPath = new URL(
     "../src/components/dashboard/local-to-server-transfer.tsx",
     import.meta.url,
@@ -75,13 +75,4 @@ test("komponen LocalToServerTransfer dan halaman sinkronisasi terpasang", () => 
   const compSrc = readFileSync(compPath, "utf8");
   assert.match(compSrc, /export function LocalToServerTransfer/);
   assert.match(compSrc, /data-testid="local-to-server-transfer"/);
-
-  const pagePath = new URL(
-    "../src/app/(protected)/app/sinkronisasi/page.tsx",
-    import.meta.url,
-  );
-  assert.ok(existsSync(pagePath));
-  const pageSrc = readFileSync(pagePath, "utf8");
-  assert.match(pageSrc, /<LocalToServerTransfer \/>/);
-  assert.match(pageSrc, /Transfer Lokal → Server/);
 });

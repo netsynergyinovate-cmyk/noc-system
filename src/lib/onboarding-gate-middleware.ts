@@ -11,7 +11,6 @@ export interface GateEnforcementOptions {
 
 export const EXEMPT_PATH_PREFIXES: readonly string[] = [
   "/setup",
-  "/app/onboarding",
   "/app/router",
   "/app/pengaturan",
   "/api/auth",
@@ -77,7 +76,7 @@ export function enforceOnboardingGate(
         code: "GATE_LOCKED",
         status: 423,
         message: gateState.reason,
-        redirectUrl: "/app/onboarding",
+        redirectUrl: "/setup",
         bannerNotice: gateState.bannerNotice,
         mandatoryDevice: gateState.mandatoryDevice,
         blockedPath: pathname,

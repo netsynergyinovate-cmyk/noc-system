@@ -10,7 +10,7 @@ export interface ConfigurationGateBannerProps {
 
 export function ConfigurationGateBanner({
   reason = "Fungsi utama dasbor, alert, dan analisis ditahan hingga Router MikroTik wajib lulus uji koneksi.",
-  onboardingUrl = "/app/onboarding",
+  onboardingUrl = "/setup",
 }: ConfigurationGateBannerProps) {
   return (
     <aside

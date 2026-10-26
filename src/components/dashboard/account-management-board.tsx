@@ -7,8 +7,11 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  Crown,
+  Globe,
   KeyRound,
   Loader2,
+  Radio,
   RotateCcw,
   Shield,
   ShieldAlert,
@@ -299,6 +302,51 @@ export function AccountManagementBoard() {
           </div>
         )}
       </div>
+      {/* 3 KARTU RINGKASAN HIERARKI PERAN RESMI */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+              <Crown className="size-4" />
+              <span>SUPER ADMIN (OWNER)</span>
+            </span>
+            <Badge className="bg-amber-500 text-white text-[10px] font-bold">TINGKAT 1</Badge>
+          </div>
+          <div className="text-sm font-bold text-foreground">admin@noc.local</div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Dipegang penuh oleh Anda (Owner). Wewenang mutasi role, reset sandi, dan buat akun baru.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+              <ShieldCheck className="size-4" />
+              <span>ADMIN UTAMA (AI)</span>
+            </span>
+            <Badge className="bg-blue-600 text-white text-[10px] font-bold">TINGKAT 2</Badge>
+          </div>
+          <div className="text-sm font-bold text-foreground">admin-utama@noc.local</div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Peran utama asisten AI &amp; operasional NOC teknis (MikroTik, OLT, Alert, Billing, Map).
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <User className="size-4" />
+              <span>USER / PETUGAS</span>
+            </span>
+            <Badge variant="secondary" className="text-[10px] font-bold">TINGKAT 3</Badge>
+          </div>
+          <div className="text-sm font-bold text-foreground">user@noc.local</div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Akses pemantauan &amp; pengawas lapangan (read-only telemetri, redaman, dan dashboard).
+          </p>
+        </div>
+      </div>
+
 
       {/* Kartu Status Peran Akun Anda */}
       <Card className="border border-border bg-card shadow-sm">
@@ -356,6 +404,42 @@ export function AccountManagementBoard() {
                 )}
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KARTU INTEGRASI LOGTO OAUTH / SSO (DOCKER) */}
+      <Card className="border border-indigo-500/30 bg-card shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="size-4 text-indigo-500" />
+                <span>Integrasi Logto OAuth / Single Sign-On (Docker)</span>
+              </CardTitle>
+              <CardDescription>
+                Layanan identity provider &amp; SSO Logto terintegrasi via Docker Compose (compose.logto.yaml).
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="border-indigo-500/50 text-indigo-600 dark:text-indigo-400 text-xs">
+              PORT 3301 (OIDC) &bull; PORT 3002 (CONSOLE)
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-1 text-xs text-muted-foreground">
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-foreground flex items-center gap-1.5">
+                <Radio className="size-3.5 text-indigo-500" />
+                Status Docker Service:
+              </span>
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                npm run logto:up
+              </code>
+            </div>
+            <p className="leading-relaxed">
+              Jalankan <code className="font-mono text-foreground font-semibold">npm run logto:up</code> untuk menyalakan kontainer Logto Core (<code className="font-mono text-foreground">http://localhost:3301</code>) dan Admin Console (<code className="font-mono text-foreground">http://localhost:3002</code>).
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -627,16 +711,22 @@ export function AccountManagementBoard() {
                               {formatRegistrationDate(u.createdAt)}
                             </TableCell>
                             <TableCell className="py-3">
-                              <Badge
-                                variant={isSuperAdmin(currentRole) ? "default" : isAdmin(currentRole) ? "default" : "secondary"}
-                                className={
-                                  isSuperAdmin(currentRole)
-                                    ? "bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700 text-[11px]"
-                                    : "text-[11px]"
-                                }
-                              >
-                                {roleLabel(currentRole)}
-                              </Badge>
+                              {isSuperAdmin(currentRole) ? (
+                                <Badge className="bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700 text-[11px] font-semibold gap-1">
+                                  <Crown className="size-3" />
+                                  <span>SUPER ADMIN (OWNER)</span>
+                                </Badge>
+                              ) : isAdmin(currentRole) ? (
+                                <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold gap-1">
+                                  <ShieldCheck className="size-3" />
+                                  <span>ADMIN UTAMA (AI)</span>
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[11px] font-medium gap-1">
+                                  <User className="size-3" />
+                                  <span>PETUGAS (USER)</span>
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="py-3 text-right">
                               <div className="flex flex-col items-end gap-1.5">
@@ -656,9 +746,9 @@ export function AccountManagementBoard() {
                                     disabled={isSaving}
                                     className={cn(selectClassName, "h-8 w-44 text-xs")}
                                   >
-                                    <option value="superadmin">Super Admin</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="user">Petugas / User</option>
+                                    <option value="superadmin">👑 Super Admin (Kontrol Penuh)</option>
+                                    <option value="admin">🛡️ Admin Utama (Operasional NOC)</option>
+                                    <option value="user">👤 Petugas / User Biasa</option>
                                   </select>
                                   <Button
                                     size="sm"

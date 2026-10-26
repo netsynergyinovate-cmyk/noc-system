@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq, sql } from "drizzle-orm";
-import { admin } from "better-auth/plugins";
+import { admin, genericOAuth } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
@@ -36,16 +36,24 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
   plugins: [
-    // Roles come from the access control in lib/permissions.ts. New accounts get
-    // DEFAULT_ROLE; `role` is not accepted from signup input, so nobody can
-    // grant themselves one. Use npm run role:set to promote an account.
+    genericOAuth({
+      config: [
+        {
+          providerId: "logto",
+          clientId: env.LOGTO_CLIENT_ID || "logto-client-id",
+          clientSecret: env.LOGTO_CLIENT_SECRET || "logto-client-secret",
+          authorizationUrl: `${env.LOGTO_ENDPOINT}/oidc/auth`,
+          tokenUrl: `${env.LOGTO_ENDPOINT}/oidc/token`,
+          userInfoUrl: `${env.LOGTO_ENDPOINT}/oidc/me`,
+        },
+      ],
+    }),
     admin({
       ac,
       roles,
       defaultRole: DEFAULT_ROLE,
       adminRoles: ADMIN_ROLES,
     }),
-    // Keep nextCookies() last so it observes every other plugin's cookies.
     nextCookies(),
   ],
   databaseHooks: {

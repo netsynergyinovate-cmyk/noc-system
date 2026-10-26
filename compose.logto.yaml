@@ -1,0 +1,48 @@
+name: noc-logto
+
+services:
+  logto-postgres:
+    image: postgres:17-alpine
+    container_name: nocsystem-logto-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: logto
+      POSTGRES_PASSWORD: logto_password
+      POSTGRES_DB: logto
+    volumes:
+      - logto_pgdata:/var/lib/postgresql/data
+    networks:
+      - nocsystem_default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logto -d logto"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  logto:
+    image: ghcr.io/logto-io/logto:latest
+    container_name: nocsystem-logto
+    restart: unless-stopped
+    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
+    ports:
+      # Logto Core Service / OIDC Endpoint (http://localhost:3301)
+      - "3301:3001"
+      # Logto Interactive Admin Console (http://localhost:3002)
+      - "3002:3002"
+    environment:
+      DB_URL: postgres://logto:logto_password@logto-postgres:5432/logto
+      ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT:-http://localhost:3002}
+      TRUST_PROXY_HEADER: "1"
+    depends_on:
+      logto-postgres:
+        condition: service_healthy
+    networks:
+      - nocsystem_default
+
+networks:
+  nocsystem_default:
+    external: true
+
+volumes:
+  logto_pgdata:

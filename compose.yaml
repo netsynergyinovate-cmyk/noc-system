@@ -52,6 +52,9 @@ services:
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
       # OSRM untuk POST /api/snap (compose.osrm.yaml, jaringan yang sama).
       OSRM_BASE_URL: ${OSRM_BASE_URL:-http://osrm:5000}
+      LOGTO_ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3301}
+      LOGTO_CLIENT_ID: ${LOGTO_CLIENT_ID:-}
+      LOGTO_CLIENT_SECRET: ${LOGTO_CLIENT_SECRET:-}
       PORT: 3000
     depends_on:
       postgres:
@@ -68,6 +71,9 @@ services:
       # Syslog router (UDP) untuk diagnosa pelanggan. Tanpa autentikasi: listener
       # hanya menerima alamat router terdaftar atau yang dipetakan di SYSLOG_SOURCE_MAP.
       - "5514:5514/udp"
+      # NetFlow v5 router (traffic-flow) untuk diagnosa trafik per pelanggan; hanya
+      # router terdaftar atau yang dipetakan NETFLOW_SOURCE_MAP yang diterima.
+      - "2055:2055/udp"
     environment:
       BACKEND_ADDR: 0.0.0.0:8080
       SYSLOG_ADDR: ${SYSLOG_ADDR:-0.0.0.0:5514}
@@ -75,6 +81,11 @@ services:
       # "10.20.30.1=<uuid router>". Alamat tak dikenal dicatat di log backend.
       SYSLOG_SOURCE_MAP: ${SYSLOG_SOURCE_MAP:-}
       SYSLOG_RETENTION_DAYS: ${SYSLOG_RETENTION_DAYS:-14}
+      NETFLOW_ENABLED: ${NETFLOW_ENABLED:-true}
+      NETFLOW_ADDR: ${NETFLOW_ADDR:-:2055}
+      # Sama seperti SYSLOG_SOURCE_MAP (Docker Desktop mengganti alamat sumber UDP).
+      NETFLOW_SOURCE_MAP: ${NETFLOW_SOURCE_MAP:-}
+      NETFLOW_RETENTION_DAYS: ${NETFLOW_RETENTION_DAYS:-7}
       DATABASE_URL: postgresql://starter:starter_password@postgres:5432/starter
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:3000}

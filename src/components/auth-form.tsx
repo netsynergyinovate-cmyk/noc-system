@@ -9,6 +9,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  Globe,
   LoaderCircle,
   TimerOff,
 } from "lucide-react";
@@ -144,6 +145,7 @@ export function AuthForm({
   mode,
   redirectTo,
   notice,
+  allowSignUp = true,
 }: {
   mode: "sign-in" | "sign-up";
   // Tujuan setelah berhasil (dari ?next=). Server sudah membersihkannya; di sini
@@ -155,6 +157,8 @@ export function AuthForm({
   // isSessionExpiredParam. Hanya bendera: tidak ada teks dari alamat yang
   // dipantulkan. Halaman daftar tidak pernah menampilkannya.
   notice?: "signed-out" | "session-expired" | null;
+  // Tautan "Buat akun" di halaman masuk hanya bila pendaftaran dibuka (ALLOW_SIGN_UP).
+  allowSignUp?: boolean;
 }) {
   const signingUp = mode === "sign-up";
   const router = useRouter();
@@ -428,6 +432,36 @@ export function AuthForm({
               )}
             </div>
           </div>
+          {!signingUp && (
+            <div className="pt-1">
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-border"></div>
+                <span className="flex-shrink mx-2 text-xs text-muted-foreground">atau masuk dengan</span>
+                <div className="flex-grow border-t border-border"></div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-9 text-xs gap-2 border-indigo-500/40 text-foreground hover:bg-indigo-500/10"
+                onClick={async () => {
+                  try {
+                    await authClient.signIn.social({
+                      provider: "logto" as unknown as "github",
+                      callbackURL: destination ?? siteConfig.homePath,
+                    });
+                  } catch {
+                    setFailure({
+                      message: "Layanan Logto SSO belum aktif. Pastikan kontainer Logto menyala via npm run logto:up.",
+                      target: "submit",
+                    });
+                  }
+                }}
+              >
+                <Globe className="size-3.5 text-indigo-500" />
+                <span>Logto Single Sign-On (SSO)</span>
+              </Button>
+            </div>
+          )}
           {/* Selalu terpasang (kosong dulu) supaya isinya diumumkan ketika
               muncul. Hanya satu kali, saat hitungan habis; angka yang berkurang
               tidak diumumkan. */}
@@ -436,15 +470,17 @@ export function AuthForm({
           </p>
         </fieldset>
       </form>
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        {signingUp ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
-        <Link
-          className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-          href={signingUp ? signInUrl(destination) : signUpUrl(destination)}
-        >
-          {signingUp ? "Masuk" : "Buat akun"}
-        </Link>
-      </p>
+      {(signingUp || allowSignUp) && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          {signingUp ? "Sudah punya akun?" : "Belum punya akun?"}{" "}
+          <Link
+            className="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+            href={signingUp ? signInUrl(destination) : signUpUrl(destination)}
+          >
+            {signingUp ? "Masuk" : "Buat akun"}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

@@ -52,6 +52,10 @@ const schema = z.object({
     .string()
     .length(32, "DEVICE_SECRET harus persis 32 karakter.")
     .optional(),
+  // Logto OIDC / OAuth Configuration
+  LOGTO_ENDPOINT: z.string().default("http://localhost:3301"),
+  LOGTO_CLIENT_ID: z.string().optional(),
+  LOGTO_CLIENT_SECRET: z.string().optional(),
   // Alamat backend Go YANG DIBUKA BROWSER (WebSocket dan panggilan REST langsung
   // dari klien). Di Docker ini port yang di-map ke host (mis. localhost:8080),
   // BUKAN alamat antar-kontainer: browser tidak tahu nama layanan Docker.
@@ -134,6 +138,9 @@ const parsedEnv = schema.parse({
   DASHBOARD_DATA: blankToUndefined(process.env.DASHBOARD_DATA),
   ALLOW_SIGN_UP: blankToUndefined(process.env.ALLOW_SIGN_UP),
   TRUSTED_PROXIES: blankToUndefined(process.env.TRUSTED_PROXIES),
+  LOGTO_ENDPOINT: blankToUndefined(process.env.LOGTO_ENDPOINT),
+  LOGTO_CLIENT_ID: blankToUndefined(process.env.LOGTO_CLIENT_ID),
+  LOGTO_CLIENT_SECRET: blankToUndefined(process.env.LOGTO_CLIENT_SECRET),
   MIKROTIK_REST_HOST: blankToUndefined(process.env.MIKROTIK_REST_HOST),
   MIKROTIK_REST_PORT: blankToUndefined(process.env.MIKROTIK_REST_PORT),
   MIKROTIK_REST_USER: blankToUndefined(process.env.MIKROTIK_REST_USER),

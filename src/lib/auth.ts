@@ -11,6 +11,7 @@ import { authCookiePrefix, siteConfig } from "@/config/site";
 import { authAdvancedOptions, sessionOptions } from "@/lib/auth-security";
 import { env } from "@/lib/env";
 import { ac, ADMIN_ROLES, DEFAULT_ROLE, roles } from "@/lib/permissions";
+import { roleNames } from "@/lib/roles";
 
 export const auth = betterAuth({
   appName: siteConfig.name,
@@ -65,46 +66,48 @@ export const auth = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       const body = typeof ctx.body === "object" && ctx.body !== null ? ctx.body : null;
       const targetUserId = body && "userId" in body && typeof body.userId === "string" ? body.userId : undefined;
-      const newRole = body && "role" in body && typeof body.role === "string" ? body.role : undefined;
+      const rawRole = body && "role" in body ? body.role : undefined;
+      const parsedRoles = Array.isArray(rawRole)
+        ? rawRole.map(String)
+        : typeof rawRole === "string"
+          ? roleNames(rawRole)
+          : [];
+      const grantsSuperadmin = parsedRoles.includes("superadmin");
 
-      if (ctx.path === "/admin/set-role") {
-        if (targetUserId && newRole && newRole !== "superadmin") {
-          const [target] = await db
-            .select({ role: schema.user.role })
+      if (ctx.path === "/admin/set-role" && targetUserId && !grantsSuperadmin) {
+        const [target] = await db
+          .select({ role: schema.user.role })
+          .from(schema.user)
+          .where(eq(schema.user.id, targetUserId))
+          .limit(1);
+        if (roleNames(target?.role).includes("superadmin")) {
+          const [countRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
             .from(schema.user)
-            .where(eq(schema.user.id, targetUserId))
-            .limit(1);
-          if (target?.role === "superadmin") {
-            const [countRow] = await db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(schema.user)
-              .where(eq(schema.user.role, "superadmin"));
-            if ((countRow?.count ?? 0) <= 1) {
-              throw new APIError("BAD_REQUEST", {
-                message: "Tidak dapat menurunkan peran Super Admin terakhir.",
-              });
-            }
+            .where(sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`);
+          if ((countRow?.count ?? 0) <= 1) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Tidak dapat menurunkan peran Super Admin terakhir.",
+            });
           }
         }
       }
 
-      if (ctx.path === "/admin/remove-user") {
-        if (targetUserId) {
-          const [target] = await db
-            .select({ role: schema.user.role })
+      if ((ctx.path === "/admin/remove-user" || ctx.path === "/admin/ban-user") && targetUserId) {
+        const [target] = await db
+          .select({ role: schema.user.role })
+          .from(schema.user)
+          .where(eq(schema.user.id, targetUserId))
+          .limit(1);
+        if (roleNames(target?.role).includes("superadmin")) {
+          const [countRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
             .from(schema.user)
-            .where(eq(schema.user.id, targetUserId))
-            .limit(1);
-          if (target?.role === "superadmin") {
-            const [countRow] = await db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(schema.user)
-              .where(eq(schema.user.role, "superadmin"));
-            if ((countRow?.count ?? 0) <= 1) {
-              throw new APIError("BAD_REQUEST", {
-                message: "Tidak dapat menghapus Super Admin terakhir.",
-              });
-            }
+            .where(sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`);
+          if ((countRow?.count ?? 0) <= 1) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Tidak dapat menonaktifkan atau menghapus Super Admin terakhir.",
+            });
           }
         }
       }

@@ -271,6 +271,7 @@ test.describe("nama peran", () => {
     expect(isPreviewableRole("admin")).toBe(true);
     expect(isPreviewableRole("user")).toBe(true);
     for (const name of [
+      "admin,user",
       "user,admin",
       "admin,",
       "",

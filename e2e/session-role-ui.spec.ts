@@ -226,7 +226,7 @@ test("peran asli admin dibaca dari server setelah dimuat ulang: lencana, pilihan
   try {
     await page.goto("/app");
     await expect(sidebarBadge(page)).toHaveAttribute("data-role", "user");
-    await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
 
     await setRole(ana.email, "admin");
     await page.reload();
@@ -241,7 +241,7 @@ test("peran asli admin dibaca dari server setelah dimuat ulang: lencana, pilihan
     );
     // Tautan admin mengikuti peran di store, yang diisi server dengan peran
     // asli: sudah ada setelah dimuat ulang tanpa memilih apa pun.
-    await expect(page.getByRole("link", { name: "Buka admin" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -421,7 +421,7 @@ test("peran tiruan hanya mengubah tampilan: tautan admin muncul, tetapi /admin t
     const badge = sidebarBadge(page);
     const select = choice(badge);
     await hydrated(select);
-    await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
 
     await select.selectOption("admin");
     await expect(badge).toHaveAttribute("data-role", "admin");
@@ -429,7 +429,7 @@ test("peran tiruan hanya mengubah tampilan: tautan admin muncul, tetapi /admin t
 
     // Tampilan mengikuti peran tiruan, jadi tautan admin muncul (hanya tampilan;
     // e2e/access-ui.spec.ts memeriksa tautan ini lebih lengkap).
-    await expect(page.getByRole("link", { name: "Buka admin" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
 
     // API: ditolak server dengan peran asli, bukan 200.
     const list = await page.request.get("/api/admin/notes");
@@ -467,7 +467,7 @@ test("peran tiruan hanya mengubah tampilan: tautan admin muncul, tetapi /admin t
     // Muat halaman penuh membuang peran tiruan, jadi tautan admin ikut hilang.
     await page.goto("/app");
     await expect(sidebarBadge(page)).toHaveAttribute("data-preview", "false");
-    await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -632,7 +632,7 @@ test("tanpa guliran mendatar di 390 dan 1440 px, dengan atau tanpa peran tiruan;
 test("di 1366x768 dan 1366x600 tombol Keluar di sidebar tetap terjangkau, juga saat sidebar paling tinggi (admin, peran tiruan, petunjuk)", async ({
   browser,
 }) => {
-  // Tautan "Buka admin" dan petunjuk menambah tinggi sidebar. Tautan ikut peran
+  // Tautan "Admin" dan petunjuk menambah tinggi sidebar. Tautan ikut peran
   // yang dipakai tampilan, jadi akun admin memilih Admin (tiruan): tautan dan
   // petunjuk sama-sama tampil (Petugas (tiruan) akan menyembunyikan tautannya).
   await setRole(ana.email, "admin");
@@ -649,7 +649,7 @@ test("di 1366x768 dan 1366x600 tombol Keluar di sidebar tetap terjangkau, juga s
         await select.selectOption("admin");
         await expect(aside.getByText(hint)).toBeVisible();
         await expect(
-          page.getByRole("link", { name: "Buka admin" }),
+          page.getByRole("link", { name: "Admin" }),
         ).toBeVisible();
 
         // Perilaku dulu: tombol Keluar bisa digulirkan ke dalam layar, utuh dan

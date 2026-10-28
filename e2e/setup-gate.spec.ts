@@ -247,7 +247,7 @@ test("in live mode the admin link follows the real role: absent for a regular ac
     await page.goto("/app");
     await expect(page.locator("aside").getByTestId("role-badge")).toBeVisible();
     await expect(page.locator("a[href='/admin']")).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
     expect(await anchorsInHtml()).toBe(0);
   });
 
@@ -264,7 +264,7 @@ test("in live mode the admin link follows the real role: absent for a regular ac
       await expect(sidebarLink).toHaveCount(1);
       await expect(barLink).toHaveCount(1);
       await expect(sidebarLink).toBeVisible();
-      await expect(sidebarLink).toHaveText("Buka admin");
+      await expect(sidebarLink).toHaveText("Admin");
       await expect(barLink).toBeHidden();
       expect(await anchorsInHtml()).toBe(2);
 

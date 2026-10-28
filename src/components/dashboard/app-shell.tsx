@@ -86,6 +86,15 @@ export function AppShell({
             <ConfigurationStatusBadge incomplete={locked} />
             <ThemeToggle />
             <AlertSoundToggle />
+            <Can to="adminArea">
+              <Link
+                href="/admin"
+                title="Buka panel admin"
+                className="text-xs text-muted-foreground hover:text-foreground font-mono underline"
+              >
+                Admin
+              </Link>
+            </Can>
             <SignOutButton />
             <RoleBadge variant="bar" />
           </div>

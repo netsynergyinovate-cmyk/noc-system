@@ -150,13 +150,13 @@ test("the admin page and its link appear only for a permitted role", async ({
     page.getByRole("heading", { name: "Dashboard NOC" }),
   ).toBeVisible();
 
-  await expect(page.getByRole("link", { name: "Buka admin" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Admin" })).toHaveCount(0);
   await page.goto("/admin");
   await expect(page.getByText("Every account’s notes")).toHaveCount(0);
 
   await setRole(email, "admin");
   await page.goto("/app");
-  await page.getByRole("link", { name: "Buka admin" }).click();
+  await page.getByRole("link", { name: "Admin" }).click();
   await expect(
     page.getByRole("heading", { name: "Every account’s notes" }),
   ).toBeVisible();

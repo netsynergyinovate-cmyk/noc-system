@@ -32,8 +32,8 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
     points.length > 1 ? [...new Set([0, 0.5, 1].map((f) => Math.round(f * (points.length - 1))))] : [];
 
   return (
-    <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2 pb-1 space-y-1.5">
-      <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-300">
+    <div className="rounded-lg bg-card border border-border p-2 pb-1 space-y-1.5">
+      <div className="flex items-center gap-3 text-[10px] font-mono text-foreground">
         <span className="flex items-center gap-1">
           <span className="w-2.5 h-0.5 rounded bg-blue-400" /> Download
           <b className="text-blue-300">{last ? bitRate(last.down) : "-"}</b>
@@ -45,7 +45,7 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
       </div>
       <div className="flex gap-1.5">
         {/* Sumbu Y */}
-        <div className="relative w-9 h-32 shrink-0 text-[9px] font-mono text-zinc-500 text-right">
+        <div className="relative w-9 h-32 shrink-0 text-[9px] font-mono text-muted-foreground text-right">
           {[4, 3, 2, 1, 0].map((n) => (
             <span key={n} className="absolute right-0 -translate-y-1/2" style={{ top: `${y(step * n)}%` }}>
               {axisRate(step * n)}
@@ -62,13 +62,14 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
                   x2="100"
                   y1={y(step * n)}
                   y2={y(step * n)}
-                  stroke={n === 0 ? "#52525b" : "#27272a"}
+                  stroke="currentColor"
+                  className={n === 0 ? "text-muted-foreground/50" : "text-border/50"}
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
               {timeTicks.map((i) => (
-                <line key={i} x1={x(i)} x2={x(i)} y1="0" y2="100" stroke="#27272a" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                <line key={i} x1={x(i)} x2={x(i)} y1="0" y2="100" stroke="currentColor" className="text-border/50" strokeWidth="1" vectorEffect="non-scaling-stroke" />
               ))}
               {points.length > 1 && (
                 <>
@@ -93,13 +94,13 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
               )}
             </svg>
             {points.length < 2 && (
-              <span className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-500">
+              <span className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
                 Mengumpulkan data...
               </span>
             )}
           </div>
           {/* Sumbu X */}
-          <div className="relative h-3.5 text-[9px] font-mono text-zinc-500">
+          <div className="relative h-3.5 text-[9px] font-mono text-muted-foreground">
             {timeTicks.map((i, n) => (
               <span
                 key={i}

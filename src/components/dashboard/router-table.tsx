@@ -248,6 +248,7 @@ function RealtimeThroughputCanvas({
 export function RouterTable() {
   const routers = useDashboardStore((state) => state.routers);
   const customers = useDashboardStore((state) => state.customers);
+  const telemetry = useDashboardStore((state) => state.telemetry);
   const isDemo = useSession(selectPreviewEnabled);
   const resources = useRouterResources(!isDemo, 2_000);
 
@@ -310,15 +311,14 @@ export function RouterTable() {
   }, [details]);
 
   // Aggregate stats
+  const olt = telemetry?.olts[0] ?? null;
   const activeCount = details.filter((r) => r.active).length;
-  const totalPppoe = customers.filter((c) => c.isOnline).length || 69;
+  const totalPppoe = customers.filter((c) => c.isOnline).length;
   const currentDl = primaryRouter?.currentDownloadMbps ?? (isDemo ? 46.8 : 55.0);
   const currentUl = primaryRouter?.currentUploadMbps ?? (isDemo ? 9.2 : 8.5);
   const aggregateMbps = Math.round((currentDl + currentUl) * 10) / 10;
   const peakVal = primaryRouter?.peakMbps ?? Math.max(68.4, Math.round(currentDl * 1.35 * 10) / 10);
   const latencyVal = primaryRouter?.latencyMs ?? 1.4;
-
-  // Selected router derived reactively from latest details
   const selectedRouter = useMemo(() => {
     if (!selectedRouterId) return null;
     return details.find((r) => r.id === selectedRouterId) ?? null;
@@ -385,13 +385,13 @@ export function RouterTable() {
           <div className="flex items-center gap-2">
             <Network className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground uppercase">OLT:</span>
-            <span className="text-foreground font-semibold">1/1 ONLINE</span>
+            <span className="text-foreground font-semibold">{olt ? `1/1 ${olt.status.toUpperCase()}` : "1/1 AKTIF"}</span>
           </div>
           <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Layers className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground uppercase">ONU:</span>
-            <span className="text-foreground font-semibold">69 TERDAFTAR</span>
+            <span className="text-foreground font-semibold">{olt ? `${olt.onuTotal} TERDAFTAR` : `${customers.length} TERDAFTAR`}</span>
           </div>
           <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
@@ -459,7 +459,7 @@ export function RouterTable() {
                       </span>
                     </div>
                     <span className="font-mono text-xs text-muted-foreground">
-                      {primaryRouter.host} • {primaryRouter.asn || "AS139542"}
+                      {primaryRouter.host}{primaryRouter.asn ? ` • ${primaryRouter.asn}` : ""}
                     </span>
                   </div>
                 </div>

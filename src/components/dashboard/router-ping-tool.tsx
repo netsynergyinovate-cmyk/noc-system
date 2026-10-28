@@ -105,21 +105,21 @@ export function RouterPingTool({
   return (
     <div className="space-y-3 font-mono text-xs">
       {/* Control Panel */}
-      <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex flex-col gap-3">
+      <div className="p-3.5 rounded-xl bg-card border border-border flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-1 items-center gap-2">
-            <span className="text-zinc-400 font-semibold text-[11px] whitespace-nowrap">Target Host / IP:</span>
+            <span className="text-muted-foreground font-semibold text-[11px] whitespace-nowrap">Target Host / IP:</span>
             <Input
               type="text"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder="e.g. 8.8.8.8 atau 1.1.1.1"
-              className="h-8 text-xs bg-zinc-950 border-zinc-800 text-zinc-100 font-mono max-w-xs"
+              className="h-8 text-xs bg-background border-border text-foreground font-mono max-w-xs"
             />
             <select
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
-              className="h-8 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs px-2"
+              className="h-8 rounded-lg bg-background border border-border text-foreground text-xs px-2"
             >
               <option value={3}>3 pkt</option>
               <option value={4}>4 pkt</option>
@@ -145,7 +145,7 @@ export function RouterPingTool({
               size="sm"
               onClick={handleTestRestApi}
               disabled={restTesting}
-              className="h-8 px-2.5 text-xs gap-1.5 bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300"
+              className="h-8 px-2.5 text-xs gap-1.5"
             >
               <Activity className={`size-3 text-cyan-400 ${restTesting ? "animate-pulse" : ""}`} />
               <span>{restTesting ? "Menguji..." : "Uji REST API"}</span>
@@ -154,26 +154,26 @@ export function RouterPingTool({
         </div>
 
         {/* Quick Target Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-800/60 text-[10px] text-zinc-400">
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border text-[10px] text-muted-foreground">
           <span>Target Cepat:</span>
           <button
             type="button"
             onClick={() => setTarget("8.8.8.8")}
-            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+            className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
           >
             Google DNS (8.8.8.8)
           </button>
           <button
             type="button"
             onClick={() => setTarget("1.1.1.1")}
-            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+            className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
           >
             Cloudflare (1.1.1.1)
           </button>
           <button
             type="button"
             onClick={() => setTarget("103.167.70.0")}
-            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+            className="px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors"
           >
             Gateway ISP (103.167.70.0)
           </button>

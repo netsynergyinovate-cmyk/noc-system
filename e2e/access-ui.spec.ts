@@ -10,7 +10,7 @@ import { contextFor, signUp, type Cookies } from "./billing-ui";
 import { contrastOf } from "./contrast";
 
 // Kontrol akses per peran di halaman sungguhan (mode demo, port 3101): tautan
-// "Buka admin" mengikuti peran yang dipakai tampilan (peran asli dari server,
+// "Admin" mengikuti peran yang dipakai tampilan (peran asli dari server,
 // atau peran tiruan "Lihat sebagai"), sudah ada di HTML dari server untuk admin
 // asli (tanpa kedip), tidak ada untuk akun biasa, dan tidak memberi akses apa
 // pun: server tetap memakai peran asli. Mode live ada di setup-gate.spec.ts.
@@ -140,7 +140,7 @@ async function expectLink(
       isWide(viewport) ? barLink(page) : sidebarLink(page),
       label,
     ).toBeHidden();
-    await expect(visibleLink(page, viewport), label).toHaveText("Buka admin");
+    await expect(visibleLink(page, viewport), label).toHaveText("Admin");
     await expect(visibleLink(page, viewport), label).toHaveAttribute(
       "href",
       "/admin",
@@ -148,7 +148,7 @@ async function expectLink(
   } else {
     await expect(anyLink(page), label).toHaveCount(0);
     await expect(
-      page.getByRole("link", { name: "Buka admin" }),
+      page.getByRole("link", { name: "Admin" }),
       label,
     ).toHaveCount(0);
   }
@@ -217,10 +217,10 @@ async function visitEveryPage(
       const html = await response.text();
       if (present) {
         expect(adminLinksInHtml(html), label).toBe(2);
-        expect(html, label).toContain("Buka admin");
+        expect(html, label).toContain("Admin");
       } else {
         expect(adminLinksInHtml(html), label).toBe(0);
-        expect(html, label).not.toContain("Buka admin");
+        expect(html, label).not.toContain("Admin");
       }
 
       expect(await overflowX(page), label).toBeLessThanOrEqual(0);
@@ -244,14 +244,14 @@ async function visitEveryPage(
 // ---------------------------------------------------------------------------
 
 for (const viewport of [wide, narrow]) {
-  test(`admin asli: tautan "Buka admin" ada di semua halaman aplikasi dan di HTML dari server (${viewport.width} px), tanpa galat dan tanpa guliran`, async ({
+  test(`admin asli: tautan "Admin" ada di semua halaman aplikasi dan di HTML dari server (${viewport.width} px), tanpa galat dan tanpa guliran`, async ({
     browser,
   }) => {
     test.setTimeout(120_000);
     await asAdmin(() => visitEveryPage(browser, budi, viewport, true));
   });
 
-  test(`akun biasa: tautan "Buka admin" tidak ada di halaman maupun di HTML dari server (${viewport.width} px), tanpa galat dan tanpa guliran`, async ({
+  test(`akun biasa: tautan "Admin" tidak ada di halaman maupun di HTML dari server (${viewport.width} px), tanpa galat dan tanpa guliran`, async ({
     browser,
   }) => {
     test.setTimeout(120_000);
@@ -553,7 +553,7 @@ test("tanpa kedip: untuk admin asli tautan sudah ada di DOM saat domcontentloade
 // ---------------------------------------------------------------------------
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`kontras tautan "Buka admin" di tema ${scheme}: 4,5 : 1 di sidebar (1440 px) dan di header (390 px)`, async ({
+  test(`kontras tautan "Admin" di tema ${scheme}: 4,5 : 1 di sidebar (1440 px) dan di header (390 px)`, async ({
     browser,
   }) => {
     test.setTimeout(90_000);
@@ -574,7 +574,7 @@ for (const scheme of ["light", "dark"] as const) {
           const link = visibleLink(page, viewport);
           await expect(link).toBeVisible();
           const { text, ratio } = await contrastOf(link);
-          expect(text).toBe("Buka admin");
+          expect(text).toBe("Admin");
           expect(
             ratio,
             `tautan di ${viewport.width} px, tema ${scheme}`,

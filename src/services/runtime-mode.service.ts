@@ -1,27 +1,6 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { getRawPool } from "@/db";
 
 export type EnvironmentType = "local" | "server";
-export type DataModeType = "demo" | "live";
-
-function persistEnvConfig(key: string, value: string) {
-  try {
-    const envPath = resolve(process.cwd(), ".env.local");
-    if (existsSync(envPath)) {
-      let content = readFileSync(envPath, "utf-8");
-      const regex = new RegExp(`^${key}=.*$`, "m");
-      if (regex.test(content)) {
-        content = content.replace(regex, `${key}="${value}"`);
-      } else {
-        content = `${content.trimEnd()}\n${key}="${value}"\n`;
-      }
-      writeFileSync(envPath, content, "utf-8");
-    }
-  } catch {
-    // Abaikan jika env file tidak dapat ditulis
-  }
-}
 
 export interface EnvironmentInfo {
   environment: EnvironmentType;
@@ -32,9 +11,6 @@ export interface EnvironmentInfo {
 }
 
 export interface RuntimeModeStatus {
-  dataMode: DataModeType;
-  modeLabel: string;
-  dummyDataDisabled: boolean;
   databaseConnected: boolean;
   databaseDestination: string;
   environmentInfo: EnvironmentInfo;
@@ -78,16 +54,11 @@ export function detectEnvironment(hostHeader?: string | null): EnvironmentInfo {
 }
 
 /**
- * Membaca status runtime mode operasional dan ketersediaan database.
+ * Membaca status runtime operasional dan ketersediaan database.
  */
 export async function getRuntimeModeStatus(
   hostHeader?: string | null,
 ): Promise<RuntimeModeStatus> {
-  const dataMode: DataModeType =
-    process.env.DASHBOARD_DATA === "live" || process.env.DATA_MODE === "nyata"
-      ? "live"
-      : "demo";
-
   let databaseConnected = false;
   let routersCount = 0;
   let oltsCount = 0;
@@ -101,9 +72,9 @@ export async function getRuntimeModeStatus(
       databaseConnected = true;
 
       const [rRes, oRes, aRes] = await Promise.all([
-        client.query("SELECT COUNT(*) AS c FROM \"routers\"").catch(() => ({ rows: [{ c: 0 }] })),
-        client.query("SELECT COUNT(*) AS c FROM \"olts\"").catch(() => ({ rows: [{ c: 0 }] })),
-        client.query("SELECT COUNT(*) AS c FROM \"alerts\"").catch(() => ({ rows: [{ c: 0 }] })),
+        client.query('SELECT COUNT(*) AS c FROM "routers"').catch(() => ({ rows: [{ c: 0 }] })),
+        client.query('SELECT COUNT(*) AS c FROM "olts"').catch(() => ({ rows: [{ c: 0 }] })),
+        client.query('SELECT COUNT(*) AS c FROM "alerts"').catch(() => ({ rows: [{ c: 0 }] })),
       ]);
 
       routersCount = Number(rRes.rows[0]?.c ?? 0);
@@ -119,9 +90,6 @@ export async function getRuntimeModeStatus(
   const envInfo = detectEnvironment(hostHeader);
 
   return {
-    dataMode,
-    modeLabel: dataMode === "live" ? "Mode Live (Data Nyata)" : "Mode Simulasi (Demo)",
-    dummyDataDisabled: dataMode === "live",
     databaseConnected,
     databaseDestination: databaseConnected
       ? "PostgreSQL Active Database"
@@ -134,28 +102,4 @@ export async function getRuntimeModeStatus(
     },
     checkedAt: new Date().toISOString(),
   };
-}
-
-/**
- * Mengubah runtime mode (Live vs Simulasi).
- * Saat live: flag DASHBOARD_DATA disetel "live" dan DATA_MODE "nyata",
- * data dummy ditiadakan dan operasi diarahkan ke database PostgreSQL.
- */
-export async function setRuntimeMode(
-  targetMode: DataModeType,
-  hostHeader?: string | null,
-): Promise<RuntimeModeStatus> {
-  if (targetMode === "live") {
-    process.env.DASHBOARD_DATA = "live";
-    process.env.DATA_MODE = "nyata";
-    persistEnvConfig("DASHBOARD_DATA", "live");
-    persistEnvConfig("DATA_MODE", "nyata");
-  } else {
-    process.env.DASHBOARD_DATA = "demo";
-    process.env.DATA_MODE = "dummy";
-    persistEnvConfig("DASHBOARD_DATA", "demo");
-    persistEnvConfig("DATA_MODE", "dummy");
-  }
-
-  return getRuntimeModeStatus(hostHeader);
 }

@@ -103,7 +103,7 @@ test("settings-board: tab Perangkat, kartu cepat, link ke halaman lanjutan", () 
   assert.match(board, /<TabsTrigger value="devices"[\s\S]*?<span>Perangkat<\/span>/);
   assert.match(board, /<TabsContent value="devices"[\s\S]*?<DeviceQuickCards/);
   const cards = readFileSync("src/components/dashboard/device-quick-cards.tsx", "utf8");
-  assert.match(cards, /href="\/app\/pengaturan\/perangkat"/);
+  assert.match(cards, /href="\/app\/router"/);
   assert.match(cards, /<DeviceTestButton/);
   const button = readFileSync("src/components/dashboard/device-test-button.tsx", "utf8");
   assert.match(button, /Uji Koneksi/);

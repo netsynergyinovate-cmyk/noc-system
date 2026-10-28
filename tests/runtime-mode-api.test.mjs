@@ -15,7 +15,7 @@ register();
 
 const {
   detectEnvironment,
-  setRuntimeMode,
+  getRuntimeModeStatus,
 } = await import("../src/services/runtime-mode.service.ts");
 
 test("detectEnvironment mengidentifikasi localhost sebagai local", () => {
@@ -44,23 +44,16 @@ test("detectEnvironment mengidentifikasi host remote sebagai server", () => {
   assert.equal(server2.isLocalhost, false);
 });
 
-test("getRuntimeModeStatus dan setRuntimeMode beralih antara live dan demo", async () => {
-  // Set demo
-  const demoStatus = await setRuntimeMode("demo", "localhost:3000");
-  assert.equal(demoStatus.dataMode, "demo");
-  assert.equal(demoStatus.dummyDataDisabled, false);
-  assert.equal(process.env.DASHBOARD_DATA, "demo");
-
-  // Set live
-  const liveStatus = await setRuntimeMode("live", "localhost:3000");
-  assert.equal(liveStatus.dataMode, "live");
-  assert.equal(liveStatus.dummyDataDisabled, true);
-  assert.equal(process.env.DASHBOARD_DATA, "live");
-  assert.equal(process.env.DATA_MODE, "nyata");
+test("getRuntimeModeStatus mengembalikan status lingkungan dan database live", async () => {
+  const status = await getRuntimeModeStatus("localhost:3000");
+  assert.ok(status.environmentInfo);
+  assert.equal(status.environmentInfo.isLocalhost, true);
+  assert.equal(typeof status.databaseConnected, "boolean");
+  assert.ok(status.dbStats);
 });
 
-test("Route handler /api/settings/mode mengekspor method GET dan POST", async () => {
+test("Route handler /api/settings/mode mengekspor method GET dan tidak ada POST", async () => {
   const route = await import("../src/app/api/settings/mode/route.ts");
   assert.equal(typeof route.GET, "function");
-  assert.equal(typeof route.POST, "function");
+  assert.equal(typeof route.POST, "undefined");
 });

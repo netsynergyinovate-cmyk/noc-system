@@ -51,6 +51,7 @@ const num = (v: unknown): number | null => {
 };
 const bool = (v: unknown): boolean => v === true || v === "true" || v === 1 || v === "1";
 const sub = (node: Raw, path: string): unknown => readParam(node, path);
+export const isJunkMac = (mac: string): boolean => Boolean(mac) && (/^00:00:00:00:00:/i.test(mac) || /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac));
 
 const IGD = "InternetGatewayDevice";
 
@@ -166,7 +167,7 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
         const mac = (text(sub(a.node, "AssociatedDeviceMACAddress")) || text(sub(a.node, "MACAddress"))).toLowerCase();
         const ip = text(sub(a.node, "AssociatedDeviceIPAddress")) || text(sub(a.node, "IPAddress"));
         const rssi = num(sub(a.node, "RSSI"));
-        if (mac) {
+        if (mac && !isJunkMac(mac)) {
           associatedMacs.add(mac);
           associatedHosts.push({
             hostname: "",
@@ -192,6 +193,7 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     for (const h of instances(lan.node, "Hosts.Host")) {
       const iface = text(sub(h.node, "InterfaceType"));
       const mac = text(sub(h.node, "MACAddress")).toLowerCase();
+      if (mac && isJunkMac(mac)) continue;
       const ip = text(sub(h.node, "IPAddress"));
       const hostname = text(sub(h.node, "HostName"));
       const activeRaw = sub(h.node, "Active");

@@ -335,14 +335,21 @@ export function CustomerCpeDialog({
             )}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Sinyal optik</span>
-              <OpticalRx dbm={opticalInfo.rxPowerDbm} />
+              <OpticalRx dbm={opticalInfo.rxPowerDbm ?? cpe?.optical?.rxDbm ?? null} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                ["Daya Terima (RX Power)", opticalInfo.rxPowerDbm != null ? `${opticalInfo.rxPowerDbm} dBm` : "—"],
-                ["Daya Pancar (TX Power)", txDbm != null ? `${txDbm} dBm` : "—"],
-                ["Redaman Total (Loss)", opticalInfo.attenuationDb != null ? `${opticalInfo.attenuationDb} dB` : "—"],
-                ["Jarak Fiber", opticalInfo.distanceMeters === null ? "—" : `${opticalInfo.distanceMeters.toLocaleString("id-ID")} m`],
+                ["Daya Terima OLT", opticalInfo.rxPowerDbm != null ? `${opticalInfo.rxPowerDbm} dBm` : "—"],
+                ["Daya Terima Modem (TR-069)", cpe?.optical?.rxDbm != null ? `${cpe.optical.rxDbm} dBm` : "—"],
+                ["Daya Pancar Modem (TX)", (cpe?.optical?.txDbm ?? txDbm) != null ? `${cpe?.optical?.txDbm ?? txDbm} dBm` : "—"],
+                [
+                  "Redaman Total (Loss)",
+                  opticalInfo.attenuationDb != null
+                    ? `${opticalInfo.attenuationDb} dB`
+                    : cpe?.optical?.rxDbm != null && cpe?.optical?.txDbm != null
+                      ? `${Math.round((cpe.optical.txDbm - cpe.optical.rxDbm) * 100) / 100} dB`
+                      : "—",
+                ],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-md border p-3">
                   <div className="text-xs text-muted-foreground">{label}</div>

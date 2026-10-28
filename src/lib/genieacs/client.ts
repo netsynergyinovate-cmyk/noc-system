@@ -131,7 +131,9 @@ function parseHosts(raw: Raw): CpeHostClient[] {
     for (const a of indexes(raw, assocBase)) {
       const p = `${assocBase}.${a}`;
       const mac = (str(read(raw, `${p}.AssociatedDeviceMACAddress`)) || str(read(raw, `${p}.MACAddress`))).toLowerCase();
-      if (mac) associatedMacs.add(mac);
+      if (mac && !/^00:00:00:00:00:/i.test(mac) && !/^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)) {
+        associatedMacs.add(mac);
+      }
     }
   }
 
@@ -144,7 +146,7 @@ function parseHosts(raw: Raw): CpeHostClient[] {
       const p = `${base}.${i}`;
       const ip = str(read(raw, `${p}.IPAddress`));
       const mac = (str(read(raw, `${p}.MACAddress`)) || str(read(raw, `${p}.PhysAddress`))).toLowerCase();
-      if (!ip && !mac) continue;
+      if ((!ip && !mac) || (mac && (/^00:00:00:00:00:/i.test(mac) || /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)))) continue;
       const activeRaw = read(raw, `${p}.Active`);
       const isActive = (mac && associatedMacs.has(mac)) || (activeRaw === undefined ? true : bool(activeRaw));
       hosts.push({

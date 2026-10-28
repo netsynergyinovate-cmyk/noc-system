@@ -258,6 +258,7 @@ test("refreshCpeRealtime: hanya meminta parameter & objek yang benar-benar ada d
     "InternetGatewayDevice.DeviceInfo.XponInterface.TXPower",
     "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature",
     "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations",
+    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.2.TotalAssociations",
     "InternetGatewayDevice.DeviceInfo.UpTime",
   ]);
   // Memastikan cabang vendor yang tidak ada (X_ALU) tidak ikut diminta

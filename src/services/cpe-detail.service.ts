@@ -73,6 +73,10 @@ export async function refreshCpeRealtime(
   for (const candidate of deviceIdCandidates(id)) {
     const raw = await client.getRawDevice(candidate);
     if (!raw) continue;
+    const resolvedId =
+      raw !== null && typeof raw === "object" && "_id" in raw && typeof raw._id === "string"
+        ? raw._id
+        : candidate;
 
     // Kumpulkan parameter leaf yang benar-benar ada di pohon modem ini
     const paramNames: string[] = [];
@@ -104,85 +108,78 @@ export async function refreshCpeRealtime(
       );
     }
 
-    if (readParam(raw, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations") !== undefined) {
-      paramNames.push("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations");
+    for (const i of [1, 2, 3, 4, 5]) {
+      if (readParam(raw, `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`) !== undefined) {
+        paramNames.push(`InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`);
+      }
     }
     if (readParam(raw, "InternetGatewayDevice.DeviceInfo.UpTime") !== undefined) {
       paramNames.push("InternetGatewayDevice.DeviceInfo.UpTime");
     }
 
-    const tasksSent: string[] = [];
-    let allOk = true;
-    let anyApplied = false;
-    let lastStatus = 200;
+    const objectsToRefresh: string[] = [];
+    if (hasNode(raw, "InternetGatewayDevice.LANDevice.1.Hosts")) {
+      objectsToRefresh.push("InternetGatewayDevice.LANDevice.1.Hosts.Host");
+    } else if (hasNode(raw, "Device.Hosts")) {
+      objectsToRefresh.push("Device.Hosts.Host");
+    }
 
-    // 1. Minta pembacaan parameter nilai (redaman, total asosiasi, uptime)
+    for (const i of [1, 2, 3, 4, 5]) {
+      if (hasNode(raw, `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`)) {
+        objectsToRefresh.push(`InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`);
+      }
+    }
+
+    const tasks: Array<{ task: Record<string, unknown>; desc: string }> = [];
     if (paramNames.length > 0) {
-      tasksSent.push("getParameterValues");
+      tasks.push({ task: { name: "getParameterValues", parameterNames: paramNames }, desc: "getParameterValues" });
+    }
+    for (const obj of objectsToRefresh) {
+      tasks.push({ task: { name: "refreshObject", objectName: obj }, desc: `refreshObject:${obj}` });
+    }
+
+    if (tasks.length === 0) {
+      return { ok: true, refreshed: false, status: 200, tasksSent: [] };
+    }
+
+    // Batch: kirim task 1 s.d. n-1 tanpa wake-up (connectionRequest=false),
+    // lalu kirim task terakhir DENGAN connection_request=true & timeout.
+    // Modem hanya dibangunkan SEKALI dan menyelesaikan semua task dalam satu sesi.
+    const postedTaskIds: string[] = [];
+    const tasksSent: string[] = [];
+    let lastStatus = 200;
+    let anyApplied = false;
+
+    for (let i = 0; i < tasks.length; i++) {
+      const isLast = i === tasks.length - 1;
+      const { task, desc } = tasks[i];
+      tasksSent.push(desc);
+
       const res = await client.postTask(
-        candidate,
-        { name: "getParameterValues", parameterNames: paramNames },
-        true,
-        READBACK_WAIT_MS,
+        resolvedId,
+        task,
+        isLast,
+        isLast ? READBACK_WAIT_MS : undefined,
       );
-      lastStatus = res.status ?? (res.ok ? 200 : 500);
-      if (res.ok && res.status === 200) {
-        anyApplied = true;
-      } else {
-        allOk = false;
-        if (res.status === 202 && res.taskId) {
-          await client.deleteTask(res.taskId);
+
+      if (res.taskId) postedTaskIds.push(res.taskId);
+      if (isLast) {
+        lastStatus = res.status ?? (res.ok ? 200 : 500);
+        if (res.ok && res.status === 200) {
+          anyApplied = true;
         }
       }
     }
 
-    // 2. Minta penyegaran pohon host kabel & Wi-Fi
-    const objectToRefresh = hasNode(raw, "InternetGatewayDevice.LANDevice.1.Hosts")
-      ? "InternetGatewayDevice.LANDevice.1.Hosts.Host"
-      : hasNode(raw, "Device.Hosts")
-        ? "Device.Hosts.Host"
-        : null;
-
-    if (objectToRefresh) {
-      tasksSent.push(`refreshObject:${objectToRefresh}`);
-      const objRes = await client.postTask(
-        candidate,
-        { name: "refreshObject", objectName: objectToRefresh },
-        true,
-        READBACK_WAIT_MS,
-      );
-      if (objRes.ok && objRes.status === 200) {
-        anyApplied = true;
-      } else {
-        allOk = false;
-        if (objRes.status === 202 && objRes.taskId) {
-          await client.deleteTask(objRes.taskId);
-        }
-      }
-    }
-
-    // 3. Minta penyegaran pohon AssociatedDevice bila firmware mendukung
-    if (hasNode(raw, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDevice")) {
-      const assocTarget = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDevice";
-      tasksSent.push(`refreshObject:${assocTarget}`);
-      const assocRes = await client.postTask(
-        candidate,
-        { name: "refreshObject", objectName: assocTarget },
-        true,
-        READBACK_WAIT_MS,
-      );
-      if (assocRes.ok && assocRes.status === 200) {
-        anyApplied = true;
-      } else {
-        allOk = false;
-        if (assocRes.status === 202 && assocRes.taskId) {
-          await client.deleteTask(assocRes.taskId);
-        }
+    // Bila tidak selesai 200 (mis. 202/timeout), bersihkan semua task yang diantrekan
+    if (!anyApplied) {
+      for (const tid of postedTaskIds) {
+        await client.deleteTask(tid);
       }
     }
 
     return {
-      ok: anyApplied || allOk,
+      ok: anyApplied,
       refreshed: anyApplied,
       status: anyApplied ? 200 : lastStatus,
       tasksSent,

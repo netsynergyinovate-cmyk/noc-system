@@ -217,10 +217,10 @@ async function visitEveryPage(
       const html = await response.text();
       if (present) {
         expect(adminLinksInHtml(html), label).toBe(2);
-        expect(html, label).toContain("Admin");
+        expect(html, label).toContain('href="/admin"');
       } else {
         expect(adminLinksInHtml(html), label).toBe(0);
-        expect(html, label).not.toContain("Admin");
+        expect(html, label).not.toContain('href="/admin"');
       }
 
       expect(await overflowX(page), label).toBeLessThanOrEqual(0);

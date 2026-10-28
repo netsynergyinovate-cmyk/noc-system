@@ -68,7 +68,7 @@ export function AppShell({
                   <Link
                     href="/admin"
                     title="Buka panel admin"
-                    className="text-[10px] text-muted-foreground hover:text-foreground font-mono underline"
+                    className="inline-flex items-center justify-center h-7 px-2 text-xs text-muted-foreground hover:text-foreground font-medium rounded-md border border-border/60 bg-muted/40 transition-colors"
                   >
                     Admin
                   </Link>
@@ -90,7 +90,7 @@ export function AppShell({
               <Link
                 href="/admin"
                 title="Buka panel admin"
-                className="text-xs text-muted-foreground hover:text-foreground font-mono underline"
+                className="inline-flex items-center justify-center h-7 px-2 text-xs text-muted-foreground hover:text-foreground font-medium rounded-md border border-border/60 bg-muted/40 transition-colors"
               >
                 Admin
               </Link>

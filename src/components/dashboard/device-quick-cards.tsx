@@ -105,6 +105,28 @@ export function DeviceQuickCards() {
     setTestingIds((prev) => (busy ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((x) => x !== id)));
   }
 
+  async function runRealDeviceTest(d: DeviceConfig): Promise<TestOutcome> {
+    const endpoint = d.type === "mikrotik" ? `/api/routers/${d.id}/test` : `/api/olts/${d.id}/test`;
+    const res = await fetch(endpoint, { method: "POST" });
+    const json = await res.json();
+    if (json?.data) {
+      return {
+        ok: Boolean(json.data.ok),
+        message: json.data.message || (json.data.ok ? "Koneksi perangkat berhasil" : "Koneksi perangkat gagal"),
+        latencyMs: json.data.latencyMs ?? null,
+        statusCode: json.data.statusCode,
+        code: json.data.code,
+        endpointTested: json.data.endpointTested,
+        status: json.data.ok ? "connected" : "error",
+      };
+    }
+    return {
+      ok: res.ok,
+      message: json?.message || (res.ok ? "Uji koneksi berhasil" : "Uji koneksi gagal"),
+      latencyMs: null,
+      status: res.ok ? "connected" : "error",
+    };
+  }
   const sum = summarizeDeviceStatuses(devices, testingIds);
 
   return (
@@ -194,7 +216,7 @@ export function DeviceQuickCards() {
                       <div className="min-w-0">
                         <CardTitle className="text-base">{d.name}</CardTitle>
                         <CardDescription className="text-xs">
-                          {getDeviceTypeLabel(d.type)} &bull; {d.host.includes(":") ? d.host : `${d.host}:${d.port}`}
+                          {getDeviceTypeLabel(d.type)} &bull; {d.host}
                         </CardDescription>
                       </div>
                       <DeviceStatusBadge status={d.status} isTesting={testingIds.includes(d.id)} latencyMs={d.latencyMs} />
@@ -213,6 +235,7 @@ export function DeviceQuickCards() {
                       device={d}
                       onOutcome={(r) => onOutcome(d, r)}
                       onTestingChange={(b) => setTesting(d.id, b)}
+                      customTest={runRealDeviceTest}
                     />
                   </CardContent>
                 </Card>

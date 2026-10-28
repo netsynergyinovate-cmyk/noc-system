@@ -39,6 +39,8 @@ interface Props {
   label?: string;
   ariaLabel?: string;
   variant?: "default" | "outline" | "ghost";
+  /** Fungsi pengujian khusus (mis. endpoint riil /api/routers/[id]/test). */
+  customTest?: (device: DeviceConfig) => Promise<TestOutcome>;
 }
 
 export function DeviceTestButton({
@@ -51,6 +53,7 @@ export function DeviceTestButton({
   label = "Uji Koneksi",
   ariaLabel,
   variant = "outline",
+  customTest,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [local, setLocal] = useState(forceLocal);
@@ -67,7 +70,7 @@ export function DeviceTestButton({
     setBusy(true);
     onTestingChange?.(true);
     try {
-      const r = await runDeviceTest(device, { forceLocal: useLocal });
+      const r = customTest ? await customTest(device) : await runDeviceTest(device, { forceLocal: useLocal });
       const full: TestOutcome = { ...r, timestamp: r.timestamp ?? Math.floor(Date.now() / 1000) };
       setOutcome(full);
       onOutcome?.(full);

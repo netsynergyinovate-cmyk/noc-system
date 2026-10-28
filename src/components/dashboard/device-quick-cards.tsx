@@ -194,7 +194,7 @@ export function DeviceQuickCards() {
                       <div className="min-w-0">
                         <CardTitle className="text-base">{d.name}</CardTitle>
                         <CardDescription className="text-xs">
-                          {getDeviceTypeLabel(d.type)} &bull; {d.host}:{d.port}
+                          {getDeviceTypeLabel(d.type)} &bull; {d.host.includes(":") ? d.host : `${d.host}:${d.port}`}
                         </CardDescription>
                       </div>
                       <DeviceStatusBadge status={d.status} isTesting={testingIds.includes(d.id)} latencyMs={d.latencyMs} />
@@ -213,7 +213,6 @@ export function DeviceQuickCards() {
                       device={d}
                       onOutcome={(r) => onOutcome(d, r)}
                       onTestingChange={(b) => setTesting(d.id, b)}
-                      showDropdownOrToggle
                     />
                   </CardContent>
                 </Card>

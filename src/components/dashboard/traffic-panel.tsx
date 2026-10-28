@@ -77,14 +77,14 @@ export function SeriesStat({
   return (
     <section
       aria-label={`Traffic ${label.toLowerCase()}`}
-      className={`flex items-center justify-between bg-zinc-900/60 px-3 py-2 rounded border transition-colors ${
+      className={`flex items-center justify-between bg-muted/40 px-3 py-2 rounded border transition-colors ${
         isInspecting
           ? "border-emerald-500/50 bg-emerald-950/20 shadow-sm shadow-emerald-500/10"
-          : "border-zinc-800"
+          : "border-border"
       }`}
     >
       <div>
-        <h3 className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <h3 className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span
             aria-hidden="true"
             className="w-4 border-t-[3px] border-solid rounded-full"
@@ -94,13 +94,13 @@ export function SeriesStat({
           <span className="flex items-center gap-1 text-[10px]">
             <span
               className={
-                isInspecting ? "text-emerald-400 font-semibold" : "text-zinc-500"
+                isInspecting ? "text-emerald-400 font-semibold" : "text-muted-foreground"
               }
             >
               {latestLabel}
             </span>
             {labelSuffix && (
-              <span className="font-mono text-zinc-400 text-[9px]">
+              <span className="font-mono text-muted-foreground text-[9px]">
                 {labelSuffix}
               </span>
             )}
@@ -109,21 +109,21 @@ export function SeriesStat({
         <p
           data-testid={testId}
           id={testId === "download-now" ? "traffic-download-val" : "traffic-upload-val"}
-          className="mt-0.5 text-lg font-bold text-white tracking-tight tabular-nums font-mono"
+          className="mt-0.5 text-lg font-bold text-foreground tracking-tight tabular-nums font-mono"
         >
           {show(displayVal)}
         </p>
       </div>
-      <dl className="text-right text-[11px] text-zinc-400 space-y-0.5 font-mono">
+      <dl className="text-right text-[11px] text-muted-foreground space-y-0.5 font-mono">
         <div className="flex justify-end gap-1.5">
           <dt>Puncak</dt>
-          <dd className="font-medium text-white tabular-nums">
+          <dd className="font-medium text-foreground tabular-nums">
             {show(stats?.peak)}
           </dd>
         </div>
         <div className="flex justify-end gap-1.5">
           <dt>Rata-rata</dt>
-          <dd className="font-medium text-zinc-300 tabular-nums">
+          <dd className="font-medium text-foreground/90 tabular-nums">
             {show(stats?.average)}
           </dd>
         </div>
@@ -221,7 +221,7 @@ export type HistoryState =
 // Memuat histori untuk rentang yang dipilih. Hasil untuk rentang yang sudah
 // ditinggalkan dibuang, jadi berpindah rentang dengan cepat tidak menampilkan
 // grafik yang salah.
-export function useTrafficHistory(range: TrafficRangeId, demo: boolean) {
+export function useTrafficHistory(range: TrafficRangeId, demo: boolean, poll = true) {
   const [state, setState] = useState<HistoryState | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -240,6 +240,14 @@ export function useTrafficHistory(range: TrafficRangeId, demo: boolean) {
     };
 
     fetchHistory();
+
+    // `poll` false: histori dimuat sekali per rentang; ujung grafik digerakkan titik
+    // live dari WebSocket (TrafficChart followLive), bukan permintaan berulang.
+    if (!poll) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // Auto-refresh berkala agar grafik histori (1 jam, 6 jam, 24 jam, 7 hari)
     // terus BERJALAN ("jalan") mengikuti waktu dan telemetri riil database.
@@ -265,7 +273,7 @@ export function useTrafficHistory(range: TrafficRangeId, demo: boolean) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [range, attempt, demo]);
+  }, [range, attempt, demo, poll]);
 
   const current = state?.range === range ? state : null;
   return {

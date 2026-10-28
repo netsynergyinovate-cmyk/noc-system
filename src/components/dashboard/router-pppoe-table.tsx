@@ -105,10 +105,10 @@ export function RouterPppoeTable({
   return (
     <div className="space-y-3 font-mono text-xs">
       {/* Header Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 border border-border">
         <div className="flex items-center gap-2">
           <Users className="size-4 text-cyan-400" />
-          <span className="font-semibold text-white">Sesi PPPoE Aktif:</span>
+          <span className="font-semibold text-foreground">Sesi PPPoE Aktif:</span>
           <Badge variant="outline" className="border-cyan-800/80 bg-cyan-950/40 text-cyan-400 font-semibold text-[11px]">
             {allSessions.length} Sesi Terhubung
           </Badge>
@@ -116,13 +116,13 @@ export function RouterPppoeTable({
 
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cari user, IP, MAC, nama..."
-              className="h-8 pl-8 pr-3 w-56 text-xs bg-zinc-950 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 rounded-lg"
+              className="h-8 pl-8 pr-3 w-56 text-xs bg-background border-border text-foreground placeholder:text-muted-foreground rounded-lg"
             />
           </div>
           <Button
@@ -131,7 +131,7 @@ export function RouterPppoeTable({
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="h-8 px-2.5 bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 text-xs gap-1.5"
+            className="h-8 px-2.5 bg-muted hover:bg-muted border-border text-foreground/90 text-xs gap-1.5"
           >
             <RefreshCw className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`} />
             <span>{isRefreshing ? "..." : "Segarkan"}</span>
@@ -146,9 +146,9 @@ export function RouterPppoeTable({
       )}
 
       {/* Table Container */}
-      <div className="max-h-80 overflow-y-auto rounded-xl border border-zinc-800/80 bg-zinc-950/80">
+      <div className="max-h-80 overflow-y-auto rounded-xl border border-border bg-card">
         <table className="w-full text-left whitespace-nowrap">
-          <thead className="sticky top-0 bg-zinc-900 text-zinc-400 font-mono text-[10px] uppercase tracking-wider border-b border-zinc-800">
+          <thead className="sticky top-0 bg-muted text-muted-foreground font-mono text-[10px] uppercase tracking-wider border-b border-border">
             <tr>
               <th className="py-2.5 px-3">#</th>
               <th className="py-2.5 px-3">Pelanggan / Username</th>
@@ -158,18 +158,18 @@ export function RouterPppoeTable({
               <th className="py-2.5 px-3 text-right">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60 text-[11px]">
+          <tbody className="divide-y divide-border/60 text-[11px]">
             {isRefreshing && allSessions.length === 0 ? (
               [0, 1, 2, 3].map((i) => (
                 <tr key={`skel-${i}`}>
                   <td colSpan={6} className="py-3 px-3">
-                    <div className="h-4 w-full animate-pulse rounded bg-zinc-800/60" />
+                    <div className="h-4 w-full animate-pulse rounded bg-muted/60" />
                   </td>
                 </tr>
               ))
             ) : visible.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-zinc-500">
+                <td colSpan={6} className="py-8 text-center text-muted-foreground">
                   {allSessions.length === 0
                     ? `Tidak ada sesi PPPoE aktif di ${routerName}.`
                     : "Tidak ada sesi yang cocok dengan kata kunci pencarian."}
@@ -177,14 +177,14 @@ export function RouterPppoeTable({
               </tr>
             ) : (
               visible.map((s, idx) => (
-                <tr key={s.id || s.name} className="hover:bg-zinc-900/40 transition-colors">
-                  <td className="py-2.5 px-3 text-zinc-500 text-[10px]">{idx + 1}</td>
+                <tr key={s.id || s.name} className="hover:bg-muted/30 transition-colors">
+                  <td className="py-2.5 px-3 text-muted-foreground text-[10px]">{idx + 1}</td>
                   <td className="py-2.5 px-3">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-white">
+                      <span className="font-semibold text-foreground">
                         {s.customerName || s.name.split("@")[0]}
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-mono">{s.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{s.name}</span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
@@ -193,7 +193,7 @@ export function RouterPppoeTable({
                       <button
                         type="button"
                         onClick={() => handleCopy(s.address, s.id + "-ip")}
-                        className="text-zinc-500 hover:text-white transition-colors"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
                         title="Salin IP"
                       >
                         {copiedId === s.id + "-ip" ? (
@@ -204,8 +204,8 @@ export function RouterPppoeTable({
                       </button>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-zinc-400 font-mono text-[10px]">{s.callerId || "—"}</td>
-                  <td className="py-2.5 px-3 text-zinc-300 font-mono text-[10px]">{s.uptimeHuman || s.uptime}</td>
+                  <td className="py-2.5 px-3 text-muted-foreground font-mono text-[10px]">{s.callerId || "—"}</td>
+                  <td className="py-2.5 px-3 text-foreground/90 font-mono text-[10px]">{s.uptimeHuman || s.uptime}</td>
                   <td className="py-2.5 px-3 text-right">
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 text-[10px]">
                       <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />

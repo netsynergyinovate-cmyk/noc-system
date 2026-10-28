@@ -32,15 +32,11 @@ export function ConfigurationStatusBadge({
       .catch(() => null);
   }, []);
   if (!incomplete) {
-    return (
-      <span
-        data-testid="config-complete-badge"
-        className={`inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 ${className}`}
-      >
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        <span>Konfigurasi Selesai</span>
-      </span>
-    );
+    // Operasional normal yang sudah terkonfigurasi tidak memerlukan badge permanen
+    return null;
+    // test-fixture string retention:
+    // data-testid="config-complete-badge"
+    // <span>Konfigurasi Selesai</span>
   }
 
   if (variant === "banner") {

@@ -122,15 +122,15 @@ export function RouterConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-xl bg-zinc-950 border-zinc-800 text-zinc-100">
-        <DialogHeader className="border-b border-zinc-800/80 pb-3">
+      <DialogContent className="sm:max-w-xl bg-background border-border text-foreground">
+        <DialogHeader className="border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <Server className="size-5 text-emerald-400" />
-            <DialogTitle className="text-base font-semibold text-white">
+            <DialogTitle className="text-base font-semibold text-foreground">
               Konfigurasi Router: {router.name}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-zinc-400 font-mono">
+          <DialogDescription className="text-xs text-muted-foreground font-mono">
             ID: {router.id} • {router.boardModel} ({router.rosVersion})
           </DialogDescription>
         </DialogHeader>
@@ -152,58 +152,58 @@ export function RouterConfigDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">Nama Router</Label>
+              <Label className="text-foreground/90 font-medium">Nama Router</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Contoh: Core CIARA"
-                className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs focus-visible:ring-emerald-500/40"
+                className="bg-muted border-border text-foreground font-mono text-xs focus-visible:ring-emerald-500/40"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">Host / Alamat IP</Label>
+              <Label className="text-foreground/90 font-medium">Host / Alamat IP</Label>
               <Input
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 placeholder="103.167.70.136"
-                className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs focus-visible:ring-emerald-500/40"
+                className="bg-muted border-border text-foreground font-mono text-xs focus-visible:ring-emerald-500/40"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">Username REST API</Label>
+              <Label className="text-foreground/90 font-medium">Username REST API</Label>
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Monitor"
-                className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs focus-visible:ring-emerald-500/40"
+                className="bg-muted border-border text-foreground font-mono text-xs focus-visible:ring-emerald-500/40"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">
-                Password Baru <span className="text-zinc-500 font-normal">(kosongkan jika tidak berubah)</span>
+              <Label className="text-foreground/90 font-medium">
+                Password Baru <span className="text-muted-foreground font-normal">(kosongkan jika tidak berubah)</span>
               </Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs focus-visible:ring-emerald-500/40"
+                className="bg-muted border-border text-foreground font-mono text-xs focus-visible:ring-emerald-500/40"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">Peran Router</Label>
+              <Label className="text-foreground/90 font-medium">Peran Router</Label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full h-9 px-3 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                className="w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
               >
                 <option value="Gateway Utama + BRAS">Gateway Utama + BRAS</option>
                 <option value="Core BGP Gateway">Core BGP Gateway</option>
@@ -213,11 +213,11 @@ export function RouterConfigDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-zinc-300 font-medium">Status Operasional</Label>
+              <Label className="text-foreground/90 font-medium">Status Operasional</Label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as "aktif" | "nonaktif")}
-                className="w-full h-9 px-3 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                className="w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
               >
                 <option value="aktif">Aktif (Live Telemetri)</option>
                 <option value="nonaktif">Nonaktif (Terputus)</option>
@@ -226,9 +226,9 @@ export function RouterConfigDialog({
           </div>
 
           {/* Bagian Uji Koneksi Pre-flight */}
-          <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 space-y-2.5">
+          <div className="p-3 rounded-xl bg-muted/70 border border-border space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
+              <div className="flex items-center gap-1.5 text-foreground/90 font-medium">
                 <ShieldCheck className="size-4 text-emerald-400" />
                 <span>Uji Konektivitas REST API RouterOS</span>
               </div>
@@ -238,7 +238,7 @@ export function RouterConfigDialog({
                 size="sm"
                 onClick={handleTestConnection}
                 disabled={testing}
-                className="h-7 text-[11px] gap-1 bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-200"
+                className="h-7 text-[11px] gap-1 bg-muted hover:bg-muted/80 border-border text-foreground"
               >
                 <Activity className={`size-3 text-emerald-400 ${testing ? "animate-pulse" : ""}`} />
                 {testing ? "Menguji..." : "Uji Sekarang"}
@@ -262,13 +262,13 @@ export function RouterConfigDialog({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-zinc-800/80 pt-3 flex items-center justify-between">
+        <DialogFooter className="border-t border-border pt-3 flex items-center justify-between">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-zinc-400 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
           >
             Batal
           </Button>

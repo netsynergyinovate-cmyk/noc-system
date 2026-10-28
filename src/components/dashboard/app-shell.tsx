@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Can } from "@/components/access";
 import { AlertSoundToggle } from "./alert-sound-toggle";
 import { AppNav } from "./app-nav";
 import { ConfigurationStatusBadge } from "./configuration-status-badge";
@@ -31,7 +32,7 @@ export function AppShell({
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-card px-4 py-5 lg:flex">
         <div className="flex flex-col gap-2">
           <NocBrand />
-          {locked && <ConfigurationStatusBadge incomplete={locked} />}
+          <ConfigurationStatusBadge incomplete={locked} />
         </div>
         <AppNav variant="sidebar" locked={locked} />
         <div className="mt-auto flex flex-col gap-2.5 border-t border-border/60 pt-3">
@@ -61,7 +62,18 @@ export function AppShell({
               </div>
             </Link>
             <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
-              <RoleBadge variant="sidebar" />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <RoleBadge variant="sidebar" />
+                <Can to="adminArea">
+                  <Link
+                    href="/admin"
+                    title="Buka panel admin"
+                    className="text-[10px] text-muted-foreground hover:text-foreground font-mono underline"
+                  >
+                    Admin
+                  </Link>
+                </Can>
+              </div>
               <SignOutButton />
             </div>
           </div>
@@ -71,7 +83,7 @@ export function AppShell({
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 lg:hidden">
           <NocBrand />
           <div className="flex flex-wrap items-center gap-2">
-            {locked && <ConfigurationStatusBadge incomplete={locked} />}
+            <ConfigurationStatusBadge incomplete={locked} />
             <ThemeToggle />
             <AlertSoundToggle />
             <SignOutButton />

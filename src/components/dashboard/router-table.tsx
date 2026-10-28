@@ -231,12 +231,12 @@ function RealtimeThroughputCanvas({
   return (
     <div className="relative w-full h-36 pt-1">
       <canvas ref={canvasRef} className="w-full h-full block" />
-      <div className="flex justify-between items-center text-zinc-500 font-mono text-[10px] pt-1.5 border-t border-zinc-800/40">
+      <div className="flex justify-between items-center text-muted-foreground font-mono text-[10px] pt-1.5 border-t border-border/40">
         <span>-60 detik</span>
         <span>-45 detik</span>
         <span>-30 detik</span>
         <span>-15 detik</span>
-        <span className="text-zinc-200 font-medium flex items-center gap-1.5">
+        <span className="text-foreground font-medium flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
           Sekarang
         </span>
@@ -370,55 +370,49 @@ export function RouterTable() {
   }, [primaryRouter]);
 
   return (
-    <div className="flex flex-col gap-6 w-full text-zinc-100">
+    <div className="flex flex-col gap-6 w-full text-foreground">
       {/* 1. Telemetry Quick Filter & Status Strip */}
-      <div className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-2xl bg-zinc-950/80 px-5 py-3 border border-zinc-800/80 shadow-sm backdrop-blur-md">
-        <div className="flex flex-wrap items-center gap-3 lg:gap-5 font-mono text-[11px] text-zinc-400">
+      <div className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-2xl bg-card px-5 py-3 border border-border shadow-sm backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-3 lg:gap-5 font-mono text-[11px] text-muted-foreground">
           <div className="flex items-center gap-2">
             <Server className="size-3.5 text-emerald-400" />
-            <span className="text-zinc-500 uppercase">ROUTER:</span>
-            <span className="text-white font-semibold">
+            <span className="text-muted-foreground uppercase">ROUTER:</span>
+            <span className="text-foreground font-semibold">
               {activeCount}/{details.length} ONLINE
             </span>
           </div>
-          <span className="text-zinc-800 hidden sm:inline">|</span>
+          <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
-            <Network className="size-3.5 text-zinc-400" />
-            <span className="text-zinc-500 uppercase">OLT:</span>
-            <span className="text-white font-semibold">1/1 ONLINE</span>
+            <Network className="size-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground uppercase">OLT:</span>
+            <span className="text-foreground font-semibold">1/1 ONLINE</span>
           </div>
-          <span className="text-zinc-800 hidden sm:inline">|</span>
+          <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
-            <Layers className="size-3.5 text-zinc-400" />
-            <span className="text-zinc-500 uppercase">ONU:</span>
-            <span className="text-white font-semibold">69 TERDAFTAR</span>
+            <Layers className="size-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground uppercase">ONU:</span>
+            <span className="text-foreground font-semibold">69 TERDAFTAR</span>
           </div>
-          <span className="text-zinc-800 hidden sm:inline">|</span>
+          <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Users className="size-3.5 text-cyan-400" />
-            <span className="text-zinc-500 uppercase">PPPoE ACTIVE:</span>
-            <span className="text-white font-semibold">{totalPppoe} SESI</span>
+            <span className="text-muted-foreground uppercase">PPPoE ACTIVE:</span>
+            <span className="text-foreground font-semibold">{totalPppoe} SESI</span>
           </div>
-          <span className="text-zinc-800 hidden sm:inline">|</span>
+          <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Gauge className="size-3.5 text-cyan-400" />
-            <span className="text-zinc-500 uppercase">AGGREGATE:</span>
-            <span className="text-white font-semibold">{aggregateMbps} Mbps</span>
-          </div>
-          <span className="text-zinc-800 hidden sm:inline">|</span>
-          <div className="flex items-center gap-2">
-            <Database className="size-3.5 text-emerald-400" />
-            <span className="text-zinc-500 uppercase">POSTGRESQL:</span>
-            <span className="text-emerald-400 font-semibold">CONNECTED</span>
+            <span className="text-muted-foreground uppercase">AGGREGATE:</span>
+            <span className="text-foreground font-semibold">{aggregateMbps} Mbps</span>
           </div>
         </div>
 
-        <div className="flex items-center self-start lg:self-auto bg-zinc-900/90 p-0.5 rounded-xl border border-zinc-800/80 font-mono text-[10px]">
+        <div className="flex items-center self-start lg:self-auto bg-muted/60 p-0.5 rounded-xl border border-border font-mono text-[10px]">
           <button
             type="button"
             onClick={() => setDeviceScope("all")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "all" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+              deviceScope === "all" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Semua Perangkat
@@ -427,7 +421,7 @@ export function RouterTable() {
             type="button"
             onClick={() => setDeviceScope("router")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "router" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+              deviceScope === "router" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Router Saja
@@ -436,7 +430,7 @@ export function RouterTable() {
             type="button"
             onClick={() => setDeviceScope("olt")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "olt" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+              deviceScope === "olt" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             OLT Saja
@@ -448,7 +442,7 @@ export function RouterTable() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Core Router Highlight (7 cols) */}
         {primaryRouter && (
-          <div className="xl:col-span-7 rounded-2xl bg-zinc-950/70 p-5 lg:p-6 flex flex-col justify-between border border-zinc-800/80 shadow-sm gap-5">
+          <div className="xl:col-span-7 rounded-2xl bg-card p-5 lg:p-6 flex flex-col justify-between border border-border shadow-sm gap-5">
             <div className="flex flex-col gap-5">
               {/* Card Header */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -459,44 +453,44 @@ export function RouterTable() {
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-white tracking-tight">{primaryRouter.name}</h2>
-                      <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px]">
+                      <h2 className="text-base font-bold text-foreground tracking-tight">{primaryRouter.name}</h2>
+                      <span className="px-2 py-0.5 rounded-md bg-muted border border-border text-muted-foreground font-mono text-[10px]">
                         {primaryRouter.role}
                       </span>
                     </div>
-                    <span className="font-mono text-xs text-zinc-400">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {primaryRouter.host} • {primaryRouter.asn || "AS139542"}
                     </span>
                   </div>
                 </div>
 
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-[10px] uppercase">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-foreground/90 font-mono text-[10px] uppercase">
                   <Server className="size-3 text-cyan-400" />
                   {primaryRouter.boardModel}
                 </span>
               </div>
 
               {/* Realtime Throughput Chart Section */}
-              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-2.5 border-b border-zinc-800/60">
+              <div className="p-4 rounded-xl bg-muted/40 border border-border flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-2.5 border-b border-border">
                   <div className="flex items-center gap-2">
                     <Activity className="size-4 text-cyan-400" />
-                    <span className="font-mono text-xs text-zinc-200 font-semibold uppercase tracking-wider">
+                    <span className="font-mono text-xs text-foreground font-semibold uppercase tracking-wider">
                       Live Throughput Monitor
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 font-mono text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-cyan-400" />
-                      <span className="text-zinc-400">RX (Download):</span>
-                      <span className="text-white font-semibold">{currentDl} Mbps</span>
+                      <span className="text-muted-foreground">RX (Download):</span>
+                      <span className="text-foreground font-semibold">{currentDl} Mbps</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-purple-400" />
-                      <span className="text-zinc-400">TX (Upload):</span>
-                      <span className="text-white font-semibold">{currentUl} Mbps</span>
+                      <span className="text-muted-foreground">TX (Upload):</span>
+                      <span className="text-foreground font-semibold">{currentUl} Mbps</span>
                     </div>
-                    <div className="px-2 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-zinc-300 font-mono text-[10px]">
+                    <div className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-foreground/90 font-mono text-[10px]">
                       Peak: <span className="font-semibold text-cyan-400">{peakVal} Mbps</span>
                     </div>
                   </div>
@@ -508,7 +502,7 @@ export function RouterTable() {
 
               {/* Active Interfaces Bandwidth Breakdown */}
               <div className="flex flex-col gap-2.5">
-                <div className="flex items-center justify-between font-mono text-[11px] text-zinc-400">
+                <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
                   <span className="uppercase tracking-wider">Status &amp; Throughput Port Antarmuka</span>
                   <span>{activeInterfaces.length} Port Link Up</span>
                 </div>
@@ -528,15 +522,15 @@ export function RouterTable() {
                     return (
                       <div
                         key={iface.id || iface.name}
-                        className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex flex-col gap-2"
+                        className="p-3 rounded-xl bg-muted/40 border border-border flex flex-col gap-2"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5 truncate max-w-[140px]">
-                            <span className="px-1.5 py-0.5 rounded bg-zinc-800 font-mono text-[10px] text-zinc-200 font-semibold truncate">
+                            <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px] text-foreground font-semibold truncate">
                               {iface.name}
                             </span>
                             {iface.comment && (
-                              <span className="text-[9px] font-mono text-zinc-400 uppercase truncate">
+                              <span className="text-[9px] font-mono text-muted-foreground uppercase truncate">
                                 {iface.comment}
                               </span>
                             )}
@@ -551,16 +545,16 @@ export function RouterTable() {
                           />
                         </div>
                         <div className="flex items-baseline justify-between font-mono text-[11px]">
-                          <span className="text-white flex items-center gap-0.5 font-semibold">
+                          <span className="text-foreground flex items-center gap-0.5 font-semibold">
                             <ArrowDown className="size-3 text-cyan-400" />
                             {dlRate} Mbps
                           </span>
-                          <span className="text-zinc-400 flex items-center gap-0.5 font-semibold">
+                          <span className="text-muted-foreground flex items-center gap-0.5 font-semibold">
                             <ArrowUp className="size-3 text-purple-400" />
                             {ulRate} Mbps
                           </span>
                         </div>
-                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-cyan-400 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
@@ -574,13 +568,13 @@ export function RouterTable() {
             </div>
 
             {/* Quick Action Bar on Highlight Card */}
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-zinc-800/80">
+            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleOpenDetail(primaryRouter)}
-                className="flex-1 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200 font-mono text-xs uppercase"
+                className="flex-1 h-9 rounded-xl bg-muted hover:bg-muted border-border text-foreground font-mono text-xs uppercase"
               >
                 <Activity className="size-3.5 text-cyan-400 mr-1.5" />
                 Rincian Router
@@ -590,7 +584,7 @@ export function RouterTable() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleOpenPingModal(primaryRouter)}
-                className="flex-1 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200 font-mono text-xs uppercase"
+                className="flex-1 h-9 rounded-xl bg-muted hover:bg-muted border-border text-foreground font-mono text-xs uppercase"
               >
                 <Terminal className="size-3.5 text-emerald-400 mr-1.5" />
                 Ping &amp; Trace
@@ -600,7 +594,7 @@ export function RouterTable() {
                 variant="outline"
                 size="sm"
                 onClick={() => setConfigRouter(primaryRouter)}
-                className="flex-1 h-9 rounded-xl bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200 font-mono text-xs uppercase"
+                className="flex-1 h-9 rounded-xl bg-muted hover:bg-muted border-border text-foreground font-mono text-xs uppercase"
               >
                 <Settings className="size-3.5 text-amber-400 mr-1.5" />
                 Konfigurasi
@@ -612,53 +606,53 @@ export function RouterTable() {
         {/* 3. Hardware & Health KPI Array (5 cols, 2x3 Grid) */}
         <div className="xl:col-span-5 grid grid-cols-2 gap-3.5">
           {/* Card 1: Router Status */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">Router Online</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Router Online</span>
               <CheckCircle className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
-              <div className="font-mono text-2xl font-bold text-white tracking-tight">
+              <div className="font-mono text-2xl font-bold text-foreground tracking-tight">
                 {activeCount} / {details.length}
               </div>
             </div>
-            <div className="flex items-center justify-between text-zinc-400 font-mono text-[10px] pt-1">
+            <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>{details.length - activeCount} unit offline</span>
               <span className="text-emerald-400 font-medium">100% OK</span>
             </div>
           </div>
 
           {/* Card 2: PPPoE Sessions */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">Total PPPoE</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Total PPPoE</span>
               <Users className="size-4 text-cyan-400" />
             </div>
             <div className="my-2">
-              <div className="font-mono text-2xl font-bold text-white tracking-tight">{totalPppoe}</div>
+              <div className="font-mono text-2xl font-bold text-foreground tracking-tight">{totalPppoe}</div>
             </div>
-            <div className="flex items-center justify-between text-zinc-400 font-mono text-[10px] pt-1">
+            <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>Pelanggan aktif</span>
               <span className="text-cyan-400 font-medium">+4 hari ini</span>
             </div>
           </div>
 
           {/* Card 3: CPU Usage */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">CPU Core CCR</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">CPU Core CCR</span>
               <Cpu className="size-4 text-cyan-400" />
             </div>
             <div className="my-2">
               <div
                 className={`font-mono text-2xl font-bold tracking-tight ${
-                  (primaryRouter?.cpuLoad ?? 0) > 80 ? "text-amber-400" : "text-white"
+                  (primaryRouter?.cpuLoad ?? 0) > 80 ? "text-amber-400" : "text-foreground"
                 }`}
               >
                 {primaryRouter?.cpuLoad ?? 3}%
               </div>
             </div>
-            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   (primaryRouter?.cpuLoad ?? 0) > 80 ? "bg-amber-400" : "bg-cyan-400"
@@ -669,17 +663,17 @@ export function RouterTable() {
           </div>
 
           {/* Card 4: RAM Usage */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">Alokasi RAM</span>
-              <HardDrive className="size-4 text-zinc-400" />
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Alokasi RAM</span>
+              <HardDrive className="size-4 text-muted-foreground" />
             </div>
             <div className="my-2">
-              <div className="font-mono text-2xl font-bold text-white tracking-tight">
+              <div className="font-mono text-2xl font-bold text-foreground tracking-tight">
                 {primaryRouter?.memoryUsage ?? 4}%
               </div>
             </div>
-            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-zinc-400 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, primaryRouter?.memoryUsage ?? 4)}%` }}
@@ -688,9 +682,9 @@ export function RouterTable() {
           </div>
 
           {/* Card 5: Real Default Gateway */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">Gateway Utama</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Gateway Utama</span>
               <ShieldCheck className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
@@ -698,24 +692,24 @@ export function RouterTable() {
                 103.167.70.0%ether2
               </div>
             </div>
-            <div className="flex items-center justify-between text-zinc-400 font-mono text-[10px] pt-1">
+            <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>0.0.0.0/0 STATIC</span>
               <span className="text-emerald-400 font-medium">Active Reachable</span>
             </div>
           </div>
 
           {/* Card 6: REST API Latency */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 flex flex-col justify-between border border-zinc-800/80 shadow-sm min-h-[120px]">
+          <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-zinc-400 uppercase tracking-wider">Latensi API</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Latensi API</span>
               <Zap className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
               <div className="font-mono text-2xl font-bold text-emerald-400 tracking-tight">{latencyVal} ms</div>
             </div>
-            <div className="flex items-center justify-between text-zinc-400 font-mono text-[10px] pt-1">
+            <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>Zero jitter</span>
-              <span className="text-zinc-300 font-medium">REST v1</span>
+              <span className="text-foreground/90 font-medium">REST v1</span>
             </div>
           </div>
         </div>
@@ -727,20 +721,20 @@ export function RouterTable() {
       </div>
 
       {/* 4. Inventory Section & Data Table */}
-      <div className="flex flex-col rounded-2xl bg-zinc-950/80 border border-zinc-800/80 shadow-sm overflow-hidden">
+      <div className="flex flex-col rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
         {/* Toolbar: Search, Filters & Action Buttons */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/60 p-4 border-b border-zinc-800/80">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/40 p-4 border-b border-border">
           <div className="flex flex-1 flex-wrap items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1 min-w-[240px] max-w-md">
-              <Search className="absolute left-3 top-2.5 size-4 text-zinc-500" />
+              <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari nama, host, IP, atau model router..."
                 aria-label="Cari router"
-                className="w-full h-9 pl-9 pr-4 rounded-xl bg-zinc-950 border border-zinc-800 text-white placeholder:text-zinc-500 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                className="w-full h-9 pl-9 pr-4 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
               />
             </div>
 
@@ -748,7 +742,7 @@ export function RouterTable() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="h-9 px-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+              className="h-9 px-3 rounded-xl bg-background border border-border text-foreground font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
             >
               <option value="all">Semua Peran</option>
               <option value="gateway">Core Gateway</option>
@@ -761,7 +755,7 @@ export function RouterTable() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as RouterStatusFilter)}
               aria-label="Filter status router"
-              className="h-9 px-3 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+              className="h-9 px-3 rounded-xl bg-background border border-border text-foreground font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
             >
               <option value="all">Semua Status REST</option>
               <option value="active">REST OK</option>
@@ -770,8 +764,8 @@ export function RouterTable() {
           </div>
 
           <div className="flex items-center gap-3 justify-between md:justify-end">
-            <span className="font-mono text-xs text-zinc-400" role="status">
-              Menampilkan <span className="text-white font-semibold">{visible.length}</span> dari {details.length} router
+            <span className="font-mono text-xs text-muted-foreground" role="status">
+              Menampilkan <span className="text-foreground font-semibold">{visible.length}</span> dari {details.length} router
             </span>
             <Button
               type="button"
@@ -779,7 +773,7 @@ export function RouterTable() {
               size="sm"
               onClick={handleRefresh}
               aria-disabled={isRefreshing}
-              className="h-9 px-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200 font-mono text-xs uppercase gap-1.5"
+              className="h-9 px-3.5 rounded-xl bg-muted hover:bg-muted border-border text-foreground font-mono text-xs uppercase gap-1.5"
             >
               <RefreshCw className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`} />
               <span>{isRefreshing ? "Menyegarkan..." : "Segarkan"}</span>
@@ -802,7 +796,7 @@ export function RouterTable() {
         {/* Data Table */}
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left whitespace-nowrap">
-            <thead className="bg-zinc-950/90 text-zinc-400 font-mono text-[11px] uppercase tracking-wider border-b border-zinc-800/80">
+            <thead className="bg-background/90 text-muted-foreground font-mono text-[11px] uppercase tracking-wider border-b border-border">
               <tr>
                 <th className="py-3 px-4 w-10 text-center" scope="col">#</th>
                 <th className="py-3 px-4" scope="col">Nama Router &amp; Host</th>
@@ -816,18 +810,18 @@ export function RouterTable() {
                 <th className="py-3 px-4 text-right" scope="col">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 font-mono text-xs">
+            <tbody className="divide-y divide-border/60 font-mono text-xs">
               {isRefreshing ? (
                 [0, 1, 2].map((i) => (
                   <tr key={`skeleton-${i}`} aria-hidden="true">
                     <td colSpan={10} className="py-4 px-4">
-                      <div className="h-4 w-full animate-pulse rounded bg-zinc-800/60" />
+                      <div className="h-4 w-full animate-pulse rounded bg-muted/60" />
                     </td>
                   </tr>
                 ))
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="h-28 text-center text-zinc-500">
+                  <td colSpan={10} className="h-28 text-center text-muted-foreground">
                     {routers.length === 0
                       ? "Belum ada router yang ditambahkan."
                       : "Tidak ada router yang cocok dengan pencarian."}
@@ -840,7 +834,7 @@ export function RouterTable() {
                   const ulMbps = router.currentUploadMbps ?? (isDemo ? 9.2 : currentUl);
 
                   return (
-                    <tr key={router.id} className="hover:bg-zinc-900/40 transition-colors group">
+                    <tr key={router.id} className="hover:bg-muted/30 transition-colors group">
                       <td className="py-3.5 px-4 text-center">
                         <span
                           className={`inline-block size-2 rounded-full ${
@@ -852,38 +846,38 @@ export function RouterTable() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-white group-hover:text-cyan-400 transition-colors">
+                          <span className="font-semibold text-foreground group-hover:text-cyan-400 transition-colors">
                             {router.name}
                           </span>
-                          <span className="text-[11px] text-zinc-400">
+                          <span className="text-[11px] text-muted-foreground">
                             {router.host} • {router.asn || "ASN 139542"}
                           </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
-                          <span className="text-zinc-200 font-medium">{router.role}</span>
-                          <span className="text-[11px] text-zinc-400 truncate max-w-[180px]">
+                          <span className="text-foreground font-medium">{router.role}</span>
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
                             {router.boardModel}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-zinc-400 text-[11px]">{router.rosVersion}</td>
+                      <td className="py-3.5 px-4 text-muted-foreground text-[11px]">{router.rosVersion}</td>
                       <td className="py-3.5 px-4">
                         {router.active ? (
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`font-semibold ${
-                                isCpuWarning(router) ? "text-amber-400" : "text-white"
+                                isCpuWarning(router) ? "text-amber-400" : "text-foreground"
                               }`}
                             >
                               {router.cpuLoad}%
                             </span>
                             <span className="text-zinc-600">/</span>
-                            <span className="text-zinc-400 text-[11px]">{router.memoryUsage}% RAM</span>
+                            <span className="text-muted-foreground text-[11px]">{router.memoryUsage}% RAM</span>
                           </div>
                         ) : (
-                          <span className="text-zinc-500">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4">
@@ -894,7 +888,7 @@ export function RouterTable() {
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-[11px]">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground text-[11px]">
                           <span className="size-1.5 rounded-full bg-cyan-400" />
                           <span>{pppoeCount} sesi</span>
                         </div>
@@ -914,7 +908,7 @@ export function RouterTable() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenDetail(router)}
-                            className="h-7 px-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-200 font-mono text-[11px] uppercase"
+                            className="h-7 px-2.5 rounded-lg bg-muted hover:bg-muted border-border text-foreground font-mono text-[11px] uppercase"
                           >
                             Rincian
                           </Button>
@@ -922,7 +916,7 @@ export function RouterTable() {
                             variant="outline"
                             size="sm"
                             onClick={() => setConfigRouter(router)}
-                            className="h-7 px-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 font-mono text-[11px]"
+                            className="h-7 px-2 rounded-lg bg-muted hover:bg-muted border-border text-foreground/90 font-mono text-[11px]"
                             title="Konfigurasi Router"
                           >
                             <Settings className="size-3 text-amber-400" />
@@ -931,7 +925,7 @@ export function RouterTable() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenPingModal(router)}
-                            className="h-7 px-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 font-mono text-[11px]"
+                            className="h-7 px-2 rounded-lg bg-muted hover:bg-muted border-border text-foreground/90 font-mono text-[11px]"
                             title="Ping &amp; Trace"
                           >
                             <Terminal className="size-3 text-emerald-400" />
@@ -947,7 +941,7 @@ export function RouterTable() {
         </div>
 
         {/* Table Footer Status Strip */}
-        <div className="px-5 py-3 bg-zinc-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-zinc-500 font-mono text-[11px] border-t border-zinc-800/80">
+        <div className="px-5 py-3 bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-muted-foreground font-mono text-[11px] border-t border-border">
           <div className="flex flex-wrap items-center gap-3">
             <span>POLL INTERVAL: 1000MS</span>
             <span>•</span>
@@ -955,20 +949,20 @@ export function RouterTable() {
             <span>•</span>
             <span>ROUTER AGENT: REST API v1</span>
           </div>
-          <div className="flex items-center gap-2 text-zinc-400">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <span className="size-1.5 rounded-full bg-emerald-400" />
-            <span className="text-zinc-200 font-semibold">UPTIME CLUSTER: 99.98%</span>
+            <span className="text-foreground font-semibold">UPTIME CLUSTER: 99.98%</span>
           </div>
         </div>
       </div>
 
       {/* 5. System Status Footer Strip */}
-      <footer className="w-full bg-zinc-950/60 rounded-xl py-2.5 px-4 border border-zinc-800/80 font-mono text-[10px] text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="w-full bg-background/60 rounded-xl py-2.5 px-4 border border-border font-mono text-[10px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
         <span>SYS_EPOCH: {sysEpoch} • NOC TELEMETRY ENGINE V4.8.1</span>
         <div className="flex items-center gap-4">
           <span>INGRESS: 242.8 GB/S</span>
           <span>EGRESS: 239.2 GB/S</span>
-          <span className="text-zinc-200 font-medium flex items-center gap-1.5">
+          <span className="text-foreground font-medium flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-emerald-400" />
             CORE STATUS: NOMINAL
           </span>
@@ -978,15 +972,15 @@ export function RouterTable() {
       {/* Dialog Rincian Router MikroTik (Lengkap 5 Tabs) */}
       {selectedRouter && (
         <Dialog open={!!selectedRouter} onOpenChange={(open) => !open && setSelectedRouterId(null)}>
-          <DialogContent className="sm:max-w-4xl bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogContent className="sm:max-w-4xl bg-background border-border text-foreground">
             <DialogHeader>
               <div className="flex items-center justify-between gap-3 pr-6">
                 <div>
-                  <DialogTitle className="flex items-center gap-2 text-lg text-white font-semibold">
+                  <DialogTitle className="flex items-center gap-2 text-lg text-foreground font-semibold">
                     {selectedRouter.name}
                     <RouterStatusBadge active={selectedRouter.active} />
                   </DialogTitle>
-                  <DialogDescription className="font-mono text-xs text-zinc-400 mt-1">
+                  <DialogDescription className="font-mono text-xs text-muted-foreground mt-1">
                     {selectedRouter.host} · {selectedRouter.boardModel} · {selectedRouter.rosVersion}
                   </DialogDescription>
                 </div>
@@ -994,24 +988,24 @@ export function RouterTable() {
             </DialogHeader>
 
             <Tabs defaultValue="hardware" className="mt-2">
-              <TabsList className="grid w-full grid-cols-5 bg-zinc-900 border border-zinc-800">
-                <TabsTrigger value="hardware" className="gap-1.5 text-xs text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+              <TabsList className="grid w-full grid-cols-5 bg-muted border border-border">
+                <TabsTrigger value="hardware" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
                   <Cpu className="size-3.5" />
                   Hardware &amp; Sistem
                 </TabsTrigger>
-                <TabsTrigger value="traffic" className="gap-1.5 text-xs text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+                <TabsTrigger value="traffic" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
                   <Activity className="size-3.5" />
                   Trafik Live
                 </TabsTrigger>
-                <TabsTrigger value="queues" className="gap-1.5 text-xs text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+                <TabsTrigger value="queues" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
                   <Layers className="size-3.5" />
                   Simple Queue
                 </TabsTrigger>
-                <TabsTrigger value="pppoe" className="gap-1.5 text-xs text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+                <TabsTrigger value="pppoe" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
                   <Radio className="size-3.5" />
                   Sesi PPPoE
                 </TabsTrigger>
-                <TabsTrigger value="ping" className="gap-1.5 text-xs text-zinc-300 data-[state=active]:bg-zinc-800 data-[state=active]:text-white">
+                <TabsTrigger value="ping" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
                   <Terminal className="size-3.5" />
                   Tool Ping ICMP
                 </TabsTrigger>
@@ -1028,63 +1022,63 @@ export function RouterTable() {
                   active={selectedRouter.active}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-                    <span className="text-zinc-400 block mb-1">Simple Queue Terdaftar</span>
-                    <strong className="text-lg font-semibold text-white">
+                  <div className="rounded-xl border border-border bg-muted/50 p-3.5">
+                    <span className="text-muted-foreground block mb-1">Simple Queue Terdaftar</span>
+                    <strong className="text-lg font-semibold text-foreground">
                       {selectedRouter.active ? selectedRouter.queueCount : "—"}
                     </strong>
-                    <p className="text-[11px] text-zinc-500 mt-1">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       Limitasi antrian bandwidth aktif di router ini
                     </p>
                   </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-                    <span className="text-zinc-400 block mb-1">Sesi PPPoE Terlayani</span>
+                  <div className="rounded-xl border border-border bg-muted/50 p-3.5">
+                    <span className="text-muted-foreground block mb-1">Sesi PPPoE Terlayani</span>
                     <strong className="text-lg font-semibold text-cyan-400">
                       {selectedRouter.active ? (selectedRouter.pppoeCount || 67) : "—"}
                     </strong>
-                    <p className="text-[11px] text-zinc-500 mt-1">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       Klien PPPoE terautentikasi dan aktif
                     </p>
                   </div>
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-                    <span className="text-zinc-400 block mb-1">Latensi REST API</span>
+                  <div className="rounded-xl border border-border bg-muted/50 p-3.5">
+                    <span className="text-muted-foreground block mb-1">Latensi REST API</span>
                     <strong className="text-lg font-semibold text-emerald-400">
                       {selectedRouter.active && selectedRouter.latencyMs !== undefined ? `${selectedRouter.latencyMs} ms` : "—"}
                     </strong>
-                    <p className="text-[11px] text-zinc-500 mt-1">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       Waktu respons telemetri RouterOS
                     </p>
                   </div>
                 </div>
 
                 {selectedRouter.interfaces && selectedRouter.interfaces.length > 0 && (
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3 font-mono text-xs">
+                  <div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-white flex items-center gap-2">
+                      <span className="font-semibold text-foreground flex items-center gap-2">
                         <Network className="size-4 text-cyan-400" />
                         Antarmuka Port &amp; Link Fisik (RouterOS)
                       </span>
-                      <Badge variant="outline" className="text-[11px] text-zinc-300 border-zinc-700">
+                      <Badge variant="outline" className="text-[11px] text-foreground/90 border-border">
                         {selectedRouter.interfaces.length} Port
                       </Badge>
                     </div>
-                    <div className="max-h-52 overflow-y-auto divide-y divide-zinc-800/80 rounded-lg border border-zinc-800/80 bg-zinc-950/60 text-[11px]">
+                    <div className="max-h-52 overflow-y-auto divide-y divide-border/80 rounded-lg border border-border bg-background/60 text-[11px]">
                       {selectedRouter.interfaces.map((iface) => (
-                        <div key={iface.id || iface.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 gap-2 hover:bg-zinc-900/40">
+                        <div key={iface.id || iface.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 gap-2 hover:bg-muted/30">
                           <div className="flex items-center gap-2 truncate">
                             <span className={`size-2 shrink-0 rounded-full ${iface.running ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                            <span className="font-semibold text-white truncate">{iface.name}</span>
-                            <span className="text-[10px] text-zinc-500 uppercase">({iface.type})</span>
+                            <span className="font-semibold text-foreground truncate">{iface.name}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase">({iface.type})</span>
                             {iface.comment && (
                               <span className="text-[10px] text-cyan-400 font-mono truncate max-w-[180px]">
                                 [{iface.comment}]
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-zinc-400 font-mono text-[11px] shrink-0 justify-between sm:justify-end">
+                          <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px] shrink-0 justify-between sm:justify-end">
                             <span className="text-cyan-400">RX: {iface.rxMbps ?? 0} Mbps</span>
                             <span className="text-purple-400">TX: {iface.txMbps ?? 0} Mbps</span>
-                            <Badge variant="outline" className={`text-[9px] uppercase ${iface.running ? "border-emerald-800/80 bg-emerald-950/40 text-emerald-400" : "border-zinc-800 bg-zinc-900 text-zinc-500"}`}>
+                            <Badge variant="outline" className={`text-[9px] uppercase ${iface.running ? "border-emerald-800/80 bg-emerald-950/40 text-emerald-400" : "border-border bg-muted text-muted-foreground"}`}>
                               {iface.running ? "Link Up" : "Down"}
                             </Badge>
                           </div>
@@ -1165,13 +1159,13 @@ export function RouterTable() {
       {/* Dialog Ping & Trace Terpisah */}
       {pingModalOpen && selectedRouter && (
         <Dialog open={pingModalOpen} onOpenChange={setPingModalOpen}>
-          <DialogContent className="sm:max-w-3xl bg-zinc-950 border-zinc-800 text-zinc-100">
+          <DialogContent className="sm:max-w-3xl bg-background border-border text-foreground">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-white text-base">
+              <DialogTitle className="flex items-center gap-2 text-foreground text-base">
                 <Terminal className="size-4 text-emerald-400" />
                 Ping &amp; Trace: {selectedRouter.name} ({selectedRouter.host})
               </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-400 font-mono">
+              <DialogDescription className="text-xs text-muted-foreground font-mono">
                 Pemeriksaan latensi jaringan riil via ICMP RouterOS &amp; REST API
               </DialogDescription>
             </DialogHeader>
@@ -1188,7 +1182,7 @@ export function RouterTable() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPingModalOpen(false)}
-                className="text-xs text-zinc-300"
+                className="text-xs text-foreground/90"
               >
                 Tutup
               </Button>

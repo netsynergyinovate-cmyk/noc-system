@@ -305,7 +305,7 @@ export function CustomerTable() {
             <button
               type="button"
               onClick={() => setSyncFeedback(null)}
-              className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
+              className="text-muted-foreground hover:text-foreground text-xs px-1"
             >
               ✕
             </button>

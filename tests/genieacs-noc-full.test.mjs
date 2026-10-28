@@ -66,7 +66,7 @@ test("cabang yang diketahui membuat fault 9002 dilewati sepenuhnya", () => {
 
 test("root yang tidak dipakai modem (tanpa cabang) tidak membaca apa-apa di bawahnya", () => {
   const calls = run();
-  assert.equal(calls.some((c) => c.path.startsWith("Device.") && c.path !== "Device.*" && !c.path.startsWith("Device.Hosts")), false);
+  assert.equal(calls.some((c) => c.path.startsWith("Device.") && c.path !== "Device.*" && !c.path.startsWith("Device.Hosts") && !c.path.startsWith("Device.WiFi")), false);
 });
 
 test("jendela: dalam sehari yang sama nilainya tetap (tidak mengambil ulang), hari berikutnya berubah", () => {
@@ -76,11 +76,11 @@ test("jendela: dalam sehari yang sama nilainya tetap (tidak mengambil ulang), ha
   assert.ok(at(t + 2 * 86_400_000) > at(t));
 });
 
-test("data cepat berubah memakai jendela per jam dan tidak membaca kata sandi", () => {
+test("data cepat berubah diambil real-time dan tidak membaca kata sandi", () => {
   const calls = run();
   const host = calls.find((x) => x.path === "InternetGatewayDevice.LANDevice.*.Hosts.Host.*.*");
   assert.ok(host);
-  assert.equal(host.ts.value % 3_600_000, 0);
+  assert.equal(host.ts.value, 1_760_000_000_000);
   for (const c of calls) assert.doesNotMatch(c.path, /(Password|KeyPassphrase|PreSharedKey)/i);
 });
 
@@ -91,10 +91,10 @@ test("preset noc-full menunjuk provision yang ada dan berlaku di setiap sesi", (
   assert.equal(preset.precondition, "");
 });
 
-test("virtual parameter dihitung dan disimpan sekali per jam, SESUDAH pembacaan data", () => {
+test("virtual parameter dihitung dan disimpan seketika secara real-time, SESUDAH pembacaan data", () => {
   const calls = run();
   const i = calls.findIndex((c) => c.path === "VirtualParameters.*");
   assert.ok(i > 0, "provision harus meminta VirtualParameters.*");
   assert.equal(i, calls.length - 1, "harus yang terakhir, supaya data sumbernya sudah dibaca");
-  assert.equal(calls[i].ts.value % 3_600_000, 0);
+  assert.equal(calls[i].ts.value, 1_760_000_000_000);
 });

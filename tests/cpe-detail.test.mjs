@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseDeviceDetail, parseDeviceSecrets, readParam } from "../src/lib/genieacs/device-detail.ts";
-import { deviceIdCandidates, getCpeDetail, getCpeSecrets } from "../src/services/cpe-detail.service.ts";
+import { hasNode, parseDeviceDetail, parseDeviceSecrets, readParam } from "../src/lib/genieacs/device-detail.ts";
+import { deviceIdCandidates, getCpeDetail, getCpeSecrets, refreshCpeRealtime } from "../src/services/cpe-detail.service.ts";
 
 // Membangun struktur NBI bersarang dari path datar: { "A.B": 1 } -> {A:{B:{_value:1}}}
 function nbi(flat, meta = {}) {
@@ -220,4 +220,72 @@ test("getCpeDevice: id dengan '%2D' ditemukan apa adanya, dan bentuk ter-decode 
   assert.equal(await getCpeDevice("A%2DB-C", viaDecode), found);
   assert.deepEqual(asked, ["A%2DB-C", "A-B-C"]);
   assert.equal(await getCpeDevice("x", { async getDevice() { return null; } }), null);
+});
+test("hasNode: mendeteksi keberadaan objek/cabang NBI yang tidak memiliki _value", () => {
+  assert.equal(hasNode(DEVICE, "InternetGatewayDevice.LANDevice.1.Hosts"), true);
+  assert.equal(readParam(DEVICE, "InternetGatewayDevice.LANDevice.1.Hosts"), undefined, "readParam hanya untuk leaf parameter");
+  assert.equal(hasNode(DEVICE, "InternetGatewayDevice.TidakAda"), false);
+});
+
+test("refreshCpeRealtime: hanya meminta parameter & objek yang benar-benar ada di pohon modem", async () => {
+  const postedTasks = [];
+  const deletedTasks = [];
+
+  const mockClient = {
+    async getRawDevice(id) {
+      return id === "D05FAF-FD511GW-DF77%2D2511027460" ? DEVICE : null;
+    },
+    async postTask(id, task, cr, timeout) {
+      postedTasks.push({ id, task, cr, timeout });
+      return { ok: true, status: 200, taskId: "task-123" };
+    },
+    async deleteTask(taskId) {
+      deletedTasks.push(taskId);
+      return true;
+    },
+  };
+
+  const res = await refreshCpeRealtime("D05FAF-FD511GW-DF77%2D2511027460", mockClient);
+  assert.equal(res.ok, true);
+  assert.equal(res.refreshed, true);
+  assert.equal(res.status, 200);
+
+  // Verifikasi task getParameterValues hanya berisi parameter leaf yang ADA di DEVICE fixture
+  const gpv = postedTasks.find((p) => p.task.name === "getParameterValues");
+  assert.ok(gpv);
+  assert.deepEqual(gpv.task.parameterNames, [
+    "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
+    "InternetGatewayDevice.DeviceInfo.XponInterface.TXPower",
+    "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature",
+    "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations",
+    "InternetGatewayDevice.DeviceInfo.UpTime",
+  ]);
+  // Memastikan cabang vendor yang tidak ada (X_ALU) tidak ikut diminta
+  assert.equal(gpv.task.parameterNames.some((p) => p.includes("X_ALU")), false);
+
+  // Verifikasi refreshObject diarahkan ke Hosts.Host yang ada
+  const ro = postedTasks.find((p) => p.task.name === "refreshObject");
+  assert.ok(ro);
+  assert.equal(ro.task.objectName, "InternetGatewayDevice.LANDevice.1.Hosts.Host");
+});
+
+test("refreshCpeRealtime: bila status 202 (queued), task dibatalkan dan refreshed bernilai false", async () => {
+  const deletedTasks = [];
+  const mockClient = {
+    async getRawDevice() {
+      return DEVICE;
+    },
+    async postTask() {
+      return { ok: true, status: 202, taskId: "queued-task-456" };
+    },
+    async deleteTask(taskId) {
+      deletedTasks.push(taskId);
+      return true;
+    },
+  };
+
+  const res = await refreshCpeRealtime("D05FAF-FD511GW-DF77%2D2511027460", mockClient);
+  assert.equal(res.refreshed, false);
+  assert.equal(res.status, 202);
+  assert.ok(deletedTasks.includes("queued-task-456"), "task 202 harus dibersihkan dari antrean GenieACS");
 });

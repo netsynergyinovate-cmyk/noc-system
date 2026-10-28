@@ -10,7 +10,7 @@
 // cache), belum punya datanya, jadi langsung diambil penuh pada sesi itu.
 
 const daily = Date.now(86400000);
-const hourly = Date.now(3600000);
+const now = Date.now();
 
 // Cabang yang TIDAK boleh dibaca. Satu parameter yang dijawab modem dengan fault
 // membatalkan seluruh pembacaan (GenieACS menandai sesi gagal dan mengulang dari
@@ -42,18 +42,21 @@ for (const root of ["InternetGatewayDevice", "Device"]) {
   }
 }
 
-// Yang cepat berubah dan dipakai NOC: segarkan tiap jam.
-// Kata sandi sengaja tidak dibaca berkala: modem selalu melaporkannya kosong.
-const hourlyPaths = [
-  // Perangkat yang terhubung ke modem.
+// Yang cepat berubah dan dipakai NOC: diambil real-time pada setiap sesi inform modem.
+// Tanpa jeda pembatasan jam, supaya perangkat terhubung saat itu dan redaman selalu mutakhir.
+const realtimePaths = [
+  // Perangkat yang terhubung ke modem (host kabel dan asosiasi Wi-Fi saat ini).
   "InternetGatewayDevice.LANDevice.*.Hosts.Host.*.*",
+  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.AssociatedDevice.*.*",
+  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.TotalAssociations",
+  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID",
   "Device.Hosts.Host.*.*",
-  // Optik dan kesehatan modem (sumber kolom RX/TX/Temp di halaman Devices).
+  "Device.WiFi.AccessPoint.*.AssociatedDevice.*.*",
+  // Optik dan redaman modem (sumber kolom RX/TX/Temp di halaman Devices).
   "InternetGatewayDevice.X_ALU_OntOpticalParam.*",
   "InternetGatewayDevice.DeviceInfo.XponInterface.*",
   "InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.*",
-  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID",
-  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.TotalAssociations",
+  "InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.*",
   "InternetGatewayDevice.DeviceInfo.UpTime",
   "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage",
   "InternetGatewayDevice.DeviceInfo.MemoryStatus.*",
@@ -64,11 +67,10 @@ const hourlyPaths = [
   // Status lapor TR-069 itu sendiri.
   "InternetGatewayDevice.ManagementServer.*",
 ];
-for (const p of hourlyPaths) {
-  declare(p, { path: hourly, value: hourly });
+for (const p of realtimePaths) {
+  declare(p, { path: now, value: now });
 }
 
 // Virtual parameter (PON, ID PPPoE, SSID, Active, RX, Temp, Uptime, IP, SN, MAC)
-// baru dihitung dan DISIMPAN bila ada yang memintanya di sini. Dihitung SESUDAH
-// data di atas dibaca, dan sekali per jam: nilainya dipakai kolom halaman Devices.
-declare("VirtualParameters.*", { value: hourly });
+// dihitung dan DISIMPAN seketika setelah data di atas dibaca secara real-time.
+declare("VirtualParameters.*", { value: now });

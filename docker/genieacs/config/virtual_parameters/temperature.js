@@ -3,12 +3,19 @@
 // dibaca). Penyegaran berkala dilakukan preset "noc-full", bukan di sini, jadi
 // membuka halaman Devices tidak membebani modem.
 
-// Suhu modul optik (derajat C). Utama: XponInterface.TransceiverTemperature.
-// Cadangan: sensor "Optical Module", lalu nilai mentah EponInterfaceConfig (1/256 C).
+// Suhu modul optik (derajat C).
+// Utama: X_ALU_OntOpticalParam atau XponInterface.TransceiverTemperature.
+// Cadangan: sensor "Optical Module", lalu nilai mentah EponInterfaceConfig / GponInterfaceConfig (1/256 C).
 let t = null;
-for (const p of declare("InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature", {value: 1})) {
+for (const p of declare("InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature", {value: 1})) {
   const f = parseFloat(String(p.value && p.value[0]));
   if (isFinite(f)) t = f;
+}
+if (t === null) {
+  for (const p of declare("InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature", {value: 1})) {
+    const f = parseFloat(String(p.value && p.value[0]));
+    if (isFinite(f)) t = f;
+  }
 }
 if (t === null) {
   for (const s of declare("InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.*.Name", {value: 1})) {
@@ -22,6 +29,12 @@ if (t === null) {
 }
 if (t === null) {
   for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.TransceiverTemperature", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw) && raw !== 0) t = raw / 256;
+  }
+}
+if (t === null) {
+  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.TransceiverTemperature", {value: 1})) {
     const raw = Number(p.value && p.value[0]);
     if (isFinite(raw) && raw !== 0) t = raw / 256;
   }

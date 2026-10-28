@@ -122,6 +122,19 @@ function hostInterface(type: string, layer1: string): CpeInterfaceType {
 
 function parseHosts(raw: Raw): CpeHostClient[] {
   const hosts: CpeHostClient[] = [];
+  const associatedMacs = new Set<string>();
+
+  // Klien Wi-Fi yang sedang berasosiasi (TR-098 & TR-181)
+  const wlanBase = "InternetGatewayDevice.LANDevice.1.WLANConfiguration";
+  for (const w of indexes(raw, wlanBase)) {
+    const assocBase = `${wlanBase}.${w}.AssociatedDevice`;
+    for (const a of indexes(raw, assocBase)) {
+      const p = `${assocBase}.${a}`;
+      const mac = (str(read(raw, `${p}.AssociatedDeviceMACAddress`)) || str(read(raw, `${p}.MACAddress`))).toLowerCase();
+      if (mac) associatedMacs.add(mac);
+    }
+  }
+
   const bases = [
     "InternetGatewayDevice.LANDevice.1.Hosts.Host",
     "Device.Hosts.Host",
@@ -130,9 +143,10 @@ function parseHosts(raw: Raw): CpeHostClient[] {
     for (const i of indexes(raw, base)) {
       const p = `${base}.${i}`;
       const ip = str(read(raw, `${p}.IPAddress`));
-      const mac = str(read(raw, `${p}.PhysAddress`));
+      const mac = (str(read(raw, `${p}.MACAddress`)) || str(read(raw, `${p}.PhysAddress`))).toLowerCase();
       if (!ip && !mac) continue;
       const activeRaw = read(raw, `${p}.Active`);
+      const isActive = (mac && associatedMacs.has(mac)) || (activeRaw === undefined ? true : bool(activeRaw));
       hosts.push({
         hostname: str(read(raw, `${p}.HostName`)) || "(tanpa nama)",
         ip,
@@ -141,8 +155,7 @@ function parseHosts(raw: Raw): CpeHostClient[] {
           str(read(raw, `${p}.InterfaceType`)),
           str(read(raw, `${p}.Layer1Interface`)),
         ),
-        // Tanpa field Active, host yang terdaftar dianggap aktif.
-        active: activeRaw === undefined ? true : bool(activeRaw),
+        active: isActive,
       });
     }
   }
@@ -599,6 +612,22 @@ export class GenieAcsClient {
       };
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  /** Hapus task dari antrean GenieACS (mis. bila diantre 202 saat probe realtime agar tidak retry). */
+  async deleteTask(taskId: string): Promise<boolean> {
+    if (this.config.mode === "simulator") return true;
+    try {
+      const headers: Record<string, string> = {};
+      if (this.config.authHeader) headers.Authorization = this.config.authHeader;
+      const res = await (this.fetchImpl ?? globalThis.fetch)(`${this.config.url}/tasks/${encodeURIComponent(taskId)}`, {
+        method: "DELETE",
+        headers,
+      });
+      return res.ok || res.status === 404;
+    } catch {
+      return false;
     }
   }
 

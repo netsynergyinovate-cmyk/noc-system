@@ -50,6 +50,8 @@ export function CpeHostsManager({ hosts, canManage }: { hosts: CpeHostClient[]; 
     }, 1500);
   }
 
+  const activeHosts = hosts.filter((h) => h.active);
+
   return (
     <div>
       <div className="overflow-x-auto rounded-md border">
@@ -64,7 +66,14 @@ export function CpeHostsManager({ hosts, canManage }: { hosts: CpeHostClient[]; 
             </tr>
           </thead>
           <tbody className="divide-y">
-            {hosts.map((host) => {
+            {activeHosts.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-6 text-center text-xs text-muted-foreground">
+                  Tidak ada perangkat yang sedang tersambung ke modem saat ini.
+                </td>
+              </tr>
+            ) : (
+            activeHosts.map((host) => {
               const { Icon, label } = categoryOf(host.hostname);
               const busy = kicking === host.mac;
               const disabled = !canManage || !host.active || kicking !== null;
@@ -103,7 +112,8 @@ export function CpeHostsManager({ hosts, canManage }: { hosts: CpeHostClient[]; 
                   </td>
                 </tr>
               );
-            })}
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -118,9 +128,8 @@ export function CpeHostsManager({ hosts, canManage }: { hosts: CpeHostClient[]; 
         </div>
       )}
       <p className="mt-3 text-xs text-muted-foreground">
-        Menampilkan perangkat yang sedang atau pernah terhubung ke router rumah pelanggan.
+        Menampilkan perangkat yang sedang tersambung ke modem ONT pelanggan saat ini.
       </p>
-
       <AlertDialog open={target !== null} onOpenChange={(open) => !open && setTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

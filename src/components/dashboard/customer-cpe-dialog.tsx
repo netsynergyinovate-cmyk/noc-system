@@ -145,7 +145,7 @@ export function CustomerCpeDialog({
     : liveReady && liveOnu.onu
       ? apiOnuToCustomerOptical(liveOnu.onu, customer.isOnline)
       : emptyOptical;
-  const hosts = isDemo ? (cpe?.hosts ?? fallbackHosts) : (cpe?.hosts ?? []);
+  const hosts = isDemo ? (cpe?.hosts ?? fallbackHosts) : (cpe?.hosts.filter((h) => h.active) ?? []);
   const canManage = useCanDo("manageCpe");
 
   async function doRebootLive() {

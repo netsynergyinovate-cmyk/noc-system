@@ -2,9 +2,11 @@
 // bisa diuji dengan node --test.
 import { GenieAcsClient } from "../lib/genieacs/client.ts";
 import {
+  hasNode,
   parseDeviceDetail,
   parseDeviceSecrets,
   planWifiChange,
+  readParam,
   verifyWifiChange,
   WifiChangeError,
   type CpeDetail,
@@ -48,6 +50,145 @@ export async function getCpeSecrets(
   const raw = await loadRaw(id, client);
   if (!raw) return null;
   return { deviceId: parseDeviceDetail(raw).deviceId, secrets: parseDeviceSecrets(raw) };
+}
+
+export interface RefreshRealtimeResult {
+  ok: boolean;
+  refreshed: boolean;
+  status: number;
+  tasksSent: string[];
+}
+
+/**
+ * Memicu pembacaan parameter segar dari modem seketika (real-time) via connection request TR-069.
+ * Mengambil optik (redaman) dan perangkat terhubung saat itu secara aman:
+ * 1. Hanya meminta parameter yang benar-benar ada di pohon modem (menghindari fault 9005).
+ * 2. Menggunakan refreshObject untuk objek Host / AssociatedDevice yang ada (dicek via hasNode).
+ * 3. Menghapus task dari antrean GenieACS bila berstatus 202 (queued) agar tidak menumpuk di modem offline.
+ */
+export async function refreshCpeRealtime(
+  id: string,
+  client = new GenieAcsClient(),
+): Promise<RefreshRealtimeResult> {
+  for (const candidate of deviceIdCandidates(id)) {
+    const raw = await client.getRawDevice(candidate);
+    if (!raw) continue;
+
+    // Kumpulkan parameter leaf yang benar-benar ada di pohon modem ini
+    const paramNames: string[] = [];
+    if (readParam(raw, "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower") !== undefined) {
+      paramNames.push(
+        "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower",
+        "InternetGatewayDevice.X_ALU_OntOpticalParam.TXPower",
+      );
+      if (readParam(raw, "InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature") !== undefined) {
+        paramNames.push("InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature");
+      }
+    } else if (readParam(raw, "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower") !== undefined) {
+      paramNames.push(
+        "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
+        "InternetGatewayDevice.DeviceInfo.XponInterface.TXPower",
+      );
+      if (readParam(raw, "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature") !== undefined) {
+        paramNames.push("InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature");
+      }
+    } else if (readParam(raw, "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower") !== undefined) {
+      paramNames.push(
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.TXPower",
+      );
+    } else if (readParam(raw, "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower") !== undefined) {
+      paramNames.push(
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TXPower",
+      );
+    }
+
+    if (readParam(raw, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations") !== undefined) {
+      paramNames.push("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.TotalAssociations");
+    }
+    if (readParam(raw, "InternetGatewayDevice.DeviceInfo.UpTime") !== undefined) {
+      paramNames.push("InternetGatewayDevice.DeviceInfo.UpTime");
+    }
+
+    const tasksSent: string[] = [];
+    let allOk = true;
+    let anyApplied = false;
+    let lastStatus = 200;
+
+    // 1. Minta pembacaan parameter nilai (redaman, total asosiasi, uptime)
+    if (paramNames.length > 0) {
+      tasksSent.push("getParameterValues");
+      const res = await client.postTask(
+        candidate,
+        { name: "getParameterValues", parameterNames: paramNames },
+        true,
+        READBACK_WAIT_MS,
+      );
+      lastStatus = res.status ?? (res.ok ? 200 : 500);
+      if (res.ok && res.status === 200) {
+        anyApplied = true;
+      } else {
+        allOk = false;
+        if (res.status === 202 && res.taskId) {
+          await client.deleteTask(res.taskId);
+        }
+      }
+    }
+
+    // 2. Minta penyegaran pohon host kabel & Wi-Fi
+    const objectToRefresh = hasNode(raw, "InternetGatewayDevice.LANDevice.1.Hosts")
+      ? "InternetGatewayDevice.LANDevice.1.Hosts.Host"
+      : hasNode(raw, "Device.Hosts")
+        ? "Device.Hosts.Host"
+        : null;
+
+    if (objectToRefresh) {
+      tasksSent.push(`refreshObject:${objectToRefresh}`);
+      const objRes = await client.postTask(
+        candidate,
+        { name: "refreshObject", objectName: objectToRefresh },
+        true,
+        READBACK_WAIT_MS,
+      );
+      if (objRes.ok && objRes.status === 200) {
+        anyApplied = true;
+      } else {
+        allOk = false;
+        if (objRes.status === 202 && objRes.taskId) {
+          await client.deleteTask(objRes.taskId);
+        }
+      }
+    }
+
+    // 3. Minta penyegaran pohon AssociatedDevice bila firmware mendukung
+    if (hasNode(raw, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDevice")) {
+      const assocTarget = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDevice";
+      tasksSent.push(`refreshObject:${assocTarget}`);
+      const assocRes = await client.postTask(
+        candidate,
+        { name: "refreshObject", objectName: assocTarget },
+        true,
+        READBACK_WAIT_MS,
+      );
+      if (assocRes.ok && assocRes.status === 200) {
+        anyApplied = true;
+      } else {
+        allOk = false;
+        if (assocRes.status === 202 && assocRes.taskId) {
+          await client.deleteTask(assocRes.taskId);
+        }
+      }
+    }
+
+    return {
+      ok: anyApplied || allOk,
+      refreshed: anyApplied,
+      status: anyApplied ? 200 : lastStatus,
+      tasksSent,
+    };
+  }
+  return { ok: false, refreshed: false, status: 404, tasksSent: [] };
 }
 
 // ---------------------------------------------------------------------------

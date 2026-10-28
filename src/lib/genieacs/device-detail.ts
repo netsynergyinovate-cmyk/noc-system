@@ -20,6 +20,16 @@ export function readParam(raw: unknown, path: string): unknown {
   return isObj(node) ? node._value : undefined;
 }
 
+/** Cek apakah sebuah node/objek atau parameter ada di pohon mentah GenieACS. */
+export function hasNode(raw: unknown, path: string): boolean {
+  let node: unknown = raw;
+  for (const key of path.split(".")) {
+    if (!isObj(node)) return false;
+    node = node[key];
+  }
+  return isObj(node);
+}
+
 /** Anak-anak bernomor (instance) di bawah sebuah objek, urut naik. */
 function instances(raw: unknown, path: string): { index: string; node: Raw }[] {
   let node: unknown = raw;
@@ -147,28 +157,62 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
   const lan = instances(r, `${IGD}.LANDevice`)[0];
   const hosts: DetailHost[] = [];
   if (lan) {
+    const associatedMacs = new Set<string>();
+    const associatedHosts: DetailHost[] = [];
     for (const w of instances(lan.node, "WLANConfiguration")) {
       const pass = text(sub(w.node, "X_CMS_KeyPassphrase")) || text(sub(w.node, "KeyPassphrase"));
+      const assocs = instances(w.node, "AssociatedDevice");
+      for (const a of assocs) {
+        const mac = (text(sub(a.node, "AssociatedDeviceMACAddress")) || text(sub(a.node, "MACAddress"))).toLowerCase();
+        const ip = text(sub(a.node, "AssociatedDeviceIPAddress")) || text(sub(a.node, "IPAddress"));
+        const rssi = num(sub(a.node, "RSSI"));
+        if (mac) {
+          associatedMacs.add(mac);
+          associatedHosts.push({
+            hostname: "",
+            ip,
+            mac,
+            interfaceType: "802.11",
+            band: rssi !== null ? `Wi-Fi (${rssi} dBm)` : "Wi-Fi",
+            active: true,
+          });
+        }
+      }
+      const clientCount = Math.max(assocs.length, num(sub(w.node, "TotalAssociations")) ?? 0);
       wlans.push({
         index: Number(w.index),
         ssid: text(sub(w.node, "SSID")),
         enabled: bool(sub(w.node, "Enable")),
         channel: num(sub(w.node, "Channel")),
         standard: text(sub(w.node, "Standard")),
-        clients: Math.max(0, num(sub(w.node, "TotalAssociations")) ?? 0),
+        clients: clientCount,
         hasPassphrase: pass !== "",
       });
     }
     for (const h of instances(lan.node, "Hosts.Host")) {
       const iface = text(sub(h.node, "InterfaceType"));
+      const mac = text(sub(h.node, "MACAddress")).toLowerCase();
+      const ip = text(sub(h.node, "IPAddress"));
+      const hostname = text(sub(h.node, "HostName"));
+      const activeRaw = sub(h.node, "Active");
+      const isActive = associatedMacs.has(mac) || (activeRaw === undefined ? true : bool(activeRaw));
       hosts.push({
-        hostname: text(sub(h.node, "HostName")),
-        ip: text(sub(h.node, "IPAddress")),
-        mac: text(sub(h.node, "MACAddress")).toLowerCase(),
+        hostname,
+        ip,
+        mac,
         interfaceType: iface,
         band: text(sub(h.node, "X_CMS_WirelessTerminal")),
-        active: bool(sub(h.node, "Active")),
+        active: isActive,
       });
+    }
+    for (const ah of associatedHosts) {
+      const existing = hosts.find((h) => h.mac === ah.mac);
+      if (existing) {
+        existing.active = true;
+        if (!existing.band && ah.band) existing.band = ah.band;
+      } else {
+        hosts.push(ah);
+      }
     }
   }
 
@@ -180,15 +224,19 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
   const gpon = `${IGD}.WANDevice.1.X_CT-COM_GponInterfaceConfig`;
   const ponType = readParam(r, `${epon}.Status`) !== undefined ? "EPON" : readParam(r, `${gpon}.Status`) !== undefined ? "GPON" : "";
 
+  const alu = `${IGD}.X_ALU_OntOpticalParam`;
   const xpon = `${IGD}.DeviceInfo.XponInterface`;
   const rawDbm = (path: string): number | null => {
     const v = num(readParam(r, path));
     return v !== null && v > 0 ? Math.round(10 * Math.log10(v * 0.0001) * 100) / 100 : null;
   };
-  const rx = dbm(readParam(r, `${xpon}.RXPower`)) ?? rawDbm(`${epon}.RXPower`);
-  const tx = dbm(readParam(r, `${xpon}.TXPower`)) ?? rawDbm(`${epon}.TXPower`);
+  const rx = dbm(readParam(r, `${alu}.RXPower`)) ?? dbm(readParam(r, `${xpon}.RXPower`)) ?? rawDbm(`${epon}.RXPower`) ?? rawDbm(`${gpon}.RXPower`);
+  const tx = dbm(readParam(r, `${alu}.TXPower`)) ?? dbm(readParam(r, `${xpon}.TXPower`)) ?? rawDbm(`${epon}.TXPower`) ?? rawDbm(`${gpon}.TXPower`);
   const rawTemp = num(readParam(r, `${epon}.TransceiverTemperature`));
-  const temp = num(readParam(r, `${xpon}.TransceiverTemperature`)) ?? (rawTemp !== null && rawTemp !== 0 ? Math.round((rawTemp / 256) * 100) / 100 : null);
+  const aluTemp = dbm(readParam(r, `${alu}.TransceiverTemperature`));
+  const temp = aluTemp ?? num(readParam(r, `${xpon}.TransceiverTemperature`)) ?? (rawTemp !== null && rawTemp !== 0 ? Math.round((rawTemp / 256) * 100) / 100 : null);
+  const aluBias = num(readParam(r, `${alu}.BiasCurrent`));
+  const aluVolt = num(readParam(r, `${alu}.SupplyVottage`));
 
   const lastInform = text(r._lastInform);
   const informInterval = num(readParam(r, `${IGD}.ManagementServer.PeriodicInformInterval`));
@@ -222,11 +270,11 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
       txDbm: tx,
       lossDb: rx !== null && tx !== null ? Math.round((tx - rx) * 100) / 100 : null,
       temperatureC: temp,
-      biasMa: (() => {
+      biasMa: aluBias !== null ? Math.round((aluBias > 1000 ? aluBias / 1000 : aluBias) * 100) / 100 : (() => {
         const b = num(readParam(r, `${epon}.BiasCurrent`));
         return b === null ? null : Math.round((b / 1000) * 100) / 100;
       })(),
-      voltageV: (() => {
+      voltageV: aluVolt !== null ? Math.round(aluVolt * 100) / 100 : (() => {
         const v = num(readParam(r, `${epon}.SupplyVottage`));
         return v === null ? null : Math.round((v / 10000) * 100) / 100;
       })(),

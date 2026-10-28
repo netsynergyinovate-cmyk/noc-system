@@ -300,17 +300,35 @@ function WifiEditor({
 function Body({ deviceId }: { deviceId: string }) {
   const [state, setState] = useState<DetailState>({ kind: "loading" });
   const [secrets, setSecrets] = useState<SecretState>({ kind: "hidden" });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingWlan, setEditingWlan] = useState<number | null>(null);
 
   const load = useCallback(
-    async (signal?: AbortSignal) => {
-      // Keadaan "memuat" sudah menjadi nilai awal; coba lagi menyetelnya sendiri.
+    async (signal?: AbortSignal, forceRefresh = false) => {
+      if (forceRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setState({ kind: "loading" });
+      }
       try {
-        const res = await fetch(`/api/cpe/${encodeURIComponent(deviceId)}/detail`, { signal, cache: "no-store" });
-        const json = (await res.json().catch(() => null)) as { data?: CpeDetail; error?: string | { message?: string } } | null;
+        const url = `/api/cpe/${encodeURIComponent(deviceId)}/detail${forceRefresh ? "?refresh=true" : ""}`;
+        const res = await fetch(url, { signal, cache: "no-store" });
+        const json = (await res.json().catch(() => null)) as {
+          data?: CpeDetail;
+          refreshed?: boolean;
+          error?: string | { message?: string };
+        } | null;
         if (res.ok && json?.data) {
           setState({ kind: "ready", data: json.data });
+          if (forceRefresh) {
+            setRefreshNote(
+              json.refreshed
+                ? "Data segar berhasil dibaca langsung dari modem via TR-069."
+                : "Modem belum merespons connection request; menampilkan data terkini tersimpan.",
+            );
+          }
         } else {
           const err = json?.error;
           setState({
@@ -323,6 +341,8 @@ function Body({ deviceId }: { deviceId: string }) {
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setState({ kind: "error", message: "Server aplikasi tidak terjangkau." });
+      } finally {
+        setIsRefreshing(false);
       }
     },
     [deviceId],
@@ -413,8 +433,32 @@ function Body({ deviceId }: { deviceId: string }) {
           ? "text-warning"
           : "text-destructive";
 
+  const connectedHosts = d.hosts.filter((h) => h.active);
+
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-xs">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="font-mono text-[10px] bg-background">
+            Realtime TR-069
+          </Badge>
+          <span className="text-muted-foreground">
+            {refreshNote ?? "Data konfigurasi dan pembacaan optik modem."}
+          </span>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={isRefreshing}
+          onClick={() => void load(undefined, true)}
+          className="h-7 gap-1.5 text-xs font-medium"
+          data-testid="btn-refresh-realtime"
+        >
+          <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
+          {isRefreshing ? "Membaca modem…" : "Segarkan Realtime"}
+        </Button>
+      </div>
       <div className="grid gap-3 md:grid-cols-2">
         <Section title="Identitas">
           <dl>
@@ -570,9 +614,9 @@ function Body({ deviceId }: { deviceId: string }) {
         )}
       </Section>
 
-      <Section title={`Perangkat terhubung (${d.hosts.length} tercatat)`}>
-        {d.hosts.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Belum ada data host.</p>
+      <Section title={`Perangkat terhubung (${connectedHosts.length} aktif saat ini)`}>
+        {connectedHosts.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Tidak ada perangkat yang sedang terhubung ke modem saat ini.</p>
         ) : (
           <div className="max-h-56 overflow-auto">
             <Table>
@@ -582,15 +626,21 @@ function Body({ deviceId }: { deviceId: string }) {
                   <TableHead>IP</TableHead>
                   <TableHead>MAC</TableHead>
                   <TableHead>Antarmuka</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {d.hosts.slice(0, 100).map((h, i) => (
+                {connectedHosts.slice(0, 100).map((h, i) => (
                   <TableRow key={`${h.mac}-${i}`} className="text-xs">
-                    <TableCell>{h.hostname || "—"}</TableCell>
+                    <TableCell className="font-medium">{h.hostname || "—"}</TableCell>
                     <TableCell className="font-mono">{h.ip || "—"}</TableCell>
                     <TableCell className="font-mono">{h.mac || "—"}</TableCell>
                     <TableCell>{[h.interfaceType, h.band].filter(Boolean).join(" ") || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                        Aktif saat ini
+                      </Badge>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

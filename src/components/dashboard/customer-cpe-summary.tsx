@@ -85,15 +85,15 @@ export function CustomerCpeSummary({ customer }: { customer: DashboardCustomer }
             </dl>
             <div>
               <div className="mb-1 text-xs font-medium text-muted-foreground">
-                Perangkat terhubung ({activeHosts.length} aktif dari {cpe.hosts.length})
+                Perangkat terhubung ({activeHosts.length} aktif saat ini)
               </div>
-              {cpe.hosts.length === 0 ? (
-                <p className="text-muted-foreground">Modem tidak melaporkan daftar perangkat.</p>
+              {activeHosts.length === 0 ? (
+                <p className="text-muted-foreground">Tidak ada perangkat yang sedang terhubung saat ini.</p>
               ) : (
                 <ul className="max-h-40 space-y-1 overflow-auto">
-                  {cpe.hosts.map((h) => (
+                  {activeHosts.map((h) => (
                     <li key={h.mac} className="flex justify-between gap-3 text-xs">
-                      <span className={h.active ? "" : "text-muted-foreground"}>{h.hostname || h.mac}</span>
+                      <span>{h.hostname || h.mac}</span>
                       <span className="font-mono text-muted-foreground">{h.ip || "—"}</span>
                     </li>
                   ))}

@@ -136,9 +136,9 @@ export function DeviceQuickCards() {
           <Server className="size-3.5 text-primary" />
           <span>
             {loading
-              ? "Memeriksa perangkat terdaftar di PostgreSQL..."
+              ? "Memeriksa perangkat terdaftar..."
               : devices.length > 0
-                ? `${devices.length} perangkat terdaftar di database PostgreSQL.`
+                ? `${devices.length} perangkat terdaftar di sistem.`
                 : "Belum ada perangkat terdaftar."}
           </span>
         </div>

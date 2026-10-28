@@ -2496,7 +2496,7 @@ export function NetworkMap({
             Gagal Menghubungkan ke Backend Jaringan
           </h3>
           <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
-            {loadError}. Sistem menolak menampilkan data tiruan palsu (*zero-dummy*) agar data operasional tidak tersamarkan.
+            {loadError}. Data operasional jaringan tidak dapat dimuat.
           </p>
           <Button
             type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, Radio } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 
@@ -28,12 +28,8 @@ export function MockDataNotice({
     );
   }
   if (!isDemo) {
-    return (
-      <p className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-        <Radio className="size-3.5" aria-hidden="true" />
-        Mode Live (Database PostgreSQL)
-      </p>
-    );
+    // Operasional live nyata tidak memerlukan lencana AI-slop "Mode Live (Database PostgreSQL)"
+    return null;
   }
 
   return (

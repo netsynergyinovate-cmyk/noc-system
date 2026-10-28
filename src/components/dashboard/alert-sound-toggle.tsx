@@ -44,6 +44,7 @@ export function AlertSoundToggle() {
         type="button"
         variant={enabled ? "secondary" : "ghost"}
         size="sm"
+        className="h-7 px-2 text-xs gap-1.5 rounded-lg"
         aria-label="Suara alert"
         aria-pressed={enabled}
         title={states[state].hint}

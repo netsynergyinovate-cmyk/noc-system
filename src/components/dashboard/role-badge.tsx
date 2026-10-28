@@ -50,13 +50,13 @@ export function RoleBadge({
         data-role={role}
         data-preview={String(isPreview)}
         data-preview-enabled="false"
-        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1"
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
       >
-        <span className="text-xs text-muted-foreground">Peran:</span>
+        <span className="text-[11px] text-muted-foreground">Peran:</span>
         {/* Nama peran tertulis; chip bukan hanya warna. */}
         <span
           data-testid="role-chip"
-          className="inline-flex max-w-full items-center rounded-full border bg-secondary px-2.5 py-0.5 text-xs font-medium wrap-anywhere text-secondary-foreground"
+          className="inline-flex max-w-full items-center rounded-md border border-border/70 bg-secondary/80 px-1.5 py-0.5 text-[11px] font-medium wrap-anywhere text-secondary-foreground"
         >
           {roleLabel(role)}
         </span>

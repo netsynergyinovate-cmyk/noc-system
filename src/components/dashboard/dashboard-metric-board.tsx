@@ -88,11 +88,11 @@ export function DashboardMetricBoard() {
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="space-y-0.5">
             <p className="font-semibold text-foreground flex items-center gap-2">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              Mode Live Aktif: Belum Ada Perangkat Terhubung
+              <span className="size-2 rounded-full bg-primary/70" />
+              Belum Ada Perangkat Terhubung
             </p>
             <p className="text-xs text-muted-foreground">
-              Semua data dummy telah dinonaktifkan. Hubungkan router MikroTik atau OLT Anda untuk mulai mengumpulkan telemetri nyata.
+              Hubungkan router MikroTik atau OLT untuk mulai mengumpulkan telemetri jaringan.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

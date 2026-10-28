@@ -205,7 +205,6 @@ export function SettingsBoard() {
   }
 
   const isLocal = runtimeStatus?.environmentInfo?.isLocalhost ?? true;
-  const dbConnected = runtimeStatus?.databaseConnected ?? true;
 
   return (
     <div className="flex flex-col gap-5 max-w-7xl mx-auto">
@@ -223,14 +222,6 @@ export function SettingsBoard() {
 
           {/* Status Bar Minimalis */}
           <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs px-2.5 py-1 font-medium flex items-center gap-1.5"
-            >
-              <Database className="size-3" />
-              <span>Live System • PostgreSQL {dbConnected ? "Aktif" : "Menghubungkan..."}</span>
-            </Badge>
-
             <Badge
               variant="outline"
               className={cn(
@@ -294,10 +285,10 @@ export function SettingsBoard() {
               <CardHeader className="pb-2.5">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Database className="size-4 text-emerald-500" />
-                  <span>Ringkasan Data Operasional PostgreSQL</span>
+                  <span>Ringkasan Data Operasional</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Jumlah entitas jaringan aktif yang tersimpan dan terpantau di database.
+                  Jumlah entitas jaringan aktif yang tersimpan dan terpantau di sistem.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">

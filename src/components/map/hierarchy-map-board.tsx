@@ -609,16 +609,7 @@ export function HierarchyMapBoard({
               <Share2 className="size-5 text-primary rotate-90" />
               Peta Susunan Bertingkat Topologi
             </h1>
-            {data.dataSource.isRealData ? (
-              <Badge
-                variant="outline"
-                className="text-xs gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 font-medium"
-                data-testid="hierarchy-data-source-badge"
-              >
-                <Database className="size-3" />
-                PostgreSQL Live
-              </Badge>
-            ) : (
+            {!data.dataSource.isRealData && (
               <Badge
                 variant="outline"
                 className="text-xs gap-1 border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-medium"

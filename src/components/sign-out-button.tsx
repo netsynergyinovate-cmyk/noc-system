@@ -81,8 +81,9 @@ export function SignOutButton() {
         disabled={pending}
         variant="outline"
         size="sm"
+        className="h-6 px-2 text-xs gap-1 rounded-md text-muted-foreground hover:text-foreground"
       >
-        <LogOut aria-hidden="true" />
+        <LogOut className="size-3" aria-hidden="true" />
         {pending ? "Keluar…" : "Keluar"}
       </Button>
     </div>

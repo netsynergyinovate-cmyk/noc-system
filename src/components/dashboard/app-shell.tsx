@@ -1,7 +1,7 @@
+import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { AdminLink } from "./admin-link";
 import { AlertSoundToggle } from "./alert-sound-toggle";
 import { AppNav } from "./app-nav";
 import { ConfigurationStatusBadge } from "./configuration-status-badge";
@@ -29,30 +29,51 @@ export function AppShell({
       {/* overflow-y-auto: di layar pendek (mis. 1366x768) isi sidebar lebih tinggi
           dari layar; tanpa itu tombol Keluar terpotong dan tak terjangkau. */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-card px-4 py-5 lg:flex">
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <NocBrand />
-          <ConfigurationStatusBadge incomplete={locked} />
+          {locked && <ConfigurationStatusBadge incomplete={locked} />}
         </div>
         <AppNav variant="sidebar" locked={locked} />
-        <div className="flex flex-col items-start gap-3 border-t pt-4">
-          <ThemeToggle />
-          <AlertSoundToggle />
-          <p className="w-full text-xs break-all text-muted-foreground">
-            Masuk sebagai {user.email}
-          </p>
-          <RoleBadge variant="sidebar" />
-          <AdminLink />
-          <SignOutButton />
+        <div className="mt-auto flex flex-col gap-2.5 border-t border-border/60 pt-3">
+          {/* Kontrol Tema & Suara Minimalis */}
+          <div className="flex items-center justify-between gap-1">
+            <ThemeToggle />
+            <AlertSoundToggle />
+          </div>
+
+          {/* Menu Profil Akun Minimalis */}
+          <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-2.5">
+            <Link
+              href="/app/pengaturan/akun"
+              title="Buka Pengaturan Akun & Profil"
+              className="group flex items-center gap-2.5 min-w-0 transition-opacity hover:opacity-85"
+            >
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-semibold text-xs border border-primary/20">
+                {user.email.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                  {user.email}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Profil &amp; Akun
+                </span>
+              </div>
+            </Link>
+            <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+              <RoleBadge variant="sidebar" />
+              <SignOutButton />
+            </div>
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 lg:hidden">
           <NocBrand />
           <div className="flex flex-wrap items-center gap-2">
-            <ConfigurationStatusBadge incomplete={locked} />
+            {locked && <ConfigurationStatusBadge incomplete={locked} />}
             <ThemeToggle />
             <AlertSoundToggle />
-            <AdminLink />
             <SignOutButton />
             <RoleBadge variant="bar" />
           </div>

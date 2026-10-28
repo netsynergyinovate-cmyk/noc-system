@@ -179,32 +179,23 @@ export function AppNav({
 
   return (
     <nav aria-label="Menu utama" className="flex-1 space-y-3">
-      {/* Status Indikator di atas menu seperti referensi */}
-      <div className="flex items-center gap-2 px-2.5 py-1 text-xs text-muted-foreground">
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:hidden" />
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-        </span>
-        <span className="font-medium text-foreground/80">Online</span>
-      </div>
-
       {/* Item Utama: Dashboard */}
       <div className="space-y-1">
         <Link
           href="/app"
           aria-current={isDashboardActive ? "page" : undefined}
           className={cn(
-            "group relative flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+            "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150",
             isDashboardActive
-              ? "bg-white text-blue-600 font-semibold shadow-xs dark:bg-white dark:text-blue-600"
-              : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+              ? "bg-primary/10 text-primary font-semibold shadow-xs dark:bg-primary/15 dark:text-primary"
+              : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
           )}
         >
           <LayoutDashboard
             className={cn(
               "size-4 shrink-0 transition-transform duration-150 group-hover:scale-105",
               isDashboardActive
-                ? "text-blue-600"
+                ? "text-primary"
                 : "text-muted-foreground group-hover:text-foreground",
             )}
             aria-hidden="true"
@@ -212,7 +203,6 @@ export function AppNav({
           <span className="truncate">Dashboard</span>
         </Link>
       </div>
-
       {/* Kategori Beranak (Accordion Menu) */}
       <div className="space-y-1.5">
         {navCategories.map((category) => {
@@ -273,15 +263,15 @@ export function AppNav({
                                 className={cn(
                                   "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                                   isItemActive
-                                    ? "bg-secondary text-primary font-semibold shadow-2xs dark:bg-white/10 dark:text-white"
-                                    : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+                                    ? "bg-primary/10 text-primary font-semibold shadow-2xs dark:bg-primary/15 dark:text-primary"
+                                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                                 )}
                               >
                                 <Icon
                                   className={cn(
                                     "size-3.5 shrink-0",
                                     isItemActive
-                                      ? "text-primary dark:text-blue-400"
+                                      ? "text-primary"
                                       : "text-muted-foreground/70",
                                   )}
                                   aria-hidden="true"

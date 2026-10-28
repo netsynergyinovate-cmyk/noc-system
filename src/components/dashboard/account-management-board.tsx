@@ -698,10 +698,10 @@ export function AccountManagementBoard() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="size-4 text-primary" />
-                <span>Daftar Seluruh Pengguna di Database</span>
+                <span>Daftar Seluruh Pengguna</span>
               </CardTitle>
               <CardDescription>
-                Setiap akun yang terdaftar dapat Anda atur perannya langsung ke PostgreSQL.
+                Setiap akun yang terdaftar dapat Anda atur perannya langsung di sistem.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-1">

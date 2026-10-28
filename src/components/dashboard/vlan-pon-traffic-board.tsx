@@ -1,97 +1,155 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { Layers, RefreshCw } from "lucide-react";
-import type { VlanPonTrafficItem, VlanPonTrafficSummary } from "@/services/vlan-traffic.service";
+import { Layers } from "lucide-react";
+import type {
+  VlanPonTrafficItem,
+  VlanPonTrafficSummary,
+} from "@/services/vlan-traffic.service";
 import { RangePicker } from "@/components/dashboard/range-picker";
 import type { TrafficRangeId } from "@/lib/dashboard/ranges";
-
+import { useDashboardStore } from "@/lib/dashboard/store";
+import {
+  buildLiveVlanSummary,
+  seedVlanBuffer,
+} from "@/lib/dashboard/vlan-live";
+import { backendGet } from "@/lib/dashboard/backend-api";
+import type { VlanHistory } from "@/lib/dashboard/telemetry";
+import { evaluateTrafficStaleness } from "@/lib/dashboard/staleness";
 interface VlanPonTrafficBoardProps {
   onSelectPon?: (vlan: VlanPonTrafficItem) => void;
   selectedVlanName?: string;
-  onDataLoaded?: (summary: VlanPonTrafficSummary) => void;
 }
 
+// Live: laju per detik didorong backend Go lewat telemetri (tanpa polling). Rentang
+// histori: dibaca sekali dari arsip saat rentang dipilih.
 export function VlanPonTrafficBoard({
   onSelectPon,
   selectedVlanName,
-  onDataLoaded,
 }: VlanPonTrafficBoardProps) {
-  const [data, setData] = useState<VlanPonTrafficSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState<VlanPonTrafficSummary | null>(null);
+  const [archive, setArchive] = useState<{
+    range: TrafficRangeId;
+    data: VlanPonTrafficSummary;
+  } | null>(null);
   const [range, setRange] = useState<TrafficRangeId>("live");
-  const [hoveredPointMap, setHoveredPointMap] = useState<Record<string, { time: string; dl: number; ul: number } | null>>({});
-
-  const isFetchingRef = useRef(false);
-
-  const fetchVlanTraffic = useCallback(async (selectedRange: TrafficRangeId = range) => {
-    if (isFetchingRef.current) return;
-    isFetchingRef.current = true;
-    try {
-      const url = selectedRange === "live" ? "/api/traffic/vlans" : `/api/traffic/vlans?range=${selectedRange}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const body = (await res.json()) as { ok: boolean; data: VlanPonTrafficSummary };
-        if (body.ok && body.data) {
-          setData(body.data);
-          onDataLoaded?.(body.data);
-        }
-      }
-    } catch {
-      // Abaikan bila request sempat timeout
-    } finally {
-      isFetchingRef.current = false;
-      setLoading(false);
-    }
-  }, [range, onDataLoaded]);
-
-  const handleRangeChange = (newRange: TrafficRangeId) => {
-    setRange(newRange);
-    void fetchVlanTraffic(newRange);
-  };
+  const [hoveredPointMap, setHoveredPointMap] = useState<
+    Record<string, { time: string; dl: number; ul: number } | null>
+  >({});
+  const router = useDashboardStore((s) => s.telemetry?.routers[0]);
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  const [lastVlanReceivedAt, setLastVlanReceivedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    const initialTimer = setTimeout(() => {
-      if (mounted) void fetchVlanTraffic(range);
-    }, 0);
-
-    // Auto-refresh: 1 detik untuk live stream (1 DTK), 15 detik untuk rentang histori
-    const pollIntervalMs = range === "live" ? 1000 : 15000;
+    if (range !== "live") return;
     const interval = setInterval(() => {
-      if (mounted && typeof document !== "undefined" && document.visibilityState === "visible") {
-        void fetchVlanTraffic(range);
-      }
-    }, pollIntervalMs);
+      setNowSec(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [range]);
 
-    return () => {
-      mounted = false;
-      clearTimeout(initialTimer);
-      clearInterval(interval);
+  const latestVlanTime =
+    live?.items.reduce(
+      (max, item) => Math.max(max, item.series.at(-1)?.timestamp ?? 0),
+      0,
+    ) ?? 0;
+
+  useEffect(() => {
+    if (latestVlanTime > 0) {
+      setLastVlanReceivedAt(Math.floor(Date.now() / 1000));
+    }
+  }, [latestVlanTime]);
+
+  const staleness = evaluateTrafficStaleness({
+    isLive: range === "live",
+    lastDataReceivedAt: lastVlanReceivedAt,
+    routerReachable: router?.reachable ?? true,
+    nowSec,
+  });
+  const isTrafficDown = staleness.isStale;
+  const secondsSinceLastSample = staleness.secondsSinceLastData;
+  useEffect(() => {
+    const buffer = new Map<
+      string,
+      VlanPonTrafficSummary["items"][number]["series"]
+    >();
+    const apply = (
+      telemetry: ReturnType<typeof useDashboardStore.getState>["telemetry"],
+    ) => {
+      if (telemetry)
+        setLive(buildLiveVlanSummary(telemetry, buffer, Date.now()));
     };
-  }, [fetchVlanTraffic, range]);
+    let cancelled = false;
+    let unsubscribe = () => {};
+    // Riwayat 5 menit dibaca sekali dari backend (grafik tidak mulai dari kosong saat
+    // halaman dimuat ulang); sesudahnya titik baru datang lewat telemetri, tanpa polling.
+    backendGet<VlanHistory[]>("/api/v1/dashboard/vlans/history")
+      .then((history) => seedVlanBuffer(buffer, history))
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return;
+        apply(useDashboardStore.getState().telemetry);
+        unsubscribe = useDashboardStore.subscribe((state, previous) => {
+          if (state.telemetry !== previous.telemetry) apply(state.telemetry);
+        });
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (range === "live") return;
+    let cancelled = false;
+    fetch(`/api/traffic/vlans?range=${range}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { ok?: boolean; data?: VlanPonTrafficSummary } | null) => {
+        if (!cancelled && body?.ok && body.data)
+          setArchive({ range, data: body.data });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
+
+  const data =
+    range === "live" ? live : archive?.range === range ? archive.data : null;
+  const loading = data === null;
+  const handleRangeChange = (newRange: TrafficRangeId) => setRange(newRange);
 
   const items = data?.items ?? [];
 
   return (
-    <div className="mt-2.5 pt-2 border-t border-zinc-800">
+    <div className="mt-2.5 pt-2 border-t border-border">
       {/* HEADER SECTION: SINKRON DENGAN TEMA UTAMA DASHBOARD */}
       <div className="flex flex-col gap-2 mb-2.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           {/* Judul & Badge */}
           <div className="flex items-center gap-2">
-            <Layers className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <Layers className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xs sm:text-sm font-bold text-white">
+              <h2 className="text-xs sm:text-sm font-bold text-foreground">
                 Trafik VLAN per PON OLT (MikroTik Core CIARA)
               </h2>
-              {range === "live" && (
-                <span className="flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-500/40 text-[9px] font-mono text-emerald-400 font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  1 DTK
-                </span>
-              )}
-              <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+              {range === "live" &&
+                (isTrafficDown ? (
+                  <span
+                    data-testid="vlan-rto-badge"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/50 text-[9px] font-mono text-rose-300 font-semibold animate-pulse"
+                    title={router?.lastError || "MikroTik tidak merespons (RTO)"}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                    RTO • TIDAK ADA RESPON ({secondsSinceLastSample}s)
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-500/40 text-[9px] font-mono text-emerald-400 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    1 DTK
+                  </span>
+                ))}
+              <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-[9px] font-mono text-muted-foreground">
                 VLAN 1101–1106
               </span>
             </div>
@@ -100,46 +158,76 @@ export function VlanPonTrafficBoard({
           {/* RangePicker & Refresh */}
           <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
             <RangePicker value={range} onChange={handleRangeChange} />
-            <button
-              onClick={() => void fetchVlanTraffic(range)}
-              title="Segarkan data VLAN"
-              className="p-1 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
-            >
-              <RefreshCw className="w-3 h-3" />
-            </button>
           </div>
         </div>
 
-        {/* Baris Ringkasan Status (Sinkron dengan Palet Zinc-900/60 Border-Zinc-800) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 rounded bg-zinc-900/60 border border-zinc-800 text-[10px] font-mono">
-          <p className="text-zinc-400 text-[10px]">
-            {range === "live"
-              ? "Laju unduh & unggah real-time per detik (MikroTik Core CIARA ↔ PON OLT HSGQ)"
-              : "Histori laju unduh & unggah antarmuka VLAN per port PON OLT HSGQ"}
-          </p>
-          <div className="flex items-center gap-2 text-zinc-400">
-            <span>Aktif: <strong className="text-zinc-200">{data?.totalActivePon ?? 0}/6 PON</strong></span>
+        {/* Baris Ringkasan Status */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 rounded bg-muted/40 border border-border text-[10px] font-mono">
+          {isTrafficDown ? (
+            <div className="flex items-center gap-1.5 text-rose-400 font-medium">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+              <span>
+                Trafik terhenti: Tidak ada respon dari MikroTik Core CIARA ({secondsSinceLastSample}s lalu
+                {router?.lastError ? ` • ${router.lastError}` : " • RTO / Timeout"}).
+              </span>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-[10px]">
+              {range === "live"
+                ? "Laju unduh & unggah real-time per detik (MikroTik Core CIARA ↔ PON OLT HSGQ)"
+                : "Histori laju unduh & unggah antarmuka VLAN per port PON OLT HSGQ"}
+            </p>
+          )}
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>
+              Aktif:{" "}
+              <strong className="text-foreground">
+                {data?.totalActivePon ?? 0}/{items.length} PON
+              </strong>
+            </span>
             <span className="text-zinc-700">•</span>
-            <span>ONU: <strong className="text-zinc-200">{data?.totalOnuOnline ?? 0}</strong></span>
+            <span>
+              ONU:{" "}
+              <strong className="text-foreground">
+                {data?.totalOnuOnline ?? 0}
+              </strong>
+            </span>
             <span className="text-zinc-700">•</span>
-            <span>Total DL: <strong className="text-sky-400 font-bold font-mono">{(data?.totalDownloadMbps ?? 0).toFixed(1).replace(".", ",")} Mbps</strong></span>
+            <span>
+              Total DL:{" "}
+              <strong className="text-sky-400 font-bold font-mono">
+                {(data?.totalDownloadMbps ?? 0).toFixed(1).replace(".", ",")}{" "}
+                Mbps
+              </strong>
+            </span>
             <span className="text-zinc-700">•</span>
-            <span>UL: <strong className="text-orange-400 font-bold font-mono">{(data?.totalUploadMbps ?? 0).toFixed(1).replace(".", ",")} Mbps</strong></span>
+            <span>
+              UL:{" "}
+              <strong className="text-orange-400 font-bold font-mono">
+                {(data?.totalUploadMbps ?? 0).toFixed(1).replace(".", ",")} Mbps
+              </strong>
+            </span>
           </div>
         </div>
       </div>
 
       {/* GRID KARTU TRAFIK VLAN PER PON DENGAN PALET TENANG (SUBDUED) */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-        {loading && items.length === 0 ? (
+        {!loading && items.length === 0 ? (
+          <p className="col-span-full py-4 text-center font-mono text-[10px] text-muted-foreground">
+            {range === "live"
+              ? "Belum ada VLAN PON (vlan1101…) terbaca dari router."
+              : "Belum ada histori VLAN PON untuk rentang ini."}
+          </p>
+        ) : loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="min-h-[220px] rounded-lg bg-zinc-900/60 border border-zinc-800/80 p-2.5 animate-pulse flex flex-col justify-between"
+              className="min-h-[220px] rounded-lg bg-muted/40 border border-border p-2.5 animate-pulse flex flex-col justify-between"
             >
-              <div className="h-4 bg-zinc-800 rounded w-1/3 mb-2" />
-              <div className="h-12 bg-zinc-800 rounded w-full mb-2" />
-              <div className="h-28 bg-zinc-800 rounded w-full" />
+              <div className="h-4 bg-muted rounded w-1/3 mb-2" />
+              <div className="h-12 bg-muted rounded w-full mb-2" />
+              <div className="h-28 bg-muted rounded w-full" />
             </div>
           ))
         ) : (
@@ -153,6 +241,7 @@ export function VlanPonTrafficBoard({
                 item={item}
                 range={range}
                 isSelected={isSelected}
+                isTrafficDown={isTrafficDown}
                 inspectedPoint={inspected}
                 onInspectPoint={(pt) =>
                   setHoveredPointMap((prev) => ({
@@ -174,20 +263,26 @@ interface VlanPonCardProps {
   item: VlanPonTrafficItem;
   range: TrafficRangeId;
   isSelected?: boolean;
+  isTrafficDown?: boolean;
   inspectedPoint?: { time: string; dl: number; ul: number } | null;
-  onInspectPoint?: (pt: { time: string; dl: number; ul: number } | null) => void;
+  onInspectPoint?: (
+    pt: { time: string; dl: number; ul: number } | null,
+  ) => void;
   onClick?: () => void;
 }
 
 function VlanPonCard({
   item,
   isSelected,
+  isTrafficDown = false,
   inspectedPoint,
   onInspectPoint,
   onClick,
 }: VlanPonCardProps) {
-  const isOnline = item.running && item.onuCount > 0;
-  const currentDl = inspectedPoint ? inspectedPoint.dl : item.currentDownloadMbps;
+  const isOnline = !isTrafficDown && item.running && item.onuCount > 0;
+  const currentDl = inspectedPoint
+    ? inspectedPoint.dl
+    : item.currentDownloadMbps;
   const currentUl = inspectedPoint ? inspectedPoint.ul : item.currentUploadMbps;
 
   return (
@@ -195,24 +290,34 @@ function VlanPonCard({
       onClick={onClick}
       className={`rounded-lg border p-2.5 flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden group ${
         isSelected
-          ? "border-sky-500/60 bg-zinc-900/90 ring-1 ring-sky-500/40 shadow-sm shadow-sky-950/40"
-          : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700 hover:bg-zinc-900/80"
+          ? "border-primary/60 bg-card ring-1 ring-primary/40 shadow-xs"
+          : "border-border bg-card hover:border-border/80 hover:bg-muted/30"
       }`}
     >
       {/* HEADER CARD: PON, VLAN ID, STATUS & OLT ONU COUNT */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
-          {isOnline ? (
+          {isTrafficDown ? (
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"
+              title="MikroTik RTO / Tidak ada respon"
+            />
+          ) : isOnline ? (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           ) : (
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" />
           )}
-          <span className="font-bold text-white text-xs font-mono tracking-tight">
+          <span className="font-bold text-foreground text-xs font-mono tracking-tight">
             {item.ponName}
           </span>
-          <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-[9px] font-mono text-zinc-400">
+          <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-[9px] font-mono text-muted-foreground">
             {item.vlanName} ({item.vlanId})
           </span>
+          {isTrafficDown && (
+            <span className="px-1.5 py-0.2 rounded bg-rose-950/80 border border-rose-500/50 text-[8.5px] font-mono text-rose-300 font-semibold animate-pulse">
+              RTO
+            </span>
+          )}
           {isSelected && (
             <span className="px-1.5 py-0.5 rounded bg-sky-950/70 border border-sky-500/50 text-[8.5px] font-mono text-sky-400 font-semibold">
               Fokus
@@ -221,11 +326,11 @@ function VlanPonCard({
         </div>
 
         <div className="flex items-center gap-1.5 font-mono text-[9px]">
-          <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
+          <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-foreground">
             {item.onuCount} ONU
           </span>
           {item.rxPowerDbm !== null && (
-            <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+            <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">
               {item.rxPowerDbm.toFixed(1).replace(".", ",")} dBm
             </span>
           )}
@@ -238,28 +343,39 @@ function VlanPonCard({
         <div
           className={`rounded p-1.5 border transition-all ${
             inspectedPoint
-              ? "bg-sky-950/30 border-sky-500/50"
-              : "bg-zinc-900/90 border-zinc-800"
+              ? "bg-sky-500/10 border-sky-500/50"
+              : "bg-muted/40 border-border"
           }`}
         >
           <div className="flex items-center justify-between text-[9px]">
-            <span className="flex items-center gap-1.5 text-zinc-400 font-medium">
+            <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
               <span
                 aria-hidden="true"
-                className="w-3 border-t-[2.5px] border-solid rounded-full border-sky-400"
+                className={`w-3 border-t-[2.5px] border-solid rounded-full ${isTrafficDown ? "border-rose-400" : "border-sky-400"}`}
               />
-              Unduh {inspectedPoint ? "titik" : "sekarang"}
+              {inspectedPoint ? "Unduh titik" : isTrafficDown ? "Unduh (RTO)" : "Unduh sekarang"}
             </span>
-            <span className="font-mono text-zinc-500 text-[8.5px]">
+            <span className="font-mono text-muted-foreground text-[8.5px]">
               {inspectedPoint ? inspectedPoint.time : "WIB"}
             </span>
           </div>
-          <div className="mt-0.5 text-base font-bold text-white font-mono tabular-nums leading-tight">
-            {currentDl.toFixed(1).replace(".", ",")} <span className="text-[10px] text-zinc-500 font-normal">Mbps</span>
+          <div className="mt-0.5 text-base font-bold text-foreground font-mono tabular-nums leading-tight">
+            {currentDl.toFixed(1).replace(".", ",")}{" "}
+            <span className="text-[10px] text-muted-foreground font-normal">Mbps</span>
           </div>
-          <div className="flex items-center justify-between text-[8.5px] font-mono text-zinc-500 mt-1 pt-0.5 border-t border-zinc-800/80">
-            <span>Puncak: <strong className="text-zinc-300 font-mono">{item.peakDownloadMbps.toFixed(1).replace(".", ",")}</strong></span>
-            <span>Rata: <strong className="text-zinc-400 font-mono">{item.avgDownloadMbps.toFixed(1).replace(".", ",")}</strong></span>
+          <div className="flex items-center justify-between text-[8.5px] font-mono text-muted-foreground mt-1 pt-0.5 border-t border-border">
+            <span>
+              Puncak:{" "}
+              <strong className="text-foreground/90 font-mono">
+                {item.peakDownloadMbps.toFixed(1).replace(".", ",")}
+              </strong>
+            </span>
+            <span>
+              Rata:{" "}
+              <strong className="text-muted-foreground font-mono">
+                {item.avgDownloadMbps.toFixed(1).replace(".", ",")}
+              </strong>
+            </span>
           </div>
         </div>
 
@@ -267,46 +383,69 @@ function VlanPonCard({
         <div
           className={`rounded p-1.5 border transition-all ${
             inspectedPoint
-              ? "bg-orange-950/30 border-orange-500/50"
-              : "bg-zinc-900/90 border-zinc-800"
+              ? "bg-orange-500/10 border-orange-500/50"
+              : "bg-muted/40 border-border"
           }`}
         >
           <div className="flex items-center justify-between text-[9px]">
-            <span className="flex items-center gap-1.5 text-zinc-400 font-medium">
+            <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
               <span
                 aria-hidden="true"
-                className="w-3 border-t-[2.5px] border-solid rounded-full border-orange-400"
+                className={`w-3 border-t-[2.5px] border-solid rounded-full ${isTrafficDown ? "border-rose-400" : "border-orange-400"}`}
               />
-              Unggah {inspectedPoint ? "titik" : "sekarang"}
+              {inspectedPoint ? "Unggah titik" : isTrafficDown ? "Unggah (RTO)" : "Unggah sekarang"}
             </span>
-            <span className="font-mono text-zinc-500 text-[8.5px]">
+            <span className="font-mono text-muted-foreground text-[8.5px]">
               {inspectedPoint ? inspectedPoint.time : "WIB"}
             </span>
           </div>
-          <div className="mt-0.5 text-base font-bold text-white font-mono tabular-nums leading-tight">
-            {currentUl.toFixed(1).replace(".", ",")} <span className="text-[10px] text-zinc-500 font-normal">Mbps</span>
+          <div className="mt-0.5 text-base font-bold text-foreground font-mono tabular-nums leading-tight">
+            {currentUl.toFixed(1).replace(".", ",")}{" "}
+            <span className="text-[10px] text-muted-foreground font-normal">Mbps</span>
           </div>
-          <div className="flex items-center justify-between text-[8.5px] font-mono text-zinc-500 mt-1 pt-0.5 border-t border-zinc-800/80">
-            <span>Puncak: <strong className="text-zinc-300 font-mono">{item.peakUploadMbps.toFixed(1).replace(".", ",")}</strong></span>
-            <span>Rata: <strong className="text-zinc-400 font-mono">{item.avgUploadMbps.toFixed(1).replace(".", ",")}</strong></span>
+          <div className="flex items-center justify-between text-[8.5px] font-mono text-muted-foreground mt-1 pt-0.5 border-t border-border">
+            <span>
+              Puncak:{" "}
+              <strong className="text-foreground/90 font-mono">
+                {item.peakUploadMbps.toFixed(1).replace(".", ",")}
+              </strong>
+            </span>
+            <span>
+              Rata:{" "}
+              <strong className="text-muted-foreground font-mono">
+                {item.avgUploadMbps.toFixed(1).replace(".", ",")}
+              </strong>
+            </span>
           </div>
         </div>
       </div>
 
       {/* GRAFIK CANVAS AREA TRAFIK (BERSIH DENGAN BG #0c0e12 IDENTIK TRAFFICCHART) */}
-      <div className="relative w-full h-[110px] bg-[#0c0e12] rounded border border-zinc-800 overflow-hidden">
-        <VlanRichChart
-          series={item.series}
-          onInspect={onInspectPoint}
-        />
+      <div className="relative w-full h-[110px] bg-muted/20 rounded border border-border overflow-hidden">
+        <VlanRichChart series={item.series} onInspect={onInspectPoint} />
+        {isTrafficDown && (
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+            <span className="px-2 py-0.5 rounded bg-rose-950/85 border border-rose-500/50 text-[8.5px] font-mono text-rose-300 font-semibold animate-pulse">
+              RTO / Tidak Ada Respon
+            </span>
+          </div>
+        )}
       </div>
 
       {/* FOOTER BAR: KETERANGAN BYTE & STATUS AKTIF */}
-      <div className="mt-1.5 pt-1 border-t border-zinc-800 flex items-center justify-between text-[9px] font-mono text-zinc-500">
+      <div className="mt-1.5 pt-1 border-t border-border flex items-center justify-between text-[9px] font-mono text-muted-foreground">
         <span className="truncate">
-          Total: DL {formatBytes(item.txTotalBytes)} • UL {formatBytes(item.rxTotalBytes)}
+          {item.txTotalBytes + item.rxTotalBytes > 0
+            ? `Total: DL ${formatBytes(item.txTotalBytes)} • UL ${formatBytes(item.rxTotalBytes)}`
+            : `${item.oltName || "OLT"} • ${item.series.length} titik`}
         </span>
-        <span className={isOnline ? "text-emerald-400 font-semibold uppercase" : "text-zinc-600 uppercase"}>
+        <span
+          className={
+            isOnline
+              ? "text-emerald-400 font-semibold uppercase"
+              : "text-zinc-600 uppercase"
+          }
+        >
           {isOnline ? "Aktif" : "Standby"}
         </span>
       </div>
@@ -332,7 +471,8 @@ function VlanRichChart({ series, onInspect }: VlanRichChartProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    const dpr =
+      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const width = canvas.clientWidth || 280;
     const height = canvas.clientHeight || 110;
 

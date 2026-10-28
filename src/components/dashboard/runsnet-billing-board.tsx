@@ -313,32 +313,32 @@ export function RunsnetBillingBoard() {
   return (
     <div className="flex flex-col gap-6" data-testid="runsnet-billing-board">
       {/* 1. Header Banner & Sinkronisasi */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-[#111317] p-4 text-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-wide text-zinc-100">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
                 Integrasi Billing RunsNet (Live Production)
               </h2>
-              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px] font-mono">
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-mono">
                 Tersambung: app.runsnet.id
               </Badge>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Akun: <span className="font-mono text-zinc-300">netsynergyinovate@yahoo.com</span> • Target ID:{" "}
-              <span className="font-mono text-zinc-300">ID00000000024 (Net Synergy Inovate)</span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Akun: <span className="font-mono text-foreground">netsynergyinovate@yahoo.com</span> • Target ID:{" "}
+              <span className="font-mono text-foreground">ID00000000024 (Net Synergy Inovate)</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {overview?.lastSync && (
-            <div className="text-right text-xs text-zinc-400 font-mono hidden sm:block">
+            <div className="text-right text-xs text-muted-foreground font-mono hidden sm:block">
               <p>Terakhir Sinkron:</p>
-              <p className="text-zinc-200">
+              <p className="text-foreground">
                 {new Date(overview.lastSync.startedAt).toLocaleString("id-ID", {
                   timeZone: "Asia/Jakarta",
                   dateStyle: "short",
@@ -378,10 +378,10 @@ export function RunsnetBillingBoard() {
       )}
 
       {/* 2. Filter Bar Periode Bulan */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-zinc-800 bg-[#14171d]">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center gap-2">
-          <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider mr-1">
+          <Calendar className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wider mr-1">
             Periode:
           </span>
 
@@ -391,13 +391,13 @@ export function RunsnetBillingBoard() {
             onClick={() => setSelectedPeriode(currentMonthPeriod)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               selectedPeriode === currentMonthPeriod
-                ? "bg-emerald-600 text-white font-semibold shadow-sm shadow-emerald-900/40 ring-1 ring-emerald-400"
-                : "bg-zinc-800/90 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                ? "bg-emerald-600 text-white font-semibold shadow-xs"
+                : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
             }`}
           >
             <span className="relative flex h-2 w-2">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${selectedPeriode === currentMonthPeriod ? "bg-emerald-300 opacity-75" : "hidden"}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${selectedPeriode === currentMonthPeriod ? "bg-emerald-300" : "bg-zinc-500"}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${selectedPeriode === currentMonthPeriod ? "bg-emerald-300" : "bg-muted-foreground"}`}></span>
             </span>
             ⚡ Bulan Ini ({formatPeriodLabel(currentMonthPeriod)})
           </button>
@@ -408,8 +408,8 @@ export function RunsnetBillingBoard() {
             onClick={() => setSelectedPeriode("all")}
             className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
               selectedPeriode === "all"
-                ? "bg-zinc-200 text-zinc-900 font-semibold shadow-sm"
-                : "bg-zinc-800/90 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
             }`}
           >
             Semua Periode
@@ -417,11 +417,11 @@ export function RunsnetBillingBoard() {
 
           {/* Dropdown Pemilihan Bulan Lainnya */}
           <div className="flex items-center gap-1.5 sm:ml-2">
-            <span className="text-[11px] text-zinc-400">Pilih Bulan:</span>
+            <span className="text-[11px] text-muted-foreground">Pilih Bulan:</span>
             <select
               value={selectedPeriode}
               onChange={(e) => setSelectedPeriode(e.target.value)}
-              className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+              className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-emerald-500"
             >
               <option value="all">Semua Periode (Kumulatif 2025 - 2026)</option>
               {overview?.availablePeriods?.map((p) => (
@@ -433,7 +433,7 @@ export function RunsnetBillingBoard() {
           </div>
         </div>
 
-        <div className="text-xs text-zinc-400 font-mono">
+        <div className="text-xs text-muted-foreground font-mono">
           Periode Terpilih:{" "}
           <span className="text-emerald-400 font-semibold">{formatPeriodLabel(selectedPeriode)}</span>
         </div>
@@ -446,8 +446,8 @@ export function RunsnetBillingBoard() {
           onClick={() => setActiveTab("delinquent")}
           className={`p-4 rounded-xl border cursor-pointer transition-all ${
             activeTab === "delinquent"
-              ? "border-rose-500/60 bg-rose-950/20 shadow-md shadow-rose-950/30"
-              : "border-zinc-800 bg-[#111317] hover:border-zinc-700"
+              ? "border-rose-500/60 bg-rose-500/10 shadow-xs"
+              : "border-border bg-card hover:border-border/80"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -457,7 +457,7 @@ export function RunsnetBillingBoard() {
           <div className="mt-2 text-2xl font-bold font-mono text-rose-400">
             {overview?.delinquentCustomersCount ?? 0}
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-400">
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
             <span>Total tagihan menunggak:</span>
             <span className="text-rose-300 font-semibold">{formatRupiah(overview?.invoices.unpaidAmount ?? 0)}</span>
           </div>
@@ -468,18 +468,18 @@ export function RunsnetBillingBoard() {
           onClick={() => setActiveTab("customers")}
           className={`p-4 rounded-xl border cursor-pointer transition-all ${
             activeTab === "customers"
-              ? "border-emerald-500/60 bg-emerald-950/20 shadow-md shadow-emerald-950/30"
-              : "border-zinc-800 bg-[#111317] hover:border-zinc-700"
+              ? "border-emerald-500/60 bg-emerald-500/10 shadow-xs"
+              : "border-border bg-card hover:border-border/80"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Total Pelanggan</span>
+            <span className="text-xs font-medium text-muted-foreground">Total Pelanggan</span>
             <Users className="h-4 w-4 text-emerald-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-white">
+          <div className="mt-2 text-2xl font-bold font-mono text-foreground">
             {overview?.customers.total ?? "—"}
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-400">
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className="text-emerald-400 font-semibold">{overview?.customers.active ?? 0} Aktif</span>
             <span>•</span>
             <span className="text-rose-400 font-semibold">{overview?.customers.isolir ?? 0} Isolir</span>
@@ -491,18 +491,18 @@ export function RunsnetBillingBoard() {
           onClick={() => setActiveTab("invoices")}
           className={`p-4 rounded-xl border cursor-pointer transition-all ${
             activeTab === "invoices"
-              ? "border-sky-500/60 bg-sky-950/20 shadow-md shadow-sky-950/30"
-              : "border-zinc-800 bg-[#111317] hover:border-zinc-700"
+              ? "border-sky-500/60 bg-sky-500/10 shadow-xs"
+              : "border-border bg-card hover:border-border/80"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Tagihan ({formatPeriodLabel(selectedPeriode)})</span>
+            <span className="text-xs font-medium text-muted-foreground">Tagihan ({formatPeriodLabel(selectedPeriode)})</span>
             <FileText className="h-4 w-4 text-sky-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-white">
+          <div className="mt-2 text-2xl font-bold font-mono text-foreground">
             {formatRupiah(overview?.invoices.totalAmount ?? 0)}
           </div>
-          <div className="mt-1 text-[11px] text-zinc-400 truncate flex items-center justify-between">
+          <div className="mt-1 text-[11px] text-muted-foreground truncate flex items-center justify-between">
             <span>{overview?.invoices.paidCount ?? 0} Lunas</span>
             <span className="text-amber-400 font-semibold">{overview?.invoices.unpaidCount ?? 0} Belum Bayar</span>
           </div>
@@ -513,34 +513,34 @@ export function RunsnetBillingBoard() {
           onClick={() => setActiveTab("payments")}
           className={`p-4 rounded-xl border cursor-pointer transition-all ${
             activeTab === "payments"
-              ? "border-purple-500/60 bg-purple-950/20 shadow-md shadow-purple-950/30"
-              : "border-zinc-800 bg-[#111317] hover:border-zinc-700"
+              ? "border-purple-500/60 bg-purple-500/10 shadow-xs"
+              : "border-border bg-card hover:border-border/80"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Penerimaan Pembayaran</span>
+            <span className="text-xs font-medium text-muted-foreground">Penerimaan Pembayaran</span>
             <CreditCard className="h-4 w-4 text-purple-400" />
           </div>
           <div className="mt-2 text-2xl font-bold font-mono text-emerald-400">
             {formatRupiah(overview?.payments.totalPaid ?? 0)}
           </div>
-          <div className="mt-1 text-[11px] text-zinc-400">
+          <div className="mt-1 text-[11px] text-muted-foreground">
             Dari {overview?.payments.total ?? 0} transaksi pembayaran
           </div>
         </div>
       </div>
 
       {/* 4. Panel Tabel Utama & Filter */}
-      <div className="rounded-xl border border-zinc-800 bg-[#111317] overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         {/* Navigation Tabs Bar */}
-        <div className="flex flex-wrap items-center justify-between border-b border-zinc-800 p-3 px-4 gap-3">
-          <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-lg border border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between border-b border-border p-3 px-4 gap-3">
+          <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-lg border border-border">
             <button
               onClick={() => setActiveTab("delinquent")}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
                 activeTab === "delinquent"
                   ? "bg-rose-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -551,7 +551,7 @@ export function RunsnetBillingBoard() {
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 activeTab === "customers"
                   ? "bg-emerald-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Semua Pelanggan ({overview?.customers.total ?? 0})
@@ -561,7 +561,7 @@ export function RunsnetBillingBoard() {
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 activeTab === "invoices"
                   ? "bg-sky-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Invoice Tagihan ({overview?.invoices.total ?? 0})
@@ -571,7 +571,7 @@ export function RunsnetBillingBoard() {
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 activeTab === "payments"
                   ? "bg-purple-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Riwayat Payment ({overview?.payments.total ?? 0})
@@ -580,12 +580,12 @@ export function RunsnetBillingBoard() {
 
           {/* Sub-Filter Khusus Invoice */}
           {activeTab === "invoices" && (
-            <div className="flex items-center gap-1 bg-zinc-900/80 p-1 rounded-md border border-zinc-800 text-xs">
-              <Filter className="h-3 w-3 text-zinc-400 ml-1" />
+            <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md border border-border text-xs">
+              <Filter className="h-3 w-3 text-muted-foreground ml-1" />
               <button
                 onClick={() => setInvoiceStatusFilter("all")}
                 className={`px-2 py-0.5 rounded text-[11px] ${
-                  invoiceStatusFilter === "all" ? "bg-zinc-700 text-white" : "text-zinc-400"
+                  invoiceStatusFilter === "all" ? "bg-zinc-700 text-foreground" : "text-muted-foreground"
                 }`}
               >
                 Semua
@@ -610,13 +610,13 @@ export function RunsnetBillingBoard() {
           )}
 
           <div className="relative min-w-[220px]">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <input
               type="text"
               placeholder="Cari nama, ID, invoice..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-md border border-zinc-800 bg-zinc-900/80 pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 font-mono"
+              className="w-full rounded-md border border-border bg-muted/50 pl-8 pr-3 py-1.5 text-xs text-foreground placeholder-zinc-500 focus:outline-none focus:border-border font-mono"
             />
           </div>
         </div>
@@ -625,7 +625,7 @@ export function RunsnetBillingBoard() {
         {activeTab === "delinquent" && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900/60 text-zinc-400 uppercase tracking-wider text-[10px] font-mono border-b border-zinc-800">
+              <thead className="bg-muted/40 text-muted-foreground uppercase tracking-wider text-[10px] font-mono border-b border-border">
                 <tr>
                   <th className="py-2.5 px-3">Cust ID</th>
                   <th className="py-2.5 px-3">Nama Pelanggan</th>
@@ -640,7 +640,7 @@ export function RunsnetBillingBoard() {
               <tbody className="divide-y divide-zinc-800/60 font-mono">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-zinc-500">
+                    <td colSpan={8} className="text-center py-8 text-muted-foreground">
                       Memuat daftar pelanggan menunggak...
                     </td>
                   </tr>
@@ -652,10 +652,10 @@ export function RunsnetBillingBoard() {
                   </tr>
                 ) : (
                   filteredDelinquent.map((d) => (
-                    <tr key={d.custId} className="hover:bg-zinc-900/40">
+                    <tr key={d.custId} className="hover:bg-muted/40">
                       <td className="py-2.5 px-3 font-semibold text-rose-400">{d.custId}</td>
-                      <td className="py-2.5 px-3 text-white font-sans font-medium">{d.custName}</td>
-                      <td className="py-2.5 px-3 text-zinc-300">{d.serviceProfile || "—"}</td>
+                      <td className="py-2.5 px-3 text-foreground font-sans font-medium">{d.custName}</td>
+                      <td className="py-2.5 px-3 text-foreground/90">{d.serviceProfile || "—"}</td>
                       <td className="py-2.5 px-3 text-center">
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                           {d.unpaidCount} Bulan
@@ -664,7 +664,7 @@ export function RunsnetBillingBoard() {
                       <td className="py-2.5 px-3 text-right font-bold text-rose-400">
                         {formatRupiah(d.totalDebt)}
                       </td>
-                      <td className="py-2.5 px-3 text-zinc-400">{d.oldestDueDate || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{d.oldestDueDate || "—"}</td>
                       <td className="py-2.5 px-3">
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -699,7 +699,7 @@ export function RunsnetBillingBoard() {
         {activeTab === "customers" && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900/60 text-zinc-400 uppercase tracking-wider text-[10px] font-mono border-b border-zinc-800">
+              <thead className="bg-muted/40 text-muted-foreground uppercase tracking-wider text-[10px] font-mono border-b border-border">
                 <tr>
                   <th className="py-2.5 px-3">Cust ID</th>
                   <th className="py-2.5 px-3">Nama Pelanggan</th>
@@ -714,30 +714,30 @@ export function RunsnetBillingBoard() {
               <tbody className="divide-y divide-zinc-800/60 font-mono">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-zinc-500">
+                    <td colSpan={8} className="text-center py-8 text-muted-foreground">
                       Memuat data pelanggan RunsNet...
                     </td>
                   </tr>
                 ) : filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-zinc-500">
+                    <td colSpan={8} className="text-center py-8 text-muted-foreground">
                       Belum ada data pelanggan tersimpan. Klik &quot;Sinkronkan Sekarang&quot; di atas.
                     </td>
                   </tr>
                 ) : (
                   filteredCustomers.map((c) => (
-                    <tr key={c.id} className="hover:bg-zinc-900/40">
+                    <tr key={c.id} className="hover:bg-muted/40">
                       <td className="py-2.5 px-3 font-semibold text-emerald-400">{c.custId}</td>
-                      <td className="py-2.5 px-3 text-white font-sans font-medium">{c.name}</td>
-                      <td className="py-2.5 px-3 text-zinc-300">{c.serviceProfile || "—"}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{c.type || "—"}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{c.spkDate || "—"}</td>
+                      <td className="py-2.5 px-3 text-foreground font-sans font-medium">{c.name}</td>
+                      <td className="py-2.5 px-3 text-foreground/90">{c.serviceProfile || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{c.type || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{c.spkDate || "—"}</td>
                       <td className="py-2.5 px-3">
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] ${
                             c.connectivity?.toLowerCase().includes("terhubung")
                               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-zinc-800 text-zinc-400"
+                              : "bg-muted text-muted-foreground"
                           }`}
                         >
                           {c.connectivity || "—"}
@@ -779,7 +779,7 @@ export function RunsnetBillingBoard() {
         {activeTab === "invoices" && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900/60 text-zinc-400 uppercase tracking-wider text-[10px] font-mono border-b border-zinc-800">
+              <thead className="bg-muted/40 text-muted-foreground uppercase tracking-wider text-[10px] font-mono border-b border-border">
                 <tr>
                   <th className="py-2.5 px-3">Kode Invoice</th>
                   <th className="py-2.5 px-3">Cust ID</th>
@@ -795,25 +795,25 @@ export function RunsnetBillingBoard() {
               <tbody className="divide-y divide-zinc-800/60 font-mono">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-zinc-500">
+                    <td colSpan={9} className="text-center py-8 text-muted-foreground">
                       Memuat data invoice RunsNet...
                     </td>
                   </tr>
                 ) : filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-zinc-500">
+                    <td colSpan={9} className="text-center py-8 text-muted-foreground">
                       Belum ada data invoice yang sesuai kriteria filter.
                     </td>
                   </tr>
                 ) : (
                   filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-zinc-900/40">
+                    <tr key={inv.id} className="hover:bg-muted/40">
                       <td className="py-2.5 px-3 font-semibold text-sky-400">{inv.invoiceCode}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{inv.custId}</td>
-                      <td className="py-2.5 px-3 text-white font-sans">{inv.custName}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{inv.periode || "—"}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{inv.dueDate || "—"}</td>
-                      <td className="py-2.5 px-3 text-right text-zinc-200">{formatRupiah(inv.amount)}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{inv.custId}</td>
+                      <td className="py-2.5 px-3 text-foreground font-sans">{inv.custName}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{inv.periode || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{inv.dueDate || "—"}</td>
+                      <td className="py-2.5 px-3 text-right text-foreground">{formatRupiah(inv.amount)}</td>
                       <td
                         className={`py-2.5 px-3 text-right font-semibold ${
                           inv.remainingAmount > 0 ? "text-amber-400" : "text-emerald-400"
@@ -859,7 +859,7 @@ export function RunsnetBillingBoard() {
         {activeTab === "payments" && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900/60 text-zinc-400 uppercase tracking-wider text-[10px] font-mono border-b border-zinc-800">
+              <thead className="bg-muted/40 text-muted-foreground uppercase tracking-wider text-[10px] font-mono border-b border-border">
                 <tr>
                   <th className="py-2.5 px-3">Kode Bayar</th>
                   <th className="py-2.5 px-3">Kode Invoice</th>
@@ -874,29 +874,29 @@ export function RunsnetBillingBoard() {
               <tbody className="divide-y divide-zinc-800/60 font-mono">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-zinc-500">
+                    <td colSpan={8} className="text-center py-8 text-muted-foreground">
                       Memuat data riwayat payment RunsNet...
                     </td>
                   </tr>
                 ) : filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-zinc-500">
+                    <td colSpan={8} className="text-center py-8 text-muted-foreground">
                       Belum ada data pembayaran tersimpan pada periode ini.
                     </td>
                   </tr>
                 ) : (
                   filteredPayments.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-900/40">
+                    <tr key={p.id} className="hover:bg-muted/40">
                       <td className="py-2.5 px-3 font-semibold text-purple-400">{p.paymentCode}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{p.invoiceCode || "—"}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{p.custId}</td>
-                      <td className="py-2.5 px-3 text-white font-sans">{p.custName}</td>
-                      <td className="py-2.5 px-3 text-zinc-300">{p.payDate || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{p.invoiceCode || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{p.custId}</td>
+                      <td className="py-2.5 px-3 text-foreground font-sans">{p.custName}</td>
+                      <td className="py-2.5 px-3 text-foreground/90">{p.payDate || "—"}</td>
                       <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
                         {formatRupiah(p.amount)}
                       </td>
-                      <td className="py-2.5 px-3 text-zinc-300">{p.method || "—"}</td>
-                      <td className="py-2.5 px-3 text-zinc-400">{p.operator || p.agent || "—"}</td>
+                      <td className="py-2.5 px-3 text-foreground/90">{p.method || "—"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{p.operator || p.agent || "—"}</td>
                     </tr>
                   ))
                 )}
@@ -909,44 +909,44 @@ export function RunsnetBillingBoard() {
       {/* 5. MODAL POPUP DETAIL PELANGGAN (RIWAYAT LENGKAP) */}
       {selectedCustId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-3xl rounded-xl border border-zinc-800 bg-[#111317] p-5 text-white shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div className="relative w-full max-w-3xl rounded-xl border border-border bg-card p-5 text-foreground shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Users className="h-4 w-4 text-emerald-400" />
                   Rincian Pelanggan &amp; Riwayat Tagihan
                 </h3>
-                <p className="text-xs text-zinc-400 font-mono mt-0.5">Cust ID: {selectedCustId}</p>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">Cust ID: {selectedCustId}</p>
               </div>
               <button
                 onClick={() => {
                   setSelectedCustId(null);
                   setCustomerDetail(null);
                 }}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {isLoadingDetail ? (
-              <div className="py-12 text-center text-xs text-zinc-400">
+              <div className="py-12 text-center text-xs text-muted-foreground">
                 Memuat rincian data pelanggan dari PostgreSQL...
               </div>
             ) : customerDetail?.customer ? (
               <div className="space-y-5 pt-4 text-xs font-mono">
                 {/* Profile Box */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-zinc-900/80 border border-zinc-800">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-muted/50 border border-border">
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Nama Pelanggan</span>
-                    <span className="font-sans font-semibold text-zinc-100">{customerDetail.customer.name}</span>
+                    <span className="text-[10px] text-muted-foreground block">Nama Pelanggan</span>
+                    <span className="font-sans font-semibold text-foreground">{customerDetail.customer.name}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Paket Layanan</span>
+                    <span className="text-[10px] text-muted-foreground block">Paket Layanan</span>
                     <span className="text-emerald-400 font-semibold">{customerDetail.customer.serviceProfile || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Status Layanan</span>
+                    <span className="text-[10px] text-muted-foreground block">Status Layanan</span>
                     <span
                       className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-semibold mt-0.5 ${
                         customerDetail.customer.status.toLowerCase() === "active"
@@ -958,28 +958,28 @@ export function RunsnetBillingBoard() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Tipe Kontrak</span>
-                    <span className="text-zinc-300">{customerDetail.customer.type || "—"}</span>
+                    <span className="text-[10px] text-muted-foreground block">Tipe Kontrak</span>
+                    <span className="text-foreground/90">{customerDetail.customer.type || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Tanggal Registrasi</span>
-                    <span className="text-zinc-300">{customerDetail.customer.spkDate || "—"}</span>
+                    <span className="text-[10px] text-muted-foreground block">Tanggal Registrasi</span>
+                    <span className="text-foreground/90">{customerDetail.customer.spkDate || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Konektivitas</span>
-                    <span className="text-zinc-300">{customerDetail.customer.connectivity || "—"}</span>
+                    <span className="text-[10px] text-muted-foreground block">Konektivitas</span>
+                    <span className="text-foreground/90">{customerDetail.customer.connectivity || "—"}</span>
                   </div>
                 </div>
 
                 {/* Invoices List for this customer */}
                 <div>
-                  <h4 className="text-xs font-semibold text-zinc-200 mb-2 flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
                     <FileText className="h-3.5 w-3.5 text-sky-400" />
                     Daftar Tagihan ({customerDetail.invoices.length} Lembar)
                   </h4>
-                  <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/40 max-h-48 overflow-y-auto">
+                  <div className="overflow-x-auto rounded-lg border border-border bg-muted/40 max-h-48 overflow-y-auto">
                     <table className="w-full text-left text-[11px]">
-                      <thead className="bg-zinc-800/60 text-zinc-400 text-[10px] uppercase">
+                      <thead className="bg-muted/60 text-muted-foreground text-[10px] uppercase">
                         <tr>
                           <th className="py-2 px-2.5">Invoice</th>
                           <th className="py-2 px-2.5">Periode</th>
@@ -1021,13 +1021,13 @@ export function RunsnetBillingBoard() {
 
                 {/* Payments List for this customer */}
                 <div>
-                  <h4 className="text-xs font-semibold text-zinc-200 mb-2 flex items-center gap-1.5">
+                  <h4 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
                     <CreditCard className="h-3.5 w-3.5 text-purple-400" />
                     Riwayat Pembayaran Terverifikasi ({customerDetail.payments.length} Transaksi)
                   </h4>
-                  <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/40 max-h-48 overflow-y-auto">
+                  <div className="overflow-x-auto rounded-lg border border-border bg-muted/40 max-h-48 overflow-y-auto">
                     <table className="w-full text-left text-[11px]">
-                      <thead className="bg-zinc-800/60 text-zinc-400 text-[10px] uppercase">
+                      <thead className="bg-muted/60 text-muted-foreground text-[10px] uppercase">
                         <tr>
                           <th className="py-2 px-2.5">Kode Bayar</th>
                           <th className="py-2 px-2.5">Tgl Bayar</th>
@@ -1039,7 +1039,7 @@ export function RunsnetBillingBoard() {
                       <tbody className="divide-y divide-zinc-800">
                         {customerDetail.payments.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="text-center py-4 text-zinc-500">
+                            <td colSpan={5} className="text-center py-4 text-muted-foreground">
                               Belum ada transaksi pembayaran tercatat.
                             </td>
                           </tr>
@@ -1052,7 +1052,7 @@ export function RunsnetBillingBoard() {
                               <td className="py-1.5 px-2.5 text-right text-emerald-400 font-bold">
                                 {formatRupiah(p.amount)}
                               </td>
-                              <td className="py-1.5 px-2.5 text-zinc-400">{p.operator || "—"}</td>
+                              <td className="py-1.5 px-2.5 text-muted-foreground">{p.operator || "—"}</td>
                             </tr>
                           ))
                         )}
@@ -1062,7 +1062,7 @@ export function RunsnetBillingBoard() {
                 </div>
               </div>
             ) : (
-              <div className="py-8 text-center text-xs text-zinc-500">Data pelanggan tidak ditemukan.</div>
+              <div className="py-8 text-center text-xs text-muted-foreground">Data pelanggan tidak ditemukan.</div>
             )}
           </div>
         </div>

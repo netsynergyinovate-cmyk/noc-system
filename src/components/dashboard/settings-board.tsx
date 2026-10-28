@@ -288,58 +288,42 @@ export function SettingsBoard() {
         {/* 1. TAB UMUM                                                    */}
         {/* ============================================================== */}
         <TabsContent value="general" className="space-y-4">
-          {/* Identitas Sistem */}
-          <Card className="border border-border/60 bg-card shadow-xs">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Sliders className="size-4 text-primary" />
-                <span>Identitas Sistem &amp; Lingkungan Operasional</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Informasi dasar penyedia layanan dan konfigurasi waktu operasional jaringan.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-1">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Penyedia Layanan / ISP</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 text-xs font-medium">
-                    Nusantara Broadband Network (NOC ISP)
+          {/* Ringkasan Operasional Database PostgreSQL */}
+          {runtimeStatus?.dbStats && (
+            <Card className="border border-border/60 bg-card shadow-xs">
+              <CardHeader className="pb-2.5">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Database className="size-4 text-emerald-500" />
+                  <span>Ringkasan Data Operasional PostgreSQL</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Jumlah entitas jaringan aktif yang tersimpan dan terpantau di database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
+                    <span className="text-muted-foreground text-[11px]">Router MikroTik</span>
+                    <div className="text-base font-bold text-foreground font-mono">
+                      {runtimeStatus.dbStats.routers}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
+                    <span className="text-muted-foreground text-[11px]">OLT GPON</span>
+                    <div className="text-base font-bold text-foreground font-mono">
+                      {runtimeStatus.dbStats.olts}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
+                    <span className="text-muted-foreground text-[11px]">Total Alert Sistem</span>
+                    <div className="text-base font-bold text-foreground font-mono">
+                      {runtimeStatus.dbStats.alerts}
+                    </div>
                   </div>
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Zona Waktu Operasional</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 text-xs font-medium">
-                    {typeof Intl !== "undefined"
-                      ? `${Intl.DateTimeFormat().resolvedOptions().timeZone} (Lokal)`
-                      : "Asia/Jakarta (UTC+7)"}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Sampling Poller Real-time</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 text-xs font-medium flex items-center justify-between">
-                    <span>1 Detik / Sampel</span>
-                    <Badge variant="outline" className="text-[10px] py-0 h-4 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
-                      High-Speed
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {runtimeStatus?.dbStats && (
-                <div className="rounded-lg border bg-muted/20 p-2.5 text-xs flex flex-wrap items-center gap-3 text-muted-foreground">
-                  <span className="font-medium text-foreground">Data Tersimpan di PostgreSQL:</span>
-                  <span>{runtimeStatus.dbStats.routers} Router MikroTik</span>
-                  <span>•</span>
-                  <span>{runtimeStatus.dbStats.olts} OLT GPON</span>
-                  <span>•</span>
-                  <span>{runtimeStatus.dbStats.alerts} Log Alert</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Profil Akun & Hak Akses */}
           <Card className="border border-border/60 bg-card shadow-xs">
@@ -617,37 +601,18 @@ export function SettingsBoard() {
                 <span>Koneksi Backend Collector (Go Module)</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Layanan pengumpul telemetri berkecepatan tinggi pada folder <code className="text-xs font-mono">backend/</code>.
+                Layanan pengumpul telemetri mandiri berkecepatan tinggi pada direktori <code className="text-xs font-mono">backend/</code>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-1">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Endpoint WebSocket Hub</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 font-mono text-xs">
-                    {typeof window !== "undefined"
-                      ? `ws://${window.location.hostname}:8080/ws`
-                      : "ws://localhost:8080/ws"}
-                  </div>
+              <div className="rounded-lg border bg-muted/20 p-3.5 text-xs text-muted-foreground leading-relaxed space-y-2">
+                <p>
+                  Collector Go secara mandiri membaca utilisasi CPU/RAM MikroTik, traffic queue, port VLAN, dan SNMP OLT setiap detik, lalu mengalirkan delta data secara langsung melalui protokol WebSocket streaming.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px] text-foreground">
+                  <span className="text-muted-foreground">Perintah jalankan backend:</span>
+                  <code className="bg-black/60 px-2 py-0.5 rounded text-primary font-bold">npm run backend:dev</code>
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Sampling Rate</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 text-xs font-medium">
-                    1 Sampel / Detik (Queue &amp; VLAN)
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Perintah Eksekusi Backend</Label>
-                  <div className="rounded-md border bg-muted/30 px-3 py-1.5 font-mono text-xs text-primary font-semibold">
-                    npm run backend:dev
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground leading-relaxed">
-                Collector Go secara mandiri melakukan polling REST API MikroTik, pembacaan SNMP OLT, dan pengarsipan sampel trafik ke PostgreSQL TimescaleDB.
               </div>
             </CardContent>
           </Card>

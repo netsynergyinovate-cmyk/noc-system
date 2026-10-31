@@ -118,11 +118,6 @@ export function CustomerIncidentList() {
           <CardTitle className="text-sm font-semibold text-foreground">
             Gangguan per pelanggan
           </CardTitle>
-          {data && (
-            <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground px-1.5 py-0">
-              {filtered.length} data
-            </Badge>
-          )}
           <Button
             variant="ghost"
             size="icon"
@@ -248,10 +243,10 @@ export function CustomerIncidentList() {
           </p>
         ) : (
           <>
-            <div className="overflow-auto max-h-[190px] rounded-md border border-border/60">
+            <div className="rounded-md border border-border/60 [&_[data-slot=table-container]]:max-h-[185px] [&_[data-slot=table-container]]:overflow-y-auto">
               <Table className="min-w-[640px] text-xs">
-                <TableHeader className="sticky top-0 bg-card z-10 shadow-2xs">
-                  <TableRow className="border-b border-border/60 hover:bg-transparent bg-card">
+                <TableHeader className="sticky top-0 bg-card z-20 shadow-xs">
+                  <TableRow className="border-b border-border/60 hover:bg-card bg-card">
                     <TableHead className="h-8 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                       Pelanggan
                     </TableHead>
@@ -276,6 +271,9 @@ export function CustomerIncidentList() {
                   {filtered.map((row) => {
                     const s = row.summary;
                     const notes = [
+                      row.billingStatus?.toLowerCase().includes("terminate")
+                        ? "billing: Terminate (cek Core)"
+                        : "",
                       s.belumTerverifikasi > 0 ? `${s.belumTerverifikasi} belum terverifikasi` : "",
                       s.kedipan > 0 ? `${s.kedipan} kedipan` : "",
                       s.tidakTerbukti > 0 ? `${s.tidakTerbukti} tidak terbukti` : "",
@@ -342,25 +340,25 @@ export function CustomerIncidentList() {
                         <TableCell className="py-2.5 font-mono text-[11px] text-muted-foreground tabular-nums">
                           {s.lastRealAt ? formatWibDateTime(s.lastRealAt) : <span className="text-muted-foreground/30">–</span>}
                         </TableCell>
-                        <TableCell className="py-2.5">
+                        <TableCell className="py-2.5 whitespace-nowrap">
                           {peaks.length === 0 && s.realMassal === 0 ? (
                             <span className="text-muted-foreground/30 font-mono text-xs">–</span>
                           ) : (
-                            <div className="flex flex-wrap items-center gap-1">
+                            <div className="flex flex-nowrap items-center gap-1">
                               {peaks.map((pw) => (
                                 <span
                                   key={pw.id}
                                   title={`${pw.label}: ${s.realByWindow[pw.id]} gangguan nyata dimulai di jam ini`}
-                                  className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground whitespace-nowrap"
                                 >
                                   <span>{peakShort[pw.id] ?? pw.label}</span>
-                                  <span className="font-bold tabular-nums">{s.realByWindow[pw.id]}</span>
+                                  <span className="font-bold tabular-nums text-foreground">{s.realByWindow[pw.id]}</span>
                                 </span>
                               ))}
                               {s.realMassal > 0 && (
                                 <span
                                   title="Gangguan massal: pelanggan lain di router yang sama ikut down"
-                                  className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-500 dark:text-rose-400"
+                                  className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-500 dark:text-rose-400 whitespace-nowrap"
                                 >
                                   <span>Massal</span>
                                   <span className="tabular-nums">{s.realMassal}</span>
@@ -369,7 +367,7 @@ export function CustomerIncidentList() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="py-2.5 text-[11px] text-muted-foreground">
+                        <TableCell className="py-2.5 text-[11px] text-muted-foreground whitespace-nowrap">
                           {notes.length > 0 ? (
                             <div className="flex flex-wrap items-center gap-1">
                               {notes.map((n, idx) => (

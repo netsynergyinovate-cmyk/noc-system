@@ -439,6 +439,29 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     };
   }
 
+  const allUnchecked = !run.findings?.length || run.findings.every((f) => f.status === "unchecked");
+  const hasUnchecked = run.findings?.some((f) => f.status === "unchecked");
+
+  if (allUnchecked) {
+    return {
+      title: "Belum Dapat Disimpulkan",
+      steps: [
+        "Perangkat atau router tidak dapat dijangkau dari sistem.",
+        "Periksa konektivitas jaringan, IP host, dan kredensial API router.",
+      ],
+    };
+  }
+
+  if (hasUnchecked) {
+    return {
+      title: "Kesimpulan Belum Lengkap",
+      steps: [
+        "Beberapa lapisan pemeriksaan tidak dapat diakses atau dibaca.",
+        "Periksa kembali rute dan akses telemetri sebelum memastikan status jaringan.",
+      ],
+    };
+  }
+
   return {
     title: "Kondisi Operasional Normal",
     steps: [
@@ -464,14 +487,24 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
     : null;
   const actionPlan = getActionPlan(run);
 
-  const primaryFinding =
-    run.findings?.find(
-      (f) =>
-        f.layer === run.verdictLayer &&
-        (f.status === "fail" || f.status === "warn"),
-    ) ??
-    run.findings?.find((f) => f.layer === run.verdictLayer) ??
-    run.findings?.[0];
+  const primaryFinding = run.verdictLayer
+    ? ((run.findings ?? [])
+        .filter((f) => f.layer === run.verdictLayer)
+        .sort((a, b) => statusOrder[b.status] - statusOrder[a.status])[0] ?? null)
+    : null;
+
+  const isFail = primaryFinding?.status === "fail" || isShared;
+  const isWarn = primaryFinding?.status === "warn";
+  const dotColor = isFail
+    ? "bg-rose-500 animate-pulse"
+    : isWarn
+      ? "bg-amber-500"
+      : "bg-emerald-500";
+  const chipColor = isFail
+    ? "text-rose-500 dark:text-rose-400 bg-rose-500/10 border-rose-500/20"
+    : isWarn
+      ? "text-amber-500 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+      : "text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
 
   const findingThresh = primaryFinding
     ? [primaryFinding.comparator, primaryFinding.threshold]
@@ -536,87 +569,87 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
         <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-card p-3 shadow-2xs">
           <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <span
-                className={cn(
-                  "size-2 rounded-full shrink-0",
-                  run.verdictLayer || isShared
-                    ? "bg-rose-500 animate-pulse"
-                    : "bg-emerald-500",
-                )}
-              />
+              <span className={cn("size-2 rounded-full shrink-0", dotColor)} />
               <span>Masalah Utama</span>
             </div>
             {run.verdictLayer && (
-              <span className="text-[11px] font-medium text-rose-500 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+              <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded border", chipColor)}>
                 {layerLabel(run.verdictLayer)}
               </span>
             )}
           </div>
 
-          {/* (1) Bold headline with finding label, value, and status pill */}
-          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="font-semibold text-foreground text-xs sm:text-sm">
-                {primaryFinding
-                  ? primaryFinding.label
-                  : (layerLabel(run.verdictLayer!) ?? "Gangguan Terdeteksi")}
-                {primaryFinding?.value ? ": " : ""}
-              </span>
-              {primaryFinding?.value && (
-                <span className="font-mono font-bold text-foreground text-xs sm:text-sm tabular-nums">
-                  {primaryFinding.value}
-                </span>
-              )}
-            </div>
-            {primaryFinding && <FindingStatusPill status={primaryFinding.status} />}
-          </div>
-
-          {/* (2) Threshold indicator chip */}
-          {findingThresh && (
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="text-muted-foreground/80 font-medium">Ambang batas:</span>
-              <span className="font-mono text-muted-foreground tabular-nums px-1.5 py-0.5 rounded bg-muted/50 border border-border/40 text-[10px]">
-                {findingThresh}
-              </span>
-            </div>
-          )}
-
-          {/* (3) Clean explanation without redundant secondary findings text */}
-          {cleanDetail && (
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {cleanDetail}
-            </p>
-          )}
-
-          {/* (4) Full verdictDetail accessible behind toggle */}
-          <div className="pt-1 mt-auto border-t border-border/40">
-            <button
-              type="button"
-              onClick={() => setShowFullDetail((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer"
-            >
-              <span>
-                {showFullDetail
-                  ? "Sembunyikan rincian teks"
-                  : "Rincian kesimpulan lengkap"}
-              </span>
-              <ChevronDown
-                className={cn(
-                  "size-3 transition-transform duration-150",
-                  showFullDetail && "rotate-180",
-                )}
-              />
-            </button>
-            {showFullDetail && (
-              <div className="mt-1 text-[11px] text-muted-foreground/90 bg-muted/30 p-2 rounded border border-border/40 leading-relaxed">
-                <span className="font-semibold text-foreground">
-                  Kesimpulan
-                  {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
-                </span>{" "}
-                {run.verdictDetail}
+          {primaryFinding ? (
+            <>
+              {/* (1) Bold headline with finding label, value, and status pill */}
+              <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <span className="font-semibold text-foreground text-xs sm:text-sm">
+                    {primaryFinding.label}
+                    {primaryFinding.value ? ": " : ""}
+                  </span>
+                  {primaryFinding.value && (
+                    <span className="font-mono font-bold text-foreground text-xs sm:text-sm tabular-nums">
+                      {primaryFinding.value}
+                    </span>
+                  )}
+                </div>
+                <FindingStatusPill status={primaryFinding.status} />
               </div>
-            )}
-          </div>
+
+              {/* (2) Threshold indicator chip */}
+              {findingThresh && (
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className="text-muted-foreground/80 font-medium">Ambang batas:</span>
+                  <span className="font-mono text-muted-foreground tabular-nums px-1.5 py-0.5 rounded bg-muted/50 border border-border/40 text-[10px]">
+                    {findingThresh}
+                  </span>
+                </div>
+              )}
+
+              {/* (3) Clean explanation without redundant secondary findings text */}
+              {cleanDetail && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {cleanDetail}
+                </p>
+              )}
+
+              {/* (4) Full verdictDetail accessible behind toggle */}
+              <div className="pt-1 mt-auto border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setShowFullDetail((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+                >
+                  <span>
+                    {showFullDetail
+                      ? "Sembunyikan rincian teks"
+                      : "Rincian kesimpulan lengkap"}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-3 transition-transform duration-150",
+                      showFullDetail && "rotate-180",
+                    )}
+                  />
+                </button>
+                {showFullDetail && (
+                  <div className="mt-1 text-[11px] text-muted-foreground/90 bg-muted/30 p-2 rounded border border-border/40 leading-relaxed">
+                    <span className="font-semibold text-foreground">
+                      Kesimpulan
+                      {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
+                    </span>{" "}
+                    {run.verdictDetail}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            /* When verdictLayer is null: display verdictDetail directly without toggle */
+            <div className="text-xs text-foreground leading-relaxed font-medium py-1">
+              <span className="font-semibold">Kesimpulan:</span> {run.verdictDetail}
+            </div>
+          )}
 
           {isShared && (
             <div className="mt-1 space-y-1 rounded-md bg-destructive/10 border border-destructive/25 p-2.5 text-xs">

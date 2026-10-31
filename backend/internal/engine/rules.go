@@ -169,11 +169,17 @@ func (r OpticalRule) Evaluate(obs Observation, now time.Time) []Condition {
 			continue
 		}
 
-		if c.OpticalPowerDbm < limit {
+		// Ambang batas naik persatuan: jika limit = -25 dBm, baru masuk deteksi pada <= -26 dBm, atau loss <= -30 dBm
+		stepLimit := limit - 1.0
+		if c.OpticalPowerDbm <= stepLimit || c.OpticalPowerDbm <= -30.0 {
+			severity := "warning"
+			if c.OpticalPowerDbm <= -30.0 {
+				severity = "critical"
+			}
 			conds = append(conds, Condition{
 				Key:        "optical:" + c.ID,
 				Kind:       "optical",
-				Severity:   "warning",
+				Severity:   severity,
 				RouterID:   c.RouterID,
 				CustomerID: c.ID,
 				For:        r.After,

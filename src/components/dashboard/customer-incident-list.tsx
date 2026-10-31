@@ -248,10 +248,10 @@ export function CustomerIncidentList() {
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[190px] rounded-md border border-border/60">
               <Table className="min-w-[640px] text-xs">
-                <TableHeader>
-                  <TableRow className="border-b border-border/60 hover:bg-transparent">
+                <TableHeader className="sticky top-0 bg-card z-10 shadow-2xs">
+                  <TableRow className="border-b border-border/60 hover:bg-transparent bg-card">
                     <TableHead className="h-8 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                       Pelanggan
                     </TableHead>
@@ -273,7 +273,7 @@ export function CustomerIncidentList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleRows.map((row) => {
+                  {filtered.map((row) => {
                     const s = row.summary;
                     const notes = [
                       s.belumTerverifikasi > 0 ? `${s.belumTerverifikasi} belum terverifikasi` : "",
@@ -392,27 +392,6 @@ export function CustomerIncidentList() {
               </Table>
             </div>
 
-            {filtered.length > 15 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAll((prev) => !prev)}
-                className="mx-auto h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showAll ? (
-                  <>
-                    <ChevronUp className="size-3.5" />
-                    <span>Tampilkan lebih sedikit</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="size-3.5" />
-                    <span>Tampilkan semua ({filtered.length})</span>
-                  </>
-                )}
-              </Button>
-            )}
           </>
         )}
       </CardContent>

@@ -31,6 +31,7 @@ import {
   metricInfo,
   mikrotikSources,
 } from "@/lib/diagnostic-sources";
+import { RECOMMENDED_ACTIONS } from "@/lib/dashboard/anomaly-conclusion";
 export async function errorMessage(res: Response, fallback: string) {
   const json = (await res.json().catch(() => null)) as {
     error?: { message?: string };
@@ -318,6 +319,12 @@ interface ResolveAction {
 export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
   const isShared = run.verdictScope === "shared" || run.isSharedFault;
   const layer = run.verdictLayer;
+  const optFinding = run.findings?.find(
+    (f) => f.layer === "optik" && (f.threshold !== null || f.comparator !== null),
+  );
+  const optThreshText = optFinding?.threshold
+    ? `${optFinding.comparator ?? "ambang"} ${optFinding.threshold}`
+    : "ambang batas normal";
 
   if (isShared) {
     const rootName = run.verdictRoot?.name ?? "infrastruktur bersama";
@@ -346,9 +353,10 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Redaman Sinyal Optik Buruk",
       steps: [
+        RECOMMENDED_ACTIONS.optik,
         "Bersihkan konektor fiber optik (SC/UPC) pada adaptor ODP dan roset pelanggan menggunakan fiber cleaner.",
         "Periksa tekukan tajam (bending) atau kabel drop yang terjepit di sepanjang jalur ke rumah pelanggan.",
-        "Jika redaman tetap di bawah -24 dBm, lakukan penyambungan ulang (fusion splice) atau ukur dengan OTDR.",
+        `Jika redaman tetap melewati ${optThreshText}, lakukan penyambungan ulang (fusion splice) atau ukur dengan OTDR.`,
       ],
     };
   }
@@ -357,6 +365,7 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Konfigurasi & Sesi Router MikroTik",
       steps: [
+        RECOMMENDED_ACTIONS.mikrotik,
         "Cek limitasi di /queue/simple: pastikan paket pelanggan tidak dibuang (dropped) karena mencapai batas max-limit.",
         "Tinjau sesi PPPoE di /ppp/active: verifikasi stabilitas uptime dan pastikan sesi tidak flapping.",
         "Verifikasi tabel ARP (/ip/arp) dan DHCP lease untuk memastikan tidak terjadi bentrok alamat IP.",
@@ -368,9 +377,9 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Jalur Uplink & Internet Global",
       steps: [
+        RECOMMENDED_ACTIONS.hulu,
         "Periksa status fisik port uplink dan negosiasi kecepatan antarmuka router Core (/interface).",
         "Verifikasi default route di /ip/route dan pastikan session BGP peer dalam kondisi Established.",
-        "Jangan kirim teknisi ke pelanggan; eskalasi ke penyedia upstream / transit jika link down dari ISP.",
       ],
     };
   }
@@ -379,9 +388,9 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Aturan Firewall & Isolir",
       steps: [
+        RECOMMENDED_ACTIONS.firewall,
         "Periksa /ip/firewall/address-list: pastikan IP pelanggan tidak masuk ke daftar isolir atau blokir.",
         "Tinjau hit rule filter drop atau raw yang mencocokkan IP pelanggan pada tabel firewall.",
-        "Verifikasi kapasitas connection tracking router jika terjadi penurunan throughput global.",
       ],
     };
   }
@@ -390,9 +399,9 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Modem / ONT Pelanggan",
       steps: [
+        RECOMMENDED_ACTIONS.ont,
         "Pastikan perangkat modem pelanggan dalam kondisi hidup dan terhubung ke catu daya yang stabil.",
         "Verifikasi parameter CWMP/TR-069 dan komunikasi ke server GenieACS.",
-        "Jika modem tidak merespons, jadwalkan pengecekan perangkat fisik ONT di lokasi pelanggan.",
       ],
     };
   }
@@ -401,9 +410,9 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Analisis Trafik & Bandwidth",
       steps: [
+        RECOMMENDED_ACTIONS.trafik,
         "Periksa utilisasi bandwidth pelanggan terhadap paket langganan di grafik pemakaian.",
         "Tinjau host lawan dan port dominan di NetFlow untuk mendeteksi indikasi flooding atau DDoS.",
-        "Informasikan kepada pelanggan jika kuota FUP telah tercapai atau paket langganan memerlukan upgrade.",
       ],
     };
   }
@@ -412,7 +421,8 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Status Billing & Tagihan",
       steps: [
-        "Verifikasi status tagihan dan pembayaran pelanggan pada sistem billing.",
+        RECOMMENDED_ACTIONS.billing,
+        "Konfirmasi status pembayaran invoice pelanggan pada sistem billing.",
         "Jika pelanggan telah membayar, lakukan sinkronisasi pelepasan isolir ke router.",
       ],
     };
@@ -422,6 +432,7 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     return {
       title: "Riwayat Log Router",
       steps: [
+        RECOMMENDED_ACTIONS.log,
         "Periksa rekaman log MikroTik (/log) pada jendela waktu keluhan untuk mengetahui penyebab diskoneksi.",
         "Pastikan tidak terjadi penolakan autentikasi (auth failed) atau kegagalan alokasi IP.",
       ],
@@ -438,6 +449,7 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
 }
 
 export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
+  const [showFullDetail, setShowFullDetail] = useState(false);
   const scope = run.verdictScope ?? (run.isSharedFault ? "shared" : null);
   const isShared = scope === "shared";
   const isHulu =
@@ -452,6 +464,23 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
     : null;
   const actionPlan = getActionPlan(run);
 
+  const primaryFinding =
+    run.findings?.find(
+      (f) =>
+        f.layer === run.verdictLayer &&
+        (f.status === "fail" || f.status === "warn"),
+    ) ??
+    run.findings?.find((f) => f.layer === run.verdictLayer) ??
+    run.findings?.[0];
+
+  const findingThresh = primaryFinding
+    ? [primaryFinding.comparator, primaryFinding.threshold]
+        .filter(Boolean)
+        .join(" ")
+    : null;
+  const cleanDetail = primaryFinding?.detail
+    ? primaryFinding.detail.replace(/\s*Temuan terkait:.*$/i, "").trim()
+    : null;
   return (
     <div className="flex flex-col gap-2.5 text-xs">
       {/* Header bar: Scope badge, Layer, Source, Origin, Time */}
@@ -505,7 +534,7 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
         {/* Kolom 1: Masalah Utama */}
         <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-card p-3 shadow-2xs">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               <span
                 className={cn(
@@ -524,12 +553,69 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
             )}
           </div>
 
-          <div className="text-xs text-foreground leading-relaxed">
-            <span className="font-semibold">
-              Kesimpulan
-              {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
-            </span>{" "}
-            {run.verdictDetail}
+          {/* (1) Bold headline with finding label, value, and status pill */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className="font-semibold text-foreground text-xs sm:text-sm">
+                {primaryFinding
+                  ? primaryFinding.label
+                  : (layerLabel(run.verdictLayer!) ?? "Gangguan Terdeteksi")}
+                {primaryFinding?.value ? ": " : ""}
+              </span>
+              {primaryFinding?.value && (
+                <span className="font-mono font-bold text-foreground text-xs sm:text-sm tabular-nums">
+                  {primaryFinding.value}
+                </span>
+              )}
+            </div>
+            {primaryFinding && <FindingStatusPill status={primaryFinding.status} />}
+          </div>
+
+          {/* (2) Threshold indicator chip */}
+          {findingThresh && (
+            <div className="flex items-center gap-1.5 text-[11px]">
+              <span className="text-muted-foreground/80 font-medium">Ambang batas:</span>
+              <span className="font-mono text-muted-foreground tabular-nums px-1.5 py-0.5 rounded bg-muted/50 border border-border/40 text-[10px]">
+                {findingThresh}
+              </span>
+            </div>
+          )}
+
+          {/* (3) Clean explanation without redundant secondary findings text */}
+          {cleanDetail && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {cleanDetail}
+            </p>
+          )}
+
+          {/* (4) Full verdictDetail accessible behind toggle */}
+          <div className="pt-1 mt-auto border-t border-border/40">
+            <button
+              type="button"
+              onClick={() => setShowFullDetail((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+            >
+              <span>
+                {showFullDetail
+                  ? "Sembunyikan rincian teks"
+                  : "Rincian kesimpulan lengkap"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "size-3 transition-transform duration-150",
+                  showFullDetail && "rotate-180",
+                )}
+              />
+            </button>
+            {showFullDetail && (
+              <div className="mt-1 text-[11px] text-muted-foreground/90 bg-muted/30 p-2 rounded border border-border/40 leading-relaxed">
+                <span className="font-semibold text-foreground">
+                  Kesimpulan
+                  {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
+                </span>{" "}
+                {run.verdictDetail}
+              </div>
+            )}
           </div>
 
           {isShared && (
@@ -732,21 +818,16 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
     : diagnosticLayers;
   const active = isRunActive(run);
 
-  const isLayerOpen = (layerId: string, list: FindingDto[] | undefined) => {
-    if (manualOpen[layerId] !== undefined) {
-      return manualOpen[layerId];
-    }
-    const worst = getWorstStatus(list ?? []);
-    // auto-expanded for fail/warn layers, collapsed for ok/unchecked
-    return worst === "fail" || worst === "warn";
+  const isLayerOpen = (layerId: string) => {
+    return manualOpen[layerId] ?? false;
   };
 
-  const toggleLayer = (layerId: string, list: FindingDto[] | undefined) => {
-    const current = isLayerOpen(layerId, list);
+  const toggleLayer = (layerId: string) => {
+    const current = isLayerOpen(layerId);
     setManualOpen((prev) => ({ ...prev, [layerId]: !current }));
   };
 
-  const allOpen = layers.every((l) => isLayerOpen(l.id, byLayer.get(l.id)));
+  const allOpen = layers.every((l) => isLayerOpen(l.id));
 
   const toggleAll = () => {
     const next = !allOpen;
@@ -853,7 +934,7 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
           const worstStatus = list ? getWorstStatus(list) : null;
           const worstFinding = list ? getWorstFinding(list) : null;
           const keyFigure = list ? getLayerKeyFigure(layer.id, list) : null;
-          const isOpen = isLayerOpen(layer.id, list);
+          const isOpen = isLayerOpen(layer.id);
 
           return (
             <li
@@ -901,7 +982,7 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                     aria-expanded={isOpen}
                     aria-controls={`layer-content-${layer.id}`}
                     aria-label={`Rincian lapisan ${layer.label}`}
-                    onClick={() => toggleLayer(layer.id, list)}
+                    onClick={() => toggleLayer(layer.id)}
                   >
                     <ChevronDown
                       aria-hidden="true"
@@ -957,7 +1038,6 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                     <div className="flex items-center gap-1 text-muted-foreground/90 truncate" title={lInfo.explain}>
                       <span className="text-emerald-500 font-medium">✓</span>
                       <span className="font-medium text-foreground/85">Semua metrik dalam batas normal</span>
-                      <span className="text-muted-foreground/60 hidden sm:inline">· {lInfo.explain}</span>
                     </div>
                   ) : (
                     <span>

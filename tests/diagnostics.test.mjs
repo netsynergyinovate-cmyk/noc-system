@@ -8,8 +8,10 @@ import {
   evaluateOptical,
   evaluatePppoe,
   pendingLayer,
-  pickVerdict,
+  decideVerdict,
 } from "../src/lib/diagnostics.ts";
+
+const emptyEvidence = { router: null, pon: null, windowMinutes: 15 };
 
 const now = new Date("2026-10-22T10:00:00Z");
 const onu = (over = {}) => ({
@@ -57,8 +59,9 @@ test("Optik: tanpa ONU dan sampel basi = unchecked", () => {
 
 test("Optik: ambang Rx dan status LOS", () => {
   assert.equal(evaluateOptical(onu(), now).status, "ok");
-  assert.equal(evaluateOptical(onu({ rxPower: -25.5 }), now).status, "warn");
-  assert.equal(evaluateOptical(onu({ rxPower: -28 }), now).status, "fail");
+  assert.equal(evaluateOptical(onu({ rxPower: -25.5 }), now).status, "ok");
+  assert.equal(evaluateOptical(onu({ rxPower: -26 }), now).status, "warn");
+  assert.equal(evaluateOptical(onu({ rxPower: -30 }), now).status, "fail");
   assert.equal(evaluateOptical(onu({ rxPower: -5 }), now).status, "warn");
   assert.equal(
     evaluateOptical(onu({ status: "los", rxPower: null }), now).status,
@@ -97,22 +100,33 @@ test("Kesimpulan: optik LOS mengalahkan PPPoE putus; billing isolir mengalahkan 
     readAt: now,
   });
   const los = evaluateOptical(onu({ status: "los" }), now);
-  assert.equal(pickVerdict([ppp, los]).layer, "optik");
+  assert.equal(
+    decideVerdict([ppp, los], emptyEvidence, null, now).layer,
+    "optik",
+  );
   const isolir = evaluateBilling({
     status: "isolir",
     syncedAt: now,
     billingName: "x",
   });
-  assert.equal(pickVerdict([ppp, los, isolir]).layer, "billing");
+  assert.equal(
+    decideVerdict([ppp, los, isolir], emptyEvidence, null, now).layer,
+    "billing",
+  );
 });
 
 test("Kesimpulan: lapisan tak terperiksa membuat kesimpulan belum lengkap", () => {
   const ok = evaluateOptical(onu(), now);
-  const v = pickVerdict([ok, pendingLayer("hulu", "Uplink")]);
+  const v = decideVerdict(
+    [ok, pendingLayer("hulu", "Uplink")],
+    emptyEvidence,
+    null,
+    now,
+  );
   assert.equal(v.layer, null);
   assert.match(v.detail, /belum lengkap/);
   assert.match(
-    pickVerdict([pendingLayer("hulu", "x")]).detail,
+    decideVerdict([pendingLayer("hulu", "x")], emptyEvidence, null, now).detail,
     /Tidak ada lapisan/,
   );
 });

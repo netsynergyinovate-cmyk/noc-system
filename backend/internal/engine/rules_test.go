@@ -212,3 +212,43 @@ func TestRulesUseDynamicThresholds(t *testing.T) {
 		}
 	}
 }
+
+func TestOpticalRuleWholeIntegerStepping(t *testing.T) {
+	rule := OpticalRule{ThresholdDbm: -25.0}
+	cases := []struct {
+		dbm      float64
+		wantCond bool
+		wantSev  string
+	}{
+		{-20.0, false, ""},
+		{-25.0, false, ""},
+		{-25.01, false, ""},
+		{-25.38, false, ""},
+		{-25.99, false, ""},
+		{-26.0, true, "warning"},
+		{-28.5, true, "warning"},
+		{-29.99, true, "warning"},
+		{-30.0, true, "critical"},
+		{-32.0, true, "critical"},
+	}
+
+	for _, tc := range cases {
+		obs := Observation{
+			Customers: []state.Customer{
+				{ID: "c1", IsOnline: true, HasOptical: true, OpticalPowerDbm: tc.dbm},
+			},
+		}
+		conds := rule.Evaluate(obs, time.Now())
+		if !tc.wantCond {
+			if len(conds) != 0 {
+				t.Errorf("dbm %.2f tidak boleh alert, got %+v", tc.dbm, conds)
+			}
+		} else {
+			if len(conds) == 0 {
+				t.Errorf("dbm %.2f harus alert, got kosong", tc.dbm)
+			} else if conds[0].Severity != tc.wantSev {
+				t.Errorf("dbm %.2f severity = %s, want %s", tc.dbm, conds[0].Severity, tc.wantSev)
+			}
+		}
+	}
+}

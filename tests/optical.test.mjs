@@ -9,9 +9,14 @@ test("getOpticalSignalStatus: semua batas", () => {
     [-35, "los", true],
     [-40, "los", true],
     [-34.9, "critical", true],
-    [-27.1, "critical", true],
-    [-27, "warning", true],
-    [-24.1, "warning", true],
+    [-30.1, "critical", true],
+    [-30, "critical", true],
+    [-29.9, "warning", true],
+    [-26, "warning", true],
+    [-25.9, "ideal", false],
+    [-25.38, "ideal", false],
+    [-25.01, "ideal", false],
+    [-25, "ideal", false],
     [-24, "ideal", false],
     [-15, "ideal", false],
     [-8, "ideal", false],
@@ -24,7 +29,7 @@ test("getOpticalSignalStatus: semua batas", () => {
     assert.equal(s.isOutOfThreshold, out, `rx=${rx}`);
   }
   assert.equal(getOpticalSignalStatus(-30).tone, "danger");
-  assert.equal(getOpticalSignalStatus(-25).tone, "warning");
+  assert.equal(getOpticalSignalStatus(-26).tone, "warning");
   assert.equal(getOpticalSignalStatus(-5).tone, "warning");
   assert.equal(getOpticalSignalStatus(-20).tone, "success");
   assert.equal(getOpticalSignalStatus(-20).label, "Normal");

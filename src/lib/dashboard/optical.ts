@@ -14,11 +14,11 @@ export function getOpticalSignalStatus(rxDbm: number | null | undefined): Optica
   if (rxDbm == null || Number.isNaN(rxDbm) || rxDbm <= -35) {
     return { level: "los", label: "LOS (Putus)", tone: "danger", isOutOfThreshold: true, description: "Tidak ada sinyal optik (LOS)." };
   }
-  if (rxDbm < -27) {
-    return { level: "critical", label: "Kritis (< -27 dBm)", tone: "danger", isOutOfThreshold: true, description: "Redaman terlalu besar; periksa konektor, splitter, atau kabel." };
+  if (rxDbm <= -30) {
+    return { level: "critical", label: "Kritis (<= -30 dBm)", tone: "danger", isOutOfThreshold: true, description: "Redaman loss tinggi di atas -30 dBm; periksa konektor, splitter, atau kabel." };
   }
-  if (rxDbm < -24) {
-    return { level: "warning", label: "Peringatan (-24 dBm)", tone: "warning", isOutOfThreshold: true, description: "Redaman mendekati batas; pantau." };
+  if (rxDbm <= -26) {
+    return { level: "warning", label: "Peringatan (<= -26 dBm)", tone: "warning", isOutOfThreshold: true, description: "Redaman mencapai batas -26 dBm; pantau." };
   }
   if (rxDbm > -8) {
     return { level: "overload", label: "Overload (> -8 dBm)", tone: "warning", isOutOfThreshold: true, description: "Daya terlalu kuat; risiko ONU jenuh, pasang attenuator." };

@@ -24,6 +24,10 @@ import type {
   IncidentKind,
   IncidentSeverity,
 } from "@/lib/dashboard/types";
+import {
+  ALERT_CATEGORY_MAP,
+  type AlertCategoryKey,
+} from "@/lib/dashboard/alert-categories";
 import { selectClassName } from "./select-class";
 
 const severities: IncidentSeverity[] = ["critical", "warning", "info"];
@@ -44,8 +48,10 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <div className="flex min-w-32 flex-1 flex-col">
+      <Label htmlFor={id} className="sr-only">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -79,11 +85,11 @@ export function ResolvedFilterBar({
       role="search"
       aria-label="Cari dan saring riwayat alert"
       onSubmit={(event) => event.preventDefault()}
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+      className="flex flex-wrap items-center gap-2"
     >
-      {/* Kolom cari satu baris penuh; pilihan di bawahnya cukup lebar untuk
-          tulisan dan angkanya. */}
-      <div className="sm:col-span-2 lg:col-span-5">
+      {/* Satu baris rapat: kolom cari dan pilihan sejajar; label tetap ada
+          untuk pembaca layar. */}
+      <div className="min-w-56 flex-[3_1_14rem]">
         <Field id="resolved-search" label="Cari alert">
           <div className="relative">
             <Search
@@ -104,6 +110,26 @@ export function ResolvedFilterBar({
           </div>
         </Field>
       </div>
+      <Field id="resolved-category" label="Kategori">
+        <select
+          id="resolved-category"
+          className={selectClassName}
+          value={filters.category ?? "all"}
+          onChange={(event) =>
+            onChange({
+              ...filters,
+              category: event.target.value as AlertCategoryKey,
+            })
+          }
+        >
+          <option value="all">Semua kategori</option>
+          {(["core", "optical", "customer", "other"] as const).map((key) => (
+            <option key={key} value={key}>
+              {ALERT_CATEGORY_MAP[key].label} ({n(counts.category?.[key] ?? 0)})
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field id="resolved-kind" label="Jenis">
         <select
           id="resolved-kind"

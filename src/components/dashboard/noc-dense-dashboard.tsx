@@ -22,6 +22,8 @@ import {
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { formatInteger, formatMbps } from "@/lib/dashboard/format";
 import { incidentLabels } from "@/lib/dashboard/incidents";
+import { classifyAlertCategory } from "@/lib/dashboard/alert-categories";
+import { AlertCategoryBadge } from "./alert-category-badge";
 import { Button } from "@/components/ui/button";
 import {
   TrafficChart,
@@ -149,15 +151,23 @@ export function NocDenseDashboard() {
   const secondsSinceTraffic = staleness.secondsSinceLastData;
   const displayAlerts = useMemo(
     () =>
-      (t?.alerts.items ?? []).map((a) => ({
-        id: a.id,
-        title:
+      (t?.alerts.items ?? []).map((a) => {
+        const title =
           a.title ||
           incidentLabels[a.type as keyof typeof incidentLabels] ||
-          a.type,
-        location: a.location,
-        timeWib: wibClock.format(new Date(a.detectedAt * 1000)),
-      })),
+          a.type;
+        const category = classifyAlertCategory({
+          type: a.type,
+          title,
+        });
+        return {
+          id: a.id,
+          title,
+          category,
+          location: a.location,
+          timeWib: wibClock.format(new Date(a.detectedAt * 1000)),
+        };
+      }),
     [t?.alerts.items],
   );
 
@@ -831,8 +841,8 @@ export function NocDenseDashboard() {
                     className="p-1.5 rounded bg-muted/50 border border-border text-xs"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground text-[10.5px] flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="font-semibold text-foreground text-[10.5px] flex items-center gap-1.5 flex-wrap">
+                        <AlertCategoryBadge category={alert.category} size="sm" />
                         {alert.title}
                       </span>
                       <span className="text-[9px] text-muted-foreground font-mono">

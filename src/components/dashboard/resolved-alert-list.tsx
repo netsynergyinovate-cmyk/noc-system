@@ -33,11 +33,15 @@ import {
 } from "@/lib/dashboard/resolved-filter";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { AlertPlace } from "./alert-place";
+import { alertPanelClass, alertTableClass } from "./active-alert-list";
 import { AlertEndTime, AlertTime } from "./alert-time";
 import { AnomalySubject, useSubjectLookup } from "./anomaly-subject";
 import { HighlightOnMap } from "./highlight-on-map";
+import { AlertTrafficEvidence } from "./alert-traffic-evidence";
 import { ResolvedFilterBar } from "./resolved-filters";
 import { SeverityBadge } from "./status-badge";
+import { classifyAlertCategory } from "@/lib/dashboard/alert-categories";
+import { AlertCategoryBadge } from "./alert-category-badge";
 
 const days = ALERT_HISTORY_SECONDS / 86_400;
 
@@ -53,12 +57,12 @@ function ResolvedAlertTable({
     <div
       // relative: teks sr-only di dalam sel bersifat absolute; tanpa penampung
       // berposisi ia lolos dari overflow dan melebarkan seluruh halaman.
-      className="relative overflow-x-auto rounded-lg border"
+      className="relative overflow-x-auto rounded border"
       tabIndex={0}
       role="region"
       aria-label="Riwayat alert selesai"
     >
-      <table className="w-full min-w-[64rem] text-left text-sm">
+      <table className={alertTableClass("min-w-[52rem]")}>
         <caption className="sr-only">
           Alert yang sudah selesai, yang paling akhir selesai di atas; waktu
           mulai dan waktu selesai ditulis sampai detik beserta sumber waktunya,
@@ -98,6 +102,7 @@ function ResolvedAlertTable({
                 data-testid="resolved-alert-row"
                 data-alert-id={alert.id}
                 data-severity={alert.severity}
+                data-category={classifyAlertCategory(alert)}
                 data-handled={alert.handledBy !== null}
                 className="border-t"
               >
@@ -120,8 +125,14 @@ function ResolvedAlertTable({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium">
-                    {alertKindLabel(alert)}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <AlertCategoryBadge
+                      category={classifyAlertCategory(alert)}
+                      size="sm"
+                    />
+                    <span className="font-medium text-foreground">
+                      {alertKindLabel(alert)}
+                    </span>
                   </div>
                   <div className="mt-1">
                     <SeverityBadge severity={alert.severity} />
@@ -137,7 +148,10 @@ function ResolvedAlertTable({
                   <AlertPlace location={alert.location} />
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <HighlightOnMap alert={alert} />
+                  <div className="flex items-center gap-1.5">
+                    <HighlightOnMap alert={alert} />
+                    <AlertTrafficEvidence alert={alert} />
+                  </div>
                 </td>
               </tr>
             );
@@ -233,6 +247,7 @@ export function ResolvedAlertList({
 
   return (
     <Card
+      className={alertPanelClass}
       data-testid="resolved-alerts"
       data-total={alerts?.length}
       data-visible={alerts ? visible.length : undefined}

@@ -2,6 +2,11 @@ import { describeAnomaly } from "./anomalies";
 import { describeHandled, type ResolvedAlert } from "./alerts";
 import { incidentLabels, incidentSeverityLabels } from "./incidents";
 import type { IncidentKind, IncidentSeverity } from "./types";
+import {
+  ALERT_CATEGORY_MAP,
+  classifyAlertCategory,
+  type AlertCategoryKey,
+} from "./alert-categories";
 
 // Pencarian dan saringan riwayat alert selesai. Murni, supaya bisa diuji tanpa
 // layar: komponen hanya menyimpan pilihan saringannya.
@@ -21,6 +26,7 @@ export const resolvedWindowSeconds: Record<
 export interface ResolvedFilters {
   // Kata kunci bebas; spasi memisahkan beberapa kata yang semuanya harus ada.
   query: string;
+  category?: AlertCategoryKey;
   kind: IncidentKind | "all";
   severity: IncidentSeverity | "all";
   // "all" atau id router.
@@ -30,6 +36,7 @@ export interface ResolvedFilters {
 
 export const defaultResolvedFilters: ResolvedFilters = {
   query: "",
+  category: "all",
   kind: "all",
   severity: "all",
   routerId: "all",
@@ -40,6 +47,7 @@ export function hasActiveResolvedFilters(filters: ResolvedFilters) {
   return (
     filters.query.trim() !== "" ||
     filters.kind !== "all" ||
+    (Boolean(filters.category) && filters.category !== "all") ||
     filters.severity !== "all" ||
     filters.routerId !== "all" ||
     filters.window !== "all"
@@ -65,6 +73,8 @@ export function searchableText(
       ? undefined
       : directory.customer(alert.customerId);
   return [
+    ALERT_CATEGORY_MAP[classifyAlertCategory(alert)].label,
+    ALERT_CATEGORY_MAP[classifyAlertCategory(alert)].shortLabel,
     incidentLabels[alert.kind],
     incidentSeverityLabels[alert.severity],
     customer?.name,
@@ -87,7 +97,7 @@ export function searchTerms(query: string) {
   return query.toLowerCase().split(/\s+/).filter(Boolean);
 }
 
-type Dimension = "query" | "kind" | "severity" | "routerId" | "window";
+type Dimension = "query" | "category" | "kind" | "severity" | "routerId" | "window";
 
 // `skip` mengabaikan satu saringan, untuk menghitung angka di samping pilihan
 // saringan itu sendiri. `text` adalah teks pencarian alert itu (hanya dipakai
@@ -100,6 +110,13 @@ function matches(
   nowSec: number,
   skip?: Dimension,
 ) {
+  if (
+    skip !== "category" &&
+    filters.category &&
+    filters.category !== "all" &&
+    classifyAlertCategory(alert) !== filters.category
+  )
+    return false;
   if (skip !== "kind" && filters.kind !== "all" && alert.kind !== filters.kind)
     return false;
   if (
@@ -146,6 +163,7 @@ export function filterResolvedAlerts(
 
 export interface ResolvedFacetCounts {
   kind: Record<IncidentKind, number>;
+  category: Record<Exclude<AlertCategoryKey, "all">, number>;
   severity: Record<IncidentSeverity, number>;
   router: Record<string, number>;
   window: Record<ResolvedWindow, number>;
@@ -166,6 +184,7 @@ export function resolvedFacetCounts(
   const terms = searchTerms(filters.query);
   const counts: ResolvedFacetCounts = {
     kind: { offline: 0, optical: 0, queue: 0, cpu: 0, port: 0 },
+    category: { core: 0, optical: 0, customer: 0, other: 0 },
     severity: { critical: 0, warning: 0, info: 0 },
     router: Object.fromEntries(routerIds.map((id) => [id, 0])),
     window: { all: 0, "1h": 0, "6h": 0, "24h": 0 },
@@ -177,6 +196,10 @@ export function resolvedFacetCounts(
       matches(alert, filters, terms, text, nowSec, skip);
     if (check()) counts.total += 1;
     if (check("kind")) counts.kind[alert.kind] += 1;
+    if (check("category")) {
+      const cat = classifyAlertCategory(alert);
+      counts.category[cat] = (counts.category[cat] ?? 0) + 1;
+    }
     if (check("severity")) counts.severity[alert.severity] += 1;
     if (check("routerId") && alert.routerId in counts.router)
       counts.router[alert.routerId] += 1;

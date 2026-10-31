@@ -16,6 +16,13 @@ import {
 } from "@/lib/dashboard/alert-ticket-actions";
 import { AlertTicketDialog } from "./alert-ticket-dialog";
 import { cn } from "cn";
+import {
+  ALERT_CATEGORY_MAP,
+  classifyAlertCategory,
+  summarizeAlertCategories,
+  type AlertCategoryKey,
+} from "@/lib/dashboard/alert-categories";
+import { AlertCategoryBadge } from "./alert-category-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,6 +51,7 @@ import {
   useHandleAlert,
 } from "./handle-alert-dialog";
 import { HighlightOnMap } from "./highlight-on-map";
+import { AlertTrafficEvidence } from "./alert-traffic-evidence";
 import {
   AnomalySubject,
   subjectLabel,
@@ -51,19 +59,27 @@ import {
 } from "./anomaly-subject";
 import { SeverityBadge } from "./status-badge";
 
-// Dipakai di halaman Alert dan di rincian kartu insiden; `label` dan
-// `caption` membedakan keduanya bagi pembaca layar, dan `maxHeight` membatasi
-// tingginya. Tombol "Tandai ditangani" hanya ada bila `onHandle` diberikan:
-// halaman Alert memberikannya, rincian kartu insiden tidak. Tombolnya di bawah
-// jenis dan tingkat alert, bukan di kolom sendiri di ujung kanan: tabel ini sudah
-// perlu digulir mendatar di banyak layar, dan tindakan utama tidak boleh
-// tersembunyi di balik gulir.
-export function AlertTable({
+// Gaya panel dan tabel alert yang rapat (acuan ref-folder/Alert  Designn):
+// kelas dipasang pada pembungkus, jadi sel dan kepala tabel tidak diulang satu
+// per satu. Dipakai juga oleh riwayat alert selesai.
+export const alertPanelClass =
+  "gap-2 rounded py-3 shadow-none [&_[data-slot=card-header]]:px-3 [&_[data-slot=card-content]]:px-3 [&_[data-slot=card-title]]:text-sm [&_[data-slot=card-description]]:text-xs";
+
+export const alertTableClass = (minWidth: string) =>
+  `w-full ${minWidth} text-left text-xs [&_th]:px-3 [&_th]:py-1.5 [&_th]:font-mono [&_th]:text-[10px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_td]:px-3 [&_td]:py-2`;
+
+// Kartu alert aktif (acuan ref-folder/Alert  Designn): satu kartu per alert,
+// garis tepi kiri menurut tingkatnya. Hanya isian yang memang dimiliki alert
+// yang tampil; tidak ada angka telemetri yang dikarang. `label` dan `caption`
+// untuk pembaca layar, `maxHeight` membatasi tingginya. Tombol "Tandai
+// ditangani" ada di kartu, di samping tombol tiket dan Sorot, jadi tindakan
+// utama tidak tersembunyi di balik gulir.
+export function AlertCardList({
   alerts,
   now,
   label = "Daftar alert aktif",
   caption = "Alert yang masih berjalan, dari yang paling genting dan paling baru; waktu mulai ditulis sampai detik beserta sumber waktunya",
-  maxHeight = "max-h-[36rem]",
+  maxHeight = "lg:max-h-[calc(100vh-18rem)]",
   onHandle,
   onRespond,
   tickets,
@@ -85,97 +101,91 @@ export function AlertTable({
   return (
     <div
       ref={regionRef}
-      // relative: teks sr-only di dalam sel bersifat absolute; tanpa penampung
-      // berposisi ia lolos dari overflow dan melebarkan seluruh halaman.
-      className={cn("relative overflow-auto rounded-lg border", maxHeight)}
+      className={cn("relative overflow-y-auto", maxHeight)}
       tabIndex={0}
       role="region"
       aria-label={label}
+      aria-describedby="alert-cards-caption"
     >
-      <table className="w-full min-w-[58rem] text-left text-sm">
-        <caption className="sr-only">{caption}</caption>
-        <thead className="sticky top-0 bg-card text-muted-foreground shadow-[0_1px_0_var(--border)]">
-          <tr>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Waktu mulai
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Alert
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Subjek
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Keterangan
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Lokasi
-            </th>
-            <th scope="col" className="px-4 py-3 font-medium">
-              Peta
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {alerts.length === 0 ? (
-            <tr className="border-t">
-              <td
-                colSpan={6}
-                className="px-4 py-10 text-center text-muted-foreground"
-              >
-                <CircleCheck
-                  className="mx-auto mb-2 size-6 text-success"
-                  aria-hidden="true"
-                />
-                Tidak ada alert aktif. Semua jaringan normal.
-              </td>
-            </tr>
-          ) : (
-            alerts.map((alert) => (
-              <tr
+      <p id="alert-cards-caption" className="sr-only">
+        {caption}
+      </p>
+      {alerts.length === 0 ? (
+        <div
+          data-testid="alert-empty"
+          className="rounded border px-3 py-8 text-center text-xs text-muted-foreground"
+        >
+          <CircleCheck
+            className="mx-auto mb-2 size-6 text-success"
+            aria-hidden="true"
+          />
+          Tidak ada alert aktif. Semua jaringan normal.
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {alerts.map((alert) => {
+            const category = classifyAlertCategory(alert);
+            return (
+              <li
                 key={alert.id}
                 data-testid="alert-row"
                 data-alert-id={alert.id}
                 data-severity={alert.severity}
+                data-category={category}
                 className={cn(
-                  "border-t",
-                  alert.severity === "critical" && "bg-destructive/5",
+                  "rounded border bg-card p-2 text-xs",
+                  alert.severity === "critical" &&
+                    "border-destructive/30 bg-destructive/5 shadow-[inset_2px_0_0_var(--destructive)]",
+                  alert.severity === "warning" &&
+                    "border-warning/30 shadow-[inset_2px_0_0_var(--warning)]",
                 )}
               >
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <AlertTime alert={alert} now={now} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">
-                    {alertKindLabel(alert)}
-                  </div>
-                  <div className="mt-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b pb-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <SeverityBadge severity={alert.severity} />
+                    <AlertCategoryBadge category={category} />
+                    <span className="font-mono font-semibold">
+                      {alertKindLabel(alert)}
+                    </span>
                   </div>
-                  {onHandle && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      data-testid="handle-alert"
-                      // Namanya memuat tulisan yang terlihat, ditambah alert yang
-                      // mana (jenis, subjek, dan waktu mulai sampai detik, supaya dua
-                      // alert sejenis pada subjek yang sama tetap bisa dibedakan):
-                      // tombol yang sama muncul di setiap baris.
-                      aria-label={`Tandai ditangani: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
-                      onClick={() => onHandle(alert)}
+                  <AlertTime alert={alert} now={now} />
+                </div>
+              <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <AnomalySubject anomaly={alert} lookup={lookup} />
+                </div>
+                <div className="min-w-0 rounded border bg-muted/30 p-1.5 font-mono text-[11px]">
+                  <p className="text-muted-foreground">
+                    {describeAnomaly(alert)}
+                  </p>
+                  <div className="mt-0.5">
+                    <AlertPlace location={alert.location} />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t pt-1.5">
+                <div className="min-w-0">
+                  {tickets?.[alert.id] && (
+                    <div
+                      data-testid="ticket-status-chip"
+                      data-status={tickets[alert.id].status}
+                      className="inline-flex rounded border bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium"
                     >
-                      <CircleCheckBig aria-hidden="true" />
-                      Tandai ditangani
-                    </Button>
+                      {alertTicketStatusLabels[tickets[alert.id].status]}
+                      {tickets[alert.id].technicianName
+                        ? ` - ${tickets[alert.id].technicianName}`
+                        : ""}
+                    </div>
                   )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <HighlightOnMap alert={alert} />
+                  <AlertTrafficEvidence alert={alert} />
                   {onRespond && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="mt-2 ml-2"
                       data-testid="respond-alert"
                       aria-label={`Tanggapi tiket: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
                       onClick={() => onRespond(alert)}
@@ -184,36 +194,30 @@ export function AlertTable({
                       Tanggapi / Tiket
                     </Button>
                   )}
-                  {tickets?.[alert.id] && (
-                    <div
-                      data-testid="ticket-status-chip"
-                      data-status={tickets[alert.id].status}
-                      className="mt-2 inline-flex rounded-full border bg-secondary px-2.5 py-0.5 text-xs font-medium"
+                  {onHandle && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid="handle-alert"
+                      // Namanya memuat tulisan yang terlihat, ditambah alert yang
+                      // mana (jenis, subjek, dan waktu mulai sampai detik, supaya dua
+                      // alert sejenis pada subjek yang sama tetap bisa dibedakan):
+                      // tombol yang sama muncul di setiap kartu.
+                      aria-label={`Tandai ditangani: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
+                      onClick={() => onHandle(alert)}
                     >
-                      {alertTicketStatusLabels[tickets[alert.id].status]}
-                      {tickets[alert.id].technicianName
-                        ? ` - ${tickets[alert.id].technicianName}`
-                        : ""}
-                    </div>
+                      <CircleCheckBig aria-hidden="true" />
+                      Tandai ditangani
+                    </Button>
                   )}
-                </td>
-                <td className="px-4 py-3">
-                  <AnomalySubject anomaly={alert} lookup={lookup} />
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {describeAnomaly(alert)}
-                </td>
-                <td className="px-4 py-3">
-                  <AlertPlace location={alert.location} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <HighlightOnMap alert={alert} />
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+                </div>
+              </div>
+            </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -267,7 +271,7 @@ function SeverityChips({ summary }: { summary: SeveritySummary }) {
     <div
       role="group"
       aria-label="Jumlah alert aktif menurut tingkatnya"
-      className="flex flex-wrap gap-2"
+      className="flex w-full flex-wrap gap-2"
     >
       {summary.total === 0 ? (
         <SeverityChip tone="ok">Semua normal</SeverityChip>
@@ -308,17 +312,28 @@ export function ActiveAlertList({
     const map: Record<string, AlertTicketResponseRecord> = {};
     for (const record of getTicketResponses()) map[record.alertId] = record;
     return map;
-  }, [ticketVersion, alerts]);
+  }, [ticketVersion]);
+  const [categoryFilter, setCategoryFilter] = useState<AlertCategoryKey>("all");
+  const categoryCounts = useMemo(
+    () => (alerts ? summarizeAlertCategories(alerts) : null),
+    [alerts],
+  );
+  const displayedAlerts = useMemo(() => {
+    if (!alerts) return null;
+    if (categoryFilter === "all") return alerts;
+    return alerts.filter((a) => classifyAlertCategory(a) === categoryFilter);
+  }, [alerts, categoryFilter]);
   return (
     <Card
+      className={alertPanelClass}
       data-testid="active-alerts"
       data-count={summary?.total}
       data-critical={summary?.critical}
       data-warning={summary?.warning}
       data-tone={summary?.tone}
     >
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="flex flex-col gap-2">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-col gap-1">
           <CardTitle>Daftar alert aktif</CardTitle>
           <CardDescription role="status">
             {alerts
@@ -330,9 +345,64 @@ export function ActiveAlertList({
         {summary && <SeverityChips summary={summary} />}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {alerts ? (
-          <AlertTable
-            alerts={alerts}
+        {alerts && alerts.length > 0 && categoryCounts && (
+          <div
+            role="tablist"
+            aria-label="Filter kategori alert"
+            className="flex flex-wrap items-center gap-1.5 border-b pb-2 text-xs"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={categoryFilter === "all"}
+              data-testid="filter-cat-all"
+              onClick={() => setCategoryFilter("all")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors border cursor-pointer",
+                categoryFilter === "all"
+                  ? "bg-secondary text-foreground border-border font-semibold shadow-2xs"
+                  : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <span>Semua Kategori</span>
+              <span className="rounded-full bg-background/80 px-1.5 py-0.2 font-mono text-[10px] text-foreground border border-border/50">
+                {formatInteger(categoryCounts.all)}
+              </span>
+            </button>
+            {(["core", "optical", "customer", "other"] as const).map((key) => {
+              const meta = ALERT_CATEGORY_MAP[key];
+              const count = categoryCounts[key];
+              const Icon = meta.Icon;
+              const isSelected = categoryFilter === key;
+              if (count === 0 && !isSelected) return null;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  data-testid={`filter-cat-${key}`}
+                  onClick={() => setCategoryFilter(key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors border cursor-pointer",
+                    isSelected
+                      ? "bg-secondary text-foreground border-border font-semibold shadow-2xs"
+                      : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>{meta.label}</span>
+                  <span className="rounded-full bg-background/80 px-1.5 py-0.2 font-mono text-[10px] text-foreground border border-border/50">
+                    {formatInteger(count)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {displayedAlerts ? (
+          <AlertCardList
+            alerts={displayedAlerts}
             now={now}
             onHandle={handle.request}
             onRespond={setTicketAlert}

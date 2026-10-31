@@ -24,7 +24,7 @@ export function AlertBoard({ operator }: { operator: string }) {
   const disconnected = connection === "disconnected";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       {disconnected && (
         <div
           role="alert"
@@ -40,8 +40,14 @@ export function AlertBoard({ operator }: { operator: string }) {
       {(active !== null || !disconnected) && (
         <>
           <AlertMetricSummary active={active} resolved={resolved} />
-          <ActiveAlertList alerts={active} now={now} operator={operator} />
-          <ResolvedAlertList alerts={resolved} now={now} />
+          <div className="grid grid-cols-1 items-start gap-2 lg:grid-cols-12">
+            <div className="min-w-0 lg:col-span-5">
+              <ActiveAlertList alerts={active} now={now} operator={operator} />
+            </div>
+            <div className="min-w-0 lg:col-span-7">
+              <ResolvedAlertList alerts={resolved} now={now} />
+            </div>
+          </div>
         </>
       )}
     </div>

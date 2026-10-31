@@ -15,17 +15,13 @@ const {
 } = await import("../src/lib/dashboard/resolved-filter.ts");
 
 test("classifyAlertCategory: membedakan optik, core, dan pelanggan offline", () => {
-  // Optik
+  // Optik: diputuskan oleh kind/type
   assert.equal(
     classifyAlertCategory({ kind: "optical", customerId: "c1" }),
     "optical",
   );
   assert.equal(
     classifyAlertCategory({ type: "optical", title: "Sinyal optik lemah" }),
-    "optical",
-  );
-  assert.equal(
-    classifyAlertCategory({ title: "Redaman optik tinggi" }),
     "optical",
   );
 

@@ -312,7 +312,7 @@ export function ActiveAlertList({
     const map: Record<string, AlertTicketResponseRecord> = {};
     for (const record of getTicketResponses()) map[record.alertId] = record;
     return map;
-  }, [ticketVersion]);
+  }, [ticketVersion, alerts]);
   const [categoryFilter, setCategoryFilter] = useState<AlertCategoryKey>("all");
   const categoryCounts = useMemo(
     () => (alerts ? summarizeAlertCategories(alerts) : null),

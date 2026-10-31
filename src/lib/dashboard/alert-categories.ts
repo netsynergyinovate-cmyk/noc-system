@@ -73,45 +73,34 @@ export function classifyAlertCategory(alert: {
   title?: string | null;
 }): Exclude<AlertCategoryKey, "all"> {
   const k = (alert.kind || alert.type || "").toLowerCase().trim();
-  const title = (alert.title || "").toLowerCase().trim();
 
-  // 1. Optik
-  if (k === "optical" || title.includes("optik") || title.includes("redaman")) {
+  // 1. Optik: langsung dari jenis alert optical
+  if (k === "optical") {
     return "optical";
   }
 
   // 2. Offline: bedakan apakah pelanggan atau router core
   if (k === "offline") {
-    // Jika customerId ada nilainya -> pelanggan offline
     if (alert.customerId) {
       return "customer";
     }
-    // Jika customerId eksplisit null atau title menyebut router -> router core
-    if (
-      alert.customerId === null ||
-      title.includes("router") ||
-      title.includes("core")
-    ) {
+    if (alert.customerId === null) {
       return "core";
     }
-    if (title.includes("pelanggan")) {
-      return "customer";
+    // customerId === undefined (mis. baris telemetri dasbor): pakai title
+    const title = (alert.title || "").toLowerCase().trim();
+    if (title.includes("router") || title.includes("core")) {
+      return "core";
     }
-    // Default offline tanpa penanda router dianggap customer
     return "customer";
   }
 
-  // 3. Perangkat Core
+  // 3. Perangkat Core: cpu, queue, port, router_unreachable
   if (
     k === "cpu" ||
     k === "queue" ||
     k === "port" ||
-    k === "router_unreachable" ||
-    title.includes("router") ||
-    title.includes("cpu") ||
-    title.includes("antrean") ||
-    title.includes("port") ||
-    title.includes("traffic")
+    k === "router_unreachable"
   ) {
     return "core";
   }

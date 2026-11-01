@@ -6,6 +6,7 @@ import { existsSync, createReadStream } from "fs";
 import { Client, type ConnectConfig } from "ssh2";
 import type { DeployTarget } from "@/db/schema/deploy-targets";
 import type { DecryptedSshCredential } from "./ssh-credentials.service";
+import { executeSshCommand } from "./ssh-client.service";
 
 export interface BuildResult {
   tarPath: string;
@@ -151,13 +152,13 @@ export async function buildReleaseBundle(
 }
 
 /**
- * Mengunggah berkas rilis via SFTP ke SERVER NATIVE dan mengekstraknya di direktori rilis berversi.
+ * Mengunggah berkas rilis via SFTP ke SERVER NATIVE.
  */
-export async function uploadAndExtractRelease(
+export async function uploadReleaseFile(
   target: DeployTarget,
   credential: DecryptedSshCredential,
-  localTarPath: string,
-  remoteReleasePath: string,
+  localFilePath: string,
+  remoteFilePath: string,
   effectiveHost?: string,
   onLog?: (msg: string) => void,
 ): Promise<void> {
@@ -165,57 +166,49 @@ export async function uploadAndExtractRelease(
   const { promise, resolve: resolveAll, reject: rejectAll } = Promise.withResolvers<void>();
 
   const conn = new Client();
-  const remoteTarPath = `${remoteReleasePath}/release.tar.gz`;
+  let settled = false;
+
+  const timer = setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      try { conn.end(); } catch {}
+      rejectAll(new Error("Unggahan SFTP melebihi batas waktu (timeout 5 menit)."));
+    }
+  }, 300000);
+
+  const cleanupAndEnd = () => {
+    clearTimeout(timer);
+    if (!settled) {
+      settled = true;
+      try { conn.end(); } catch {}
+    }
+  };
 
   conn.on("ready", () => {
     onLog?.(`Membuka sesi SFTP ke ${target.sshUser}@${host}...`);
     conn.sftp((err, sftp) => {
       if (err) {
-        conn.end();
+        cleanupAndEnd();
         return rejectAll(new Error(`Gagal membuka SFTP: ${err.message}`));
       }
 
-      onLog?.(`Mengunggah paket rilis ke ${remoteTarPath}...`);
-      const readStream = createReadStream(localTarPath);
-      const writeStream = sftp.createWriteStream(remoteTarPath);
+      onLog?.(`Mengunggah paket rilis ke ${remoteFilePath}...`);
+      const readStream = createReadStream(localFilePath);
+      const writeStream = sftp.createWriteStream(remoteFilePath);
 
       writeStream.on("close", () => {
-        onLog?.("Unggahan paket rilis selesai. Mengekstrak paket di server...");
-
-        // Jalankan ekstraksi dan permission via SSH exec
-        const extractCmd = [
-          `tar -xzf "${remoteTarPath}" -C "${remoteReleasePath}"`,
-          `rm -f "${remoteTarPath}"`,
-          `chmod +x "${remoteReleasePath}/noc-backend"`,
-          `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,
-        ].join(" && ");
-
-        conn.exec(extractCmd, (execErr, stream) => {
-          if (execErr) {
-            conn.end();
-            return rejectAll(new Error(`Gagal mengekstrak rilis: ${execErr.message}`));
-          }
-
-          let stderr = "";
-          stream.stderr.on("data", (data: Buffer) => {
-            stderr += data.toString();
-          });
-
-          stream.on("close", (code: number) => {
-            conn.end();
-            if (code !== 0) {
-              rejectAll(new Error(`Ekstraksi rilis gagal (exit code ${code}): ${stderr}`));
-            } else {
-              onLog?.(`Rilis berhasil diekstrak dan disiapkan di ${remoteReleasePath}.`);
-              resolveAll();
-            }
-          });
-        });
+        cleanupAndEnd();
+        resolveAll();
       });
 
       writeStream.on("error", (e: Error) => {
-        conn.end();
-        rejectAll(new Error(`Gagal mengunggah file SFTP: ${e.message}`));
+        cleanupAndEnd();
+        rejectAll(new Error(`Gagal mengunggah file via SFTP: ${e.message}`));
+      });
+
+      readStream.on("error", (e: Error) => {
+        cleanupAndEnd();
+        rejectAll(new Error(`Gagal membaca berkas lokal: ${e.message}`));
       });
 
       readStream.pipe(writeStream);
@@ -223,6 +216,7 @@ export async function uploadAndExtractRelease(
   });
 
   conn.on("error", (err) => {
+    cleanupAndEnd();
     rejectAll(new Error(`Koneksi SSH untuk SFTP gagal: ${err.message}`));
   });
 
@@ -242,7 +236,42 @@ export async function uploadAndExtractRelease(
     tryKeyboard: Boolean(credential.password),
     readyTimeout: 15000,
   };
-  conn.connect(connectConfig);
 
+  conn.connect(connectConfig);
   return promise;
+}
+
+/**
+ * Mengunggah berkas rilis via SFTP ke SERVER NATIVE dan mengekstraknya di direktori rilis berversi.
+ */
+export async function uploadAndExtractRelease(
+  target: DeployTarget,
+  credential: DecryptedSshCredential,
+  localTarPath: string,
+  remoteReleasePath: string,
+  effectiveHost?: string,
+  onLog?: (msg: string) => void,
+): Promise<void> {
+  const host = effectiveHost || target.host;
+  const remoteTarPath = `${remoteReleasePath}/release.tar.gz`;
+
+  await uploadReleaseFile(target, credential, localTarPath, remoteTarPath, host, onLog);
+
+  onLog?.("Unggahan paket rilis selesai. Mengekstrak paket di server...");
+  const extractCmd = [
+    `tar -xzf "${remoteTarPath}" -C "${remoteReleasePath}"`,
+    `rm -f "${remoteTarPath}"`,
+    `chmod +x "${remoteReleasePath}/noc-backend"`,
+    `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,
+  ].join(" && ");
+
+  const extractRes = await executeSshCommand(target, credential, extractCmd, host, 60000, (chunk) => {
+    onLog?.(chunk);
+  });
+
+  if (extractRes.code !== 0) {
+    throw new Error(`Ekstraksi rilis gagal (exit code ${extractRes.code}): ${extractRes.stderr || extractRes.stdout}`);
+  }
+
+  onLog?.(`Rilis berhasil diekstrak dan disiapkan di ${remoteReleasePath}.`);
 }

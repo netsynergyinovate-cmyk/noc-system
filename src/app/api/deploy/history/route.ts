@@ -1,6 +1,6 @@
 import { withApiPermission } from "@/lib/api";
 import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployRuns, getDeployRunDetail } from "@/services/deploy-runner.service";
+import { getDeployRuns, getDeployRunDetail, cancelDeployRun } from "@/services/deploy-runner.service";
 
 export const runtime = "nodejs";
 
@@ -39,5 +39,21 @@ export async function GET(request: Request) {
         total: runs.length,
       },
     });
+  });
+}
+export async function POST(request: Request) {
+  const guard = evaluateDeployAccess(request);
+  const denied = deployGuardResponse(guard);
+  if (denied) return denied;
+
+  return withApiPermission(request, { system: ["manage"] }, async () => {
+    const body = await request.json().catch(() => ({}));
+    const runId = body.runId;
+    if (!runId || typeof runId !== "string") {
+      return Response.json({ error: "runId wajib diisi" }, { status: 400 });
+    }
+
+    await cancelDeployRun(runId);
+    return Response.json({ ok: true, message: "Deploy run berhasil ditandai gagal / dihentikan." });
   });
 }

@@ -3,6 +3,7 @@ import { execSync, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -45,6 +46,42 @@ function runCmd(cmd, options = {}) {
     if (options.ignoreError) return null;
     throw err;
   }
+}
+function runCmdWithHeartbeat(cmd, stageName, options = {}) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    const intervalSeconds = 15;
+
+    const timer = setInterval(() => {
+      const elapsedSeconds = Math.round((Date.now() - startTime) / 1000);
+      console.log(
+        `${ANSI.cyan}[noc-system]${ANSI.reset} ⏳ ${stageName} masih aktif berjalan di background (${elapsedSeconds} detik)... Harap tunggu, bukan membeku.`,
+      );
+    }, intervalSeconds * 1000);
+
+    const child = spawn(cmd, {
+      shell: true,
+      stdio: options.silent ? "pipe" : "inherit",
+      cwd: options.cwd || REPO_ROOT,
+      env: options.env || process.env,
+    });
+
+    child.on("error", (err) => {
+      clearInterval(timer);
+      reject(err);
+    });
+
+    child.on("close", (code) => {
+      clearInterval(timer);
+      if (code === 0) {
+        resolve();
+      } else {
+        const err = new Error(`Command failed with exit code ${code}: ${cmd}`);
+        err.code = code;
+        reject(err);
+      }
+    });
+  });
 }
 
 function parseFourPartVersion(v) {
@@ -388,7 +425,7 @@ async function cmdDeploy(args = [], options = {}) {
       }
       log("Memasang dependensi project terbaru (npm ci)...");
       log("Mengunduh & mengekstrak dependensi (~500MB, butuh 1–3 menit). Harap tunggu...");
-      runCmd("npm ci --no-audit", { cwd: REPO_ROOT });
+      await runCmdWithHeartbeat("npm ci --no-audit", "Pemasangan dependensi project (npm ci)", { cwd: REPO_ROOT });
       ok("Kode sumber dan dependensi berhasil diperbarui dari git.");
     } catch (err) {
       warn(`Gagal memperbarui dari git: ${err.message}. Melanjutkan rilis dengan kode lokal.`);
@@ -399,6 +436,28 @@ async function cmdDeploy(args = [], options = {}) {
   const version = getNextDeployVersion(explicitVersionArg);
   log(`${ANSI.bold}Memulai Deployment Versi: ${version}${ANSI.reset}`);
 
+  const lockFile = "/srv/noc/shared/.deploy-lock";
+  const cleanupLock = () => {
+    try {
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+    } catch {}
+  };
+  try {
+    fs.writeFileSync(
+      lockFile,
+      JSON.stringify({
+        pid: process.pid,
+        command: `noc-system ${isUpdate ? "update" : "deploy"}`,
+        version,
+        startedAt: new Date().toISOString(),
+      }),
+      "utf-8",
+    );
+  } catch {}
+  process.once("exit", cleanupLock);
+  process.once("SIGINT", () => { cleanupLock(); process.exit(1); });
+  process.once("SIGTERM", () => { cleanupLock(); process.exit(1); });
+  try {
   const releasePath = `/srv/noc/releases/${version}`;
   const currentLink = "/srv/noc/current";
   const rollbackTargetFile = "/srv/noc/shared/.rollback-target";
@@ -462,7 +521,7 @@ async function cmdDeploy(args = [], options = {}) {
   if (!fs.existsSync(backendBinDir)) fs.mkdirSync(backendBinDir, { recursive: true });
   const backendBinPath = path.join(backendBinDir, "noc-backend");
 
-  runCmd(`go build -v -ldflags="-s -w" -o "${backendBinPath}" ./cmd/server`, {
+  await runCmdWithHeartbeat(`go build -v -ldflags="-s -w" -o "${backendBinPath}" ./cmd/server`, "Kompilasi backend Go (noc-backend)", {
     cwd: path.join(REPO_ROOT, "backend"),
     env: { ...process.env, CGO_ENABLED: "0", GOOS: "linux", GOARCH: "amd64" },
   });
@@ -472,7 +531,7 @@ async function cmdDeploy(args = [], options = {}) {
   log("Langkah 3/6: Membangun bundle Next.js Standalone (npm run build)...");
   log("Tahap 'Creating an optimized production build...' membundel puluhan rute & TypeScript.");
   log("Layar akan diam selama 1–3 menit di VPS. Harap tunggu dan JANGAN tekan Ctrl+C...");
-  runCmd("npm run build", {
+  await runCmdWithHeartbeat("npm run build", "Bundle Next.js Standalone (Turbopack)", {
     env: {
       ...process.env,
       NEXT_TELEMETRY_DISABLED: "1",
@@ -580,6 +639,55 @@ async function cmdDeploy(args = [], options = {}) {
     recordDeploymentToDatabase(version, "deploy", "gagal", oldVersion);
     updateServerStatusSnapshot(version, oldVersion, "gagal");
     fail(`Health check tidak sempurna: web=${webOk ? "OK" : "GAGAL"}, backend=${backendOk ? "OK" : "GAGAL"}`);
+
+    // Diagnostik Akar Masalah (Fail-Loudly)
+    console.log(`\n${ANSI.yellow}${ANSI.bold}--- 30 Baris Terakhir Log noc-web ---${ANSI.reset}`);
+    try {
+      const webLog = execSync("journalctl -u noc-web -n 30 --no-pager 2>/dev/null", { encoding: "utf-8" }).trim();
+      console.log(webLog || "(tidak ada entri log)");
+    } catch {}
+
+    console.log(`\n${ANSI.yellow}${ANSI.bold}--- 30 Baris Terakhir Log noc-backend ---${ANSI.reset}`);
+    try {
+      const beLog = execSync("journalctl -u noc-backend -n 30 --no-pager 2>/dev/null", { encoding: "utf-8" }).trim();
+      console.log(beLog || "(tidak ada entri log)");
+    } catch {}
+
+    try {
+      let oom = execSync(
+        'dmesg -T 2>/dev/null | grep -iE "oom[- ]killer|out of memory" | tail -n 5 2>/dev/null || echo ""',
+        { encoding: "utf-8" },
+      ).trim();
+      if (!oom) {
+        oom = execSync(
+          'journalctl -k -n 50 --no-pager 2>/dev/null | grep -iE "oom[- ]killer|out of memory" | tail -n 5 2>/dev/null || echo ""',
+          { encoding: "utf-8" },
+        ).trim();
+      }
+      if (oom) {
+        console.log(`\n${ANSI.red}${ANSI.bold}⚠ PERINGATAN KRITIS: Terdeteksi Linux OOM Killer!${ANSI.reset}`);
+        console.log(`${ANSI.red}${oom}${ANSI.reset}`);
+        console.log(`${ANSI.yellow}Penyebab: Server kehabisan RAM. Pastikan swapfile minimal 2GB aktif: sudo swapon --show${ANSI.reset}`);
+      }
+    } catch {}
+
+    try {
+      const portConflict = execSync(
+        "ss -tulpn 2>/dev/null | grep -E ':3000|:8080|:5432' 2>/dev/null || netstat -tlpn 2>/dev/null | grep -E ':3000|:8080|:5432' || echo ''",
+        { encoding: "utf-8" },
+      ).trim();
+      if (portConflict) {
+        console.log(`\n${ANSI.cyan}${ANSI.bold}--- Status Penggunaan Port (3000, 8080, 5432) ---${ANSI.reset}`);
+        console.log(portConflict);
+      }
+    } catch {}
+
+    console.log(`\n${ANSI.cyan}${ANSI.bold}Langkah Pemulihan Mandiri Operator:${ANSI.reset}`);
+    console.log(`  1. Periksa log detail : noc-system logs`);
+    console.log(`  2. Periksa kesiapan   : noc-system doctor`);
+    console.log(`  3. Cek database docker: docker ps --filter "name=noc-postgres"`);
+    console.log(`  4. Uji jalan manual   : cd /srv/noc/current && node server.js\n`);
+
     if (oldVersion) {
       warn(`Memicu rollback otomatis ke: ${oldVersion}`);
       runCmd(`ln -sfn "${oldVersion}" "${currentLink}"`);
@@ -589,6 +697,11 @@ async function cmdDeploy(args = [], options = {}) {
       } catch {}
     }
     process.exit(1);
+  }
+  } finally {
+    try {
+      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
+    } catch {}
   }
 }
 
@@ -772,6 +885,269 @@ async function cmdVersion() {
   } catch {}
   console.log();
 }
+// -----------------------------------------------------------------------------
+// 8. COMMAND: doctor
+// -----------------------------------------------------------------------------
+async function cmdDoctor() {
+  console.log(`\n${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}`);
+  console.log(`${ANSI.bold}${ANSI.cyan}       NOC SYSTEM - PRE-FLIGHT SERVER DOCTOR & SPECS      ${ANSI.reset}`);
+  console.log(`${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}\n`);
+
+  let passes = 0;
+  let warnings = 0;
+  let failures = 0;
+
+  function report(label, status, detail) {
+    if (status === "PASS") {
+      passes++;
+      console.log(`  ${ANSI.green}✓ [PASS]${ANSI.reset} ${ANSI.bold}${label}:${ANSI.reset} ${detail}`);
+    } else if (status === "WARN") {
+      warnings++;
+      console.log(`  ${ANSI.yellow}⚠ [WARN]${ANSI.reset} ${ANSI.bold}${label}:${ANSI.reset} ${detail}`);
+    } else {
+      failures++;
+      console.log(`  ${ANSI.red}✗ [FAIL]${ANSI.reset} ${ANSI.bold}${label}:${ANSI.reset} ${detail}`);
+    }
+  }
+
+  // 1. Sistem Operasi & Distribusi
+  const isLinux = process.platform === "linux";
+  let osName = `${process.platform} (${process.arch})`;
+  if (fs.existsSync("/etc/os-release")) {
+    try {
+      const match = fs.readFileSync("/etc/os-release", "utf-8").match(/PRETTY_NAME="?([^"\n]+)"?/);
+      if (match?.[1]) osName = `${match[1]} (${process.arch})`;
+    } catch {}
+  }
+  if (isLinux) {
+    report("Sistem Operasi", "PASS", osName);
+  } else {
+    report("Sistem Operasi", "WARN", `${osName} (Produksi native disarankan di Ubuntu 20.04/22.04/24.04 LTS)`);
+  }
+
+  // 2. CPU Cores & Load
+  const cpus = os.cpus();
+  const cpuCount = cpus.length;
+  if (cpuCount >= 2) {
+    report("CPU Cores", "PASS", `${cpuCount} Cores (${cpus[0]?.model || "Standard"})`);
+  } else {
+    report("CPU Cores", "WARN", `${cpuCount} Core (Minimal 2 Cores direkomendasikan agar Next.js dan Go kompilasi tidak lemot)`);
+  }
+
+  // 3. RAM & Swap
+  const totalMemMb = Math.round(os.totalmem() / 1024 / 1024);
+  const freeMemMb = Math.round(os.freemem() / 1024 / 1024);
+  let swapTotalMb = 0;
+  let swapFreeMb = 0;
+  if (fs.existsSync("/proc/meminfo")) {
+    try {
+      const meminfo = fs.readFileSync("/proc/meminfo", "utf-8");
+      const matchTotal = meminfo.match(/SwapTotal:\s+(\d+)\s+kB/i);
+      const matchFree = meminfo.match(/SwapFree:\s+(\d+)\s+kB/i);
+      if (matchTotal?.[1]) swapTotalMb = Math.round(Number.parseInt(matchTotal[1], 10) / 1024);
+      if (matchFree?.[1]) swapFreeMb = Math.round(Number.parseInt(matchFree[1], 10) / 1024);
+    } catch {}
+  }
+
+  if (totalMemMb >= 2048) {
+    report("Memori RAM", "PASS", `${(totalMemMb / 1024).toFixed(1)} GB Total (Bebas: ${freeMemMb} MB)`);
+  } else if (totalMemMb + swapTotalMb >= 2048) {
+    report("Memori RAM", "WARN", `${(totalMemMb / 1024).toFixed(1)} GB Total (Terbantu Swap: ${(swapTotalMb / 1024).toFixed(1)} GB)`);
+  } else {
+    report("Memori RAM", "FAIL", `${totalMemMb} MB Total tanpa swap memadai! Wajib aktifkan swap minimal 2GB.`);
+  }
+
+  if (swapTotalMb >= 1024) {
+    report("Swap Memori", "PASS", `${(swapTotalMb / 1024).toFixed(1)} GB Total (Bebas: ${swapFreeMb} MB) - Bebas dari OOM Killer`);
+  } else if (swapTotalMb > 0) {
+    report("Swap Memori", "WARN", `${swapTotalMb} MB (Direkomendasikan minimal 2048 MB swapfile)`);
+  } else {
+    report("Swap Memori", "WARN", "Tidak aktif! Disarankan mengaktifkan swapfile: sudo fallocate -l 2G /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile");
+  }
+
+  // 4. Ruang Disk
+  try {
+    const targetDir = fs.existsSync("/srv/noc") ? "/srv/noc" : (process.platform === "win32" ? "C:\\" : "/");
+    const stat = fs.statfsSync(targetDir);
+    const totalMb = Math.round((stat.blocks * stat.bsize) / 1024 / 1024);
+    const freeMb = Math.round((stat.bavail * stat.bsize) / 1024 / 1024);
+    if (freeMb >= 5120) {
+      report("Ruang Disk", "PASS", `${(freeMb / 1024).toFixed(1)} GB Bebas dari ${(totalMb / 1024).toFixed(1)} GB Total (${targetDir})`);
+    } else if (freeMb >= 2048) {
+      report("Ruang Disk", "WARN", `${(freeMb / 1024).toFixed(1)} GB Bebas tersisa dari ${(totalMb / 1024).toFixed(1)} GB (Direkomendasikan minimal 5 GB)`);
+    } else {
+      report("Ruang Disk", "FAIL", `Hanya tersisa ${freeMb} MB dari ${(totalMb / 1024).toFixed(1)} GB! Risiko gagal build/deploy sangat tinggi.`);
+    }
+  } catch {
+    report("Ruang Disk", "PASS", "Pemeriksaan disk dilewati (izin terbatas)");
+  }
+
+  // 5. Node.js & Go Runtime
+  const nodeVer = process.version;
+  const majorNode = Number.parseInt(nodeVer.replace(/^v/, "").split(".")[0], 10);
+  if (majorNode >= 22) {
+    report("Node.js Runtime", "PASS", `${nodeVer} (LTS Kompatibel)`);
+  } else {
+    report("Node.js Runtime", "FAIL", `${nodeVer} (Wajib Node.js >= 22.12.0)`);
+  }
+
+  try {
+    const goVer = execSync("go version 2>/dev/null", { encoding: "utf-8" }).trim();
+    report("Go Compiler", "PASS", goVer);
+  } catch {
+    report("Go Compiler", "WARN", "Biner 'go' tidak ditemukan di PATH. Backend Go membutuhkan Go 1.25+ untuk kompilasi");
+  }
+
+  // 6. Docker Daemon
+  try {
+    const dVer = execSync("docker --version", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+    execSync("docker ps", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] });
+    report("Docker Daemon", "PASS", `${dVer} (Akses daemon aktif)`);
+  } catch (err) {
+    const errMsg = `${err.stderr || ""} ${err.stdout || ""} ${err.message || ""}`;
+    if (errMsg.includes("permission denied") || errMsg.includes("docker.sock")) {
+      report("Docker Daemon", "FAIL", "Izin socket Docker ditolak! Jalankan: sudo usermod -aG docker $USER && newgrp docker");
+    } else {
+      report("Docker Daemon", "WARN", `Docker tidak ditemukan atau daemon tidak aktif: ${errMsg.trim().split("\n")[0]}`);
+    }
+  }
+
+  // 7. Status Port Penting
+  const portsToCheck = [
+    { port: 3000, name: "Web Dashboard (Next.js)" },
+    { port: 8080, name: "Backend Core (Go)" },
+    { port: 5432, name: "PostgreSQL Database" },
+  ];
+  for (const p of portsToCheck) {
+    try {
+      const portOut = execSync(
+        `ss -tlpn 'sport = :${p.port}' 2>/dev/null || netstat -tlpn 2>/dev/null | grep ':${p.port} ' || echo ''`,
+        { encoding: "utf-8" },
+      ).trim();
+      const hasPort = portOut.split("\n").some((l) => l.includes(`:${p.port}`));
+      if (hasPort) {
+        report(`Port ${p.port}`, "PASS", `Aktif digunakan oleh: ${p.name}`);
+      } else {
+        report(`Port ${p.port}`, "PASS", `Port bebas (Siap untuk ${p.name})`);
+      }
+    } catch {
+      report(`Port ${p.port}`, "PASS", `Status port siap`);
+    }
+  }
+  // 8. Konektivitas Internet
+  try {
+    execSync("curl -s -m 3 -o /dev/null https://github.com", { encoding: "utf-8" });
+    report("Koneksi GitHub", "PASS", "Terhubung (200 OK)");
+  } catch {
+    report("Koneksi GitHub", "WARN", "Gagal menghubungi github.com dalam 3 detik");
+  }
+  try {
+    execSync("curl -s -m 3 -o /dev/null https://registry.npmjs.org", { encoding: "utf-8" });
+    report("Koneksi Registry NPM", "PASS", "Terhubung (200 OK)");
+  } catch {
+    report("Koneksi Registry NPM", "WARN", "Gagal menghubungi registry.npmjs.org");
+  }
+
+  console.log(`\n${ANSI.bold}Ringkasan Kesiapan:${ANSI.reset} ${passes} Lulus, ${warnings} Catatan, ${failures} Masalah Kritis.`);
+  if (failures > 0) {
+    console.log(`${ANSI.red}${ANSI.bold}Harap atasi kendala kritis di atas sebelum menjalankan 'noc-system deploy'.${ANSI.reset}\n`);
+  } else {
+    console.log(`${ANSI.green}${ANSI.bold}Server siap untuk instalasi dan deployment NOC SYSTEM!${ANSI.reset}\n`);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 9. COMMAND: features
+// -----------------------------------------------------------------------------
+async function cmdFeatures() {
+  console.log(`\n${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}`);
+  console.log(`${ANSI.bold}${ANSI.cyan}        NOC SYSTEM - FEATURE STACK & COMPOSER MATRIX      ${ANSI.reset}`);
+  console.log(`${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}\n`);
+
+  const features = [
+    {
+      id: "web",
+      name: "Core Web Dashboard",
+      tech: "Next.js 16 (App Router / Turbopack)",
+      port: "3000 (TCP)",
+      check: "systemctl is-active noc-web 2>/dev/null",
+      compose: "systemd: sudo systemctl start/restart noc-web",
+      logs: "journalctl -u noc-web -f -n 50",
+    },
+    {
+      id: "backend",
+      name: "Core Backend Engine",
+      tech: "Go 1.25 (Concurrent Poller & REST)",
+      port: "8080 (TCP)",
+      check: "systemctl is-active noc-backend 2>/dev/null",
+      compose: "systemd: sudo systemctl start/restart noc-backend",
+      logs: "journalctl -u noc-backend -f -n 50",
+    },
+    {
+      id: "postgres",
+      name: "Database PostgreSQL & TimescaleDB",
+      tech: "Docker (TimescaleDB / noc-postgres)",
+      port: "5432 (TCP)",
+      check: 'docker ps --filter "name=noc-postgres" --format "{{.Status}}" 2>/dev/null',
+      compose: "docker compose --env-file /srv/noc/shared/.env -f compose.postgres.yaml up -d",
+      logs: "docker logs -f noc-postgres --tail 50",
+    },
+    {
+      id: "genieacs",
+      name: "GenieACS TR-069 CPE Provisioning",
+      tech: "Docker (NBI, CWMP, FS, UI)",
+      port: "7547 (CWMP), 7557 (NBI), 7558 (UI)",
+      check: 'docker ps --filter "name=genieacs" --format "{{.Status}}" 2>/dev/null',
+      compose: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.genieacs.yaml up -d",
+      logs: "docker compose -f compose.genieacs.yaml logs -f --tail 50",
+    },
+    {
+      id: "osrm",
+      name: "OSRM Road Snap & Fiber Routing",
+      tech: "Docker (OSRM Backend Engine)",
+      port: "5000 (TCP)",
+      check: 'docker ps --filter "name=osrm" --format "{{.Status}}" 2>/dev/null',
+      compose: "docker network create nocsystem_default 2>/dev/null || true && npm run osrm:download && npm run osrm:prepare && docker compose -f compose.osrm.yaml up -d osrm",
+      logs: "docker compose -f compose.osrm.yaml logs -f --tail 50 osrm",
+    },
+    {
+      id: "9router",
+      name: "9router Decolua AI Proxy & Lab",
+      tech: "Docker (Decolua 9router AI /v1 Proxy & UI)",
+      port: "20128 (TCP)",
+      check: 'docker ps --filter "name=9router" --format "{{.Status}}" 2>/dev/null',
+      compose: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.9router.yaml up -d",
+      logs: "docker compose -f compose.9router.yaml logs -f --tail 50",
+    },
+    {
+      id: "netflow",
+      name: "NetFlow Traffic Collector",
+      tech: "Go Engine Subsystem (IPFIX)",
+      port: "2055 (UDP)",
+      check: "systemctl is-active noc-backend 2>/dev/null",
+      compose: "systemd noc-backend: otomatis aktif",
+      logs: "journalctl -u noc-backend | grep -i netflow",
+    },
+  ];
+
+  for (const f of features) {
+    let isActive = false;
+    try {
+      const out = execSync(f.check, { encoding: "utf-8" }).trim();
+      isActive = out === "active" || out.includes("Up");
+    } catch {}
+
+    const statusBadge = isActive
+      ? `${ANSI.green}${ANSI.bold}[ONLINE / ACTIVE]${ANSI.reset}`
+      : `${ANSI.gray}[INACTIVE / OFF]${ANSI.reset}`;
+
+    console.log(`${ANSI.bold}• ${f.name}${ANSI.reset} - ${statusBadge}`);
+    console.log(`  Teknologi      : ${f.tech} • Port: ${f.port}`);
+    console.log(`  Perintah Up    : ${ANSI.cyan}${f.compose}${ANSI.reset}`);
+    console.log(`  Perintah Logs  : ${ANSI.cyan}${f.logs}${ANSI.reset}\n`);
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // MAIN ENTRYPOINT
@@ -834,6 +1210,21 @@ switch (command) {
     cmdLogs(args.slice(1));
     break;
 
+  case "doctor":
+  case "specs":
+    cmdDoctor().catch((err) => {
+      fail(`Pemeriksaan doctor gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
+  case "features":
+    cmdFeatures().catch((err) => {
+      fail(`Gagal membaca fitur: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
   case "verify":
     try {
       runCmd("node scripts/verify-deploy.mjs");
@@ -856,6 +1247,8 @@ Perintah Tersedia:
   ${ANSI.green}install / setup${ANSI.reset}  Siapkan hierarki /srv/noc, docker postgres, dan systemd
   ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (auto-bump build jika tanpa argumen versi)
   ${ANSI.green}update [ref]${ANSI.reset}     Tarik kode git terbaru lalu deploy otomatis
+  ${ANSI.green}doctor / specs${ANSI.reset}   Periksa kelayakan server (CPU, RAM, Swap, Disk, Port, Docker)
+  ${ANSI.green}features${ANSI.reset}         Tampilkan ringkasan status semua fitur aplikasi & Docker
   ${ANSI.green}rollback${ANSI.reset}         Kembalikan symlink /srv/noc/current ke rilis sebelumnya
   ${ANSI.green}status${ANSI.reset}           Periksa versi aktif, status unit systemd, docker & health
   ${ANSI.green}logs${ANSI.reset}             Pantau log live systemd (opsi: --web, --backend, -n <jumlah>)

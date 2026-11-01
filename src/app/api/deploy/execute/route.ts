@@ -2,7 +2,7 @@ import { withApiPermission } from "@/lib/api";
 import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
 import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
 import { getDecryptedSshCredential } from "@/services/ssh-credentials.service";
-import { executeDeployRun } from "@/services/deploy-runner.service";
+import { executeDeployRun, reconcileStaleDeployRuns } from "@/services/deploy-runner.service";
 import { getAppVersion } from "@/services/deploy-version.service";
 import { db } from "@/db";
 import { deployRuns } from "@/db/schema/deploy-runs";
@@ -39,6 +39,9 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+
+    // Rekonsiliasi run yang menggantung (stale) sebelum memeriksa kunci advisory
+    await reconcileStaleDeployRuns();
 
     // Periksa apakah ada deploy yang sedang berjalan (advisory DB lock)
     const activeRuns = await db

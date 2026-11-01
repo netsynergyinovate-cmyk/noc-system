@@ -47,11 +47,22 @@ if ! id -u noc &>/dev/null; then
   useradd --system --no-create-home --home-dir /srv/noc --shell /usr/sbin/nologin noc
 fi
 
-# Aktifkan swap darurat jika RAM server < 2.5GB dan swap < 512MB (mencegah silent OOM killed)
+# 2. Pemeriksaan Pra-Instalasi (Pre-flight System Check)
+echo -e "\n${CYAN}Memeriksa kesiapan spesifikasi perangkat keras & sistem...${NC}"
+
+# 2a. Periksa CPU Cores
+N_CPU=$(nproc 2>/dev/null || echo "1")
+if [ "${N_CPU}" -lt 2 ]; then
+  echo -e "${YELLOW}⚠ Perhatian: Server memiliki ${N_CPU} CPU core. Rekomendasi minimal 2 cores agar Next.js dan Go kompilasi lancar.${NC}"
+else
+  echo -e "${GREEN}✓ CPU Cores: ${N_CPU} Cores${NC}"
+fi
+
+# 2b. Periksa RAM & Aktifkan Swap Darurat jika perlu
 TOTAL_RAM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || echo "4096")
 TOTAL_SWAP_MB=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}' || echo "4096")
 if [ "${TOTAL_RAM_MB}" -lt 2500 ] && [ "${TOTAL_SWAP_MB}" -lt 512 ]; then
-  echo -e "${YELLOW}RAM server terbatas (${TOTAL_RAM_MB}MB) tanpa swap. Menyiapkan 2GB swapfile agar kompilasi bebas dari OOM...${NC}"
+  echo -e "${YELLOW}⚠ RAM server terbatas (${TOTAL_RAM_MB}MB) tanpa swap. Menyiapkan 2GB swapfile darurat (/swapfile) agar kompilasi bebas dari Linux OOM Killer...${NC}"
   fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null || true
   if [ -f /swapfile ]; then
     chmod 600 /swapfile
@@ -60,16 +71,44 @@ if [ "${TOTAL_RAM_MB}" -lt 2500 ] && [ "${TOTAL_SWAP_MB}" -lt 512 ]; then
     if ! grep -q "/swapfile" /etc/fstab 2>/dev/null; then
       echo "/swapfile none swap sw 0 0" >> /etc/fstab
     fi
-    echo -e "${GREEN}✓ Swap 2GB berhasil diaktifkan.${NC}"
+    echo -e "${GREEN}✓ Swap 2GB berhasil diaktifkan (/swapfile).${NC}"
   fi
+else
+  echo -e "${GREEN}✓ Memori RAM: ${TOTAL_RAM_MB}MB • Swap: ${TOTAL_SWAP_MB}MB${NC}"
 fi
 
+# 2c. Periksa Sisa Ruang Disk (Minimal 5GB)
+FREE_DISK_MB=$(df -m / 2>/dev/null | awk 'NR==2{print $4}' || echo "10000")
+if [ "${FREE_DISK_MB}" -lt 5000 ]; then
+  echo -e "${YELLOW}⚠ Peringatan: Ruang disk bebas hanya tersisa ${FREE_DISK_MB}MB. Rekomendasi minimal 5000MB bebas.${NC}"
+else
+  echo -e "${GREEN}✓ Ruang Disk Bebas: $((FREE_DISK_MB / 1024)) GB (${FREE_DISK_MB} MB)${NC}"
+fi
+
+# 2d. Periksa Bentrok Port Penting (3000, 8080, 5432)
+for P in 3000 8080 5432; do
+  if ss -tulpn 2>/dev/null | grep -q ":${P} "; then
+    echo -e "${YELLOW}⚠ Catatan: Port ${P} terdeteksi sedang digunakan proses lain. Pastikan tidak bentrok dengan daemon non-NOC.${NC}"
+  fi
+done
+
+# 2e. Tangani Kunci apt/dpkg jika Sedang Terkunci Proses Sistem (mis. unattended-upgrades)
+for i in $(seq 1 10); do
+  if fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; then
+    echo -e "${YELLOW}apt/dpkg sedang terkunci oleh proses sistem latar belakang. Menunggu kunci dilepas (detik ke-$((i*3)))...${NC}"
+    sleep 3
+  else
+    break
+  fi
+done
+
 # 3. Update apt dan paket dasar
-echo -e "\n${CYAN}1/6 Memperbarui paket sistem dan memasang dependensi dasar...${NC}"
+echo -e "\n${CYAN}1/6 Memperbarui paket sistem dan memasang dependensi dasar (estimasi 30–60 detik)...${NC}"
 apt-get update -y
 apt-get install -y curl wget git jq ca-certificates gnupg lsb-release build-essential openssl sudo
-# 3. Pasang Docker jika belum ada
-echo -e "\n${CYAN}2/6 Memeriksa Docker Engine & Docker Compose...${NC}"
+
+# 4. Pasang Docker jika belum ada
+echo -e "\n${CYAN}2/6 Memeriksa Docker Engine & Docker Compose (estimasi 1–2 menit)...${NC}"
 if ! command -v docker &>/dev/null; then
   echo -e "${YELLOW}Docker belum terpasang. Memasang Docker CE resmi...${NC}"
   install -m 0755 -d /etc/apt/keyrings
@@ -247,9 +286,11 @@ echo -e "  ${CYAN}${BOLD}sudo noc-system deploy${NC}\n"
 echo -e "Perintah ${CYAN}noc-system${NC} siap digunakan kapan saja:"
 echo -e "  - ${BOLD}noc-system deploy${NC}    : Rilis versi saat ini (build + migrasi + restart)"
 echo -e "  - ${BOLD}noc-system update${NC}    : Ambil kode terbaru dari git, build & rilis otomatis"
+echo -e "  - ${BOLD}noc-system doctor${NC}    : Periksa kesiapan spesifikasi (CPU, RAM, Swap, Disk, Port, Docker)"
+echo -e "  - ${BOLD}noc-system features${NC}  : Ringkasan status 7 fitur ekosistem aplikasi & perintah Docker"
 echo -e "  - ${BOLD}noc-system status${NC}    : Cek status versi, systemd, dan docker"
-echo -e "  - ${BOLD}noc-system rollback${NC}  : Kembali ke rilis sebelumnya jika ada bug"
 echo -e "  - ${BOLD}noc-system logs${NC}      : Pantau live log journalctl"
+echo -e "  - ${BOLD}noc-system rollback${NC}  : Kembali ke rilis sebelumnya jika ada bug"
 if [ -n "${CURRENT_TOKEN}" ]; then
   echo -e "\n${YELLOW}${BOLD}KREDENSIAL PEMANTAU REAL-TIME (DASHBOARD /app/deploy):${NC}"
   echo -e "  ${BOLD}1. Alamat Server :${NC} ${GREEN}http://${DISPLAY_IP}:3000${NC} (gunakan ini jika belum ada domain)"

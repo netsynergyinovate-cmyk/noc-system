@@ -358,7 +358,7 @@ export function generateTechnicalReport(marker: {
 
   // 2. Cocokkan keyword dengan alur teknis yang berjalan
   const combinedText = `${marker.featureName} ${marker.notes || ""} ${marker.elementText || ""}`;
-  let matchedKeyword = knowledge.keywords.find((k) => k.match.test(combinedText));
+  const matchedKeyword = knowledge.keywords.find((k) => k.match.test(combinedText));
 
   // Tentukan file komponen utama
   const componentFiles = [...knowledge.defaultComponents];

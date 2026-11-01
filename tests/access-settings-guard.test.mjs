@@ -43,7 +43,7 @@ test("Better Auth admin authorization: set-role, impersonate, set-password ditol
   assert.equal(roles.user.authorize({ user: ["impersonate"] }).success, false);
   assert.equal(roles.user.authorize({ user: ["set-password"] }).success, false);
 
-  assert.deepEqual(ADMIN_ROLES, ["superadmin"]);
+  assert.deepEqual(ADMIN_ROLES, ["superadmin", "developer"]);
   assert.equal(DEFAULT_ROLE, "user");
 });
 

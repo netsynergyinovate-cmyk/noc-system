@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export function GET(request: Request) {
   return withApiPermission(request, { router: ["manage"] }, async () => {
     const currentVersion = getCurrentAppVersion();
-    const recordedVersion = await getLatestRecordedAppVersion(undefined as any);
+    const recordedVersion = await getLatestRecordedAppVersion();
     const history = await getAppVersionUpgradeHistory();
 
     return Response.json({

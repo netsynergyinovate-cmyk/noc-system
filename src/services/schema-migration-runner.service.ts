@@ -815,8 +815,9 @@ export async function ensureAppVersionTrackerTable(
  * Mengambil versi aplikasi terakhir yang tercatat di database.
  */
 export async function getLatestRecordedAppVersion(
-  client: QueryableClient,
+  clientOrPool?: QueryableClient,
 ): Promise<string | null> {
+  const client = clientOrPool ?? getRawPool();
   await ensureAppVersionTrackerTable(client);
   const res = await client.query(
     `SELECT version FROM "drizzle"."app_version_history" ORDER BY id DESC LIMIT 1`,

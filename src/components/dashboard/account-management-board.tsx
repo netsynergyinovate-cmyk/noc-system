@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  Code2,
   Crown,
   Globe,
   KeyRound,
@@ -55,6 +56,7 @@ export function AccountManagementBoard() {
     role: string;
     isSuperAdmin: boolean;
     isAdmin: boolean;
+    isDeveloper: boolean;
     isUser: boolean;
   } | null>(() => {
     if (!sessionUser) return null;
@@ -63,6 +65,7 @@ export function AccountManagementBoard() {
       role: r,
       isSuperAdmin: isSuperAdmin(r),
       isAdmin: isAdmin(r),
+      isDeveloper: isDeveloper(r),
       isUser: isUser(r),
     };
   });
@@ -138,6 +141,7 @@ export function AccountManagementBoard() {
             role: r,
             isSuperAdmin: Boolean(json.data.isSuperAdmin),
             isAdmin: Boolean(json.data.isAdmin),
+            isDeveloper: Boolean(json.data.isDeveloper),
             isUser: Boolean(json.data.isUser),
           });
         }
@@ -315,7 +319,7 @@ export function AccountManagementBoard() {
             <span>Manajemen Akun &amp; Hak Akses Pengguna</span>
           </h1>
           <p className="text-xs text-muted-foreground">
-            Kelola akun petugas NOC, berikan akses baru, dan atur peran Super Admin, Admin, dan User secara terpusat di database.
+            Kelola akun petugas NOC, berikan akses baru, dan atur peran Super Admin, Admin Utama, Developer, dan Petugas secara terpusat di database.
           </p>
         </div>
 
@@ -343,8 +347,8 @@ export function AccountManagementBoard() {
           </div>
         )}
       </div>
-      {/* 3 KARTU RINGKASAN HIERARKI PERAN RESMI */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* 4 KARTU RINGKASAN HIERARKI PERAN RESMI */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
@@ -381,6 +385,24 @@ export function AccountManagementBoard() {
           </p>
         </div>
 
+        <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400">
+              <Code2 className="size-4" />
+              <span>DEVELOPER (PENGEMBANG)</span>
+            </span>
+            <Badge className="bg-purple-600 text-white text-[10px] font-bold">
+              {users.filter((u) => isDeveloper(u.role)).length} AKUN
+            </Badge>
+          </div>
+          <div className="text-sm font-bold text-foreground truncate">
+            {users.filter((u) => isDeveloper(u.role)).map((u) => u.email).join(", ") || "Belum ada"}
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Akses teknis dev, API keys, deploy server, dan konfigurasi tanpa wewenang mutasi akun.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -400,7 +422,6 @@ export function AccountManagementBoard() {
         </div>
       </div>
 
-
       {/* Kartu Status Peran Akun Anda */}
       <Card className="border border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
@@ -416,18 +437,24 @@ export function AccountManagementBoard() {
             </div>
             {currentUserRole && (
               <Badge
-                variant={currentUserRole.isSuperAdmin ? "default" : currentUserRole.isAdmin ? "default" : "secondary"}
+                variant={currentUserRole.isSuperAdmin || currentUserRole.isDeveloper || currentUserRole.isAdmin ? "default" : "secondary"}
                 className={
                   currentUserRole.isSuperAdmin
                     ? "px-3 py-1 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
-                    : "px-3 py-1 text-xs font-semibold"
+                    : currentUserRole.isDeveloper
+                      ? "px-3 py-1 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white"
+                      : currentUserRole.isAdmin
+                        ? "px-3 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                        : "px-3 py-1 text-xs font-semibold"
                 }
               >
                 {currentUserRole.isSuperAdmin
                   ? "SUPER ADMIN (KONTROL PENUH)"
-                  : currentUserRole.isAdmin
-                    ? "ADMINISTRATOR (OPERASIONAL UTAMA)"
-                    : "PETUGAS (USER BIASA)"}
+                  : currentUserRole.isDeveloper
+                    ? "DEVELOPER (PENGEMBANG / TEKNIS)"
+                    : currentUserRole.isAdmin
+                      ? "ADMINISTRATOR (OPERASIONAL UTAMA)"
+                      : "PETUGAS (USER BIASA)"}
               </Badge>
             )}
           </div>
@@ -444,7 +471,11 @@ export function AccountManagementBoard() {
               <p className="text-muted-foreground leading-relaxed">
                 {currentUserRole?.isSuperAdmin ? (
                   <span className="text-amber-600 dark:text-amber-400 font-medium">
-                    ✓ Akun Super Admin memegang kontrol penuh seluruh sistem dan berwenang memberikan/mengubah peran pengguna (Admin dan User) di database.
+                    ✓ Akun Super Admin memegang kontrol penuh seluruh sistem dan berwenang memberikan/mengubah peran pengguna (Admin, Developer, dan User) di database.
+                  </span>
+                ) : currentUserRole?.isDeveloper ? (
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    ✓ Akun Developer dengan wewenang teknis penuh (Router, CPE, OLT, Deploy, API Key, System, Diagnostik). Manajemen pengguna dan pengangkatan peran dikontrol oleh Super Admin.
                   </span>
                 ) : currentUserRole?.isAdmin ? (
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -502,7 +533,7 @@ export function AccountManagementBoard() {
         <div className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs flex items-center gap-3 text-muted-foreground">
           <Shield className="size-5 text-primary shrink-0" />
           <span>
-            Anda masuk sebagai <strong className="text-foreground">{currentUserRole?.isAdmin ? "Admin Utama (AI)" : "User / Petugas"}</strong>. Anda dapat melihat hierarki seluruh akun pengguna di bawah ini. Pengubahan peran dan penambahan akun baru sepenuhnya dikontrol oleh Super Admin.
+            Anda masuk sebagai <strong className="text-foreground">{currentUserRole?.isDeveloper ? "Developer (Pengembang Teknis)" : currentUserRole?.isAdmin ? "Admin Utama (AI)" : "User / Petugas"}</strong>. Anda dapat melihat hierarki seluruh akun pengguna di bawah ini. Pengubahan peran dan penambahan akun baru sepenuhnya dikontrol oleh Super Admin.
           </span>
         </div>
       )}
@@ -530,7 +561,7 @@ export function AccountManagementBoard() {
                   <span>Form Tambah / Berikan Akun oleh Super Admin</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Buatkan akun baru secara langsung dan tentukan perannya (Super Admin, Admin, atau User). Akun akan langsung aktif di database.
+                  Buatkan akun baru secara langsung dan tentukan perannya (Super Admin, Admin Utama, Developer, atau Petugas). Akun akan langsung aktif di database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -771,6 +802,14 @@ export function AccountManagementBoard() {
                                     <span>Google SSO</span>
                                   </Badge>
                                 )}
+                                {u.providers?.includes("github") && (
+                                  <Badge variant="outline" className="text-[10px] font-medium gap-1.5 border-border bg-card">
+                                    <svg className="size-3 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                      <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                                    </svg>
+                                    <span>GitHub SSO</span>
+                                  </Badge>
+                                )}
                                 {u.providers?.includes("credential") && (
                                   <Badge variant="outline" className="text-[10px] font-medium gap-1 text-muted-foreground border-border bg-card">
                                     <Mail className="size-3" />
@@ -790,7 +829,7 @@ export function AccountManagementBoard() {
                                 </Badge>
                               ) : isDeveloper(currentRole) ? (
                                 <Badge className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-semibold gap-1">
-                                  <Shield className="size-3" />
+                                  <Code2 className="size-3" />
                                   <span>DEVELOPER</span>
                                 </Badge>
                               ) : isAdmin(currentRole) ? (

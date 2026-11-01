@@ -17,7 +17,7 @@ export function GET(request: Request) {
        FROM "user" u
        LEFT JOIN "account" a ON u.id = a.user_id
        GROUP BY u.id, u.name, u.email, u.role, u.created_at
-       ORDER BY CASE u.role WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END, u.created_at ASC`,
+       ORDER BY CASE u.role WHEN 'superadmin' THEN 1 WHEN 'admin' THEN 2 WHEN 'developer' THEN 3 ELSE 4 END, u.created_at ASC`,
     );
 
     return Response.json({

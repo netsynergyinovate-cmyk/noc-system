@@ -39,13 +39,14 @@ import { DeviceQuickCards } from "./device-quick-cards";
 import { ThresholdSettings } from "./threshold-settings";
 import { WhatsappSettings } from "./whatsapp-settings";
 import { useSessionUser } from "@/components/session-provider";
-import { isSuperAdmin, isAdmin, isUser } from "@/lib/roles";
+import { isSuperAdmin, isAdmin, isDeveloper, isUser } from "@/lib/roles";
 import { authClient } from "@/lib/auth-client";
 import { soundEngine, type SoundSnapshot } from "@/lib/dashboard/sound-engine";
 import { cn } from "cn";
 
 interface UserRoleInfo {
   isSuperAdmin?: boolean;
+  isDeveloper?: boolean;
   isUser?: boolean;
   isAdmin: boolean;
   role: string;
@@ -116,6 +117,7 @@ export function SettingsBoard() {
       role,
       isSuperAdmin: isSuperAdmin(role),
       isAdmin: isAdmin(role),
+      isDeveloper: isDeveloper(role),
       isUser: isUser(role),
     };
   }, [apiRoleInfo, sessionUser]);
@@ -333,19 +335,22 @@ export function SettingsBoard() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "px-2.5 py-0.5 text-xs font-semibold",
                       userRoleInfo.isSuperAdmin
                         ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : userRoleInfo.isAdmin
-                          ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                          : "border-slate-500/40 bg-slate-500/10 text-slate-600 dark:text-slate-400",
+                        : userRoleInfo.isDeveloper
+                          ? "border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                          : userRoleInfo.isAdmin
+                            ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "border-slate-500/40 bg-slate-500/10 text-slate-600 dark:text-slate-400",
                     )}
                   >
                     {userRoleInfo.isSuperAdmin
                       ? "SUPER ADMIN"
-                      : userRoleInfo.isAdmin
-                        ? "ADMINISTRATOR"
-                        : "PETUGAS"}
+                      : userRoleInfo.isDeveloper
+                        ? "DEVELOPER"
+                        : userRoleInfo.isAdmin
+                          ? "ADMINISTRATOR"
+                          : "PETUGAS"}
                   </Badge>
                 )}
               </div>

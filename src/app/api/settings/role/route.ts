@@ -21,9 +21,9 @@ export function GET(request: Request) {
     const realRole = row?.role ?? "user";
     const names = roleNames(realRole);
     const isSuperAdmin = names.includes("superadmin");
+    const isDeveloper = names.includes("developer");
     const isAdmin = isSuperAdmin || names.includes("admin");
-    const isUser = !isSuperAdmin && !names.includes("admin");
-
+    const isUser = !isSuperAdmin && !names.includes("admin") && !isDeveloper;
     return Response.json({
       data: {
         userId: session.user.id,
@@ -31,6 +31,7 @@ export function GET(request: Request) {
         name: session.user.name,
         role: realRole,
         isSuperAdmin,
+        isDeveloper,
         isAdmin,
         isUser,
       },

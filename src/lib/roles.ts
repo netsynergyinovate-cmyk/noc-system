@@ -5,6 +5,8 @@ import {
   type Permissions,
 } from "./permissions";
 
+export type { AppRole, Permissions };
+
 // Membaca peran di sisi tampilan. Murni: tanpa React dan tanpa kode server,
 // jadi aman di browser dan bisa diuji langsung dari Node.
 //

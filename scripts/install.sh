@@ -129,24 +129,34 @@ else
   echo -e "${GREEN}✓ Node.js sudah sesuai: $(node -v)${NC}"
 fi
 
-# 5. Pasang Go Compiler (Golang) jika belum ada
+# 5. Pasang Go Compiler (Golang) jika belum ada atau versi < 1.25
 echo -e "\n${CYAN}4/6 Memeriksa Go Compiler untuk backend Go...${NC}"
-if ! command -v go &>/dev/null; then
+GO_OK=0
+if command -v go &>/dev/null; then
+  RAW_VER=$(go version 2>/dev/null || true)
+  GO_MAJOR=$(echo "$RAW_VER" | grep -oE "go[0-9]+\.[0-9]+" | sed 's/go//' | cut -d. -f1)
+  GO_MINOR=$(echo "$RAW_VER" | grep -oE "go[0-9]+\.[0-9]+" | sed 's/go//' | cut -d. -f2)
+  if [ "${GO_MAJOR:-0}" -gt 1 ] 2>/dev/null || { [ "${GO_MAJOR:-0}" -eq 1 ] && [ "${GO_MINOR:-0}" -ge 25 ]; } 2>/dev/null; then
+    GO_OK=1
+  fi
+fi
+
+if [ "$GO_OK" -eq 0 ]; then
   ARCH="$(dpkg --print-architecture 2>/dev/null || uname -m)"
   case "${ARCH}" in
     arm64|aarch64) GO_ARCH="arm64" ;;
     *) GO_ARCH="amd64" ;;
   esac
-  GO_TAR="go1.23.6.linux-${GO_ARCH}.tar.gz"
-  echo -e "${YELLOW}Compiler Go belum terpasang. Memasang Go 1.23 (${GO_ARCH}) via tarball...${NC}"
+  GO_TAR="go1.25.0.linux-${GO_ARCH}.tar.gz"
+  echo -e "${YELLOW}Memasang Go 1.25 (${GO_ARCH}) via tarball resmi...${NC}"
   wget -q "https://go.dev/dl/${GO_TAR}" -O "/tmp/${GO_TAR}"
   rm -rf /usr/local/go && tar -C /usr/local -xzf "/tmp/${GO_TAR}"
   rm -f "/tmp/${GO_TAR}"
   ln -sfn /usr/local/go/bin/go /usr/local/bin/go
   ln -sfn /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-  echo -e "${GREEN}✓ Go compiler berhasil dipasang: $(go version)${NC}"
+  echo -e "${GREEN}✓ Go compiler berhasil disiapkan: $(go version)${NC}"
 else
-  echo -e "${GREEN}✓ Go compiler sudah ada: $(go version)${NC}"
+  echo -e "${GREEN}✓ Go compiler sudah sesuai: $(go version)${NC}"
 fi
 
 # 6. Siapkan direktori /srv/noc dan clone/update source code

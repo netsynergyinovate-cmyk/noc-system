@@ -995,7 +995,7 @@ export async function cancelDeployRun(runId: string): Promise<boolean> {
   await db
     .update(deployRuns)
     .set({ status: "gagal", selesai: now })
-    .where(eq(deployRuns.id, runId));
+    .where(and(eq(deployRuns.id, runId), eq(deployRuns.status, "berjalan")));
 
   await db
     .update(deploySteps)

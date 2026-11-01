@@ -21,9 +21,8 @@ export async function OPTIONS() {
 
 function getSafeExecAsync(cmd: string, timeout = 2000): Promise<string> {
   const { promise, resolve } = Promise.withResolvers<string>();
-  exec(cmd, { encoding: "utf-8", timeout }, (err, stdout) => {
-    if (err) resolve("");
-    else resolve((stdout || "").trim());
+  exec(cmd, { encoding: "utf-8", timeout }, (_err, stdout) => {
+    resolve((stdout || "").trim());
   });
   return promise;
 }
@@ -169,7 +168,7 @@ export async function GET(request: NextRequest) {
     }
     // 6. Baca status layanan systemd, docker containers, logs, dan OOM secara paralel
     const [systemdOut, dockerPs, liveLogsOut, errLogsOut, oomDmesg] = await Promise.all([
-      getSafeExecAsync("systemctl is-active noc-web noc-backend 2>/dev/null", 1500),
+      getSafeExecAsync("systemctl is-active noc-web noc-backend 2>/dev/null || true", 1500),
       getSafeExecAsync('docker ps --format "{{.Names}}\t{{.Status}}" 2>/dev/null', 1500),
       getSafeExecAsync("journalctl -u noc-web -u noc-backend -n 50 --no-pager 2>/dev/null", 2000),
       getSafeExecAsync("journalctl -u noc-web -u noc-backend -p err -n 50 --no-pager 2>/dev/null", 2000),

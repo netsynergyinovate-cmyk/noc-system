@@ -46,7 +46,14 @@ export async function POST(request: Request) {
   const denied = deployGuardResponse(guard);
   if (denied) return denied;
 
-  return withApiPermission(request, { system: ["manage"] }, async () => {
+  return withApiPermission(request, { system: ["manage"] }, async (session) => {
+    if ("apiKeyId" in session && session.apiKeyId) {
+      return Response.json(
+        { error: "API Key tidak diizinkan untuk operasi deploy." },
+        { status: 403 },
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const runId = body.runId;
     if (!runId || typeof runId !== "string") {

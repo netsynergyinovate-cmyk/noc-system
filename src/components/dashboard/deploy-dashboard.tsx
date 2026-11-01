@@ -1953,13 +1953,18 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                               className="h-6 text-[10px] px-2"
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                await fetch("/api/deploy/history", {
+                                const res = await fetch("/api/deploy/history", {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({ runId: r.id }),
                                 });
-                                loadHistory();
-                                setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                                if (res.ok) {
+                                  loadHistory();
+                                  setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                                } else {
+                                  const err = await res.json().catch(() => null);
+                                  setNotice({ type: "error", msg: err?.error || "Gagal membatalkan deploy run." });
+                                }
                               }}
                             >
                               Tandai Gagal
@@ -2480,14 +2485,19 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                     className="h-6 text-[10px] px-2 font-sans"
                     onClick={async () => {
                       if (!selectedRunDetail?.run.id) return;
-                      await fetch("/api/deploy/history", {
+                      const res = await fetch("/api/deploy/history", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ runId: selectedRunDetail.run.id }),
                       });
-                      loadHistory();
-                      setSelectedRunDetail(null);
-                      setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                      if (res.ok) {
+                        loadHistory();
+                        setSelectedRunDetail(null);
+                        setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                      } else {
+                        const err = await res.json().catch(() => null);
+                        setNotice({ type: "error", msg: err?.error || "Gagal membatalkan deploy run." });
+                      }
                     }}
                   >
                     Tandai Gagal / Hentikan

@@ -298,7 +298,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
   const [monitorToken, setMonitorToken] = useState("");
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [serverData, setServerData] = useState<ServerStatusData | null>(null);
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(5);
   const [terminalTab, setTerminalTab] = useState<"live" | "errors" | "runs">("live");
   const [clearedTerminal, setClearedTerminal] = useState(false);
 

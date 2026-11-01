@@ -26,6 +26,16 @@ export const auth = betterAuth({
     cookiePrefix: authCookiePrefix,
     trustedProxies: env.TRUSTED_PROXIES,
   }),
+  rateLimit: {
+    window: 10,
+    max: 50,
+    customRules: {
+      "/sign-in/social": {
+        window: 10,
+        max: 50,
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     // Tanpa ini siapa pun yang membuka aplikasi bisa membuat akun sendiri.

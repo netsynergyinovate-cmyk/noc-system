@@ -299,6 +299,7 @@ export async function uploadAndExtractRelease(
     `chmod -R u+rwX,go+rX "${remoteReleasePath}"`,
     `chmod -R 777 "${remoteReleasePath}/.next/cache" 2>/dev/null || true`,
     `sudo -n chown -R ${target.sshUser}:noc "${remoteReleasePath}" 2>/dev/null || true`,
+    `sudo -n usermod -aG systemd-journal noc 2>/dev/null || true`,
     `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,
   ].join(" && ");
 

@@ -95,8 +95,16 @@ export function isStrictAdmin(role: string | null | undefined): boolean {
   const names = roleNames(role);
   return names.includes("admin") && !names.includes("superadmin");
 }
+export function isDeveloper(role: string | null | undefined): boolean {
+  return roleNames(role).includes("developer");
+}
+
 
 export function isUser(role: string | null | undefined): boolean {
   const names = roleNames(role);
-  return !names.includes("superadmin") && !names.includes("admin");
+  return (
+    !names.includes("superadmin") &&
+    !names.includes("admin") &&
+    !names.includes("developer")
+  );
 }

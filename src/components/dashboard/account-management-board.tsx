@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSessionUser } from "@/components/session-provider";
-import { isSuperAdmin, isAdmin, isStrictAdmin, isUser, roleLabel, roleNames, previewableRoles, type AppRole } from "@/lib/roles";
+import { isSuperAdmin, isAdmin, isStrictAdmin, isDeveloper, isUser, roleLabel, roleNames, previewableRoles, type AppRole } from "@/lib/roles";
 import { authClient } from "@/lib/auth-client";
 import { selectClassName } from "./select-class";
 
@@ -787,6 +787,11 @@ export function AccountManagementBoard() {
                                 <Badge className="bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700 text-[11px] font-semibold gap-1">
                                   <Crown className="size-3" />
                                   <span>SUPER ADMIN (OWNER)</span>
+                                </Badge>
+                              ) : isDeveloper(currentRole) ? (
+                                <Badge className="bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-semibold gap-1">
+                                  <Shield className="size-3" />
+                                  <span>DEVELOPER</span>
                                 </Badge>
                               ) : isAdmin(currentRole) ? (
                                 <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold gap-1">

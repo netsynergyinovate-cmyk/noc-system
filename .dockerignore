@@ -50,3 +50,17 @@ eslint.config.mjs
 *.log
 .DS_Store
 .vercel
+
+# Large assets, downloads, backups, and private data
+docker/osrm/data
+docker/genieacs/config/.backup
+backups
+screenshots
+ref-folder
+repomix-output.xml
+graphify-out
+.omc
+*.docx
+client_secret_*.json
+runsnet-data-*.json
+bin/*.exe

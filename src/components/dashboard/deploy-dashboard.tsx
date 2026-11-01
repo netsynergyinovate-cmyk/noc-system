@@ -855,18 +855,18 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                   <Badge variant="outline" className="text-[10px] text-amber-500 bg-amber-500/10 border-amber-500/20">Private Repo (Aktif)</Badge>
                 </div>
                 <div className="p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
-                  <code className="break-all">{`export GITHUB_TOKEN="ghp_xxx" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN bash`}</code>
+                  <code className="break-all">{`export GITHUB_TOKEN="ghp_xxx" NOC_DEVICE_SECRET="kunci_32_karakter_sama_lokal" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN,NOC_DEVICE_SECRET bash`}</code>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 ml-2"
-                    onClick={() => copyToClipboard(`export GITHUB_TOKEN="ghp_xxx" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN bash`, "bootstrap-token")}
+                    onClick={() => copyToClipboard(`export GITHUB_TOKEN="ghp_xxx" NOC_DEVICE_SECRET="kunci_32_karakter_sama_lokal" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN,NOC_DEVICE_SECRET bash`, "bootstrap-token")}
                   >
                     {copiedCmd === "bootstrap-token" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  *Ganti <code className="text-primary font-mono">ghp_xxx</code> dengan Personal Access Token (PAT) GitHub yang memiliki izin read repositori.
+                  *Ganti <code className="text-primary font-mono">ghp_xxx</code> dengan PAT GitHub, dan samakan <code className="text-primary font-mono">NOC_DEVICE_SECRET</code> dengan file <code className="font-mono">.env.local</code> di komputer kontrol agar verifikasi kesiapan (dry-run) di halaman Deploy lulus.
                 </p>
               </div>
             </div>

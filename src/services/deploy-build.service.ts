@@ -261,7 +261,7 @@ export async function uploadAndExtractRelease(
     `rm -f "${remoteTarPath}"`,
     `chmod +x "${remoteReleasePath}/noc-backend"`,
     `mkdir -p "${remoteReleasePath}/.next/cache"`,
-    `chmod -R u+rwX,go+rX "${remoteReleasePath}"`,
+    `if [ -d "${remoteReleasePath}/node_modules/pg" ]; then for d in "${remoteReleasePath}/.next/node_modules/pg-"*; do [ -e "$d" ] && ln -sfn pg "${remoteReleasePath}/node_modules/$(basename "$d")" 2>/dev/null || true; done; fi`,
     `chmod -R 777 "${remoteReleasePath}/.next/cache" 2>/dev/null || true`,
     `sudo -n chown -R ${target.sshUser}:noc "${remoteReleasePath}" 2>/dev/null || true`,
     `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,

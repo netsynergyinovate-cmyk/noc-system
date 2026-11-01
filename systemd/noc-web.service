@@ -11,7 +11,7 @@ WorkingDirectory=/srv/noc/current
 EnvironmentFile=/srv/noc/shared/.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
-Environment=HOSTNAME=127.0.0.1
+Environment=HOSTNAME=0.0.0.0
 Environment=DEPLOY_PAGE_ROLE=server
 ExecStart=/usr/bin/node /srv/noc/current/server.js
 Restart=always

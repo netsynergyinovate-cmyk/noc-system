@@ -102,7 +102,7 @@ if [ ! -d "${SRC_DIR}/.git" ]; then
   echo -e "${YELLOW}Meng-clone repositori NOC System ke ${SRC_DIR}...${NC}"
   git clone https://github.com/netsynergyinovate-cmyk/noc-system.git "${SRC_DIR}"
   cd "${SRC_DIR}"
-  git checkout jrxx-dev/NOC-2 2>/dev/null || git checkout main 2>/dev/null || true
+  git checkout noc-system-main 2>/dev/null || git checkout main 2>/dev/null || true
 else
   echo -e "${GREEN}✓ Repositori sudah ada di ${SRC_DIR}, memperbarui branch...${NC}"
   cd "${SRC_DIR}"

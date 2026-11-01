@@ -323,7 +323,7 @@ export function AccountManagementBoard() {
           </p>
         </div>
 
-        {currentUserRole?.isSuperAdmin && (
+        {(currentUserRole?.isSuperAdmin || currentUserRole?.isDeveloper) && (
           <div className="flex items-center gap-2">
             <Button
               variant={showCreateForm ? "secondary" : "default"}
@@ -399,7 +399,7 @@ export function AccountManagementBoard() {
             {users.filter((u) => isDeveloper(u.role)).map((u) => u.email).join(", ") || "Belum ada"}
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Akses teknis dev, API keys, deploy server, dan konfigurasi tanpa wewenang mutasi akun.
+            Hak penuh aplikasi &amp; akun (setara Super Admin) ditambah kontrol penuh database, server, dan alat pengembangan.
           </p>
         </div>
 
@@ -475,7 +475,7 @@ export function AccountManagementBoard() {
                   </span>
                 ) : currentUserRole?.isDeveloper ? (
                   <span className="text-purple-600 dark:text-purple-400 font-medium">
-                    ✓ Akun Developer dengan wewenang teknis penuh (Router, CPE, OLT, Deploy, API Key, System, Diagnostik). Manajemen pengguna dan pengangkatan peran dikontrol oleh Super Admin.
+                    ✓ Akun Developer memegang hak penuh setara Super Admin (kontrol aplikasi &amp; manajemen pengguna) ditambah kontrol penuh database dan pengembangan sistem.
                   </span>
                 ) : currentUserRole?.isAdmin ? (
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -528,8 +528,8 @@ export function AccountManagementBoard() {
         </CardContent>
       </Card>
 
-      {/* Keterangan bagi Non-Super Admin */}
-      {!currentUserRole?.isSuperAdmin && !loading && (
+      {/* Keterangan bagi Non-Super Admin & Non-Developer */}
+      {!currentUserRole?.isSuperAdmin && !currentUserRole?.isDeveloper && !loading && (
         <div className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs flex items-center gap-3 text-muted-foreground">
           <Shield className="size-5 text-primary shrink-0" />
           <span>
@@ -853,7 +853,7 @@ export function AccountManagementBoard() {
                               )}
                             </TableCell>
                             <TableCell className="py-3 text-right">
-                              {currentUserRole?.isSuperAdmin ? (
+                            {(currentUserRole?.isSuperAdmin || currentUserRole?.isDeveloper) ? (
                                 <div className="flex flex-col items-end gap-1.5">
                                   <div className="flex items-center justify-end gap-2">
                                     <select

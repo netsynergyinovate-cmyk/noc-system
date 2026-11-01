@@ -1,6 +1,6 @@
 import { getRawPool } from "@/db";
 import { ApiError, readJson, withApiSession } from "@/lib/api";
-import { isPreviewableRole, isSuperAdmin, previewableRoles, roleLabel, type AppRole } from "@/lib/roles";
+import { isDeveloper, isPreviewableRole, isSuperAdmin, previewableRoles, roleLabel, type AppRole } from "@/lib/roles";
 
 export const runtime = "nodejs";
 
@@ -25,11 +25,11 @@ export function POST(request: Request) {
     );
     const callerRole = callerRes.rows[0]?.role ?? "user";
 
-    if (!isSuperAdmin(callerRole)) {
+    if (!isSuperAdmin(callerRole) && !isDeveloper(callerRole)) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "Hanya akun Super Admin yang berwenang mengubah peran pengguna.",
+        "Hanya akun Super Admin dan Developer yang berwenang mengubah peran pengguna.",
       );
     }
 

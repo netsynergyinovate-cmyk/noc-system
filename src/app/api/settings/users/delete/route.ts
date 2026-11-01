@@ -1,6 +1,6 @@
 import { getRawPool } from "@/db";
 import { ApiError, readJson, withApiSession } from "@/lib/api";
-import { isSuperAdmin } from "@/lib/roles";
+import { isDeveloper, isSuperAdmin } from "@/lib/roles";
 
 export const runtime = "nodejs";
 
@@ -24,11 +24,11 @@ export function POST(request: Request) {
     );
     const callerRole = callerRes.rows[0]?.role ?? "user";
 
-    if (!isSuperAdmin(callerRole)) {
+    if (!isSuperAdmin(callerRole) && !isDeveloper(callerRole)) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "Hanya akun Super Admin yang berwenang menghapus akun pengguna.",
+        "Hanya akun Super Admin dan Developer yang berwenang menghapus akun pengguna.",
       );
     }
 

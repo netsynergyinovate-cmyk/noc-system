@@ -56,6 +56,7 @@ export const roles = {
     session: [],
   }),
   developer: ac.newRole({
+    ...adminAc.statements,
     notes: ["read-any", "delete-any"],
     cpe: ["manage"],
     router: ["manage"],
@@ -66,8 +67,6 @@ export const roles = {
     map: ["manage"],
     system: ["manage"],
     audit: ["read"],
-    user: [],
-    session: [],
   }),
   admin: ac.newRole({
     notes: ["read-any", "delete-any"],
@@ -103,7 +102,7 @@ export type AppRole = keyof typeof roles;
 // Roles live in the `user.role` column as a string. Better Auth reads a
 // comma-separated list, so "admin,support" grants the union of both.
 export const DEFAULT_ROLE = "user" satisfies AppRole;
-export const ADMIN_ROLES = ["superadmin"] satisfies AppRole[];
+export const ADMIN_ROLES = ["superadmin", "developer"] satisfies AppRole[];
 // The shape accepted by permission checks, e.g. { notes: ["read-any"] }.
 export type Permissions = Partial<{
   [Resource in keyof typeof statement]: (typeof statement)[Resource][number][];

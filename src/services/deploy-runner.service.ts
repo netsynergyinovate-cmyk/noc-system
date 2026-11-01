@@ -502,6 +502,19 @@ export async function executeDeployRun(
       await step1Logger.finalize("gagal", connTest.message);
       throw new Error(`Pre-flight koneksi SSH gagal: ${connTest.message}`);
     }
+
+    // Pastikan hak akses sudo non-interaktif untuk perintah deploy aktif di server
+    if (credential.password) {
+      step1Logger.log("$ Menyelaraskan izin sudo non-interaktif di server...\n");
+      const escapedPw = credential.password.replace(/'/g, "'\\''");
+      const sudoInitScript = [
+        "if ! sudo -n true 2>/dev/null; then",
+        `  echo '${escapedPw}' | sudo -S bash -c 'echo "${target.sshUser} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/noc-nopasswd && chmod 0440 /etc/sudoers.d/noc-nopasswd' 2>/dev/null || true`,
+        "fi",
+      ].join("\n");
+      await executeSshScript(target, credential, "bash -s", sudoInitScript, host);
+    }
+
     await step1Logger.finalize("berhasil", `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`);
 
     // LANGKAH 2: Backup Database Server

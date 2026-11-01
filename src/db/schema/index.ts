@@ -53,3 +53,4 @@ export * from "./customer-traffic-captures";
 export * from "./deploy-targets";
 export * from "./deploy-runs";
 export * from "./ssh-credentials";
+export * from "./feature-markers";

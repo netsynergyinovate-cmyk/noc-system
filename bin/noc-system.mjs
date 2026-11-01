@@ -142,50 +142,94 @@ async function cmdInstall() {
   log("2. Menyiapkan environment di /srv/noc/shared/.env...");
   const targetEnv = "/srv/noc/shared/.env";
   const genMonitorToken = crypto.randomBytes(24).toString("hex");
-  const hasValidMonitorToken = (text) => /^MONITOR_TOKEN=[^<\s]\S*/m.test(text);
-  if (!fs.existsSync(targetEnv)) {
-    const templatePath = path.join(REPO_ROOT, ".env.server.example");
-    if (fs.existsSync(templatePath)) {
-      let content = fs.readFileSync(templatePath, "utf-8");
-      if (!hasValidMonitorToken(content)) {
-        if (/^MONITOR_TOKEN=.*$/m.test(content)) {
-          content = content.replace(/^MONITOR_TOKEN=.*$/m, `MONITOR_TOKEN=${genMonitorToken}`);
-        } else {
-          content += `\nMONITOR_TOKEN=${genMonitorToken}\n`;
-        }
-      }
-      fs.writeFileSync(targetEnv, content, "utf-8");
-      ok(`Disalin dari .env.server.example ke ${targetEnv}`);
-    } else {
-      fs.writeFileSync(
-        targetEnv,
-        [
-          "NODE_ENV=production",
-          "PORT=3000",
-          "DATABASE_URL=postgresql://starter:starter_password@127.0.0.1:5432/starter",
-          "BETTER_AUTH_SECRET=ganti-dengan-rahasia-32-karakter-acak",
-          "BETTER_AUTH_URL=http://localhost:3000",
-          "DEVICE_SECRET=kunci-enkripsi-device-32-karakter-ok",
-          "BACKEND_URL=http://localhost:8080",
-          "REALTIME_TOKEN_SECRET=rahasia-tiket-realtime-sama-dengan-backend",
-          `MONITOR_TOKEN=${genMonitorToken}`,
-        ].join("\n") + "\n",
-      );
-      ok(`Template dasar ${targetEnv} dibuat.`);
-    }
-    warn(`PENTING: Periksa dan lengkapi rahasia di ${targetEnv} sebelum rilis.`);
-  } else {
+  const genPgPass = crypto.randomBytes(16).toString("hex");
+  const genAuthSecret = crypto.randomBytes(32).toString("hex");
+  const genDeviceSecret =
+    process.env.NOC_DEVICE_SECRET ||
+    process.env.DEVICE_SECRET ||
+    crypto.randomBytes(16).toString("hex");
+  const genRouterSecret =
+    process.env.NOC_ROUTER_SECRET_KEY ||
+    process.env.ROUTER_SECRET_KEY ||
+    genDeviceSecret;
+  const genRealtimeSecret = crypto.randomBytes(32).toString("hex");
+  const genWebhookToken = crypto.randomBytes(32).toString("hex");
+  const genPublicUrl = process.env.NOC_PUBLIC_URL || "http://localhost:3000";
+  if (!process.env.NOC_DEVICE_SECRET && !process.env.DEVICE_SECRET && !fs.existsSync(targetEnv)) {
+    warn("DEVICE_SECRET dibuat acak (32 karakter). Jika Anda menggunakan halaman Deploy dari localhost untuk mengontrol server ini, samakan nilai DEVICE_SECRET di /srv/noc/shared/.env dengan localhost agar verifikasi kesiapan (dry-run) lulus.");
+  }
+
+  if (fs.existsSync(targetEnv)) {
     let curEnv = fs.readFileSync(targetEnv, "utf-8");
-    if (!hasValidMonitorToken(curEnv)) {
+    curEnv = curEnv
+      .replace(/^DATABASE_URL=.*<.*>.*$/m, `DATABASE_URL=postgresql://starter:${genPgPass}@127.0.0.1:5432/starter`)
+      .replace(/^BETTER_AUTH_SECRET=.*<.*>.*$/m, `BETTER_AUTH_SECRET=${genAuthSecret}`)
+      .replace(/^DEVICE_SECRET=.*<.*>.*$/m, `DEVICE_SECRET=${genDeviceSecret}`)
+      .replace(/^ROUTER_SECRET_KEY=.*<.*>.*$/m, `ROUTER_SECRET_KEY=${genRouterSecret}`)
+      .replace(/^REALTIME_TOKEN_SECRET=.*<.*>.*$/m, `REALTIME_TOKEN_SECRET=${genRealtimeSecret}`)
+      .replace(/^PPP_WEBHOOK_TOKEN=.*<.*>.*$/m, `PPP_WEBHOOK_TOKEN=${genWebhookToken}`);
+
+    if (process.env.NOC_PUBLIC_URL) {
+      curEnv = curEnv
+        .replace(/^BETTER_AUTH_URL=.*$/m, `BETTER_AUTH_URL=${process.env.NOC_PUBLIC_URL}`)
+        .replace(/^NEXT_PUBLIC_APP_URL=.*$/m, `NEXT_PUBLIC_APP_URL=${process.env.NOC_PUBLIC_URL}`);
+    } else {
+      curEnv = curEnv
+        .replace(/^BETTER_AUTH_URL=(.*<.*>.*|https:\/\/noc\.example\.com)$/m, `BETTER_AUTH_URL=${genPublicUrl}`)
+        .replace(/^NEXT_PUBLIC_APP_URL=(.*<.*>.*|https:\/\/noc\.example\.com)$/m, `NEXT_PUBLIC_APP_URL=${genPublicUrl}`);
+    }
+
+    if (!/^POSTGRES_USER=/m.test(curEnv)) curEnv += "\nPOSTGRES_USER=starter";
+    if (!/^POSTGRES_PASSWORD=/m.test(curEnv)) {
+      const dbMatch = curEnv.match(/^DATABASE_URL=postgresql:\/\/[^:]+:([^@]+)@/m);
+      const pass = dbMatch ? dbMatch[1] : genPgPass;
+      curEnv += `\nPOSTGRES_PASSWORD=${pass}`;
+    }
+    if (!/^POSTGRES_DB=/m.test(curEnv)) curEnv += "\nPOSTGRES_DB=starter";
+    if (!/^MONITOR_TOKEN=[^<\s]\S*/m.test(curEnv)) {
       if (/^MONITOR_TOKEN=.*$/m.test(curEnv)) {
         curEnv = curEnv.replace(/^MONITOR_TOKEN=.*$/m, `MONITOR_TOKEN=${genMonitorToken}`);
-        fs.writeFileSync(targetEnv, curEnv, "utf-8");
       } else {
-        fs.appendFileSync(targetEnv, `\nMONITOR_TOKEN=${genMonitorToken}\n`, "utf-8");
+        curEnv += `\nMONITOR_TOKEN=${genMonitorToken}`;
       }
-      ok(`MONITOR_TOKEN baru ditambahkan ke ${targetEnv}`);
     }
-    ok(`Berkas ${targetEnv} sudah ada.`);
+    fs.writeFileSync(targetEnv, curEnv.trim() + "\n", "utf-8");
+    ok(`Berkas ${targetEnv} diselaraskan tanpa placeholder.`);
+  } else {
+    const templatePath = path.join(REPO_ROOT, ".env.server.example");
+    let content = "";
+    if (fs.existsSync(templatePath)) {
+      content = fs.readFileSync(templatePath, "utf-8")
+        .replace(/^DATABASE_URL=.*<.*>.*$/m, `DATABASE_URL=postgresql://starter:${genPgPass}@127.0.0.1:5432/starter`)
+        .replace(/^BETTER_AUTH_SECRET=.*<.*>.*$/m, `BETTER_AUTH_SECRET=${genAuthSecret}`)
+        .replace(/^BETTER_AUTH_URL=.*$/m, `BETTER_AUTH_URL=${genPublicUrl}`)
+        .replace(/^NEXT_PUBLIC_APP_URL=.*$/m, `NEXT_PUBLIC_APP_URL=${genPublicUrl}`)
+        .replace(/^DEVICE_SECRET=.*<.*>.*$/m, `DEVICE_SECRET=${genDeviceSecret}`)
+        .replace(/^ROUTER_SECRET_KEY=.*<.*>.*$/m, `ROUTER_SECRET_KEY=${genRouterSecret}`)
+        .replace(/^REALTIME_TOKEN_SECRET=.*<.*>.*$/m, `REALTIME_TOKEN_SECRET=${genRealtimeSecret}`)
+        .replace(/^PPP_WEBHOOK_TOKEN=.*<.*>.*$/m, `PPP_WEBHOOK_TOKEN=${genWebhookToken}`);
+      content += `\nPOSTGRES_USER=starter\nPOSTGRES_PASSWORD=${genPgPass}\nPOSTGRES_DB=starter\nMONITOR_TOKEN=${genMonitorToken}\n`;
+    } else {
+      content = [
+        "NODE_ENV=production",
+        "PORT=3000",
+        "POSTGRES_USER=starter",
+        `POSTGRES_PASSWORD=${genPgPass}`,
+        "POSTGRES_DB=starter",
+        `DATABASE_URL=postgresql://starter:${genPgPass}@127.0.0.1:5432/starter`,
+        `BETTER_AUTH_SECRET=${genAuthSecret}`,
+        `BETTER_AUTH_URL=${genPublicUrl}`,
+        `NEXT_PUBLIC_APP_URL=${genPublicUrl}`,
+        `DEVICE_SECRET=${genDeviceSecret}`,
+        `ROUTER_SECRET_KEY=${genRouterSecret}`,
+        "BACKEND_URL=http://localhost:8080",
+        `REALTIME_TOKEN_SECRET=${genRealtimeSecret}`,
+        `PPP_WEBHOOK_TOKEN=${genWebhookToken}`,
+        `MONITOR_TOKEN=${genMonitorToken}`,
+      ].join("\n") + "\n";
+    }
+    fs.writeFileSync(targetEnv, content, "utf-8");
+    ok(`Berkas ${targetEnv} berhasil dibuat dengan konfigurasi aman.`);
   }
 
   // 3. Menjalankan Docker PostgreSQL
@@ -193,19 +237,40 @@ async function cmdInstall() {
   const composePath = path.join(REPO_ROOT, "compose.postgres.yaml");
   if (fs.existsSync(composePath)) {
     try {
-      runCmd(`docker compose -f "${composePath}" up -d`);
+      runCmd(`docker compose --env-file "${targetEnv}" -f "${composePath}" up -d`);
       ok("Kontainer Docker PostgreSQL (noc-postgres) berhasil dinyalakan.");
     } catch (err) {
       warn(`Gagal menjalankan docker compose: ${err.message}. Pastikan Docker daemon aktif.`);
     }
   }
 
+  // Tunggu PostgreSQL siap menerima koneksi (pg_isready)
+  log("Menunggu PostgreSQL siap menerima koneksi (pg_isready)...");
+  let pgReady = false;
+  for (let i = 0; i < 30; i++) {
+    try {
+      const out = execSync('docker exec noc-postgres pg_isready -U starter -d starter 2>/dev/null || echo ""', { encoding: "utf-8" });
+      if (out.includes("accepting connections")) {
+        pgReady = true;
+        break;
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  if (pgReady) {
+    ok("PostgreSQL siap menerima koneksi.");
+  } else {
+    warn("PostgreSQL belum merespons; mencoba melanjutkan migrasi database...");
+  }
+
   // 4. Pasang Systemd Units
-  log("4. Memasang unit systemd untuk noc-web dan noc-backend...");
+  log("4. Memeriksa unit systemd untuk noc-web dan noc-backend...");
   const unitWebPath = path.join(REPO_ROOT, "systemd", "noc-web.service");
   const unitBackendPath = path.join(REPO_ROOT, "systemd", "noc-backend.service");
 
-  if (fs.existsSync(unitWebPath) && fs.existsSync(unitBackendPath)) {
+  if (fs.existsSync("/etc/systemd/system/noc-web.service") && fs.existsSync("/etc/systemd/system/noc-backend.service")) {
+    ok("Unit systemd noc-web dan noc-backend sudah terpasang di /etc/systemd/system/.");
+  } else if (fs.existsSync(unitWebPath) && fs.existsSync(unitBackendPath)) {
     try {
       runCmd(`sudo cp "${unitWebPath}" "${unitBackendPath}" /etc/systemd/system/`);
       runCmd("sudo systemctl daemon-reload");
@@ -218,11 +283,20 @@ async function cmdInstall() {
 
   // 5. Jalankan migrasi database awal
   log("5. Menjalankan migrasi database awal...");
+  let dbUrl = "";
+  if (fs.existsSync(targetEnv)) {
+    const envText = fs.readFileSync(targetEnv, "utf-8");
+    const match = envText.match(/^DATABASE_URL=(.+)$/m);
+    if (match) dbUrl = match[1].trim().replace(/^["']|["']$/g, "");
+  }
   try {
-    runCmd("node scripts/migrate-server.mjs");
+    runCmd("node scripts/migrate-server.mjs", {
+      env: { ...process.env, ...(dbUrl ? { DATABASE_URL: dbUrl } : {}) },
+    });
     ok("Migrasi database berhasil dieksekusi.");
   } catch (err) {
-    warn(`Migrasi database tertunda: ${err.message}.`);
+    fail(`Migrasi database gagal: ${err.message}.`);
+    throw err;
   }
 
   console.log(`\n${ANSI.green}${ANSI.bold}Instalasi awal selesai!${ANSI.reset}`);
@@ -381,8 +455,8 @@ async function cmdDeploy(args = [], options = {}) {
 
   // Restart layanan systemd
   try {
-    runCmd("sudo systemctl restart noc-backend noc-web");
-    ok("Layanan noc-backend dan noc-web berhasil di-restart.");
+    runCmd("sudo systemctl restart noc-web noc-backend");
+    ok("Layanan noc-web dan noc-backend berhasil di-restart.");
   } catch (err) {
     fail(`Gagal me-restart systemctl: ${err.message}.`);
     if (oldVersion) {
@@ -429,7 +503,7 @@ async function cmdDeploy(args = [], options = {}) {
       warn(`Memicu rollback otomatis ke: ${oldVersion}`);
       runCmd(`ln -sfn "${oldVersion}" "${currentLink}"`);
       try {
-        runCmd("sudo systemctl restart noc-backend noc-web");
+        runCmd("sudo systemctl restart noc-web noc-backend");
         warn("Rollback selesai.");
       } catch {}
     }
@@ -460,8 +534,8 @@ async function cmdRollback() {
   ok(`Symlink ${currentLink} diarahkan kembali ke ${targetRelease}`);
 
   try {
-    runCmd("sudo systemctl restart noc-backend noc-web");
-    ok("Layanan systemd noc-backend dan noc-web berhasil di-restart.");
+    runCmd("sudo systemctl restart noc-web noc-backend");
+    ok("Layanan systemd noc-web dan noc-backend berhasil di-restart.");
     recordDeploymentToDatabase(targetRelease, "rollback", "berhasil", null);
     updateServerStatusSnapshot(targetRelease, null, "rollback");
   } catch (err) {

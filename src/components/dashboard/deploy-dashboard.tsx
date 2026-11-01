@@ -820,23 +820,54 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
             </div>
 
             {/* Banner Perintah Bootstrap 1-Baris */}
-            <div className="mt-6 p-4 rounded-lg border bg-primary/5 border-primary/20">
-              <span className="text-xs font-bold text-primary flex items-center gap-1.5">
-                <Terminal className="h-4 w-4" /> Perintah Pasang Awal 1-Baris di Server Ubuntu (Bootstrap)
-              </span>
-              <p className="text-xs text-muted-foreground mt-1">
-                Jalankan perintah ini di server Ubuntu baru untuk memasang Docker, Node.js 22, Go Compiler, dan CLI noc-system otomatis:
-              </p>
-              <div className="mt-2 p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
-                <code className="break-all">curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 ml-2"
-                  onClick={() => copyToClipboard("curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash", "bootstrap")}
-                >
-                  {copiedCmd === "bootstrap" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                </Button>
+            <div className="mt-6 p-4 rounded-lg border bg-primary/5 border-primary/20 space-y-3">
+              <div>
+                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  <Terminal className="h-4 w-4" /> Perintah Pasang Awal 1-Baris di Server Ubuntu (Bootstrap)
+                </span>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Jalankan perintah ini di server Ubuntu baru untuk memasang Docker CE, Node.js 22 LTS, Go Compiler, dan CLI noc-system otomatis:
+                </p>
+              </div>
+
+              {/* Opsi 1: Perintah Standar (Publik) */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground mb-1">
+                  <span>1. Perintah Standar (Hanya bila Repositori disetel Publik di GitHub)</span>
+                </div>
+                <div className="p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
+                  <code className="break-all">curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash</code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 ml-2"
+                    onClick={() => copyToClipboard("curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash", "bootstrap-public")}
+                  >
+                    {copiedCmd === "bootstrap-public" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Opsi 2: Dengan GITHUB_TOKEN (Repositori Privat) */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground mb-1">
+                  <span>2. Dengan GITHUB_TOKEN (Wajib untuk Repositori Privat Saat Ini)</span>
+                  <Badge variant="outline" className="text-[10px] text-amber-500 bg-amber-500/10 border-amber-500/20">Private Repo (Aktif)</Badge>
+                </div>
+                <div className="p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
+                  <code className="break-all">{`export GITHUB_TOKEN="ghp_xxx" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN bash`}</code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 ml-2"
+                    onClick={() => copyToClipboard(`export GITHUB_TOKEN="ghp_xxx" && curl -fsSL -H "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=GITHUB_TOKEN bash`, "bootstrap-token")}
+                  >
+                    {copiedCmd === "bootstrap-token" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  *Ganti <code className="text-primary font-mono">ghp_xxx</code> dengan Personal Access Token (PAT) GitHub yang memiliki izin read repositori.
+                </p>
               </div>
             </div>
 

@@ -1,0 +1,27 @@
+[Unit]
+Description=NOC System Web Frontend (Next.js Native)
+After=network.target docker.service noc-backend.service
+Wants=docker.service noc-backend.service
+
+[Service]
+Type=simple
+User=noc
+Group=noc
+WorkingDirectory=/srv/noc/current
+EnvironmentFile=/srv/noc/shared/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+Environment=DEPLOY_PAGE_ROLE=server
+ExecStart=/usr/bin/node /srv/noc/current/server.js
+Restart=always
+RestartSec=5s
+LimitNOFILE=65536
+
+# Proteksi keamanan dasar systemd
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

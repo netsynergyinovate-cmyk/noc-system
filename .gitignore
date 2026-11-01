@@ -45,3 +45,18 @@ docker/genieacs/config/.backup/
 
 # Data OSM dan hasil olahan OSRM (ratusan MB, dibuat npm run osrm:download/osrm:prepare)
 docker/osrm/data/
+
+# Kredensial dan rahasia OAuth / API
+client_secret_*.json
+
+# Dump kode, artefak AI, backup, tangkapan layar, dan dokumen non-repo
+repomix-output.xml
+backups/
+screenshots/
+.omc/
+
+# Skrip instalasi lokal sementara
+setup_sheets_agent.*
+install.ps1
+ref-folder/
+*.docx

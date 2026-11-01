@@ -253,6 +253,55 @@
       "when": 1792681696494,
       "tag": "0035_firewall_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792685077550,
+      "tag": "0036_netflow_customer",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792688000000,
+      "tag": "0037_verdict_deterministic",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792920609363,
+      "tag": "0038_customer_connection_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792934180639,
+      "tag": "0039_customers_isolir_router",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793028394217,
+      "tag": "0040_brief_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793499156730,
+      "tag": "0041_chubby_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793499280715,
+      "tag": "0042_lethal_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

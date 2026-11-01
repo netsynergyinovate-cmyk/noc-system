@@ -21,6 +21,7 @@ import {
   Radio,
   MapPin,
   KeyRound,
+  Server,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -85,6 +86,7 @@ const navCategories: NavCategory[] = [
       { label: "Jejak Aktivitas", href: "/app/jejak-aktivitas", Icon: ScrollText },
       { label: "API Key", href: "/app/api-key", Icon: KeyRound },
       { label: "Uji Stack", href: "/app/uji-stack", Icon: Layers },
+      { label: "Deploy Server", href: "/app/deploy", Icon: Server },
     ],
   },
 ];

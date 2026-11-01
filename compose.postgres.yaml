@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: noc-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-starter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-starter_password}
+      POSTGRES_DB: ${POSTGRES_DB:-starter}
+    ports:
+      # Hanya bind ke loopback agar database tidak terekspos ke LAN
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - noc-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-starter} -d ${POSTGRES_DB:-starter}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  noc-postgres-data:

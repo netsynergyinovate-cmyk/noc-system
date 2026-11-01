@@ -60,7 +60,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DeployRunConsole, type DeployAccessInfo } from "./deploy-run-console";
+import { DeployRunConsole, DeployTerminalBox, type DeployAccessInfo } from "./deploy-run-console";
 
 function delay(ms: number): Promise<void> {
   const { promise, resolve } = Promise.withResolvers<void>();
@@ -167,9 +167,9 @@ const FEATURE_STACK: FeatureStackItem[] = [
     id: "genieacs",
     name: "GenieACS TR-069 CPE Provisioning",
     tech: "Docker Container (CWMP, NBI, FS, UI)",
-    port: "7547 (CWMP), 9000 (UI)",
+    port: "7547 (CWMP), 7557 (NBI), 7558 (UI)",
     serviceKey: "genieacs",
-    upCmd: "docker compose -f compose.genieacs.yaml up -d",
+    upCmd: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.genieacs.yaml up -d",
     logsCmd: "docker compose -f compose.genieacs.yaml logs -f --tail 50",
     restartCmd: "docker compose -f compose.genieacs.yaml restart",
   },
@@ -179,17 +179,17 @@ const FEATURE_STACK: FeatureStackItem[] = [
     tech: "Docker Container (OSRM Routing Engine)",
     port: "5000 (TCP)",
     serviceKey: "osrm",
-    upCmd: "docker compose -f compose.osrm.yaml up -d osrm",
+    upCmd: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.osrm.yaml up -d osrm",
     logsCmd: "docker compose -f compose.osrm.yaml logs -f --tail 50 osrm",
     restartCmd: "docker compose -f compose.osrm.yaml restart osrm",
   },
   {
     id: "9router",
-    name: "9router MikroTik Lab Simulator",
-    tech: "Docker Container (RouterOS Lab)",
-    port: "8728 (API), 161 (SNMP)",
+    name: "9router Decolua AI Proxy & Lab",
+    tech: "Docker Container (Decolua 9router AI /v1 Proxy)",
+    port: "20128 (TCP - UI & /v1)",
     serviceKey: "nineRouter",
-    upCmd: "docker compose -f compose.9router.yaml up -d",
+    upCmd: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.9router.yaml up -d",
     logsCmd: "docker compose -f compose.9router.yaml logs -f --tail 50",
     restartCmd: "docker compose -f compose.9router.yaml restart",
   },
@@ -2447,32 +2447,33 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
 
       {/* DIALOG 5: Detail Log Run */}
       <Dialog open={Boolean(selectedRunDetail)} onOpenChange={(open) => !open && setSelectedRunDetail(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Terminal className="h-4 w-4" /> Detail Log Run: {selectedRunDetail?.run.versi}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Status: {selectedRunDetail?.run.status} | Jenis: {selectedRunDetail?.run.jenis} | Pelaku: {selectedRunDetail?.run.dijalankanOleh}
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] p-0 overflow-hidden flex flex-col bg-zinc-950 text-zinc-100 border-zinc-800">
+          <DialogHeader className="p-4 border-b border-zinc-800 bg-zinc-900/60">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-sm font-mono text-zinc-100">
+                <Terminal className="h-4 w-4 text-emerald-400" /> Terminal Log CLI Run: {selectedRunDetail?.run.versi}
+              </DialogTitle>
+              <Badge
+                variant={selectedRunDetail?.run.status === "berhasil" ? "default" : "destructive"}
+                className="text-[10px] capitalize"
+              >
+                {selectedRunDetail?.run.status}
+              </Badge>
+            </div>
+            <DialogDescription className="text-[11px] text-zinc-400 font-mono mt-1">
+              Jenis: {selectedRunDetail?.run.jenis} | Pelaku: {selectedRunDetail?.run.dijalankanOleh} | Target: {target?.sshUser}@{target?.host}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-2 text-xs">
-            {selectedRunDetail?.steps.map((st) => (
-              <div key={st.id} className="rounded-lg border p-3 bg-muted/20">
-                <div className="flex items-center justify-between font-medium">
-                  <span>{st.urutan}. {st.nama}</span>
-                  <Badge variant={st.status === "berhasil" ? "default" : "destructive"} className="text-[10px]">
-                    {st.status}
-                  </Badge>
-                </div>
-                {st.keluaran && (
-                  <pre className="mt-2 rounded bg-black/80 text-white p-2 font-mono text-[11px] overflow-x-auto whitespace-pre-wrap">
-                    {st.keluaran}
-                  </pre>
-                )}
-              </div>
-            ))}
+          <div className="p-4 overflow-y-auto max-h-[calc(85vh-90px)]">
+            {selectedRunDetail && (
+              <DeployTerminalBox
+                steps={selectedRunDetail.steps}
+                running={false}
+                sshUser={target?.sshUser || "netsi"}
+                sshHost={target?.host || "server"}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>

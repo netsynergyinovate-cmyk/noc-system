@@ -18,7 +18,7 @@ import {
   recordConfigSync,
   SYNCABLE_CONFIG_TABLES,
 } from "./deploy-config-transfer.service";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface DryRunCheck {
   id: string;
@@ -430,21 +430,57 @@ export async function executeDeployRun(
       .where(eq(deploySteps.id, stepId));
   }
 
+  let stepOutputBuf = "";
+  let lastFlush = Date.now();
+  let flushTimer: NodeJS.Timeout | null = null;
+
+  const flushOutput = async (stepId: string) => {
+    if (!stepOutputBuf) return;
+    try {
+      await db
+        .update(deploySteps)
+        .set({ keluaran: stepOutputBuf })
+        .where(eq(deploySteps.id, stepId));
+    } catch {}
+  };
+
+  const makeStepLogger = (stepId: string, initialPrefix = "") => {
+    stepOutputBuf = initialPrefix;
+    if (initialPrefix) {
+      void flushOutput(stepId);
+    }
+    return (chunk: string) => {
+      stepOutputBuf = (stepOutputBuf + chunk).slice(-15000);
+      const now = Date.now();
+      if (now - lastFlush > 400) {
+        lastFlush = now;
+        void flushOutput(stepId);
+      } else if (!flushTimer) {
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          lastFlush = Date.now();
+          void flushOutput(stepId);
+        }, 400);
+      }
+    };
+  };
+
   try {
     // LANGKAH 1: Pre-flight & Koneksi SSH
     const step1 = await addStep(1, "Pre-flight & Koneksi SSH", "berjalan");
+    const step1Log = makeStepLogger(step1.id, `ssh -p ${target.port} ${target.sshUser}@${host}\nMemeriksa latensi dan autentikasi...\n`);
     const connTest = await testSshConnection(target, credential, host);
     if (!connTest.success) {
       await updateStep(step1.id, "gagal", connTest.message);
       throw new Error(`Pre-flight koneksi SSH gagal: ${connTest.message}`);
     }
-    await updateStep(step1.id, "berhasil", `Terhubung ke ${target.sshUser}@${host}:${target.port}`);
+    await updateStep(step1.id, "berhasil", `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`);
 
     // LANGKAH 2: Backup Database Server
     const step2 = await addStep(2, "Backup Database Server", "berjalan");
     const timestampStr = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFile = `/srv/noc/backups/backup-${timestampStr}.sql.gz`;
-
+    const step2Log = makeStepLogger(step2.id, `$ docker exec <postgres> pg_dump -U starter -d starter | gzip > ${backupFile}\n`);
     // Gunakan stdin script agar kutip dan pipefail tidak terpotong oleh bash -c
     const backupScript = [
       "set -euo pipefail",
@@ -465,7 +501,7 @@ export async function executeDeployRun(
       `ls -lh "${backupFile}"`,
     ].join("\n");
 
-    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host);
+    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host, 60000, step2Log);
     if (backupRes.code !== 0) {
       await updateStep(step2.id, "gagal", backupRes.stderr || backupRes.stdout);
       throw new Error(`Backup database gagal: ${backupRes.stderr || backupRes.stdout}`);
@@ -480,12 +516,15 @@ export async function executeDeployRun(
     await executeSshCommand(target, credential, `mkdir -p "${releasePath}" /srv/noc/shared`, host);
 
     // Build tarball di localhost
+    const step3Log = makeStepLogger(step3.id, `Mempersiapkan artefak rilis terisolasi untuk ${version}...\n`);
     const buildResult = await buildReleaseBundle(version, (msg) => {
-      // update log jika perlu
+      step3Log(`[BUILD] ${msg}\n`);
     });
 
     // Upload via SFTP dan ekstrak di server
-    await uploadAndExtractRelease(target, credential, buildResult.tarPath, releasePath, host);
+    await uploadAndExtractRelease(target, credential, buildResult.tarPath, releasePath, host, (msg) => {
+      step3Log(`[SFTP] ${msg}\n`);
+    });
     await updateStep(
       step3.id,
       "berhasil",
@@ -508,7 +547,8 @@ export async function executeDeployRun(
       '  echo "Skrip migrasi tidak ditemukan, melewati."',
       'fi',
     ].join("\n");
-    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host);
+    const step4Log = makeStepLogger(step4.id, `$ cd ${releasePath} && node scripts/migrate-server.mjs\n`);
+    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host, 60000, step4Log);
     if (migRes.code !== 0) {
       await updateStep(step4.id, "gagal", migRes.stderr || migRes.stdout);
       throw new Error(`Migrasi database gagal: ${migRes.stderr || migRes.stdout}`);
@@ -557,17 +597,21 @@ export async function executeDeployRun(
       if (sqlStatements.length > 2) {
         const combinedSql = sqlStatements.join("\n\n");
         const execCmd = [
+          "set -euo pipefail",
+          'DOCKER="docker"',
+          '$DOCKER info >/dev/null 2>&1 || DOCKER="sudo -n docker"',
           'PG_CID=$(grep -E "^POSTGRES_CONTAINER=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
-          'if [ -z "$PG_CID" ]; then PG_CID=$(docker ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
-          'if [ -z "$PG_CID" ]; then PG_CID=$(docker ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
+          'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
+          'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
           'DB_URL=$(grep -E "^DATABASE_URL=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
           'DB_USER=$(echo "$DB_URL" | sed -E \'s|^.*://([^:]+):.*$|\\1|\')',
           'DB_NAME=$(echo "$DB_URL" | sed -E \'s|^.*/([^?]+).*$|\\1|\')',
           'if [ -z "$DB_USER" ] || [ "$DB_USER" = "$DB_URL" ]; then DB_USER="starter"; fi',
           'if [ -z "$DB_NAME" ] || [ "$DB_NAME" = "$DB_URL" ]; then DB_NAME="starter"; fi',
-          'docker exec -i "$PG_CID" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 --single-transaction -f -',
+          '$DOCKER exec -i "$PG_CID" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 --single-transaction -f -',
         ].join(" && ");
-        const execRes = await executeSshScript(target, credential, execCmd, combinedSql, host);
+        const step5Log = makeStepLogger(step5.id, `Menyinkronkan ${totalInserted} baris konfigurasi ke database server...\n`);
+        const execRes = await executeSshScript(target, credential, execCmd, combinedSql, host, 60000, step5Log);
         if (execRes.code !== 0) {
           throw new Error(`Sinkronisasi konfigurasi database gagal: ${execRes.stderr || execRes.stdout}`);
         }
@@ -615,8 +659,9 @@ export async function executeDeployRun(
 
     // LANGKAH 8: Restart Layanan systemd (noc-web & noc-backend)
     const step8 = await addStep(8, "Restart Layanan systemd", "berjalan");
+    const step8Log = makeStepLogger(step8.id, `$ sudo -n systemctl restart noc-web noc-backend\n`);
     const restartCmd = `sudo -n systemctl restart noc-web noc-backend`;
-    const restartRes = await executeSshCommand(target, credential, restartCmd, host);
+    const restartRes = await executeSshCommand(target, credential, restartCmd, host, 60000, step8Log);
     if (restartRes.code !== 0) {
       await updateStep(step8.id, "gagal", restartRes.stderr || restartRes.stdout);
       // Restart gagal setelah swap -> picu rollback otomatis jika ada titik balik
@@ -637,6 +682,7 @@ export async function executeDeployRun(
     let healthy = false;
     let healthOutput = "";
 
+    const step9Log = makeStepLogger(step9.id);
     for (let i = 0; i < 15; i++) {
       const probeNext = await executeSshCommand(
         target,
@@ -653,13 +699,14 @@ export async function executeDeployRun(
 
       const nextCode = probeNext.stdout.trim();
       const goCode = probeGo.stdout.trim();
+      step9Log(`Percobaan ${i + 1}/15: curl :3000 -> HTTP ${nextCode || "ERR"}, curl :8080 -> HTTP ${goCode || "ERR"}\n`);
 
       if (nextCode === "200" && goCode === "200") {
         healthy = true;
         healthOutput = `Next.js (:3000) dan Backend Go (:8080) keduanya merespons HTTP 200 OK.`;
         break;
       }
-      healthOutput = `Percobaan ${i + 1}/5: Next.js HTTP ${nextCode}, Go HTTP ${goCode}`;
+      healthOutput = `Percobaan ${i + 1}/15: Next.js HTTP ${nextCode}, Go HTTP ${goCode}`;
       await new Promise((r) => setTimeout(r, 2000));
     }
 

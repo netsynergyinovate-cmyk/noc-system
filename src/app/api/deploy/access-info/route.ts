@@ -11,7 +11,10 @@ export async function GET(request: Request) {
   const denied = deployGuardResponse(guard);
   if (denied) return denied;
 
-  return withApiPermission(request, { system: ["manage"] }, async () => {
+  return withApiPermission(request, { system: ["manage"] }, async (session) => {
+    if ("apiKeyId" in session && session.apiKeyId) {
+      return Response.json({ error: "API Key tidak diizinkan." }, { status: 403 });
+    }
     const target = await getDeployTarget();
     if (!target) {
       return Response.json({ error: "Target belum dikonfigurasi." }, { status: 400 });
@@ -40,14 +43,19 @@ export async function GET(request: Request) {
       // non-fatal
     }
 
-    return Response.json({
-      ok: true,
-      data: {
-        url,
-        token,
-        backendUrl: `http://${host}:8080`,
-        host,
+    return Response.json(
+      {
+        ok: true,
+        data: {
+          url,
+          token,
+          backendUrl: `http://${host}:8080`,
+          host,
+        },
       },
-    });
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   });
 }

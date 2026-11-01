@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Layers,
   CheckCircle2,
@@ -18,50 +18,59 @@ import type { DeployStep } from "@/db/schema/deploy-runs";
 
 const DEPLOY_STEPS_META: Record<
   number,
-  { name: string; activeDesc: string; defaultDesc: string }
+  { name: string; command: string; activeDesc: string; defaultDesc: string }
 > = {
   1: {
     name: "Pre-flight & Koneksi SSH",
+    command: "ssh -p 22 <user>@<host> 'test-auth && check-prerequisites'",
     activeDesc: "Menghubungkan ke SSH server dan memverifikasi autentikasi...",
     defaultDesc: "Uji latensi jaringan dan validasi konektivitas SSH ke port 22 server.",
   },
   2: {
     name: "Backup Database Server",
+    command: "docker exec <container> pg_dump -U starter -d starter | gzip > /srv/noc/backups/...",
     activeDesc: "Mengekstrak pg_dump di kontainer PostgreSQL server dan mengompresi arsip gzip...",
     defaultDesc: "Membuat cadangan database terkompresi di /srv/noc/backups sebelum rilis.",
   },
   3: {
     name: "Bangun Artefak Rilis & Unggah",
+    command: "tar -czf release.tar.gz && sftp put release.tar.gz /srv/noc/releases/<version>/",
     activeDesc: "Mengemas bundle Next.js standalone dan biner Go, lalu mengunggah via SFTP...",
     defaultDesc: "Mempersiapkan artefak rilis terisolasi dan mengekstraknya di direktori rilis berversi.",
   },
   4: {
     name: "Migrasi Skema Database",
+    command: "cd /srv/noc/releases/<version> && node scripts/migrate-server.mjs",
     activeDesc: "Mengeksekusi migrasi skema database Drizzle (scripts/migrate-server.mjs)...",
     defaultDesc: "Menerapkan pembaruan skema tabel PostgreSQL dengan aman di server.",
   },
   5: {
     name: "Pemindahan Konfigurasi Localhost -> Server",
+    command: "docker exec -i <container> psql -U starter -d starter -v ON_ERROR_STOP=1",
     activeDesc: "Memindahkan konfigurasi router, OLT, dan akun dari localhost ke server native...",
     defaultDesc: "Sinkronisasi data kredensial perangkat dan pengaturan sistem secara atomik.",
   },
   6: {
     name: "Pencatatan Titik Balik Versi",
+    command: "readlink -f /srv/noc/current > /srv/noc/shared/.rollback-target",
     activeDesc: "Mencatat rilis aktif saat ini sebagai titik balik aman...",
     defaultDesc: "Menyimpan target rollback jika rilis baru mengalami kendala pasca-pengalihan.",
   },
   7: {
     name: "Penukaran Symlink current (Atomik)",
+    command: "ln -sfn /srv/noc/releases/<version> /srv/noc/current.tmp && mv -Tf ... /srv/noc/current",
     activeDesc: "Mengalihkan symlink /srv/noc/current ke rilis versi baru secara atomik...",
     defaultDesc: "Penukaran symlink instan tanpa downtime (atomic symlink swap).",
   },
   8: {
     name: "Restart Layanan systemd",
+    command: "sudo -n systemctl restart noc-web noc-backend",
     activeDesc: "Me-restart layanan systemd noc-web (port 3000) dan noc-backend (port 8080)...",
     defaultDesc: "Memuat ulang proses aplikasi Next.js dan backend telemetri Go.",
   },
   9: {
     name: "Health Check Pasca-Deploy",
+    command: "curl http://127.0.0.1:3000/api/health && curl http://127.0.0.1:8080/healthz",
     activeDesc: "Memverifikasi respons endpoint /api/health (:3000) dan /healthz (:8080)...",
     defaultDesc: "Health check otomatis untuk memastikan kedua layanan merespons HTTP 200 OK.",
   },
@@ -72,6 +81,127 @@ export interface DeployAccessInfo {
   token: string;
   backendUrl?: string;
   host?: string;
+}
+
+export function DeployTerminalBox({
+  steps,
+  running,
+  sshUser = "netsi",
+  sshHost = "server",
+}: {
+  steps: DeployStep[];
+  running?: boolean;
+  sshUser?: string;
+  sshHost?: string;
+}) {
+  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (running && terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [steps, running]);
+
+  function copyAllLogs() {
+    const allText = steps
+      .map(
+        (s) =>
+          `[${s.mulai ? new Date(s.mulai).toLocaleTimeString() : "--:--"}] ${sshUser}@${sshHost}:~$ ${DEPLOY_STEPS_META[s.urutan]?.command || s.nama}\n[${s.status.toUpperCase()}]\n${s.keluaran || ""}`,
+      )
+      .join("\n\n");
+    navigator.clipboard.writeText(allText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs shadow-xl text-zinc-100 flex flex-col">
+      {/* Header Window Terminal */}
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+            <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+          </div>
+          <span className="text-zinc-400 text-[11px] font-semibold ml-1 flex items-center gap-1.5">
+            <Terminal className="h-3.5 w-3.5 text-emerald-400" />
+            Terminal SSH: {sshUser}@{sshHost}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {running && (
+            <span className="text-[10px] text-amber-400 animate-pulse flex items-center gap-1 font-sans">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+              LIVE CLI
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] text-zinc-400 hover:text-zinc-200 px-2 border border-zinc-800 hover:bg-zinc-900"
+            onClick={copyAllLogs}
+          >
+            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+            <span className="ml-1">{copied ? "Tersalin" : "Salin Log"}</span>
+          </Button>
+          <Badge variant="outline" className="border-zinc-800 text-[10px] text-zinc-400">
+            {steps.length}/9 langkah
+          </Badge>
+        </div>
+      </div>
+
+      {/* Konten Log Terminal */}
+      <div className="max-h-80 min-h-[220px] overflow-y-auto space-y-3 text-[11px] pr-1.5 select-text leading-relaxed">
+        {steps.length === 0 && !running && (
+          <div className="text-zinc-500 italic py-8 text-center">
+            Belum ada eksekusi rilis yang berjalan.
+          </div>
+        )}
+
+        {steps.map((s) => {
+          const meta = DEPLOY_STEPS_META[s.urutan];
+          return (
+            <div key={s.id || s.urutan} className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-zinc-500">[{s.mulai ? new Date(s.mulai).toLocaleTimeString() : "--:--"}]</span>
+                <span className="text-emerald-400 font-semibold">{sshUser}@{sshHost}:~$</span>
+                <span className="text-zinc-200 font-bold">{meta?.command || s.nama}</span>
+                <span
+                  className={`ml-auto text-[10px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                    s.status === "berhasil"
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                      : s.status === "gagal"
+                        ? "bg-destructive/20 text-red-400 border border-destructive/40"
+                        : "bg-amber-500/20 text-amber-300 animate-pulse border border-amber-500/40"
+                  }`}
+                >
+                  {s.status}
+                </span>
+              </div>
+
+              {s.keluaran && (
+                <pre className="pl-4 text-zinc-300 whitespace-pre-wrap break-all text-[11px] bg-zinc-900/60 p-2 rounded border border-zinc-800/80 mt-1">
+                  {s.keluaran}
+                </pre>
+              )}
+            </div>
+          );
+        })}
+
+        {running && (
+          <div className="text-zinc-400 animate-pulse flex items-center gap-1.5 pt-2 border-t border-zinc-900">
+            <span className="text-emerald-400 font-semibold">{sshUser}@{sshHost}:~$</span>
+            <span className="text-cyan-300">Menjalankan instruksi berikutnya di server native</span>
+            <span className="animate-ping font-bold text-emerald-400">_</span>
+          </div>
+        )}
+        <div ref={terminalEndRef} />
+      </div>
+    </div>
+  );
 }
 
 interface DeployRunConsoleProps {
@@ -113,16 +243,24 @@ export function DeployRunConsole({
 
   return (
     <div className="mt-6 space-y-6">
-      {/* 1. Progres Rantai Deploy Berurutan */}
+      {/* 1. Terminal SSH Live Console - TAMPIL PALING UTAMA SAAT DEPLOY BERJALAN */}
+      <DeployTerminalBox
+        steps={steps}
+        running={running}
+        sshUser={sshUser}
+        sshHost={sshHost}
+      />
+
+      {/* 2. Progres Rantai Deploy Berurutan (Detail Tiap Langkah) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <Layers className="h-4 w-4 text-primary" /> Progres Rantai Deploy Berurutan
+            <Layers className="h-4 w-4 text-primary" /> Rincian Status 9 Langkah Rantai Rilis
           </h4>
           {running && (
             <span className="text-[11px] text-amber-500 dark:text-amber-400 font-mono animate-pulse flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
-              Eksekusi SSH sedang berlangsung...
+              Eksekusi aktif...
             </span>
           )}
         </div>
@@ -172,7 +310,6 @@ export function DeployRunConsole({
                   </div>
                 </div>
 
-                {/* Deskripsi status aktivitas */}
                 <div className="text-[11px] text-muted-foreground pl-7">
                   {status === "berjalan" ? (
                     <span className="text-primary font-medium flex items-center gap-1.5">
@@ -184,7 +321,6 @@ export function DeployRunConsole({
                   )}
                 </div>
 
-                {/* Output log individual langkah */}
                 {match?.keluaran && (
                   <div className="mt-1 ml-7 font-mono text-[11px] text-zinc-300 break-all whitespace-pre-wrap bg-zinc-950 p-2.5 rounded border border-zinc-800/80 max-h-36 overflow-y-auto">
                     {match.keluaran}
@@ -193,66 +329,6 @@ export function DeployRunConsole({
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* 2. Kotak Konsol Terminal SSH Live */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs shadow-lg text-zinc-100">
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-              <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-            </div>
-            <span className="text-zinc-400 text-[11px] font-semibold ml-1">
-              Terminal SSH Live: {sshUser}@{sshHost}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {running && (
-              <span className="text-[10px] text-amber-400 animate-pulse flex items-center gap-1 font-sans">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                LIVE
-              </span>
-            )}
-            <Badge variant="outline" className="border-zinc-800 text-[10px] text-zinc-400">
-              {steps.length}/9 langkah tercatat
-            </Badge>
-          </div>
-        </div>
-
-        <div className="max-h-64 overflow-y-auto space-y-2 text-[11px] pr-1 select-text">
-          {steps.map((s) => (
-            <div key={s.id || s.urutan} className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-zinc-500">[{s.mulai ? new Date(s.mulai).toLocaleTimeString() : "--:--"}]</span>
-                <span className="text-cyan-400 font-bold">&gt; Langkah {s.urutan}/9: {s.nama}</span>
-                <span
-                  className={
-                    s.status === "berhasil"
-                      ? "text-emerald-400 font-semibold"
-                      : s.status === "gagal"
-                        ? "text-red-400 font-semibold"
-                        : "text-amber-300 animate-pulse"
-                  }
-                >
-                  [{s.status.toUpperCase()}]
-                </span>
-              </div>
-              {s.keluaran && (
-                <pre className="pl-4 text-zinc-300 whitespace-pre-wrap break-all text-[11px] leading-relaxed border-l-2 border-zinc-700 ml-2 py-0.5">
-                  {s.keluaran}
-                </pre>
-              )}
-            </div>
-          ))}
-          {running && (
-            <div className="text-zinc-500 animate-pulse flex items-center gap-1 pt-1">
-              <span className="text-emerald-400">&gt;</span> Menjalankan instruksi di server VPS
-              <span className="animate-ping font-bold text-emerald-400">_</span>
-            </div>
-          )}
         </div>
       </div>
 

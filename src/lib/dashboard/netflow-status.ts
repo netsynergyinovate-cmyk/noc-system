@@ -1,6 +1,7 @@
 // captured_at = AWAL bucket 5 menit dan hanya bucket selesai yang di-flush tiap menit,
 // jadi sampel terbaru collector sehat berumur ~5-11 menit; 15 menit memberi ruang flush terlambat.
 export const NETFLOW_FRESH_MS = 15 * 60 * 1000;
+export const NETFLOW_ACTIVE_WINDOW_MS = NETFLOW_FRESH_MS;
 
 export interface NetflowStatus {
   isDemo: boolean;

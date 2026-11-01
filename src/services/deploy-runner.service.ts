@@ -695,6 +695,7 @@ export async function executeDeployRun(
     const step8 = await addStep(8, "Restart Layanan systemd", "berjalan");
     const step8Log = makeStepLogger(step8.id, `$ sudo -n systemctl restart noc-web noc-backend\n`);
     const restartCmd = [
+      `if [ -f /srv/noc/shared/.env ]; then sudo -n sed -i -E 's/^PORT=8080/PORT=3000/' /srv/noc/shared/.env 2>/dev/null || true; fi`,
       `if [ -d "${releasePath}/systemd" ]; then sudo -n cp -f "${releasePath}/systemd/"*.service /etc/systemd/system/ 2>/dev/null && sudo -n systemctl daemon-reload || true; fi`,
       `sudo -n systemctl restart noc-web noc-backend`,
     ].join(" && ");

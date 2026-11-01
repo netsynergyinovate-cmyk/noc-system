@@ -13,7 +13,7 @@ Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=HOSTNAME=0.0.0.0
 Environment=DEPLOY_PAGE_ROLE=server
-ExecStart=/usr/bin/node /srv/noc/current/server.js
+ExecStart=/usr/bin/env PORT=3000 /usr/bin/node /srv/noc/current/server.js
 Restart=always
 RestartSec=5s
 LimitNOFILE=65536

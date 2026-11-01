@@ -142,12 +142,17 @@ async function cmdInstall() {
   log("2. Menyiapkan environment di /srv/noc/shared/.env...");
   const targetEnv = "/srv/noc/shared/.env";
   const genMonitorToken = crypto.randomBytes(24).toString("hex");
+  const hasValidMonitorToken = (text) => /^MONITOR_TOKEN=[^<\s]\S*/m.test(text);
   if (!fs.existsSync(targetEnv)) {
     const templatePath = path.join(REPO_ROOT, ".env.server.example");
     if (fs.existsSync(templatePath)) {
       let content = fs.readFileSync(templatePath, "utf-8");
-      if (!content.includes("MONITOR_TOKEN=")) {
-        content += `\nMONITOR_TOKEN=${genMonitorToken}\n`;
+      if (!hasValidMonitorToken(content)) {
+        if (/^MONITOR_TOKEN=.*$/m.test(content)) {
+          content = content.replace(/^MONITOR_TOKEN=.*$/m, `MONITOR_TOKEN=${genMonitorToken}`);
+        } else {
+          content += `\nMONITOR_TOKEN=${genMonitorToken}\n`;
+        }
       }
       fs.writeFileSync(targetEnv, content, "utf-8");
       ok(`Disalin dari .env.server.example ke ${targetEnv}`);
@@ -170,9 +175,14 @@ async function cmdInstall() {
     }
     warn(`PENTING: Periksa dan lengkapi rahasia di ${targetEnv} sebelum rilis.`);
   } else {
-    const curEnv = fs.readFileSync(targetEnv, "utf-8");
-    if (!curEnv.includes("MONITOR_TOKEN=")) {
-      fs.appendFileSync(targetEnv, `\nMONITOR_TOKEN=${genMonitorToken}\n`, "utf-8");
+    let curEnv = fs.readFileSync(targetEnv, "utf-8");
+    if (!hasValidMonitorToken(curEnv)) {
+      if (/^MONITOR_TOKEN=.*$/m.test(curEnv)) {
+        curEnv = curEnv.replace(/^MONITOR_TOKEN=.*$/m, `MONITOR_TOKEN=${genMonitorToken}`);
+        fs.writeFileSync(targetEnv, curEnv, "utf-8");
+      } else {
+        fs.appendFileSync(targetEnv, `\nMONITOR_TOKEN=${genMonitorToken}\n`, "utf-8");
+      }
       ok(`MONITOR_TOKEN baru ditambahkan ke ${targetEnv}`);
     }
     ok(`Berkas ${targetEnv} sudah ada.`);

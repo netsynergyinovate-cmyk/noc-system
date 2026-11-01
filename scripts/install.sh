@@ -117,9 +117,13 @@ sudo -u "${SUDO_USER_NAME}" npm ci
 # Buat MONITOR_TOKEN acak jika belum ada di /srv/noc/shared/.env
 SHARED_ENV="/srv/noc/shared/.env"
 if [ -f "${SHARED_ENV}" ]; then
-  if ! grep -q "^MONITOR_TOKEN=" "${SHARED_ENV}"; then
+  if ! grep -qE "^MONITOR_TOKEN=[^<\s]+" "${SHARED_ENV}"; then
     GENERATED_TOKEN=$(openssl rand -hex 24)
-    echo "MONITOR_TOKEN=${GENERATED_TOKEN}" >> "${SHARED_ENV}"
+    if grep -q "^MONITOR_TOKEN=" "${SHARED_ENV}"; then
+      sed -i -E "s|^MONITOR_TOKEN=.*|MONITOR_TOKEN=${GENERATED_TOKEN}|" "${SHARED_ENV}"
+    else
+      echo "MONITOR_TOKEN=${GENERATED_TOKEN}" >> "${SHARED_ENV}"
+    fi
   fi
 fi
 

@@ -135,7 +135,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
   const [writeGuardLogs, setWriteGuardLogs] = useState<DeployWriteGuardLog[]>([]);
 
   // HTTP Server Monitor State (tanpa SSH)
-  const [serverUrl, setServerUrl] = useState("http://localhost:3000");
+  const [serverUrl, setServerUrl] = useState(() => (target?.host ? `http://${target.host}:3000` : ""));
   const [monitorToken, setMonitorToken] = useState("");
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [serverData, setServerData] = useState<{
@@ -148,29 +148,45 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
     updatedAt?: string;
   } | null>(null);
 
-  async function fetchServerStatus() {
+  async function fetchServerStatus(url = serverUrl, token = monitorToken, showNotice = true) {
+    if (!url) return;
     setMonitoringLoading(true);
     try {
-      const q = new URLSearchParams({ url: serverUrl });
-      if (monitorToken) q.set("token", monitorToken);
+      const q = new URLSearchParams({ url });
+      if (token) q.set("token", token);
       const res = await fetch(`/api/deploy/proxy-status?${q.toString()}`);
       if (res.ok) {
         const json = await res.json();
         setServerData(json);
       } else {
         const errJson = await res.json().catch(() => null);
-        setNotice({ type: "error", msg: errJson?.error || `Server merespons status ${res.status}` });
+        if (showNotice) {
+          setNotice({ type: "error", msg: errJson?.error || `Server merespons status ${res.status}` });
+        }
       }
     } catch (err: unknown) {
-      setNotice({ type: "error", msg: `Gagal menghubungi server di ${serverUrl}: ${err instanceof Error ? err.message : String(err)}` });
+      if (showNotice) {
+        setNotice({ type: "error", msg: `Gagal menghubungi server di ${url}: ${err instanceof Error ? err.message : String(err)}` });
+      }
     } finally {
       setMonitoringLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchServerStatus();
-  }, []);
+    try {
+      const savedUrl = localStorage.getItem("noc_monitor_server_url");
+      const savedToken = localStorage.getItem("noc_monitor_token");
+      const effectiveUrl = savedUrl || (target?.host ? `http://${target.host}:3000` : "");
+      if (savedUrl) setServerUrl(savedUrl);
+      if (savedToken) setMonitorToken(savedToken);
+      if (effectiveUrl && savedToken) {
+        fetchServerStatus(effectiveUrl, savedToken, false);
+      }
+    } catch {
+      // ignore
+    }
+  }, [target?.host]);
   // Muat data pendukung saat mount
   useEffect(() => {
     loadSshMeta();
@@ -683,18 +699,26 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                   <Label className="text-xs text-muted-foreground">Alamat / Domain SERVER NATIVE:</Label>
                   <Input
                     value={serverUrl}
-                    onChange={(e) => setServerUrl(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setServerUrl(val);
+                      try { localStorage.setItem("noc_monitor_server_url", val); } catch {}
+                    }}
                     placeholder="http://192.168.1.100:3000 atau https://noc.domain.com"
                     className="text-xs font-mono h-8 bg-background mt-1"
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Token Monitor (Opsional):</Label>
+                  <Label className="text-xs text-muted-foreground">Token Monitor (Wajib untuk Server):</Label>
                   <Input
                     type="password"
                     value={monitorToken}
-                    onChange={(e) => setMonitorToken(e.target.value)}
-                    placeholder="Rahasia token monitor jika diatur di .env"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMonitorToken(val);
+                      try { localStorage.setItem("noc_monitor_token", val); } catch {}
+                    }}
+                    placeholder="Salin MONITOR_TOKEN dari /srv/noc/shared/.env"
                     className="text-xs font-mono h-8 bg-background mt-1"
                   />
                 </div>
@@ -705,7 +729,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                   size="sm"
                   className="text-xs h-8 gap-1.5"
                   disabled={monitoringLoading}
-                  onClick={fetchServerStatus}
+                  onClick={() => fetchServerStatus(serverUrl, monitorToken, true)}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${monitoringLoading ? "animate-spin" : ""}`} />
                   Perbarui Status Server

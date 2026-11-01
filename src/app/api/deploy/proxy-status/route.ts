@@ -20,7 +20,19 @@ export const GET = (request: NextRequest) => {
     }
 
     try {
-      const cleanUrl = targetUrl.replace(/\/+$/, "") + "/api/deploy/server-status";
+      let rawUrl = targetUrl.trim();
+      if (!/^https?:\/\//i.test(rawUrl)) {
+        rawUrl = `http://${rawUrl}`;
+      }
+      try {
+        const parsed = new URL(rawUrl);
+        if (!parsed.port && /^(\d{1,3}\.){3}\d{1,3}$/.test(parsed.hostname) && parsed.protocol === "http:") {
+          parsed.port = "3000";
+          rawUrl = parsed.origin + parsed.pathname;
+        }
+      } catch {}
+
+      const cleanUrl = rawUrl.replace(/\/+$/, "") + "/api/deploy/server-status";
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 6000);
 
@@ -53,8 +65,12 @@ export const GET = (request: NextRequest) => {
       return NextResponse.json(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      let hint = "";
+      if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed") || msg.includes("abort")) {
+        hint = " Pastikan Anda sudah menjalankan 'sudo noc-system deploy' di terminal server dan port 3000 tidak diblokir firewall.";
+      }
       return NextResponse.json(
-        { ok: false, error: `Gagal menghubungi server: ${msg}` },
+        { ok: false, error: `Gagal menghubungi server: ${msg}.${hint}` },
         { status: 502 },
       );
     }

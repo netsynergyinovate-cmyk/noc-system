@@ -223,18 +223,27 @@ fi
 
 CURRENT_TOKEN=$(grep -E "^MONITOR_TOKEN=" "${SHARED_ENV}" 2>/dev/null | cut -d= -f2- || echo "")
 
+# Deteksi IP Server untuk kemudahan input di /app/deploy
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+PUBLIC_IP=$(curl -s -m 2 https://api.ipify.org 2>/dev/null || echo "")
+DISPLAY_IP="${PUBLIC_IP:-${SERVER_IP:-127.0.0.1}}"
+
 echo -e "\n${GREEN}${BOLD}==========================================================${NC}"
 echo -e "${GREEN}${BOLD}✓ INSTALASI BOOTSTRAP NOC SYSTEM BERHASIL!${NC}"
 echo -e "${GREEN}${BOLD}==========================================================${NC}"
-echo -e "Perintah ${CYAN}noc-system${NC} kini siap digunakan dari direktori mana saja:"
-echo -e "  - ${BOLD}noc-system update${NC}    : Ambil kode terbaru dari git, build & rilis otomatis"
+echo -e "${YELLOW}${BOLD}LANGKAH BERIKUTNYA DI SERVER:${NC}"
+echo -e "Jalankan rilis dan build awal agar layanan web di port 3000 aktif:"
+echo -e "  ${CYAN}${BOLD}sudo noc-system deploy${NC}\n"
+echo -e "Perintah ${CYAN}noc-system${NC} siap digunakan kapan saja:"
 echo -e "  - ${BOLD}noc-system deploy${NC}    : Rilis versi saat ini (build + migrasi + restart)"
+echo -e "  - ${BOLD}noc-system update${NC}    : Ambil kode terbaru dari git, build & rilis otomatis"
 echo -e "  - ${BOLD}noc-system status${NC}    : Cek status versi, systemd, dan docker"
 echo -e "  - ${BOLD}noc-system rollback${NC}  : Kembali ke rilis sebelumnya jika ada bug"
 echo -e "  - ${BOLD}noc-system logs${NC}      : Pantau live log journalctl"
 if [ -n "${CURRENT_TOKEN}" ]; then
-  echo -e "\n${YELLOW}${BOLD}KUNCI PEMANTAU (MONITOR TOKEN):${NC}"
-  echo -e "${CYAN}${CURRENT_TOKEN}${NC}"
-  echo -e "${NC}Salin token di atas ke kolom 'Token Monitor' pada halaman /app/deploy untuk memantau server."
+  echo -e "\n${YELLOW}${BOLD}KREDENSIAL PEMANTAU REAL-TIME (DASHBOARD /app/deploy):${NC}"
+  echo -e "  ${BOLD}1. Alamat Server :${NC} ${GREEN}http://${DISPLAY_IP}:3000${NC} (gunakan ini jika belum ada domain)"
+  echo -e "  ${BOLD}2. Token Monitor :${NC} ${CYAN}${CURRENT_TOKEN}${NC}"
+  echo -e "\n${NC}Salin kedua nilai di atas ke tab 'CLI noc-system' pada halaman ${BOLD}/app/deploy${NC} setelah 'sudo noc-system deploy' selesai."
 fi
 echo ""

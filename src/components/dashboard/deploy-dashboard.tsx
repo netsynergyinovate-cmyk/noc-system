@@ -25,11 +25,13 @@ import {
   ShieldAlert,
   Copy,
   Check,
+  BookmarkPlus,
 } from "lucide-react";
 import type { DeployTarget } from "@/db/schema/deploy-targets";
 import type { NetworkDetectionResult } from "@/services/deploy-targets.service";
 import type { SshCredentialMeta } from "@/services/ssh-credentials.service";
 import type { DeployRun, DeployStep, DeployRelease, DeployWriteGuardLog } from "@/db/schema/deploy-runs";
+import { DeployUserMarkersTab } from "./deploy-user-markers-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +83,8 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
   const [keyModalOpen, setKeyModalOpen] = useState(false);
   const [sshKeyForm, setSshKeyForm] = useState({ privateKey: "", passphrase: "" });
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+  // Telemetri Tanda Fitur Pengguna
+  const [markersCount, setMarkersCount] = useState<number>(0);
 
   function copyToClipboard(text: string, id: string) {
     navigator.clipboard.writeText(text);
@@ -149,7 +153,15 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
   } | null>(null);
 
   async function fetchServerStatus(url = serverUrl, token = monitorToken, showNotice = true) {
-    if (!url) return;
+    if (!url) {
+      if (showNotice) {
+        setNotice({
+          type: "error",
+          msg: "Kolom 'Alamat / Domain SERVER NATIVE' belum diisi! Masukkan alamat IP server (contoh: http://103.x.x.x:3000) di samping Token Monitor.",
+        });
+      }
+      return;
+    }
     setMonitoringLoading(true);
     try {
       const q = new URLSearchParams({ url });
@@ -158,6 +170,9 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
       if (res.ok) {
         const json = await res.json();
         setServerData(json);
+        if (showNotice) {
+          setNotice({ type: "success", msg: "Status server native berhasil terbaca dan diperbarui." });
+        }
       } else {
         const errJson = await res.json().catch(() => null);
         if (showNotice) {
@@ -177,8 +192,13 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
     try {
       const savedUrl = localStorage.getItem("noc_monitor_server_url");
       const savedToken = localStorage.getItem("noc_monitor_token");
-      const effectiveUrl = savedUrl || (target?.host ? `http://${target.host}:3000` : "");
-      if (savedUrl) setServerUrl(savedUrl);
+      const fallbackUrl = target?.host ? `http://${target.host}:3000` : "";
+      const effectiveUrl = savedUrl || fallbackUrl;
+      if (savedUrl) {
+        setServerUrl(savedUrl);
+      } else if (fallbackUrl) {
+        setServerUrl(fallbackUrl);
+      }
       if (savedToken) setMonitorToken(savedToken);
       if (effectiveUrl && savedToken) {
         fetchServerStatus(effectiveUrl, savedToken, false);
@@ -653,7 +673,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
 
       {/* Tabs Menu Utama */}
       <Tabs defaultValue="cli" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 w-full">
           <TabsTrigger value="cli" className="text-xs gap-1.5 font-semibold text-primary">
             <Terminal className="h-3.5 w-3.5" /> CLI noc-system
           </TabsTrigger>
@@ -671,6 +691,9 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
           </TabsTrigger>
           <TabsTrigger value="access" className="text-xs gap-1.5">
             <ShieldAlert className="h-3.5 w-3.5" /> Penjaga Tulis
+          </TabsTrigger>
+          <TabsTrigger value="markers" className="text-xs gap-1.5 font-semibold text-purple-600 dark:text-purple-400">
+            <BookmarkPlus className="h-3.5 w-3.5" /> Tanda User {markersCount > 0 ? `(${markersCount})` : ""}
           </TabsTrigger>
         </TabsList>
 
@@ -704,9 +727,12 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                       setServerUrl(val);
                       try { localStorage.setItem("noc_monitor_server_url", val); } catch {}
                     }}
-                    placeholder="http://192.168.1.100:3000 atau https://noc.domain.com"
+                    placeholder="http://103.x.x.x:3000 atau https://noc.domain.com"
                     className="text-xs font-mono h-8 bg-background mt-1"
                   />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Gunakan IP VPS di port :3000 jika belum memasang domain (contoh: http://103.x.x.x:3000).
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Token Monitor (Wajib untuk Server):</Label>
@@ -718,9 +744,12 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                       setMonitorToken(val);
                       try { localStorage.setItem("noc_monitor_token", val); } catch {}
                     }}
-                    placeholder="Salin MONITOR_TOKEN dari /srv/noc/shared/.env"
+                    placeholder="Salin MONITOR_TOKEN dari terminal SSH / install.sh"
                     className="text-xs font-mono h-8 bg-background mt-1"
                   />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Token yang dicetak di terminal SSH saat install.sh selesai atau dari &apos;noc-system status&apos;.
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 self-end md:self-auto pt-2 md:pt-4">
@@ -1448,6 +1477,15 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        {/* TAB 7: Telemetri Tanda Fitur Pengguna */}
+        <TabsContent value="markers" className="mt-6 space-y-6">
+          <DeployUserMarkersTab
+            serverUrl={serverUrl}
+            monitorToken={monitorToken}
+            onCountChange={setMarkersCount}
+          />
         </TabsContent>
       </Tabs>
 

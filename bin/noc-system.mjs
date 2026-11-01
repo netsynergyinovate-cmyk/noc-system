@@ -659,6 +659,18 @@ async function cmdStatus() {
     console.log(`- Backend Health (:8080): ${beRes === "200" ? ANSI.green + "200 OK" : ANSI.red + beRes}${ANSI.reset}`);
   } catch {}
 
+  // 5. Info Pemantau (Dashboard /app/deploy)
+  const sharedEnvPath = "/srv/noc/shared/.env";
+  if (fs.existsSync(sharedEnvPath)) {
+    try {
+      const envText = fs.readFileSync(sharedEnvPath, "utf-8");
+      const tokenMatch = envText.match(/^MONITOR_TOKEN=(.+)$/m);
+      if (tokenMatch) {
+        console.log(`- Token Monitor:          ${ANSI.cyan}${tokenMatch[1].trim()}${ANSI.reset}`);
+      }
+    } catch {}
+  }
+
   console.log("=========================================\n");
 }
 

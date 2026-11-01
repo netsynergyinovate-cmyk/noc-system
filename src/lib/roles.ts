@@ -1,11 +1,10 @@
+export type { AppRole, Permissions } from "./permissions";
 import {
   DEFAULT_ROLE,
   roles,
   type AppRole,
   type Permissions,
 } from "./permissions";
-
-export type { AppRole, Permissions };
 
 // Membaca peran di sisi tampilan. Murni: tanpa React dan tanpa kode server,
 // jadi aman di browser dan bisa diuji langsung dari Node.

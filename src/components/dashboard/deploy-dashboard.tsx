@@ -828,12 +828,12 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 Jalankan perintah ini di server Ubuntu baru untuk memasang Docker, Node.js 22, Go Compiler, dan CLI noc-system otomatis:
               </p>
               <div className="mt-2 p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
-                <code className="break-all">curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/jrxx-dev/NOC-2/scripts/install.sh | sudo bash</code>
+                <code className="break-all">curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/feat/satellite-map-and-odp-routing/scripts/install.sh | sudo bash</code>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 ml-2"
-                  onClick={() => copyToClipboard("curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/jrxx-dev/NOC-2/scripts/install.sh | sudo bash", "bootstrap")}
+                  onClick={() => copyToClipboard("curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/feat/satellite-map-and-odp-routing/scripts/install.sh | sudo bash", "bootstrap")}
                 >
                   {copiedCmd === "bootstrap" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>

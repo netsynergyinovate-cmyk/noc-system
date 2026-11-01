@@ -46,6 +46,7 @@ export function roleCan(
 const labels: Partial<Record<AppRole, string>> = {
   superadmin: "Super Admin",
   admin: "Admin",
+  developer: "Developer",
   user: "Petugas",
 };
 // Dipakai bila daftar peran tidak memuat satu nama pun (mis. "," atau " ").
@@ -66,7 +67,7 @@ export function roleLabel(role: string | null | undefined): string {
 // `roles`. Urutannya tetap, dari hak terbanyak ke paling sedikit (admin lebih
 // dulu, lalu user); peran lain yang kelak ditambahkan menyusul sesuai urutan
 // deklarasinya di permissions.ts.
-const previewOrder: readonly string[] = ["superadmin", "admin", "user"];
+const previewOrder: readonly string[] = ["superadmin", "admin", "developer", "user"];
 export const previewableRoles: readonly AppRole[] = Object.freeze([
   ...previewOrder.filter(isDeclaredRole),
   ...(Object.keys(roles) as AppRole[]).filter(

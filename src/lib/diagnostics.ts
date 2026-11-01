@@ -13,6 +13,7 @@ export const diagnosticLayers = [
   { id: "optik", label: "Optik OLT/ONU", phase: 2 },
   { id: "ont", label: "ONT (TR-069)", phase: 2 },
   { id: "trafik", label: "Trafik & NetFlow", phase: 6 },
+  { id: "aktif", label: "Pengukuran aktif & baseline", phase: 7 },
   { id: "billing", label: "Billing & isolir", phase: 2 },
 ] as const;
 
@@ -65,6 +66,7 @@ export function unchecked(
   reason: string,
   sourceRef: string | null = null,
 ): Finding {
+  const detail = reason && reason.trim() ? reason : "alasan tidak dicatat";
   return {
     layer,
     metric,
@@ -73,7 +75,7 @@ export function unchecked(
     threshold: null,
     comparator: null,
     status: "unchecked",
-    detail: reason,
+    detail,
     sourceRef,
     sampledAt: null,
   };
@@ -108,7 +110,18 @@ export interface PppoeInput {
 }
 
 export function evaluatePppoe(input: PppoeInput): Finding {
-  const source = `Router ${input.routerName} · /ppp/active · ${fmtTime(input.readAt)}`;
+  const source = input
+    ? `Router ${input.routerName || "—"} · /ppp/active · ${fmtTime(input.readAt ?? new Date())}`
+    : "Router · /ppp/active";
+  if (!input || !input.username || !input.username.trim()) {
+    return unchecked(
+      "mikrotik",
+      "pppoe_active",
+      "Sesi PPPoE",
+      "Data username PPPoE tidak tersedia untuk diperiksa.",
+      source,
+    );
+  }
   if (input.error) {
     return unchecked(
       "mikrotik",
@@ -177,7 +190,7 @@ export function evaluateOptical(onu: OpticalInput | null, now: Date): Finding {
     layer: "optik" as const,
     metric: "onu_rx",
     label: "Rx ONU",
-    threshold: "-24 s.d. -8 dBm",
+    threshold: "> -26 s.d. -8 dBm",
     comparator: "dalam rentang",
     sourceRef: source,
     sampledAt: onu.capturedAt,
@@ -244,61 +257,302 @@ export function evaluateBilling(row: BillingInput | null): Finding {
   };
 }
 
-// Urutan penunjuk kesimpulan: billing paling murah dan paling pasti, lalu
-// gangguan hulu (bersama), lalu fisik ke logis. PPPoE putus karena LOS harus
-// menyalahkan optik, bukan MikroTik.
-// shortcut: aturan urutan sederhana, diganti rule engine penuh di Fase 8.
-const VERDICT_ORDER: DiagnosticLayer[] = [
-  "billing",
-  "hulu",
-  "optik",
-  "ont",
-  "mikrotik",
-  "firewall",
-  "log",
-  "trafik",
-];
+export type VerdictScope = "own" | "shared" | "unknown";
 
-export function pickVerdict(findings: Finding[]): {
+export interface ScopeEvidence {
+  // OTHER customers (this customer excluded), alerts of the policy window
+  router: { name: string; affected: number; served: number } | null;
+  // same PON port: ONUs with offline/optical alert vs ONUs on the port; null if customer has no ONU/PON
+  pon: { name: string; affected: number; served: number } | null;
+  windowMinutes: number;
+}
+
+export interface PreviousVerdict {
+  layer: DiagnosticLayer | null;
+  finishedAt: Date;
+}
+
+export interface VerdictRoot {
+  kind: "customer" | "odp" | "router" | "uplink";
+  name: string;
+  affected: number;
+  served: number;
+}
+
+export interface VerdictSecondary {
+  layer: DiagnosticLayer;
+  label: string;
+  status: FindingStatus;
+  value: string | null;
+  threshold: string | null;
+}
+
+export interface Verdict {
   layer: DiagnosticLayer | null;
   detail: string;
-} {
-  for (const status of ["fail", "warn"] as const) {
-    // Billing pasti hanya saat gagal (isolir/putus); peringatannya (tunggakan,
-    // pending) tidak menjelaskan lambat, jadi diperiksa paling akhir.
-    const order =
-      status === "fail"
-        ? VERDICT_ORDER
-        : [...VERDICT_ORDER.filter((l) => l !== "billing"), "billing" as const];
-    for (const layer of order) {
-      const f = findings.find((x) => x.layer === layer && x.status === status);
-      if (f) {
-        const numbers = f.value
-          ? ` ${f.value} (ambang ${[f.comparator, f.threshold].filter(Boolean).join(" ")})`
-          : "";
-        return {
-          layer,
-          detail: `${status === "fail" ? "Bermasalah" : "Peringatan"} di ${layerLabel(layer)}: ${f.label}${numbers}. ${f.detail}`,
-        };
+  scope: VerdictScope;
+  root: VerdictRoot | null;
+  secondary: VerdictSecondary[];
+  held: boolean;
+}
+
+export const SHARED_MIN_AFFECTED = 3;
+export const SHARED_MIN_RATIO = 0.2;
+export const SHARED_PON_RATIO = 0.3;
+export const VERDICT_HOLD_MS = 15 * 60_000;
+
+// Urutan sebab ke akibat (cause hierarchy):
+// fail: billing(0) > hulu(1) > optik(2) > ont(3) > mikrotik(4) > firewall(5) > log(6) > trafik(7) > aktif(8)
+// warn: hulu(1) > optik(2) > ont(3) > mikrotik(4) > firewall(5) > log(6) > trafik(7) > aktif(8) > billing(9)
+function layerRank(layer: DiagnosticLayer, status: FindingStatus): number {
+  if (status === "fail") {
+    switch (layer) {
+      case "billing":
+        return 0;
+      case "hulu":
+        return 1;
+      case "optik":
+        return 2;
+      case "ont":
+        return 3;
+      case "mikrotik":
+        return 4;
+      case "firewall":
+        return 5;
+      case "log":
+        return 6;
+      case "trafik":
+        return 7;
+      case "aktif":
+        return 8;
+    }
+  }
+  switch (layer) {
+    case "hulu":
+       return 1;
+    case "optik":
+      return 2;
+    case "ont":
+      return 3;
+    case "mikrotik":
+      return 4;
+    case "firewall":
+      return 5;
+    case "log":
+      return 6;
+    case "trafik":
+      return 7;
+    case "aktif":
+      return 8;
+    case "billing":
+      return 9;
+  }
+}
+
+function compareFindings(a: Finding, b: Finding): number {
+  if (a.status !== b.status) {
+    if (a.status === "fail") return -1;
+    if (b.status === "fail") return 1;
+  }
+  const diff = layerRank(a.layer, a.status) - layerRank(b.layer, b.status);
+  if (diff !== 0) return diff;
+  const metricDiff = (a.metric ?? "").localeCompare(b.metric ?? "");
+  if (metricDiff !== 0) return metricDiff;
+  return (a.label ?? "").localeCompare(b.label ?? "");
+}
+
+function compareSecondary(a: Finding, b: Finding): number {
+  const diff = layerRank(a.layer, a.status) - layerRank(b.layer, b.status);
+  if (diff !== 0) return diff;
+  if (a.status !== b.status) {
+    if (a.status === "fail") return -1;
+    if (b.status === "fail") return 1;
+  }
+  const metricDiff = (a.metric ?? "").localeCompare(b.metric ?? "");
+  if (metricDiff !== 0) return metricDiff;
+  return (a.label ?? "").localeCompare(b.label ?? "");
+}
+
+export function decideVerdict(
+  findings: Finding[],
+  evidence: ScopeEvidence,
+  previous: PreviousVerdict | null,
+  now: Date,
+): Verdict {
+  const nonOk = findings.filter(
+    (f) => f.status === "fail" || f.status === "warn",
+  );
+
+  if (nonOk.length === 0) {
+    const checked = new Set(
+      findings.filter((f) => f.status !== "unchecked").map((f) => f.layer),
+    );
+    const blind = diagnosticLayers.filter((l) => !checked.has(l.id)).length;
+    return {
+      layer: null,
+      detail:
+        checked.size === 0
+          ? "Tidak ada lapisan yang dapat diperiksa; belum ada kesimpulan."
+          : blind > 0
+            ? `Tidak ada temuan bermasalah pada ${checked.size} lapisan yang diperiksa; ${blind} lapisan tidak dapat diperiksa, jadi kesimpulan belum lengkap.`
+            : "Semua lapisan normal.",
+      scope: evidence.router !== null ? "own" : "unknown",
+      root: null,
+      secondary: [],
+      held: false,
+    };
+  }
+
+  // Input-order independence via deterministic sort
+  nonOk.sort(compareFindings);
+
+  const candidateFinding = nonOk[0];
+  const C = candidateFinding.layer;
+
+  // Anti-flapping: tahan kesimpulan sebelumnya jika dalam jendela dan masih bermasalah,
+  // kecuali kandidat baru adalah fail sedangkan lapisan lama hanya warn.
+  const isWithinHold =
+    previous !== null &&
+    previous.layer !== null &&
+    previous.finishedAt instanceof Date &&
+    !Number.isNaN(previous.finishedAt.getTime()) &&
+    now.getTime() - previous.finishedAt.getTime() >= 0 &&
+    now.getTime() - previous.finishedAt.getTime() <= VERDICT_HOLD_MS;
+
+  const P = isWithinHold ? previous.layer : null;
+
+  let chosenFinding = candidateFinding;
+  let held = false;
+
+  if (P !== null && C !== P) {
+    const pFindings = nonOk.filter((f) => f.layer === P);
+    if (pFindings.length > 0) {
+      const pWorst = pFindings[0];
+      const candidateIsFailAndPWarn =
+        candidateFinding.status === "fail" && pWorst.status === "warn";
+      if (!candidateIsFailAndPWarn) {
+        chosenFinding = pWorst;
+        held = true;
       }
     }
   }
-  const checked = new Set(
-    findings.filter((f) => f.status !== "unchecked").map((f) => f.layer),
-  );
-  const blind = diagnosticLayers.filter((l) => !checked.has(l.id)).length;
-  if (checked.size === 0) {
-    return {
-      layer: null,
-      detail: "Tidak ada lapisan yang dapat diperiksa; belum ada kesimpulan.",
+
+  const otherFindings = nonOk.filter((f) => f !== chosenFinding);
+  otherFindings.sort(compareSecondary);
+  // shortcut: dibatasi 6 temuan sekunder teratas agar ringkasan padat, upgrade jika UI butuh pagination riwayat temuan lengkap.
+  const secondary: VerdictSecondary[] = otherFindings.slice(0, 6).map((f) => ({
+    layer: f.layer,
+    label: f.label,
+    status: f.status,
+    value: f.value,
+    threshold: f.threshold,
+  }));
+
+  // Cakupan gangguan & incident-root
+  let scope: VerdictScope;
+  let root: VerdictRoot | null = null;
+
+  const routerMet =
+    evidence.router !== null &&
+    evidence.router.affected >= SHARED_MIN_AFFECTED &&
+    evidence.router.served > 0 &&
+    evidence.router.affected / evidence.router.served >= SHARED_MIN_RATIO;
+
+  const ponMet =
+    evidence.pon !== null &&
+    evidence.pon.affected >= SHARED_MIN_AFFECTED &&
+    evidence.pon.served > 0 &&
+    evidence.pon.affected / evidence.pon.served >= SHARED_PON_RATIO;
+
+  if (chosenFinding.layer === "billing" && chosenFinding.status === "fail") {
+    // Isolir / kegagalan billing selalu ranah pelanggan sendiri
+    scope = "own";
+    // shortcut: nama pelanggan dikosongkan pada fungsi murni ini, diisi oleh service dari data pelanggan.
+    root = { kind: "customer", name: "", affected: 1, served: 1 };
+  } else if (chosenFinding.layer === "hulu") {
+    // Hulu bermasalah selalu gangguan bersama (uplink router)
+    scope = "shared";
+    root = {
+      kind: "uplink",
+      name: evidence.router?.name ?? "",
+      affected: evidence.router?.affected ?? 0,
+      served: evidence.router?.served ?? 0,
     };
+  } else if (ponMet) {
+    scope = "shared";
+    root = {
+      kind: "odp",
+      name: evidence.pon!.name,
+      affected: evidence.pon!.affected,
+      served: evidence.pon!.served,
+    };
+  } else if (routerMet) {
+    scope = "shared";
+    root = {
+      kind: "router",
+      name: evidence.router!.name,
+      affected: evidence.router!.affected,
+      served: evidence.router!.served,
+    };
+  } else if (evidence.router !== null) {
+    scope = "own";
+    // shortcut: nama pelanggan dikosongkan pada fungsi murni ini, diisi oleh service dari data pelanggan.
+    root = { kind: "customer", name: "", affected: 1, served: 1 };
+  } else {
+    scope = "unknown";
+    root = null;
   }
+
+  // Penyusunan teks detail deterministik
+  let scopePrefix = "";
+  if (scope === "shared") {
+    if (chosenFinding.layer === "hulu") {
+      scopePrefix = "Gangguan bersama: ";
+    } else if (root !== null) {
+      const target =
+        root.kind === "odp" ? `PON ${root.name}` : `router ${root.name}`;
+      scopePrefix = `Gangguan bersama: ${root.affected} dari ${root.served} pelanggan di ${target} terdampak; temuan lokal kemungkinan akibat gangguan bersama. `;
+    }
+  } else if (scope === "unknown") {
+    scopePrefix =
+      "Cakupan gangguan tidak diketahui (bukti router tidak tersedia): ";
+  }
+
+  const thresh = [chosenFinding.comparator, chosenFinding.threshold]
+    .filter(Boolean)
+    .join(" ");
+  let numbers = "";
+  if (chosenFinding.value && thresh) {
+    numbers = ` ${chosenFinding.value} (ambang ${thresh})`;
+  } else if (chosenFinding.value) {
+    numbers = ` ${chosenFinding.value}`;
+  } else if (thresh) {
+    numbers = ` (ambang ${thresh})`;
+  }
+
+  const statusWord =
+    chosenFinding.status === "fail" ? "Bermasalah" : "Peringatan";
+  const findingPart = `${statusWord} di ${layerLabel(chosenFinding.layer)}: ${chosenFinding.label}${numbers}.${chosenFinding.detail ? ` ${chosenFinding.detail}` : ""}`;
+
+  let secondaryPart = "";
+  if (secondary.length > 0) {
+    const layers = [...new Set(secondary.map((s) => s.layer))].join(", ");
+    secondaryPart = ` Temuan terkait: ${layers}.`;
+  }
+
+  const heldPart = held
+    ? " Kesimpulan dipertahankan dari diagnosa sebelumnya (anti-flapping)."
+    : "";
+
+  const detail = `${scopePrefix}${findingPart}${secondaryPart}${heldPart}`;
+
   return {
-    layer: null,
-    detail:
-      blind > 0
-        ? `Tidak ada temuan bermasalah pada ${checked.size} lapisan yang diperiksa; ${blind} lapisan tidak dapat diperiksa, jadi kesimpulan belum lengkap.`
-        : "Semua lapisan normal.",
+    layer: chosenFinding.layer,
+    detail,
+    scope,
+    root,
+    secondary,
+    held,
   };
 }
 
@@ -436,6 +690,10 @@ export interface DiagnosticRunDto {
   verdictLayer: string | null;
   verdictDetail: string | null;
   isSharedFault: boolean;
+  verdictScope: VerdictScope | null;
+  verdictRoot: VerdictRoot | null;
+  verdictSecondary: VerdictSecondary[];
+  verdictHeld: boolean;
   complaintAt: string | null;
   timeline: {
     at: string;
@@ -726,6 +984,15 @@ export function evaluateIpConflict(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!ip || !ip.trim()) {
+    return unchecked(
+      "mikrotik",
+      "ip_conflict",
+      "Bentrok alamat (ARP/DHCP)",
+      "Alamat IP pelanggan tidak tersedia untuk diperiksa.",
+      sourceRef,
+    );
+  }
   const others = [
     ...arp
       .filter((a) => a.interface !== pppInterface)
@@ -803,6 +1070,15 @@ export function evaluateAddressLists(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!ip || !ip.trim()) {
+    return unchecked(
+      "firewall",
+      "address_list",
+      "Address-list yang memuat IP pelanggan",
+      "Alamat IP pelanggan tidak tersedia untuk diperiksa.",
+      sourceRef,
+    );
+  }
   return {
     layer: "firewall",
     metric: "address_list",
@@ -967,16 +1243,26 @@ export function evaluateOnt(
               : "Modem tidak baru restart.",
         },
   );
-  out.push({
-    ...base,
-    metric: "ont_hosts",
-    label: "Perangkat terhubung ke modem",
-    value: `${ont.activeClients} perangkat`,
-    threshold: null,
-    comparator: null,
-    status: "ok",
-    detail: "Konteks: semua perangkat aktif berbagi kecepatan paket yang sama.",
-  });
+  out.push(
+    ont.activeClients === null || ont.activeClients === undefined
+      ? unchecked(
+          "ont",
+          "ont_hosts",
+          "Perangkat terhubung ke modem",
+          "Modem tidak melaporkan jumlah perangkat terhubung.",
+          sourceRef,
+        )
+      : {
+          ...base,
+          metric: "ont_hosts",
+          label: "Perangkat terhubung ke modem",
+          value: `${ont.activeClients} perangkat`,
+          threshold: null,
+          comparator: null,
+          status: "ok",
+          detail: "Konteks: semua perangkat aktif berbagi kecepatan paket yang sama.",
+        },
+  );
   if (ont.rxDbm === null) {
     out.push(
       unchecked(
@@ -1024,6 +1310,15 @@ export interface RunsnetInput {
 }
 
 export function evaluateRunsnetStatus(c: RunsnetInput): Finding {
+  if (!c || !c.status || !c.status.trim()) {
+    return unchecked(
+      "billing",
+      "billing_status",
+      "Status layanan di billing",
+      "Data status layanan di billing tidak tersedia.",
+      c?.custId ? `RunsNet · ID ${c.custId}` : "billing",
+    );
+  }
   const s = c.status.toLowerCase();
   return {
     layer: "billing",
@@ -1056,6 +1351,24 @@ export function evaluateArrears(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!invoices) {
+    return unchecked(
+      "billing",
+      "arrears",
+      "Tagihan lewat jatuh tempo",
+      "Data tagihan tidak tersedia.",
+      sourceRef,
+    );
+  }
+  if (!today || !today.trim()) {
+    return unchecked(
+      "billing",
+      "arrears",
+      "Tagihan lewat jatuh tempo",
+      "Tanggal hari ini tidak diberikan.",
+      sourceRef,
+    );
+  }
   const overdue = invoices.filter(
     (i) =>
       i.status !== "paid" &&
@@ -1812,6 +2125,15 @@ export function evaluateSrcNat(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!ip || !ip.trim()) {
+    return unchecked(
+      "firewall",
+      "nat_src",
+      "NAT keluar (masquerade/src-nat)",
+      "Alamat IP pelanggan tidak tersedia untuk memeriksa NAT.",
+      sourceRef,
+    );
+  }
   const nat = hits.filter(
     (h) =>
       h.table === "nat" &&
@@ -1854,6 +2176,15 @@ export function evaluatePortForward(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!ip || !ip.trim()) {
+    return unchecked(
+      "firewall",
+      "nat_dst",
+      "Port forward & redirect ke pelanggan",
+      "Alamat IP pelanggan tidak tersedia untuk memeriksa port forward.",
+      sourceRef,
+    );
+  }
   const forwards = hits.filter(
     (h) =>
       h.table === "nat" &&
@@ -1959,6 +2290,15 @@ export function evaluateCustomerConnections(
   sourceRef: string,
   sampledAt: Date,
 ): Finding {
+  if (!outbound && !inbound && !tracking) {
+    return unchecked(
+      "firewall",
+      "conntrack_customer",
+      "Koneksi pelanggan di connection tracking",
+      "Data connection tracking tidak tersedia.",
+      sourceRef,
+    );
+  }
   if (tracking && tracking.enabled === "no") {
     return {
       layer: "firewall",
@@ -2217,6 +2557,15 @@ export function evaluatePing(
     kind === "gateway"
       ? `Kualitas ke hop ISP (${target})`
       : `Kualitas ke internet (${target})`;
+  if (!rows || rows.length === 0) {
+    return unchecked(
+      "hulu",
+      metric,
+      label,
+      "Ping dari router tidak menghasilkan data.",
+      sourceRef,
+    );
+  }
   const last = rows[rows.length - 1];
   const sent = n(last?.sent);
   const received = n(last?.received);
@@ -2450,4 +2799,834 @@ export function evaluateIpv6(
         ? "Pelanggan mendapat prefix IPv6."
         : "IPv6 dilayankan tetapi pelanggan tidak mendapat prefix (DHCPv6-PD): sebagian aplikasi bisa gagal di jalur IPv6.",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 6: trafik & NetFlow per pelanggan.
+// ---------------------------------------------------------------------------
+
+// Rata-rata saat keluhan di bawah ini x kebiasaan = penurunan; di atas = lonjakan.
+export const TRAFFIC_DROP_RATIO = 0.5;
+export const TRAFFIC_SPIKE_RATIO = 3;
+// Satu tujuan memakan sebagian besar trafik = tersedot (unduhan besar, update, seeding).
+export const PEER_DOMINANT_PCT = 80;
+// Unggah melebihi separuh total = unggahan dominan.
+export const UPLOAD_DOMINANT_PCT = 50;
+// Banyak lawan kecil: porsi "lainnya" besar dengan flow banyak = pola P2P.
+export const MANY_PEERS_SHARE_PCT = 60;
+export const MANY_PEERS_FLOWS = 500;
+
+export interface TrafficTrendInput {
+  // Rata-rata unduh/unggah (Mbps) ±30 menit di sekitar keluhan dan puncaknya.
+  windowDown: number | null;
+  windowUp: number | null;
+  windowPeakDown: number | null;
+  windowPeakUp?: number | null;
+  buckets: number;
+  // Kebiasaan pada jam yang sama (±1 jam WIB) selama 7 hari sebelumnya:
+  // pemakaian malam yang rendah bukan penurunan. Beda dengan customerDayMbps
+  // Fase 5 (rata-rata 24 jam untuk membandingkan saat uplink jenuh).
+  baselineDown: number | null;
+  plan?: PlanLimits | null;
+}
+
+// Kebiasaan di bawah ini terlalu kecil untuk menilai penurunan.
+export const TRAFFIC_MIN_BASELINE_MBPS = 1;
+
+export function evaluateTrafficTrend(
+  t: TrafficTrendInput,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const label = "Tren trafik pelanggan";
+  if (!t || !t.buckets || t.windowDown === null) {
+    return unchecked(
+      "trafik",
+      "traffic_trend",
+      label,
+      "Belum ada arsip trafik pelanggan di sekitar waktu keluhan (pelanggan offline atau queue tidak dipoll).",
+      sourceRef,
+    );
+  }
+  const minBaseline = trafficMinBaselineMbps(t.plan);
+  const base = t.baselineDown;
+  const ratio = base ? t.windowDown / base : null;
+  // Penurunan hanya bermakna bila jam ini biasanya ramai.
+  const meaningfulDrop =
+    ratio !== null &&
+    ratio < TRAFFIC_DROP_RATIO &&
+    (base ?? 0) >= minBaseline;
+  const spike = ratio !== null && ratio > TRAFFIC_SPIKE_RATIO;
+  const status: FindingStatus = meaningfulDrop || spike ? "warn" : "ok";
+  const planStr =
+    t.plan?.downMbps != null
+      ? `; paket ${t.plan.downMbps}/${t.plan.upMbps ?? "—"} Mbps`
+      : "";
+  const planThresh =
+    t.plan?.downMbps != null
+      ? ` (paket ${t.plan.downMbps}/${t.plan.upMbps ?? "—"} Mbps)`
+      : "";
+  return {
+    layer: "trafik",
+    metric: "traffic_trend",
+    label,
+    value: `unduh ${t.windowDown.toFixed(1)} Mbps, unggah ${(t.windowUp ?? 0).toFixed(1)} Mbps (puncak ${(t.windowPeakDown ?? 0).toFixed(1)}) ±30 mnt; kebiasaan jam ini 7 hari ${base === null ? "—" : `${base.toFixed(1)} Mbps`}${planStr}`,
+    threshold: `${TRAFFIC_DROP_RATIO * 100}%–${TRAFFIC_SPIKE_RATIO * 100}% kebiasaan${planThresh}`,
+    comparator: "dalam rentang",
+    status,
+    detail:
+      ratio === null
+        ? "Belum ada kebiasaan pada jam ini untuk dibandingkan."
+        : ratio < TRAFFIC_DROP_RATIO && !meaningfulDrop
+          ? `Trafik rendah, tetapi pada jam ini pelanggan memang biasa memakai di bawah ${minBaseline} Mbps.`
+          : ratio < TRAFFIC_DROP_RATIO
+            ? `Trafik turun ke ${Math.round(ratio * 100)}% dari kebiasaannya: layanan terhambat atau perangkat jarang dipakai.`
+            : ratio > TRAFFIC_SPIKE_RATIO
+              ? `Trafik melonjak ${ratio.toFixed(1)}× kebiasaannya: unduhan besar/streaming atau perangkat baru yang menghabiskan kecepatan.`
+              : "Trafik sesuai kebiasaannya.",
+    sourceRef,
+    sampledAt,
+  };
+}
+
+export interface FlowRow {
+  direction: string;
+  srcIp: string;
+  dstIp: string;
+  dstPort: number;
+  protocol: string;
+  bytes: number;
+  flows: number;
+}
+
+const fmtBytes = (b: number) =>
+  b >= 1e9
+    ? `${(b / 1e9).toFixed(2)} GB`
+    : b >= 1e6
+      ? `${(b / 1e6).toFixed(1)} MB`
+      : `${(b / 1e3).toFixed(0)} KB`;
+
+// Lawan aliran: tujuan untuk unggah, sumber untuk unduh (dst_port = port layanan).
+const peerOf = (r: FlowRow) =>
+  `${r.direction === "up" ? r.dstIp : r.srcIp}:${r.dstPort} ${r.protocol}`;
+
+export function evaluateFlows(
+  rows: FlowRow[],
+  sourceRef: string,
+  sampledAt: Date,
+  plan?: (PlanLimits & { peakUpMbps?: number | null }) | null,
+): Finding[] {
+  if (!rows || !rows.length) {
+    return [
+      unchecked(
+        "trafik",
+        "netflow_top",
+        "Tujuan & protokol (NetFlow)",
+        "NetFlow mengalir, tetapi tidak ada data aliran pelanggan ini di sekitar keluhan. Kemungkinan: pelanggan offline, IP sesi belum terpetakan (hanya PPPoE IPv4), atau bucket 5 menit yang sedang berjalan belum disimpan (data baru muncul ~6 menit kemudian). Data NetFlow berupa agregat 10 lawan teratas, bukan flow mentah.",
+        sourceRef,
+      ),
+    ];
+  }
+  const total = rows.reduce((s, r) => s + r.bytes, 0);
+  const up = rows
+    .filter((r) => r.direction === "up")
+    .reduce((s, r) => s + r.bytes, 0);
+  const others = rows.filter((r) => r.protocol === "lainnya");
+  const othersBytes = others.reduce((s, r) => s + r.bytes, 0);
+  const othersFlows = others.reduce((s, r) => s + r.flows, 0);
+  const peers = new Map<string, number>();
+  for (const r of rows)
+    if (r.protocol !== "lainnya")
+      peers.set(peerOf(r), (peers.get(peerOf(r)) ?? 0) + r.bytes);
+  const top = [...peers].sort((a, b) => b[1] - a[1]);
+  const share = (b: number) => (total ? Math.round((b / total) * 100) : 0);
+  const topShare = top.length ? share(top[0][1]) : 0;
+  const upShare = share(up);
+  const othersShare = share(othersBytes);
+  const base = { layer: "trafik" as const, sourceRef, sampledAt };
+
+  const planUp = plan?.upMbps;
+  const planDown = plan?.downMbps;
+  const peakUp = plan?.peakUpMbps;
+  const hasPlanUp = planUp != null && planUp > 0;
+  const planStr = hasPlanUp ? `paket ${planDown ?? "—"}/${planUp} Mbps` : "";
+
+  let directionStatus: FindingStatus;
+  let directionThreshold: string;
+  let directionValue: string;
+  let directionDetail: string;
+
+  if (hasPlanUp) {
+    if (peakUp != null) {
+      const nearLimit = peakUp >= (planUp * UPLOAD_NEAR_PLAN_PCT) / 100;
+      directionStatus = upShare >= UPLOAD_DOMINANT_PCT && nearLimit ? "warn" : "ok";
+      directionThreshold = `puncak unggah < ${UPLOAD_NEAR_PLAN_PCT}% paket (${((planUp * UPLOAD_NEAR_PLAN_PCT) / 100).toFixed(1)} Mbps)`;
+      directionValue = `unggah ${fmtBytes(up)} (${upShare}%), unduh ${fmtBytes(total - up)} (${100 - upShare}%); puncak unggah ${peakUp.toFixed(1)} Mbps; ${planStr}`;
+      directionDetail =
+        directionStatus === "warn"
+          ? `Unggahan dominan (${upShare}%) dan puncak unggah (${peakUp.toFixed(1)} Mbps) mendekati batas paket ${planUp} Mbps: saluran unggah jenuh dapat memperlambat seluruh koneksi.`
+          : upShare >= UPLOAD_DOMINANT_PCT
+            ? `Unggahan dominan (${upShare}%), tetapi puncak unggah (${peakUp.toFixed(1)} Mbps) masih di bawah batas paket ${planUp} Mbps.`
+            : "Pola wajar: unduh lebih besar daripada unggah.";
+    } else {
+      directionStatus = upShare >= UPLOAD_DOMINANT_PCT ? "warn" : "ok";
+      directionThreshold = `unggah < ${UPLOAD_DOMINANT_PCT}% (${planStr})`;
+      directionValue = `unggah ${fmtBytes(up)} (${upShare}%), unduh ${fmtBytes(total - up)} (${100 - upShare}%); ${planStr}`;
+      directionDetail =
+        directionStatus === "warn"
+          ? `Unggahan dominan (CCTV, backup, seeding), batas paket ${planUp} Mbps: bila batas unggah terlampaui, semua koneksi bisa terasa lambat.`
+          : "Pola wajar: unduh lebih besar daripada unggah.";
+    }
+  } else {
+    directionStatus = upShare >= UPLOAD_DOMINANT_PCT ? "warn" : "ok";
+    directionThreshold = `unggah < ${UPLOAD_DOMINANT_PCT}%`;
+    directionValue = `unggah ${fmtBytes(up)} (${upShare}%), unduh ${fmtBytes(total - up)} (${100 - upShare}%)`;
+    directionDetail =
+      directionStatus === "warn"
+        ? "Unggahan dominan (CCTV, backup, seeding), belum dibandingkan dengan batas unggah paket: bila batas unggah terlampaui, semua koneksi bisa terasa lambat."
+        : "Pola wajar: unduh lebih besar daripada unggah.";
+  }
+
+  return [
+    {
+      ...base,
+      metric: "netflow_top",
+      label: "Tujuan teratas (NetFlow)",
+      value: `${fmtBytes(total)} total; ${
+        top
+          .slice(0, 3)
+          .map(([p, b]) => `${p} ${fmtBytes(b)} (${share(b)}%)`)
+          .join(", ") || "—"
+      }`,
+      threshold: `satu tujuan < ${PEER_DOMINANT_PCT}%`,
+      comparator: "",
+      status: topShare >= PEER_DOMINANT_PCT ? "warn" : "ok",
+      detail:
+        topShare >= PEER_DOMINANT_PCT
+          ? `Trafik tersedot ke satu tujuan (${top[0][0]}, ${topShare}%): unduhan/unggahan besar, pembaruan aplikasi, atau backup yang memakan kecepatan.`
+          : "Trafik tersebar ke beberapa tujuan.",
+    },
+    {
+      ...base,
+      metric: "netflow_direction",
+      label: "Arah trafik (unggah vs unduh)",
+      value: directionValue,
+      threshold: directionThreshold,
+      comparator: "",
+      status: directionStatus,
+      detail: directionDetail,
+    },
+    {
+      ...base,
+      metric: "netflow_peers",
+      label: "Banyak lawan kecil (pola P2P)",
+      value: `${othersShare}% trafik di luar 10 lawan terbesar, ${othersFlows} flow`,
+      threshold: `< ${MANY_PEERS_SHARE_PCT}% atau < ${MANY_PEERS_FLOWS} flow`,
+      comparator: "",
+      status:
+        othersShare >= MANY_PEERS_SHARE_PCT && othersFlows >= MANY_PEERS_FLOWS
+          ? "warn"
+          : "ok",
+      detail:
+        othersShare >= MANY_PEERS_SHARE_PCT && othersFlows >= MANY_PEERS_FLOWS
+          ? "Trafik tersebar ke sangat banyak lawan kecil: menyerupai pola P2P/torrent atau perangkat terinfeksi (indikasi heuristik, bukan bukti)."
+          : "Tidak tampak pola P2P.",
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Fase 7: Pengukuran aktif & baseline historis.
+// ---------------------------------------------------------------------------
+
+export const ACTIVE_PING_LOSS_WARN = 2;
+export const ACTIVE_PING_LOSS_FAIL = 10;
+export const ACTIVE_RTT_WARN_MS = 80;
+export const TRACE_HOP_LOSS_WARN = 20;
+export const RATE_SATURATION_PCT = 90;
+export const RATE_UNUSED_PCT = 30;
+export const RATE_BASELINE_MIN_BUCKETS = 24;
+export const DNS_PROBE_NAME = "google.com";
+
+export interface PingStats {
+  sent: number;
+  received: number;
+  avgMs: number | null;
+  maxMs: number | null;
+  jitterMs: number | null;
+}
+
+export interface TraceHop {
+  hop: number;
+  address: string | null;
+  lossPct: number;
+  avgMs: number | null;
+}
+
+export interface DnsProbe {
+  name: string;
+  resolved: boolean;
+  ms: number | null;
+  error: string | null;
+}
+
+export interface RateBaselineInput {
+  currentDown: number | null;
+  currentUp: number | null;
+  currentPeakDown: number | null;
+  p95Down: number | null;
+  p95Up: number | null;
+  buckets: number;
+  limitDown: number | null;
+  limitUp: number | null;
+}
+
+// shortcut: ambang RTT global 80 ms, perbaikan per-paket di Fase 9.
+export function evaluateCustomerPing(
+  address: string | null,
+  p: PingStats | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const metric = "ping_customer";
+  if (!address) {
+    return unchecked(
+      "aktif",
+      metric,
+      "Ping ke pelanggan",
+      "Pelanggan tidak memiliki alamat IP aktif (sesi PPPoE terputus).",
+      sourceRef,
+    );
+  }
+  const label = `Ping ke pelanggan (${address})`;
+  if (!p || p.sent === 0) {
+    return unchecked(
+      "aktif",
+      metric,
+      label,
+      "Ping dari router ke pelanggan tidak menghasilkan data.",
+      sourceRef,
+    );
+  }
+  const loss = Math.max(0, Math.round(((p.sent - p.received) / p.sent) * 100));
+  const isFail = loss >= ACTIVE_PING_LOSS_FAIL;
+  const isWarn =
+    loss >= ACTIVE_PING_LOSS_WARN ||
+    (p.avgMs !== null && p.avgMs >= ACTIVE_RTT_WARN_MS);
+  const status: FindingStatus = isFail ? "fail" : isWarn ? "warn" : "ok";
+
+  const avgStr = p.avgMs !== null ? `${p.avgMs.toFixed(1)} ms` : "—";
+  const maxStr = p.maxMs !== null ? `, maks ${p.maxMs.toFixed(1)} ms` : "";
+  const jitterStr =
+    p.jitterMs !== null ? `, jitter ${p.jitterMs.toFixed(1)} ms` : "";
+  const value = `loss ${loss}% (${p.received}/${p.sent}), rata-rata ${avgStr}${maxStr}${jitterStr}`;
+
+  const detail =
+    status === "ok"
+      ? "Kualitas transmisi paket dan latensi ke pelanggan normal."
+      : status === "fail"
+        ? `Paket loss tinggi (${loss}% ≥ ${ACTIVE_PING_LOSS_FAIL}%) ke pelanggan: kemungkinan kendala fisik (kabel/radio/optik drop) atau ONT mengalami beban tinggi.`
+        : loss >= ACTIVE_PING_LOSS_WARN
+          ? `Terdapat paket loss (${loss}% ≥ ${ACTIVE_PING_LOSS_WARN}%) ke arah pelanggan.`
+          : `Latensi rata-rata tinggi (${avgStr} ≥ ${ACTIVE_RTT_WARN_MS} ms) ke arah pelanggan.`;
+
+  return {
+    layer: "aktif",
+    metric,
+    label,
+    value,
+    threshold: `loss < ${ACTIVE_PING_LOSS_WARN}%, rtt < ${ACTIVE_RTT_WARN_MS} ms`,
+    comparator: "<",
+    status,
+    detail,
+    sourceRef,
+    sampledAt,
+  };
+}
+
+// shortcut: traceroute hop jump sederhana berdasarkan lonjakan max antardua hop berurutan.
+export function evaluateTraceroute(
+  target: string,
+  hops: TraceHop[],
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const metric = "traceroute_upstream";
+  const label = `Traceroute ke upstream (${target})`;
+  if (!hops || hops.length === 0) {
+    return unchecked(
+      "aktif",
+      metric,
+      label,
+      "Traceroute tidak menghasilkan hop (perintah gagal atau router tidak mendukung).",
+      sourceRef,
+    );
+  }
+
+  const lossyHop = hops.find((h) => h.lossPct >= TRACE_HOP_LOSS_WARN);
+  let maxJump: number | null = null;
+  let maxJumpHop: number | null = null;
+  for (let i = 1; i < hops.length; i++) {
+    const prev = hops[i - 1].avgMs;
+    const curr = hops[i].avgMs;
+    if (prev !== null && curr !== null && curr > prev) {
+      const jump = curr - prev;
+      if (maxJump === null || jump > maxJump) {
+        maxJump = jump;
+        maxJumpHop = hops[i].hop;
+      }
+    }
+  }
+
+  const status: FindingStatus = lossyHop ? "warn" : "ok";
+  const lossText = lossyHop
+    ? `, loss di hop ${lossyHop.hop} (${lossyHop.lossPct}%)`
+    : "";
+  const jumpText =
+    maxJump !== null && maxJumpHop !== null
+      ? `, lonjakan RTT terbesar +${maxJump.toFixed(1)} ms di hop ${maxJumpHop}`
+      : "";
+  const value = `${hops.length} hop${lossText}${jumpText}`;
+
+  const detail = lossyHop
+    ? `Terdapat kehilangan paket pada hop ${lossyHop.hop}${lossyHop.address ? ` (${lossyHop.address})` : ""}: loss ${lossyHop.lossPct}% (ambang ≥ ${TRACE_HOP_LOSS_WARN}%).`
+    : `Jalur routing ke ${target} lancar (${hops.length} hop tanpa kehilangan paket signifikan).`;
+
+  return {
+    layer: "aktif",
+    metric,
+    label,
+    value,
+    threshold: `loss per hop < ${TRACE_HOP_LOSS_WARN}%`,
+    comparator: "<",
+    status,
+    detail,
+    sourceRef,
+    sampledAt,
+  };
+}
+
+export function evaluateDns(
+  d: DnsProbe | null,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding {
+  const metric = "dns_resolve";
+  const name = d?.name || DNS_PROBE_NAME;
+  const label = `Resolusi DNS (${name})`;
+
+  if (!d) {
+    return unchecked(
+      "aktif",
+      metric,
+      label,
+      "Resolusi DNS tidak dapat diperiksa (tidak ada data pengukuran dari router).",
+      sourceRef,
+    );
+  }
+
+  if (d.resolved) {
+    const msStr = d.ms !== null ? `, rtt ${d.ms.toFixed(1)} ms` : "";
+    return {
+      layer: "aktif",
+      metric,
+      label,
+      value: `terurai${msStr}`,
+      threshold: "berhasil terurai",
+      comparator: "=",
+      status: "ok",
+      detail: `Router berhasil mengurai nama domain ${d.name}${d.ms !== null ? ` (respons ${d.ms.toFixed(1)} ms)` : ""}.`,
+      sourceRef,
+      sampledAt,
+    };
+  }
+
+  const err = d.error ?? "";
+  const isDnsFailure =
+    /dns|resolve|does not exist|nxdomain|host.*not.*found|cannot.*resolve|failure:\s*dns/i.test(
+      err,
+    );
+
+  if (isDnsFailure) {
+    return {
+      layer: "aktif",
+      metric,
+      label,
+      value: "gagal terurai",
+      threshold: "berhasil terurai",
+      comparator: "=",
+      status: "fail",
+      detail: `Router gagal mengurai nama domain ${d.name}: ${d.error}. DNS upstream atau cache resolver router bermasalah.`,
+      sourceRef,
+      sampledAt,
+    };
+  }
+
+  return unchecked(
+    "aktif",
+    metric,
+    label,
+    `Pengukuran DNS dari router tidak terbaca: ${d.error || "kesalahan pembacaan"}.`,
+    sourceRef,
+  );
+}
+
+// shortcut: baseline 14 hari mengabaikan pola musiman (libur/akhir pekan).
+export function evaluateRateBaseline(
+  i: RateBaselineInput,
+  sourceRef: string,
+  sampledAt: Date,
+): Finding[] {
+  const metric = "rate_baseline";
+  const label = "Baseline pemakaian & kapasitas paket";
+
+  if (!i || i.buckets < RATE_BASELINE_MIN_BUCKETS) {
+    return [
+      unchecked(
+        "aktif",
+        metric,
+        label,
+        `Riwayat sampel trafik kurang (${i?.buckets ?? 0} dari minimum ${RATE_BASELINE_MIN_BUCKETS} bucket 14 hari terakhir) untuk menyusun baseline.`,
+        sourceRef,
+      ),
+    ];
+  }
+
+  if (i.currentDown === null) {
+    return [
+      unchecked(
+        "aktif",
+        metric,
+        label,
+        "Tidak ada data pemakaian pelanggan di sekitar waktu keluhan.",
+        sourceRef,
+      ),
+    ];
+  }
+
+  const peakDown = i.currentPeakDown ?? i.currentDown;
+  const downUtilPct =
+    i.limitDown !== null && i.limitDown > 0
+      ? Math.round((peakDown / i.limitDown) * 100)
+      : null;
+  const upUtilPct =
+    i.limitUp !== null && i.limitUp > 0 && i.currentUp !== null
+      ? Math.round((i.currentUp / i.limitUp) * 100)
+      : null;
+
+  const isSaturated =
+    (downUtilPct !== null && downUtilPct >= RATE_SATURATION_PCT) ||
+    (upUtilPct !== null && upUtilPct >= RATE_SATURATION_PCT);
+  const status: FindingStatus = isSaturated ? "warn" : "ok";
+
+  const ratioP95Pct =
+    i.p95Down !== null && i.p95Down > 0
+      ? Math.round((i.currentDown / i.p95Down) * 100)
+      : null;
+
+  const utilText =
+    downUtilPct !== null
+      ? `puncak ${peakDown.toFixed(1)} Mbps (${downUtilPct}% dari paket ${i.limitDown} Mbps)`
+      : `puncak ${peakDown.toFixed(1)} Mbps (paket tidak diketahui)`;
+  const avgText = `rata-rata ${i.currentDown.toFixed(1)} Mbps`;
+  const p95Text =
+    ratioP95Pct !== null
+      ? `${ratioP95Pct}% dari p95 sendiri 14 hari (${i.p95Down!.toFixed(1)} Mbps)`
+      : "p95 14 hari tidak tersedia";
+  const value = `${utilText}, ${avgText} (${p95Text})`;
+
+  let detail: string;
+  if (isSaturated) {
+    if (downUtilPct !== null && downUtilPct >= RATE_SATURATION_PCT) {
+      detail = `Puncak unduhan (${peakDown.toFixed(1)} Mbps) mencapai ${downUtilPct}% dari kapasitas paket (${i.limitDown} Mbps): keluhan lambat terjadi karena pemakaian menyentuh batas paket (saturasi antrean).`;
+    } else {
+      detail = `Unggahan (${(i.currentUp ?? 0).toFixed(1)} Mbps) mencapai ${upUtilPct}% dari kapasitas unggah paket (${i.limitUp} Mbps): antrean unggah penuh.`;
+    }
+  } else if (downUtilPct !== null) {
+    detail = `Pemakaian pelanggan berada di bawah batas paket (${downUtilPct}% dari ${i.limitDown} Mbps).`;
+  } else {
+    detail = "Pemakaian berada dalam batas wajar terhadap riwayat mandiri pelanggan.";
+  }
+
+  const findings: Finding[] = [
+    {
+      layer: "aktif",
+      metric,
+      label,
+      value,
+      threshold: `puncak < ${RATE_SATURATION_PCT}% paket`,
+      comparator: "<",
+      status,
+      detail,
+      sourceRef,
+      sampledAt,
+    },
+  ];
+
+  if (
+    i.limitDown !== null &&
+    i.limitDown > 0 &&
+    i.p95Down !== null
+  ) {
+    const p95Pct = Math.round((i.p95Down / i.limitDown) * 100);
+    if (p95Pct < RATE_UNUSED_PCT) {
+      findings.push({
+        layer: "aktif",
+        metric: "rate_unused",
+        label: "Pemanfaatan kapasitas paket",
+        value: `p95 14 hari ${i.p95Down.toFixed(1)} Mbps (${p95Pct}% dari paket ${i.limitDown} Mbps)`,
+        threshold: `p95 ≥ ${RATE_UNUSED_PCT}% paket`,
+        comparator: "≥",
+        status: "warn",
+        detail: `Paket tidak terpakai/terhambat di bawah paket: p95 14 hari (${i.p95Down.toFixed(1)} Mbps) hanya ${p95Pct}% dari kapasitas paket (${i.limitDown} Mbps). Pelanggan mengeluhkan lambat meski pemakaian jauh di bawah batas paket.`,
+        sourceRef,
+        sampledAt,
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Fase 9: Perapian & Pengerasan (Plan limits, Riwayat & Perbandingan Diagnosa)
+// ---------------------------------------------------------------------------
+
+export interface PlanLimits {
+  downMbps: number | null;
+  upMbps: number | null;
+}
+
+export const TRAFFIC_MIN_BASELINE_PLAN_PCT = 2; // baseline minimum = max(0.5, plan.downMbps * 2%) Mbps saat paket diketahui, selain itu 1 Mbps
+export function trafficMinBaselineMbps(plan?: PlanLimits | null): number {
+  if (plan?.downMbps != null && plan.downMbps > 0) {
+    return Math.max(0.5, (plan.downMbps * TRAFFIC_MIN_BASELINE_PLAN_PCT) / 100);
+  }
+  return TRAFFIC_MIN_BASELINE_MBPS;
+}
+
+export const UPLOAD_NEAR_PLAN_PCT = 90;
+
+export type FindingChangeKind =
+  | "worse"
+  | "better"
+  | "changed"
+  | "new"
+  | "gone"
+  | "same";
+
+export interface FindingSnapshot {
+  status: FindingStatus;
+  value: string | null;
+  threshold: string | null;
+}
+
+export interface FindingChange {
+  layer: DiagnosticLayer;
+  metric: string;
+  label: string;
+  before: FindingSnapshot | null;
+  after: FindingSnapshot | null;
+  kind: FindingChangeKind;
+}
+
+export interface RunComparison {
+  beforeId: string;
+  afterId: string;
+  beforeAt: string | null;
+  afterAt: string | null;
+  verdictBefore: { layer: string | null; scope: string | null };
+  verdictAfter: { layer: string | null; scope: string | null };
+  verdictChanged: boolean;
+  changes: FindingChange[]; // kind !== "same", urut diagnosticLayers lalu metric
+  sameCount: number;
+}
+
+function findingChangeKind(
+  before: FindingSnapshot | null,
+  after: FindingSnapshot | null,
+): FindingChangeKind {
+  if (!before && after) return "new";
+  if (before && !after) return "gone";
+  if (!before || !after) return "same";
+
+  const s1 = before.status;
+  const s2 = after.status;
+
+  if (s1 === s2) {
+    if (before.threshold !== after.threshold) return "changed";
+    return "same";
+  }
+
+  if (s1 === "unchecked" || s2 === "unchecked") {
+    return "changed";
+  }
+
+  if (s1 === "ok") {
+    return s2 === "warn" || s2 === "fail" ? "worse" : "changed";
+  }
+  if (s1 === "warn") {
+    if (s2 === "fail") return "worse";
+    if (s2 === "ok") return "better";
+    return "changed";
+  }
+  if (s1 === "fail") {
+    if (s2 === "warn" || s2 === "ok") return "better";
+    return "changed";
+  }
+
+  return "changed";
+}
+
+export function compareRuns(
+  before: DiagnosticRunDto,
+  after: DiagnosticRunDto,
+): RunComparison {
+  const layerOrder = new Map(diagnosticLayers.map((l, i) => [l.id, i]));
+
+  const beforeMap = new Map<string, FindingDto>();
+  for (const f of before.findings ?? []) {
+    beforeMap.set(`${f.layer}:${f.metric}`, f);
+  }
+
+  const afterMap = new Map<string, FindingDto>();
+  for (const f of after.findings ?? []) {
+    afterMap.set(`${f.layer}:${f.metric}`, f);
+  }
+
+  const allKeys = new Set([...beforeMap.keys(), ...afterMap.keys()]);
+  const changes: FindingChange[] = [];
+  let sameCount = 0;
+
+  for (const key of allKeys) {
+    const b = beforeMap.get(key);
+    const a = afterMap.get(key);
+    const layer = (a?.layer ?? b?.layer) as DiagnosticLayer;
+    const metric = a?.metric ?? b?.metric ?? "";
+    const label = a?.label ?? b?.label ?? metric;
+
+    const bSnap: FindingSnapshot | null = b
+      ? { status: b.status, value: b.value, threshold: b.threshold }
+      : null;
+    const aSnap: FindingSnapshot | null = a
+      ? { status: a.status, value: a.value, threshold: a.threshold }
+      : null;
+
+    const kind = findingChangeKind(bSnap, aSnap);
+    if (kind === "same") {
+      sameCount++;
+    } else {
+      changes.push({
+        layer,
+        metric,
+        label,
+        before: bSnap,
+        after: aSnap,
+        kind,
+      });
+    }
+  }
+
+  changes.sort((x, y) => {
+    const oX = layerOrder.get(x.layer) ?? 999;
+    const oY = layerOrder.get(y.layer) ?? 999;
+    if (oX !== oY) return oX - oY;
+    return x.metric.localeCompare(y.metric);
+  });
+
+  const verdictBefore = {
+    layer: before.verdictLayer ?? null,
+    scope: before.verdictScope ?? null,
+  };
+  const verdictAfter = {
+    layer: after.verdictLayer ?? null,
+    scope: after.verdictScope ?? null,
+  };
+  const verdictChanged =
+    verdictBefore.layer !== verdictAfter.layer ||
+    verdictBefore.scope !== verdictAfter.scope;
+
+  return {
+    beforeId: before.id,
+    afterId: after.id,
+    beforeAt: before.finishedAt ?? before.createdAt ?? null,
+    afterAt: after.finishedAt ?? after.createdAt ?? null,
+    verdictBefore,
+    verdictAfter,
+    verdictChanged,
+    changes,
+    sameCount,
+  };
+}
+
+export function runSummaryText(run: DiagnosticRunDto): string {
+  const lines: string[] = [];
+
+  // Header: pelanggan, waktu, asal manual/otomatis + pemicu
+  const cust =
+    run.customerName && run.pppoeUsername && run.customerName !== run.pppoeUsername
+      ? `${run.customerName} (${run.pppoeUsername})`
+      : run.customerName || run.pppoeUsername || run.customerId || "—";
+  const waktu = run.finishedAt ?? run.startedAt ?? run.createdAt ?? "—";
+  const pemicu =
+    run.triggerMode === "auto"
+      ? `Otomatis${run.triggerReason ? ` · ${triggerReasonLabels[run.triggerReason] ?? run.triggerReason}` : ""}${run.triggerSourceRef ? ` (${run.triggerSourceRef})` : ""}`
+      : `Manual${run.triggeredBy ? ` (${run.triggeredBy})` : ""}`;
+
+  lines.push("=== RINGKASAN DIAGNOSA PELANGGAN ===");
+  lines.push(`Pelanggan : ${cust}`);
+  lines.push(`Waktu     : ${waktu}`);
+  lines.push(`Pemicu    : ${pemicu}`);
+  lines.push("");
+
+  // Kesimpulan: lapisan, cakupan, detail
+  const scopeLabel =
+    run.verdictScope === "own"
+      ? "Gangguan pelanggan sendiri"
+      : run.verdictScope === "shared"
+        ? "Gangguan bersama (infrastruktur/hulu)"
+        : run.verdictScope === "unknown"
+          ? "Belum dapat dipastikan"
+          : "—";
+
+  lines.push("--- Kesimpulan ---");
+  lines.push(
+    `Lapisan   : ${run.verdictLayer ? layerLabel(run.verdictLayer) : "Normal (semua lapisan aman)"}`,
+  );
+  lines.push(`Cakupan   : ${scopeLabel}`);
+  lines.push(`Rincian   : ${run.verdictDetail || "Tidak ada rincian kesimpulan."}`);
+  lines.push("");
+
+  // Temuan non-ok per lapisan dengan nilai + ambang
+  const allFindings = run.findings ?? [];
+  const badFindings = allFindings.filter(
+    (f) => f.status === "warn" || f.status === "fail",
+  );
+  lines.push("--- Temuan Bermasalah ---");
+  if (badFindings.length === 0) {
+    lines.push("Tidak ada temuan bermasalah.");
+  } else {
+    for (const f of badFindings) {
+      const statusTag = f.status === "fail" ? "[FAIL]" : "[WARN]";
+      lines.push(
+        `${statusTag} ${layerLabel(f.layer)} · ${f.label}: nilai=${f.value ?? "—"}, ambang=${f.threshold ?? "—"}. ${f.detail}`,
+      );
+    }
+  }
+  lines.push("");
+
+  // Lapisan tidak dapat diperiksa + alasan
+  const uncheckedFindings = allFindings.filter((f) => f.status === "unchecked");
+  lines.push("--- Tidak Dapat Diperiksa ---");
+  if (uncheckedFindings.length === 0) {
+    lines.push("Semua lapisan dapat diperiksa.");
+  } else {
+    for (const f of uncheckedFindings) {
+      lines.push(
+        `[UNCHECKED] ${layerLabel(f.layer)} · ${f.label}: ${f.detail}`,
+      );
+    }
+  }
+
+  return lines.join("\n");
 }

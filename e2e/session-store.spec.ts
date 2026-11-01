@@ -259,16 +259,16 @@ test.describe("nama peran", () => {
     expect(roleLabel(" ")).toBe("Tanpa peran");
   });
 
-  test("previewableRoles: tepat peran yang dideklarasikan, superadmin dulu, lalu admin, lalu user, tidak bisa diubah", () => {
-    expect([...previewableRoles]).toEqual(["superadmin", "admin", "user"]);
+  test("previewableRoles: tepat peran yang dideklarasikan, superadmin dulu, lalu admin, lalu developer, lalu user, tidak bisa diubah", () => {
+    expect([...previewableRoles]).toEqual(["superadmin", "admin", "developer", "user"]);
     expect([...previewableRoles].sort()).toEqual(Object.keys(roles).sort());
     expect(Object.isFrozen(previewableRoles)).toBe(true);
     expect(new Set(previewableRoles).size).toBe(previewableRoles.length);
   });
-
   test("isPreviewableRole: hanya satu nama yang dideklarasikan", () => {
     expect(isPreviewableRole("superadmin")).toBe(true);
     expect(isPreviewableRole("admin")).toBe(true);
+    expect(isPreviewableRole("developer")).toBe(true);
     expect(isPreviewableRole("user")).toBe(true);
     for (const name of [
       "admin,user",

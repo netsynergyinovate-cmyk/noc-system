@@ -335,6 +335,7 @@ export function SettingsBoard() {
                   <Badge
                     variant="outline"
                     className={cn(
+                      "px-2.5 py-0.5 text-xs font-semibold",
                       userRoleInfo.isSuperAdmin
                         ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                         : userRoleInfo.isDeveloper

@@ -1,4 +1,5 @@
 import "server-only";
+import { ApiError } from "@/lib/api";
 import {
   and,
   desc,
@@ -9,11 +10,13 @@ import {
   ilike,
   inArray,
   isNotNull,
+  isNull,
   ne,
   or,
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
+import { NETFLOW_FRESH_MS } from "@/lib/dashboard/netflow-status";
 import {
   alerts,
   billingMismatches,
@@ -32,10 +35,13 @@ import {
   runsnetInvoices,
   syslogEvents,
   customerTrafficSamples,
+  netflowSamples,
   trafficSamples,
 } from "@/db/schema";
 import {
   AUTO_PRIORITY,
+  DNS_PROBE_NAME,
+  autoDedupeKey,
   LOG_LOOKBACK_MS,
   MANUAL_PRIORITY,
   addressListMembership,
@@ -43,13 +49,19 @@ import {
   analyzeLog,
   auditRules,
   evaluateBgp,
+  evaluateCustomerPing,
   evaluateDefaultRoute,
+  evaluateDns,
+  evaluateFlows,
   evaluateIpv6,
   evaluatePing,
+  evaluateRateBaseline,
+  evaluateTraceroute,
+  evaluateTrafficTrend,
   evaluateUplinkHistory,
   evaluateUplinkRate,
+  rosDurationMs,
   rosRateBps,
-  autoDedupeKey,
   createDiagnosticQueue,
   diagnosticLayers,
   evaluateAddressLists,
@@ -75,21 +87,34 @@ import {
   evaluateRunsnetStatus,
   logLineMatcher,
   parseRouterLogTime,
-  pendingLayer,
-  pickVerdict,
+  decideVerdict,
   sharedDedupeKey,
   unchecked,
+  compareRuns,
+  runSummaryText,
+  type PlanLimits,
+  type RunComparison,
   type DiagnosticLayer,
+  type PreviousVerdict,
+  type ScopeEvidence,
+  type Verdict,
+  type VerdictRoot,
+  type VerdictScope,
+  type VerdictSecondary,
   type DiagnosticPolicyDto,
   type DiagnosticRunDto,
+  type DnsProbe,
   type Finding,
   type FindingDto,
   type FirewallTable,
-  type UplinkHistory,
   type LogLine,
-  type RuleHit,
+  type PingStats,
+  type RateBaselineInput,
   type Ros,
+  type RuleHit,
   type TimelineEvent,
+  type TraceHop,
+  type UplinkHistory,
 } from "@/lib/diagnostics";
 import { GenieAcsClient } from "@/lib/genieacs/client";
 import { getGenieacsConfig } from "@/lib/genieacs/config";
@@ -184,6 +209,7 @@ interface RouterSnapshot {
     outbound: Ros[];
     inbound: Ros[];
   } | null;
+  client?: MikrotikRestClient | null;
 }
 
 // Satu pembacaan router per diagnosa, dipakai lapisan MikroTik, Firewall, dan
@@ -220,6 +246,7 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     useSsl: creds.useTls,
     mode: "real",
   });
+  snapshot.client = client;
   const { reads } = snapshot;
   snapshot.readLog = () => attempt(() => client.read("/rest/log"));
   const read = async (
@@ -682,6 +709,7 @@ async function auditFirewall(
 }
 
 type OnuRow = {
+  oltId: string;
   oltName: string;
   ponIndex: number;
   onuIndex: number;
@@ -693,6 +721,7 @@ type OnuRow = {
 async function readOnu(customerId: string): Promise<OnuRow | null> {
   const [onu] = await db
     .select({
+      oltId: oltOnus.oltId,
       oltName: olts.name,
       ponIndex: oltOnus.ponIndex,
       onuIndex: oltOnus.onuIndex,
@@ -1149,6 +1178,436 @@ async function readUplinkHistory(
   };
 }
 
+export function parseQueueLimitsMbps(maxLimit: string | undefined): {
+  limitUp: number | null;
+  limitDown: number | null;
+} {
+  if (!maxLimit) return { limitUp: null, limitDown: null };
+  const [upStr, downStr] = maxLimit.split("/");
+  const parseOne = (s: string | undefined): number | null => {
+    if (!s) return null;
+    const str = s.trim();
+    const num = Number(str);
+    if (Number.isFinite(num)) return num > 0 ? num / 1e6 : null;
+    const m = /^(\d+(?:\.\d+)?)\s*([KkMmGg])?bps?$/i.exec(str);
+    if (!m) return null;
+    const val = Number(m[1]);
+    const unit = (m[2] ?? "").toUpperCase();
+    if (unit === "G") return val * 1000;
+    if (unit === "M") return val;
+    if (unit === "K") return val / 1000;
+    return val / 1e6;
+  };
+  return {
+    limitUp: parseOne(upStr),
+    limitDown: parseOne(downStr),
+  };
+}
+
+// Fase 9: Satu sumber pembacaan batas paket pelanggan dari simple-queue router (max-limit).
+// Dipakai bersama oleh readTraffic dan readActive. Bila router tidak terjangkau atau
+// queue tidak ada, kembalikan batas null (jangan pernah mengarang paket).
+export async function readCustomerPlanLimits(
+  ctx: RunContext,
+): Promise<PlanLimits> {
+  const s = await ctx.router();
+  const queueRow = firstRow(s.reads.queue1);
+  const { limitUp, limitDown } = parseQueueLimitsMbps(queueRow?.["max-limit"]);
+  return {
+    downMbps: limitDown,
+    upMbps: limitUp,
+  };
+}
+
+// Lapisan trafik: tren dari customer_traffic_samples dan aliran dari
+// netflow_samples di sekitar keluhan.
+async function readTraffic(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
+  const t = ctx.complaintAt.getTime();
+  const now = new Date();
+  const from = new Date(t - 30 * 60_000);
+  const to = new Date(Math.min(t + 30 * 60_000, now.getTime()));
+  const [win] = await db
+    .select({
+      down: sql<number | null>`avg(${customerTrafficSamples.downloadMbpsAvg})`,
+      up: sql<number | null>`avg(${customerTrafficSamples.uploadMbpsAvg})`,
+      peak: sql<number | null>`max(${customerTrafficSamples.downloadMbpsMax})`,
+      peakUp: sql<number | null>`max(${customerTrafficSamples.uploadMbpsMax})`,
+      buckets: sql<number>`count(*)::int`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(customerTrafficSamples.bucketStart, from),
+        lte(customerTrafficSamples.bucketStart, to),
+      ),
+    );
+  // Jam keluhan di WIB (UTC+7 tetap, tanpa DST); baseline = jam yang sama ±1 jam (melingkar 0-23).
+  const complaintHourWib = new Date(t + 7 * 3600_000).getUTCHours();
+  const hourWib = sql`extract(hour from ${customerTrafficSamples.bucketStart} at time zone 'Asia/Jakarta')::int`;
+  const [baseline] = await db
+    .select({
+      down: sql<number | null>`avg(${customerTrafficSamples.downloadMbpsAvg})`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(
+          customerTrafficSamples.bucketStart,
+          new Date(t - 7 * 24 * 3600_000),
+        ),
+        lte(customerTrafficSamples.bucketStart, from),
+        gt(customerTrafficSamples.downloadMbpsAvg, 0.1),
+        sql`least(abs(${hourWib} - ${complaintHourWib}::int), 24 - abs(${hourWib} - ${complaintHourWib}::int)) <= 1`,
+      ),
+    );
+  const plan = await readCustomerPlanLimits(ctx);
+  const num = (v: number | string | null | undefined) =>
+    v === null || v === undefined ? null : Number(v);
+  const out: Finding[] = [
+    evaluateTrafficTrend(
+      {
+        windowDown: num(win?.down),
+        windowUp: num(win?.up),
+        windowPeakDown: num(win?.peak),
+        windowPeakUp: num(win?.peakUp),
+        buckets: win?.buckets ?? 0,
+        baselineDown: num(baseline?.down),
+        plan,
+      },
+      `customer_traffic_samples · ${c.pppoeUsername}`,
+      now,
+    ),
+  ];
+
+  // Hanya baris agregator (customer_id terisi) yang menandakan kolektor hidup. captured_at =
+  // awal bucket 5 menit dan hanya bucket selesai yang di-flush tiap menit, jadi data terbaru
+  // berumur ~5-11 menit; ambang NETFLOW_FRESH_MS (15 menit) memberi ruang untuk itu.
+  const [stat] = await db
+    .select({ newest: sql<string | null>`max(${netflowSamples.capturedAt})` })
+    .from(netflowSamples)
+    .where(
+      and(
+        eq(netflowSamples.routerId, c.routerId),
+        isNotNull(netflowSamples.customerId),
+      ),
+    );
+  const newest = stat?.newest ? new Date(stat.newest) : null;
+  if (!newest || now.getTime() - newest.getTime() > NETFLOW_FRESH_MS) {
+    out.push(
+      unchecked(
+        "trafik",
+        "netflow_top",
+        "Tujuan & protokol (NetFlow)",
+        newest
+          ? `NetFlow dari router ${c.routerName} berhenti mengalir (agregat terakhir ${fmtWib(newest)}).`
+          : `NetFlow belum pernah diterima dari router ${c.routerName}: aktifkan traffic-flow router ke NOC (UDP 2055) dan kolektor NetFlow backend.`,
+        "netflow_samples",
+      ),
+    );
+    return out;
+  }
+  const flows = await db
+    .select({
+      direction: netflowSamples.direction,
+      srcIp: netflowSamples.srcIp,
+      dstIp: netflowSamples.dstIp,
+      dstPort: netflowSamples.dstPort,
+      protocol: netflowSamples.protocol,
+      bytes: netflowSamples.bytes,
+      flows: netflowSamples.flows,
+    })
+    .from(netflowSamples)
+    .where(
+      and(
+        eq(netflowSamples.customerId, c.id),
+        gte(netflowSamples.capturedAt, new Date(from.getTime() - 5 * 60_000)),
+        lte(netflowSamples.capturedAt, to),
+      ),
+    );
+  out.push(
+    ...evaluateFlows(
+      flows.map((f) => ({ ...f, direction: f.direction ?? "" })),
+      `netflow_samples · ${c.routerName} · ${fmtWib(from)} – ${fmtWib(to)}`,
+      now,
+      {
+        downMbps: plan.downMbps,
+        upMbps: plan.upMbps,
+        peakUpMbps: num(win?.peakUp),
+      },
+    ),
+  );
+  return out;
+}
+function parsePingStats(rawRows: unknown): PingStats | null {
+  if (!Array.isArray(rawRows) || rawRows.length === 0) return null;
+  const list = rawRows as Record<string, unknown>[];
+  const last = list[list.length - 1];
+  const lastSent = Number(last?.sent);
+  const lastRecv = Number(last?.received);
+  const rtts = list
+    .map((r) => rosDurationMs(typeof r.time === "string" ? r.time : undefined))
+    .filter((x): x is number => x !== null);
+  const sent =
+    Number.isFinite(lastSent) && lastSent > 0 ? lastSent : list.length;
+  const received =
+    Number.isFinite(lastRecv) && lastRecv >= 0 ? lastRecv : rtts.length;
+  if (sent === 0) return null;
+  const avgMs =
+    rtts.length ? rtts.reduce((a, b) => a + b, 0) / rtts.length : null;
+  const maxMs = rtts.length ? Math.max(...rtts) : null;
+  const jitterMs =
+    rtts.length > 1
+      ? rtts.slice(1).reduce((s, x, i) => s + Math.abs(x - rtts[i]), 0) /
+        (rtts.length - 1)
+      : 0;
+  return {
+    sent,
+    received,
+    avgMs,
+    maxMs,
+    jitterMs,
+  };
+}
+
+function parseTracerouteHops(rawRows: unknown): TraceHop[] {
+  if (!Array.isArray(rawRows)) return [];
+  const byHop = new Map<number, Record<string, unknown>>();
+  for (const row of rawRows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    // RouterOS v7 memberi nomor hop lewat `.section` (mulai 0) atau urutan baris,
+    // bukan field `hop`; `.id` berbentuk "*1A" dan tidak berguna sebagai nomor.
+    const sectionNum = Number(r[".section"]);
+    const hopNum = Number(
+      r.hop ?? r.count ?? (Number.isFinite(sectionNum) ? sectionNum + 1 : NaN),
+    );
+    if (Number.isFinite(hopNum) && hopNum > 0) {
+      byHop.set(hopNum, r);
+    }
+  }
+  const hops: TraceHop[] = [];
+  for (const [hop, r] of byHop.entries()) {
+    const rawAddr = r.address ?? r.host ?? null;
+    const addrStr = typeof rawAddr === "string" ? rawAddr.trim() : null;
+    const address = !addrStr || addrStr === "*" ? null : addrStr;
+
+    let lossPct = 0;
+    if (r.loss !== undefined) {
+      const parsed = parseFloat(String(r.loss).replace("%", ""));
+      lossPct = Number.isFinite(parsed) ? parsed : 0;
+    } else if (r["packet-loss"] !== undefined) {
+      const parsed = parseFloat(String(r["packet-loss"]).replace("%", ""));
+      lossPct = Number.isFinite(parsed) ? parsed : 0;
+    } else if (r.sent !== undefined && r.received !== undefined) {
+      const s = Number(r.sent);
+      const rec = Number(r.received);
+      if (s > 0) lossPct = Math.round(((s - rec) / s) * 100);
+    } else if (address === null || r.status === "timeout") {
+      lossPct = 100;
+    }
+
+    const timeRaw = r["avg-rtt"] ?? r.avg ?? r.time ?? r.rtt ?? r.last;
+    // v7 memberi angka polos dalam milidetik ("12.3"); rosDurationMs butuh satuan.
+    const avgMs =
+      typeof timeRaw === "string"
+        ? /^\d+(?:\.\d+)?$/.test(timeRaw)
+          ? Number(timeRaw)
+          : rosDurationMs(timeRaw)
+        : typeof timeRaw === "number"
+          ? timeRaw
+          : null;
+
+    hops.push({
+      hop,
+      address,
+      lossPct,
+      avgMs,
+    });
+  }
+  hops.sort((a, b) => a.hop - b.hop);
+  return hops;
+}
+
+function parseDnsResult(
+  name: string,
+  res: Read<unknown>,
+): DnsProbe | null {
+  if (!res.ok) {
+    const err = res.error;
+    const isDnsFailure =
+      /dns|resolve|does not exist|nxdomain|host.*not.*found|cannot.*resolve|failure:\s*dns/i.test(
+        err,
+      );
+    if (isDnsFailure) {
+      return { name, resolved: false, ms: null, error: err };
+    }
+    return null;
+  }
+  if (!Array.isArray(res.value) || res.value.length === 0) {
+    return null;
+  }
+  const rows = res.value as Record<string, unknown>[];
+  for (const r of rows) {
+    const st = String(r.status ?? "");
+    if (
+      /dns|resolve|does not exist|nxdomain|host.*not.*found|cannot.*resolve|failure:\s*dns/i.test(
+        st,
+      )
+    ) {
+      return { name, resolved: false, ms: null, error: st };
+    }
+  }
+  const rtts = rows
+    .map((r) => rosDurationMs(typeof r.time === "string" ? r.time : undefined))
+    .filter((x): x is number => x !== null);
+  const ms = rtts.length ? rtts.reduce((a, b) => a + b, 0) / rtts.length : null;
+  return { name, resolved: true, ms, error: null };
+}
+
+// Fase 7: Pengukuran aktif dari router (ping ke IP pelanggan, traceroute upstream,
+// uji resolusi DNS) dan perbandingan trafik terhadap batas paket serta p95 mandiri 14 hari.
+async function readActive(
+  c: CustomerTarget,
+  ctx: RunContext,
+): Promise<Finding[]> {
+  const s = await ctx.router();
+  const now = new Date();
+  const out: Finding[] = [];
+
+  // (a) Ping ke pelanggan
+  const session = s.session;
+  const custIp = session?.address ?? null;
+  if (!custIp) {
+    out.push(evaluateCustomerPing(null, null, s.source, now));
+  } else if (!s.client || s.error) {
+    out.push(evaluateCustomerPing(custIp, null, s.source, now));
+  } else {
+    const pingRes = await attempt(() =>
+      s.client!.measure("/rest/tool/ping", {
+        address: custIp,
+        count: String(PING_COUNT),
+        interval: "0.2",
+      }),
+    );
+    const stats = pingRes.ok ? parsePingStats(pingRes.value) : null;
+    out.push(
+      evaluateCustomerPing(
+        custIp,
+        stats,
+        `${s.source} · /tool/ping ${custIp}`,
+        now,
+      ),
+    );
+  }
+
+  // (b) Traceroute ke upstream (INTERNET_PROBE)
+  if (!s.client || s.error) {
+    out.push(evaluateTraceroute(INTERNET_PROBE, [], s.source, now));
+  } else {
+    const traceRes = await attempt(() =>
+      s.client!.measure("/rest/tool/traceroute", {
+        address: INTERNET_PROBE,
+        count: "2",
+      }),
+    );
+    const hops = traceRes.ok ? parseTracerouteHops(traceRes.value) : [];
+    out.push(
+      evaluateTraceroute(
+        INTERNET_PROBE,
+        hops,
+        `${s.source} · /tool/traceroute ${INTERNET_PROBE}`,
+        now,
+      ),
+    );
+  }
+
+  // (c) Resolusi DNS via ping hostname
+  if (!s.client || s.error) {
+    out.push(evaluateDns(null, s.source, now));
+  } else {
+    const dnsRes = await attempt(() =>
+      s.client!.measure("/rest/tool/ping", {
+        address: DNS_PROBE_NAME,
+        count: "2",
+      }),
+    );
+    const probe = parseDnsResult(DNS_PROBE_NAME, dnsRes);
+    out.push(
+      evaluateDns(probe, `${s.source} · /tool/ping ${DNS_PROBE_NAME}`, now),
+    );
+  }
+
+  // (d) Baseline laju & batas paket per-pelanggan (14 hari mandiri)
+  const t = ctx.complaintAt.getTime();
+  const from = new Date(t - 30 * 60_000);
+  const to = new Date(Math.min(t + 30 * 60_000, now.getTime()));
+  const [win] = await db
+    .select({
+      down: sql<number | null>`avg(${customerTrafficSamples.downloadMbpsAvg})`,
+      up: sql<number | null>`avg(${customerTrafficSamples.uploadMbpsAvg})`,
+      peak: sql<number | null>`max(${customerTrafficSamples.downloadMbpsMax})`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(customerTrafficSamples.bucketStart, from),
+        lte(customerTrafficSamples.bucketStart, to),
+      ),
+    );
+
+  const [hist] = await db
+    .select({
+      p95Down: sql<number | null>`percentile_cont(0.95) within group (order by ${customerTrafficSamples.downloadMbpsMax}) filter (where ${customerTrafficSamples.downloadMbpsMax} > 0.1)`,
+      p95Up: sql<number | null>`percentile_cont(0.95) within group (order by ${customerTrafficSamples.uploadMbpsMax}) filter (where ${customerTrafficSamples.uploadMbpsMax} > 0.1)`,
+      buckets: sql<number>`count(*) filter (where ${customerTrafficSamples.downloadMbpsMax} > 0.1)::int`,
+    })
+    .from(customerTrafficSamples)
+    .where(
+      and(
+        eq(customerTrafficSamples.customerId, c.id),
+        gte(
+          customerTrafficSamples.bucketStart,
+          new Date(t - 14 * 24 * 3600_000),
+        ),
+        lte(customerTrafficSamples.bucketStart, from),
+      ),
+    );
+
+  const plan = await readCustomerPlanLimits(ctx);
+  const limitDown = plan.downMbps;
+  const limitUp = plan.upMbps;
+  const num = (v: number | string | null | undefined) =>
+    v === null || v === undefined ? null : Number(v);
+
+  const baselineInput: RateBaselineInput = {
+    currentDown: num(win?.down),
+    currentUp: num(win?.up),
+    currentPeakDown: num(win?.peak),
+    p95Down: num(hist?.p95Down),
+    p95Up: num(hist?.p95Up),
+    buckets: hist?.buckets ?? 0,
+    limitDown,
+    limitUp,
+  };
+
+  out.push(
+    ...evaluateRateBaseline(
+      baselineInput,
+      `customer_traffic_samples · ${c.pppoeUsername}`,
+      now,
+    ),
+  );
+
+  return out;
+}
+
+
 // Lapisan hulu: default route & link, utilisasi uplink, ping dari router,
 // riwayat uplink, BGP, IPv6. Masalah di sini adalah gangguan bersama.
 async function readHulu(
@@ -1300,11 +1759,127 @@ const steps: Record<
   firewall: readFirewall,
   optik: async (_c, ctx) => [evaluateOptical(await ctx.onu(), new Date())],
   ont: readOnt,
-  trafik: async () => [
-    pendingLayer("trafik", "Tren trafik pelanggan dan aliran NetFlow"),
-  ],
+  trafik: readTraffic,
+  aktif: readActive,
   billing: readBilling,
 };
+async function loadScopeEvidence(
+  c: CustomerTarget,
+  onu: OnuRow | null,
+  windowMinutes: number,
+): Promise<ScopeEvidence> {
+  const since = new Date(Date.now() - windowMinutes * 60_000);
+  let routerEvidence: ScopeEvidence["router"] = null;
+  let ponEvidence: ScopeEvidence["pon"] = null;
+
+  if (c.routerId) {
+    const [[servedRow], [affectedRow]] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(customers)
+        .where(eq(customers.routerId, c.routerId)),
+      db
+        .select({
+          count: sql<number>`count(distinct ${alerts.customerId})::int`,
+        })
+        .from(alerts)
+        .innerJoin(customers, eq(customers.id, alerts.customerId))
+        .where(
+          and(
+            eq(customers.routerId, c.routerId),
+            ne(alerts.customerId, c.id),
+            inArray(alerts.type, ["offline", "optical", "queue"]),
+            // Gangguan yang masih berjalan tetap bukti walau mulai lebih lama dari
+            // jendela; yang sudah selesai dihitung bila berakhir dalam jendela.
+            or(
+              and(isNull(alerts.endedAt), ne(alerts.status, "resolved")),
+              gte(alerts.endedAt, since),
+            ),
+          ),
+        ),
+    ]);
+    routerEvidence = {
+      name: c.routerName,
+      affected: affectedRow?.count ?? 0,
+      served: servedRow?.count ?? 0,
+    };
+  }
+
+  if (onu && onu.oltId && onu.ponIndex !== null && onu.ponIndex !== undefined) {
+    const [[ponServedRow], [ponAffectedRow]] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(oltOnus)
+        .where(
+          and(
+            eq(oltOnus.oltId, onu.oltId),
+            eq(oltOnus.ponIndex, onu.ponIndex),
+          ),
+        ),
+      db
+        .select({
+          count: sql<number>`count(distinct ${alerts.customerId})::int`,
+        })
+        .from(alerts)
+        .innerJoin(oltOnus, eq(oltOnus.customerId, alerts.customerId))
+        .where(
+          and(
+            eq(oltOnus.oltId, onu.oltId),
+            eq(oltOnus.ponIndex, onu.ponIndex),
+            ne(alerts.customerId, c.id),
+            inArray(alerts.type, ["offline", "optical", "queue"]),
+            or(
+              and(isNull(alerts.endedAt), ne(alerts.status, "resolved")),
+              gte(alerts.endedAt, since),
+            ),
+          ),
+        ),
+    ]);
+    ponEvidence = {
+      name: `${onu.oltName} PON ${onu.ponIndex}`,
+      affected: ponAffectedRow?.count ?? 0,
+      served: ponServedRow?.count ?? 0,
+    };
+  }
+
+  return {
+    router: routerEvidence,
+    pon: ponEvidence,
+    windowMinutes,
+  };
+}
+
+async function loadPreviousVerdict(
+  customerId: string,
+  excludeRunId: string,
+): Promise<PreviousVerdict | null> {
+  try {
+    const [prev] = await db
+      .select({
+        verdictLayer: diagnosticRuns.verdictLayer,
+        finishedAt: diagnosticRuns.finishedAt,
+      })
+      .from(diagnosticRuns)
+      .where(
+        and(
+          eq(diagnosticRuns.customerId, customerId),
+          ne(diagnosticRuns.id, excludeRunId),
+          eq(diagnosticRuns.status, "done"),
+          isNotNull(diagnosticRuns.finishedAt),
+        ),
+      )
+      .orderBy(desc(diagnosticRuns.finishedAt))
+      .limit(1);
+    if (!prev || !prev.finishedAt) return null;
+    return {
+      layer: (prev.verdictLayer as DiagnosticLayer) ?? null,
+      finishedAt: prev.finishedAt,
+    };
+  } catch (err) {
+    console.warn("[diagnostics] gagal memuat kesimpulan sebelumnya:", message(err));
+    return null;
+  }
+}
 
 async function executeRun(runId: string) {
   const [run] = await db
@@ -1341,22 +1916,67 @@ async function executeRun(runId: string) {
           ),
         ];
       }
+      if (!found || found.length === 0) {
+        found = [
+          unchecked(
+            layer.id,
+            "kosong",
+            layer.label,
+            "Lapisan tidak menghasilkan temuan",
+          ),
+        ];
+      }
+      found = found.map((f) => ({
+        ...f,
+        detail:
+          f.detail && f.detail.trim().length > 0
+            ? f.detail
+            : "alasan tidak dicatat",
+      }));
       all.push(...found);
-      // Ditulis per lapisan supaya tampilan bisa menunjukkan progres.
       await db
         .insert(diagnosticFindings)
         .values(found.map((f) => ({ ...f, runId })));
     }
-    const verdict = pickVerdict(all);
+    const policy = await getDiagnosticPolicy();
+    const onu = await ctx.onu();
+    let evidence: ScopeEvidence = {
+      router: null,
+      pon: null,
+      windowMinutes: policy.massWindowMinutes,
+    };
+    try {
+      evidence = await loadScopeEvidence(c, onu, policy.massWindowMinutes);
+    } catch (err) {
+      // shortcut: galat query bukti gangguan bersama tidak boleh menggagalkan diagnosa; fallback ke unknown
+      console.warn("[diagnostics] gagal memuat bukti cakupan:", message(err));
+      evidence = {
+        router: null,
+        pon: null,
+        windowMinutes: policy.massWindowMinutes,
+      };
+    }
+    const previous = await loadPreviousVerdict(c.id, runId);
+    const now = new Date();
+    const verdict = decideVerdict(all, evidence, previous, now);
+    const root: VerdictRoot | null = verdict.root
+      ? {
+          ...verdict.root,
+          name: verdict.root.kind === "customer" ? c.name : verdict.root.name,
+        }
+      : null;
     await db
       .update(diagnosticRuns)
       .set({
         status: "done",
-        finishedAt: new Date(),
+        finishedAt: now,
         verdictLayer: verdict.layer,
         verdictDetail: verdict.detail,
-        // Hulu bermasalah = gangguan bersama, bukan perangkat pelanggan.
-        isSharedFault: verdict.layer === "hulu",
+        verdictScope: verdict.scope,
+        verdictRoot: root,
+        verdictSecondary: verdict.secondary,
+        verdictHeld: verdict.held,
+        isSharedFault: verdict.scope === "shared",
         timeline: [
           ...ctx.timeline,
           ...(await alertTimeline(c.id, complaintAt)),
@@ -1491,6 +2111,7 @@ async function recordSharedFault(affected: number, p: DiagnosticPolicyDto) {
       startedAt: now,
       finishedAt: now,
       isSharedFault: true,
+      verdictScope: "shared",
       verdictDetail: detail,
     })
     .onConflictDoUpdate({
@@ -1499,6 +2120,7 @@ async function recordSharedFault(affected: number, p: DiagnosticPolicyDto) {
         mergedCount: sql`${diagnosticRuns.mergedCount} + 1`,
         lastMergedAt: now,
         verdictDetail: detail,
+        verdictScope: "shared",
       },
     })
     .returning({
@@ -1717,6 +2339,10 @@ function toDto(r: RunRow): DiagnosticRunDto {
     verdictLayer: r.verdictLayer,
     verdictDetail: r.verdictDetail,
     isSharedFault: r.isSharedFault,
+    verdictScope: r.verdictScope ?? null,
+    verdictRoot: r.verdictRoot ?? null,
+    verdictSecondary: r.verdictSecondary ?? [],
+    verdictHeld: r.verdictHeld ?? false,
     complaintAt: iso(r.complaintAt),
     timeline: r.timeline,
   };
@@ -1813,4 +2439,89 @@ export async function getDiagnosticRun(
           (layerIndex.get(a.layer) ?? 99) - (layerIndex.get(b.layer) ?? 99),
       ),
   };
+}
+
+// Fase 9: Membandingkan dua run milik pelanggan yang sama.
+// Mengembalikan null bila salah satu run tidak ditemukan; melempar ApiError 422 bila pelanggan berbeda.
+export async function compareDiagnosticRuns(
+  beforeId: string,
+  afterId: string,
+): Promise<RunComparison | null> {
+  const [before, after] = await Promise.all([
+    getDiagnosticRun(beforeId),
+    getDiagnosticRun(afterId),
+  ]);
+  if (!before || !after) return null;
+  if (before.customerId !== after.customerId) {
+    throw new ApiError(
+      422,
+      "CUSTOMER_MISMATCH",
+      "Hanya diagnosa dari pelanggan yang sama yang dapat dibandingkan.",
+    );
+  }
+  return compareRuns(before, after);
+}
+
+// Fase 9: Melampirkan ringkasan diagnosa ke catatan tiket alert (alerts.ticket_notes).
+// Idempoten: bila penanda runId sudah ada di catatan, tidak ditambahkan lagi.
+// Alert harus milik pelanggan yang sama dengan run (selain itu melempar 422).
+// Hanya kolom ticketNotes dan updatedAt yang diperbarui.
+export async function attachDiagnosticToAlert(
+  runId: string,
+  alertId: string,
+  userName: string,
+): Promise<string> {
+  const run = await getDiagnosticRun(runId);
+  if (!run) {
+    throw new ApiError(404, "NOT_FOUND", "Diagnosa tidak ditemukan.");
+  }
+  const [alert] = await db
+    .select({
+      id: alerts.id,
+      customerId: alerts.customerId,
+      ticketNotes: alerts.ticketNotes,
+    })
+    .from(alerts)
+    .where(eq(alerts.id, alertId))
+    .limit(1);
+
+  if (!alert) {
+    throw new ApiError(404, "NOT_FOUND", "Alert tidak ditemukan.");
+  }
+
+  if (
+    !run.customerId ||
+    !alert.customerId ||
+    run.customerId !== alert.customerId
+  ) {
+    throw new ApiError(
+      422,
+      "CUSTOMER_MISMATCH",
+      "Alert bukan milik pelanggan dari diagnosa ini.",
+    );
+  }
+
+  const existingNotes = alert.ticketNotes ?? "";
+  const marker = `[Diagnosa ${runId}`;
+  if (existingNotes.includes(marker)) {
+    return existingNotes;
+  }
+
+  const header = `[Diagnosa ${runId} · ${new Date().toISOString()} · ${userName}]`;
+  const summary = runSummaryText(run);
+  const snippet = `${header}\n${summary}`;
+  const newNotes =
+    existingNotes.trim().length > 0
+      ? `${existingNotes.trim()}\n\n${snippet}`
+      : snippet;
+
+  await db
+    .update(alerts)
+    .set({
+      ticketNotes: newNotes,
+      updatedAt: new Date(),
+    })
+    .where(eq(alerts.id, alertId));
+
+  return newNotes;
 }

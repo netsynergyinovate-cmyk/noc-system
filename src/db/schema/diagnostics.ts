@@ -14,6 +14,7 @@ import {
 import { sql } from "drizzle-orm";
 import { customers } from "./customers";
 import { routers } from "./routers";
+import type { VerdictSecondary } from "../../lib/diagnostics";
 
 // Diagnosa pelanggan berlapis (/app/anomali). Manual dan otomatis memakai mesin
 // yang sama dan tabel yang sama; yang beda hanya `trigger_mode` dan alasannya.
@@ -64,6 +65,18 @@ export const diagnosticRuns = pgTable(
     verdictLayer: text("verdict_layer"),
     verdictDetail: text("verdict_detail"),
     isSharedFault: boolean("is_shared_fault").default(false).notNull(),
+    verdictScope: text("verdict_scope").$type<"own" | "shared" | "unknown">(),
+    verdictRoot: jsonb("verdict_root").$type<{
+      kind: "customer" | "odp" | "router" | "uplink";
+      name: string;
+      affected: number;
+      served: number;
+    }>(),
+    verdictSecondary: jsonb("verdict_secondary")
+      .$type<VerdictSecondary[]>()
+      .default([])
+      .notNull(),
+    verdictHeld: boolean("verdict_held").default(false).notNull(),
   },
   (table) => [
     index("diagnostic_runs_customer_idx").on(

@@ -40,3 +40,16 @@ export const diagnosticPolicySchema = z
   .strict();
 
 export type DiagnosticPolicyInput = z.infer<typeof diagnosticPolicySchema>;
+
+export const compareDiagnosticQuerySchema = z
+  .object({
+    before: z.string().uuid(),
+    after: z.string().uuid(),
+  })
+  .strict();
+
+export const attachDiagnosticSchema = z
+  .object({
+    alertId: z.string().uuid(),
+  })
+  .strict();

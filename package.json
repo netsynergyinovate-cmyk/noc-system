@@ -1,6 +1,6 @@
 {
   "name": "ngodingpakeai-starter",
-  "version": "0.1.0",
+  "version": "1.0.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -69,7 +69,9 @@
     "backend:dev": "node scripts/backend-dev.mjs",
     "backend:build": "go -C backend build -o bin/ ./cmd/server",
     "backend:test": "go -C backend test ./...",
-    "backend:check": "go -C backend vet ./... && go -C backend test ./..."
+    "backend:check": "go -C backend vet ./... && go -C backend test ./...",
+    "upgrade": "node bin/noc-system.mjs upgrade",
+    "version": "node bin/noc-system.mjs version"
   },
   "dependencies": {
     "@better-auth/core": "1.7.3",

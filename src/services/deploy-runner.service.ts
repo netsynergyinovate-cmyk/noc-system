@@ -345,6 +345,8 @@ export async function runDryRun(
 }
 
 let isDeployInProgress = false;
+let activeDeployRunId: string | null = null;
+let currentActiveStepId: string | null = null;
 
 /**
  * Menjalankan seluruh alur deploy berurutan sesuai PRD Fase 3 & Fase 4.
@@ -379,7 +381,7 @@ export async function executeDeployRun(
 
   let runId = existingRunId || "";
   if (!runId) {
-    const [run] = await db
+    const inserted = await db
       .insert(deployRuns)
       .values({
         targetId: target.id,
@@ -389,18 +391,19 @@ export async function executeDeployRun(
         dijalankanOleh: userEmail,
       })
       .returning();
+    const run = (Array.isArray(inserted) ? inserted[0] : (inserted as { rows?: DeployRun[] })?.rows?.[0] || inserted) as DeployRun;
     runId = run.id;
   }
+  activeDeployRunId = runId;
 
   let titikBalikVersi: string | null = null;
-
   async function addStep(
     urutan: number,
     nama: string,
     status: DeployStep["status"],
     keluaran?: string,
   ): Promise<DeployStep> {
-    const [step] = await db
+    const inserted = await db
       .insert(deploySteps)
       .values({
         runId: runId,
@@ -412,6 +415,8 @@ export async function executeDeployRun(
         selesai: status !== "berjalan" ? new Date() : null,
       })
       .returning();
+    const step = (Array.isArray(inserted) ? inserted[0] : (inserted as { rows?: DeployStep[] })?.rows?.[0] || inserted) as DeployStep;
+    currentActiveStepId = step.id;
     return step;
   }
 
@@ -428,8 +433,10 @@ export async function executeDeployRun(
         selesai: new Date(),
       })
       .where(eq(deploySteps.id, stepId));
+    if (currentActiveStepId === stepId && status !== "berjalan") {
+      currentActiveStepId = null;
+    }
   }
-
   let stepOutputBuf = "";
   let lastFlush = Date.now();
   let flushTimer: NodeJS.Timeout | null = null;
@@ -806,6 +813,17 @@ export async function executeDeployRun(
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
+    if (currentActiveStepId) {
+      await db
+        .update(deploySteps)
+        .set({ status: "gagal", keluaran: `Gagal pada langkah ini: ${errorMsg}`, selesai: new Date() })
+        .where(eq(deploySteps.id, currentActiveStepId));
+    }
+    await db
+      .update(deploySteps)
+      .set({ status: "gagal", keluaran: `Deploy terhenti: ${errorMsg}`, selesai: new Date() })
+      .where(and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")));
+
     await db
       .update(deployRuns)
       .set({ status: "gagal", selesai: new Date() })
@@ -818,6 +836,8 @@ export async function executeDeployRun(
       message: `Deploy terhenti: ${errorMsg}`,
     };
   } finally {
+    activeDeployRunId = null;
+    currentActiveStepId = null;
     isDeployInProgress = false;
   }
 }
@@ -907,6 +927,75 @@ export async function executeManualRollback(
 }
 
 /**
+ * Melakukan rekonsiliasi run yang menggantung (stale).
+ * Setiap run berstatus "berjalan" yang tidak sedang aktif dieksekusi di memori
+ * akan otomatis ditandai "gagal" beserta langkah-langkahnya yang belum selesai.
+ */
+export async function reconcileStaleDeployRuns(): Promise<number> {
+  try {
+    const runningRuns = await db
+      .select()
+      .from(deployRuns)
+      .where(eq(deployRuns.status, "berjalan"));
+
+    let count = 0;
+    const now = new Date();
+    // Batas waktu kedaluwarsa run menggantung: 30 menit
+    const STALE_TIMEOUT_MS = 30 * 60 * 1000;
+
+    for (const r of runningRuns) {
+      const elapsedMs = now.getTime() - new Date(r.mulai).getTime();
+      if (activeDeployRunId !== r.id && elapsedMs > STALE_TIMEOUT_MS) {
+        await db
+          .update(deployRuns)
+          .set({ status: "gagal", selesai: now })
+          .where(eq(deployRuns.id, r.id));
+
+        await db
+          .update(deploySteps)
+          .set({
+            status: "gagal",
+            keluaran: "Proses deploy terhenti / koneksi terputus (melebihi batas waktu 30 menit).",
+            selesai: now,
+          })
+          .where(and(eq(deploySteps.runId, r.id), eq(deploySteps.status, "berjalan")));
+
+        count++;
+      }
+    }
+    return count;
+  } catch (err) {
+    console.error("Gagal melakukan rekonsiliasi deploy run:", err);
+    return 0;
+  }
+}
+
+/**
+ * Membatalkan / menandai gagal suatu deploy run secara manual oleh operator.
+ */
+export async function cancelDeployRun(runId: string): Promise<boolean> {
+  const now = new Date();
+  await db
+    .update(deployRuns)
+    .set({ status: "gagal", selesai: now })
+    .where(eq(deployRuns.id, runId));
+
+  await db
+    .update(deploySteps)
+    .set({
+      status: "gagal",
+      keluaran: "Dibatalkan secara manual oleh operator.",
+      selesai: now,
+    })
+    .where(and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")));
+
+  if (activeDeployRunId === runId) {
+    activeDeployRunId = null;
+  }
+  return true;
+}
+
+/**
  * Mengambil riwayat deploy dan rollback dengan opsi filter.
  */
 export async function getDeployRuns(options?: {
@@ -914,6 +1003,8 @@ export async function getDeployRuns(options?: {
   jenis?: string;
   limit?: number;
 }): Promise<DeployRun[]> {
+  await reconcileStaleDeployRuns();
+
   const query = db
     .select()
     .from(deployRuns)
@@ -927,6 +1018,8 @@ export async function getDeployRuns(options?: {
  * Mengambil detail satu run deploy beserta log langkah dan sinkronisasi konfigurasi.
  */
 export async function getDeployRunDetail(runId: string) {
+  await reconcileStaleDeployRuns();
+
   const [run] = await db
     .select()
     .from(deployRuns)

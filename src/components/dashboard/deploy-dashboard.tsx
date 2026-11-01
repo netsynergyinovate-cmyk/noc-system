@@ -1945,7 +1945,26 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                         <td className="p-3 font-mono text-[11px] text-muted-foreground">
                           {r.titikBalikVersi || "-"}
                         </td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right flex items-center justify-end gap-1.5">
+                          {r.status === "berjalan" && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 text-[10px] px-2"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await fetch("/api/deploy/history", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ runId: r.id }),
+                                });
+                                loadHistory();
+                                setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                              }}
+                            >
+                              Tandai Gagal
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -2453,12 +2472,34 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               <DialogTitle className="flex items-center gap-2 text-sm font-mono text-zinc-100">
                 <Terminal className="h-4 w-4 text-emerald-400" /> Terminal Log CLI Run: {selectedRunDetail?.run.versi}
               </DialogTitle>
-              <Badge
-                variant={selectedRunDetail?.run.status === "berhasil" ? "default" : "destructive"}
-                className="text-[10px] capitalize"
-              >
-                {selectedRunDetail?.run.status}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {selectedRunDetail?.run.status === "berjalan" && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-6 text-[10px] px-2 font-sans"
+                    onClick={async () => {
+                      if (!selectedRunDetail?.run.id) return;
+                      await fetch("/api/deploy/history", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ runId: selectedRunDetail.run.id }),
+                      });
+                      loadHistory();
+                      setSelectedRunDetail(null);
+                      setNotice({ type: "info", msg: "Deploy run berhasil ditandai gagal / dihentikan." });
+                    }}
+                  >
+                    Tandai Gagal / Hentikan
+                  </Button>
+                )}
+                <Badge
+                  variant={selectedRunDetail?.run.status === "berhasil" ? "default" : "destructive"}
+                  className="text-[10px] capitalize"
+                >
+                  {selectedRunDetail?.run.status}
+                </Badge>
+              </div>
             </div>
             <DialogDescription className="text-[11px] text-zinc-400 font-mono mt-1">
               Jenis: {selectedRunDetail?.run.jenis} | Pelaku: {selectedRunDetail?.run.dijalankanOleh} | Target: {target?.sshUser}@{target?.host}

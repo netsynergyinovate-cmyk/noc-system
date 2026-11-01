@@ -79,6 +79,30 @@ export const auth = betterAuth({
         },
       },
     },
+    account: {
+      create: {
+        after: async (account) => {
+          if (account.providerId === "logto-github") {
+            const [target] = await db
+              .select({ role: schema.user.role })
+              .from(schema.user)
+              .where(eq(schema.user.id, account.userId))
+              .limit(1);
+            if (target && !roleNames(target.role).includes("superadmin")) {
+              await db
+                .update(schema.user)
+                .set({ role: "developer" })
+                .where(eq(schema.user.id, account.userId));
+            }
+          } else if (account.providerId === "logto") {
+            await db
+              .update(schema.user)
+              .set({ role: "superadmin" })
+              .where(eq(schema.user.id, account.userId));
+          }
+        },
+      },
+    },
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {

@@ -410,6 +410,7 @@ async function cmdDeploy(args = [], options = {}) {
   runCmd(`mkdir -p /srv/noc/backups`);
 
   let pgCid = "";
+  let dockerErr = "";
   try {
     const lines = execSync('docker ps --filter "name=noc-postgres" --format "{{.Names}}"', { encoding: "utf-8" }).trim().split("\n");
     pgCid = lines[0]?.trim();
@@ -417,10 +418,16 @@ async function cmdDeploy(args = [], options = {}) {
       const p5432 = execSync('docker ps --filter "publish=5432" --format "{{.Names}}"', { encoding: "utf-8" }).trim().split("\n");
       pgCid = p5432[0]?.trim();
     }
-  } catch {}
+  } catch (err) {
+    dockerErr = err.message || "";
+  }
 
   if (!pgCid) {
-    fail("Kontainer Docker PostgreSQL (noc-postgres / port 5432) tidak ditemukan di server. Deployment dibatalkan.");
+    if (dockerErr.includes("permission denied") || dockerErr.includes("docker.sock")) {
+      fail("Akses ke Docker ditolak (permission denied). Jalankan dengan 'sudo noc-system deploy' atau masukkan user ke grup docker: sudo usermod -aG docker $USER && newgrp docker");
+    } else {
+      fail("Kontainer Docker PostgreSQL (noc-postgres / port 5432) tidak ditemukan di server. Deployment dibatalkan.");
+    }
     process.exit(1);
   }
 
@@ -449,11 +456,13 @@ async function cmdDeploy(args = [], options = {}) {
 
   // Langkah 2: Kompilasi Backend Go
   log("Langkah 2/6: Mengompilasi backend Go untuk server native...");
+  log("Mengunduh toolchain/modul Go dan mengompilasi biner noc-backend...");
+  log("Proses ini membutuhkan waktu 1–2 menit (tampilan unduhan Go mungkin terhenti sejenak saat mengekstrak, harap tunggu)...");
   const backendBinDir = path.join(REPO_ROOT, "backend", "bin");
   if (!fs.existsSync(backendBinDir)) fs.mkdirSync(backendBinDir, { recursive: true });
   const backendBinPath = path.join(backendBinDir, "noc-backend");
 
-  runCmd(`go build -ldflags="-s -w" -o "${backendBinPath}" ./cmd/server`, {
+  runCmd(`go build -v -ldflags="-s -w" -o "${backendBinPath}" ./cmd/server`, {
     cwd: path.join(REPO_ROOT, "backend"),
     env: { ...process.env, CGO_ENABLED: "0", GOOS: "linux", GOARCH: "amd64" },
   });

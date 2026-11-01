@@ -30,6 +30,8 @@ const table = {
   manageBilling: { billing: ["manage"] },
   // Mengelola pengguna dan peran akun (khusus Super Admin).
   manageUsers: { user: ["set-role"] },
+  // Mengakses menu deploy server (Khusus peran Developer saja).
+  manageDeploy: { deploy: ["manage"] },
 } as const satisfies Record<string, Permissions>;
 
 // Dibekukan sampai ke dalam daftar aksinya: kode lain yang mengimpor tabel ini

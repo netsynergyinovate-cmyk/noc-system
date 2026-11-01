@@ -33,6 +33,8 @@ export const statement = {
   // Operasi server: ganti mode demo/live (menulis .env.local), transfer data
   // antar-database, seed, cadangan/rollback/health deploy, dan benchmark.
   system: ["manage"],
+  // Akses halaman dan operasi deploy server native (Khusus peran Developer saja).
+  deploy: ["manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -51,6 +53,7 @@ export const roles = {
     apiKey: [],
     map: [],
     system: [],
+    deploy: [],
     audit: ["read"],
     user: [],
     session: [],
@@ -66,6 +69,7 @@ export const roles = {
     apiKey: ["manage"],
     map: ["manage"],
     system: ["manage"],
+    deploy: ["manage"],
     audit: ["read"],
   }),
   admin: ac.newRole({
@@ -78,6 +82,7 @@ export const roles = {
     apiKey: ["manage"],
     map: ["manage"],
     system: ["manage"],
+    deploy: [],
     audit: ["read"],
     user: [],
     session: [],
@@ -93,6 +98,7 @@ export const roles = {
     apiKey: ["manage"],
     map: ["manage"],
     system: ["manage"],
+    deploy: [],
     audit: ["read"],
   }),
 } as const;

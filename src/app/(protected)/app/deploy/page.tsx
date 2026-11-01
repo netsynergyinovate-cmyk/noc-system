@@ -8,14 +8,14 @@ import { DeployDashboard } from "@/components/dashboard/deploy-dashboard";
 export const dynamic = "force-dynamic";
 
 export default async function DeployPage() {
-  await requirePermission({ system: ["manage"] });
+  const { user } = await requirePermission({ deploy: ["manage"] });
   const reqHeaders = await headers();
   const host = reqHeaders.get("x-forwarded-host") || reqHeaders.get("host");
   const checkReq = new Request(`http://${host || "localhost"}/app/deploy`, {
     headers: reqHeaders,
   });
 
-  const guard = evaluateDeployAccess(checkReq);
+  const guard = evaluateDeployAccess(checkReq, user.role);
 
   // Pada peran 'server', halaman tidak terdaftar dan mengembalikan 404
   if (guard.status === 404) {

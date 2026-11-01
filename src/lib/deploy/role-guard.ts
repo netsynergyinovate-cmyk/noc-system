@@ -12,6 +12,7 @@
  *    0.0.0.0 bukan alamat loopback host dan ditolak.
  *    Bila header Host tidak ada -> tolak 403.
  */
+import { isDeveloper } from "@/lib/roles";
 
 export function isDeployRole(): boolean {
   return process.env.DEPLOY_PAGE_ROLE === "local";
@@ -53,7 +54,15 @@ export interface DeployGuardResult {
   error?: string;
 }
 
-export function evaluateDeployAccess(request?: Request): DeployGuardResult {
+export function evaluateDeployAccess(
+  request?: Request,
+  userRole?: string | null,
+): DeployGuardResult {
+  // Halaman dan rute deploy diizinkan khusus untuk Developer (termasuk di server native untuk telemetri).
+  if (isDeveloper(userRole)) {
+    return { allowed: true, status: 200 };
+  }
+
   // 1. Lapisan utama: Peran runtime (Fail-Closed)
   // Bila peran bukan 'local' (termasuk unset/undefined), kembalikan 404.
   if (!isDeployRole()) {

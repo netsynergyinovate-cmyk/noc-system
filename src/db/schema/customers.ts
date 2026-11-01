@@ -40,6 +40,10 @@ export const customers = pgTable(
       .$type<BillingStatus>()
       .default("lunas")
       .notNull(),
+    // Status isolir dari router MikroTik (berdasarkan address-list isolir).
+    // NULL = tidak ada bukti dari router (router unreachable, address-list kosong, dll).
+    isolirRouter: boolean("isolir_router"),
+    isolirRouterAt: timestamp("isolir_router_at", { withTimezone: true }),
     // Rx power ONU dalam dBm, diambil dari OLT.
     opticalPower: numeric("optical_power", {
       precision: 6,

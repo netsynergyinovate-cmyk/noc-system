@@ -376,7 +376,10 @@ export class MikrotikRestClient {
    * Hanya perintah di daftar ini yang boleh lewat.
    */
   async measure(
-    path: "/rest/tool/ping" | "/rest/interface/ethernet/monitor",
+    path:
+      | "/rest/tool/ping"
+      | "/rest/interface/ethernet/monitor"
+      | "/rest/tool/traceroute",
     body: Record<string, string>,
   ): Promise<unknown> {
     if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");

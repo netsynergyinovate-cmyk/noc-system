@@ -23,6 +23,7 @@ function SourcedTime({
   moment,
   now,
   timeTestId,
+  compact = false,
 }: {
   seconds: number;
   source: AlertEndSource;
@@ -32,6 +33,8 @@ function SourcedTime({
   moment: "start" | "end";
   now: number;
   timeTestId?: string;
+  // Hanya ikon penanda yang terlihat; teks tetap ada untuk pembaca layar dan tooltip.
+  compact?: boolean;
 }) {
   const description = describeTimeSource(
     {
@@ -64,7 +67,7 @@ function SourcedTime({
         )}
       >
         <Icon className="size-3 shrink-0" aria-hidden="true" />
-        {description.short}
+        {compact ? <span className="sr-only">{description.short}</span> : description.short}
         <span className="sr-only">. {description.long}</span>
       </span>
     </span>
@@ -75,12 +78,14 @@ function SourcedTime({
 export function AlertTime({
   alert,
   now,
+  compact,
 }: {
   alert: Pick<
     ActiveAlert,
     "startedAt" | "timeSource" | "timeUncertaintySeconds"
   >;
   now: number;
+  compact?: boolean;
 }) {
   return (
     <SourcedTime
@@ -89,6 +94,7 @@ export function AlertTime({
       uncertaintySeconds={alert.timeUncertaintySeconds}
       moment="start"
       now={now}
+      compact={compact}
     />
   );
 }

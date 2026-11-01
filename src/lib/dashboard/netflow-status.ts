@@ -1,4 +1,6 @@
-export const NETFLOW_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+// captured_at = AWAL bucket 5 menit dan hanya bucket selesai yang di-flush tiap menit,
+// jadi sampel terbaru collector sehat berumur ~5-11 menit; 15 menit memberi ruang flush terlambat.
+export const NETFLOW_FRESH_MS = 15 * 60 * 1000;
 
 export interface NetflowStatus {
   isDemo: boolean;
@@ -8,7 +10,7 @@ export interface NetflowStatus {
   activeRoutersCount: number;
 }
 
-// Murni: mode demo selalu dianggap aktif; selain itu aktif bila sampel terakhir <= 5 menit.
+// Murni: mode demo selalu dianggap aktif; selain itu aktif bila sampel terakhir <= NETFLOW_FRESH_MS.
 export function buildNetflowStatus(input: {
   isDemo: boolean;
   totalSamples: number;
@@ -22,7 +24,7 @@ export function buildNetflowStatus(input: {
     isDemo,
     totalSamples: input.totalSamples,
     lastCapturedAt: lastCapturedAt ? lastCapturedAt.toISOString() : null,
-    isActive: isDemo || age <= NETFLOW_ACTIVE_WINDOW_MS,
+    isActive: isDemo || age <= NETFLOW_FRESH_MS,
     activeRoutersCount: input.activeRoutersCount,
   };
 }

@@ -59,7 +59,7 @@ export const auth = betterAuth({
             const rawEmail =
               typeof profile.email === "string" && profile.email
                 ? profile.email
-                : "developer@github.local";
+                : `${profile.sub ?? profile.id ?? "dev"}+developer@github.local`;
             const at = rawEmail.indexOf("@");
             const devEmail =
               at !== -1
@@ -71,6 +71,7 @@ export const auth = betterAuth({
                 : "Developer";
             return {
               email: devEmail,
+              emailVerified: false,
               name: rawName.includes("Developer") ? rawName : `${rawName} (Developer)`,
               role: "developer",
             };

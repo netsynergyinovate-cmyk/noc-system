@@ -233,7 +233,7 @@ export async function runDryRun(
       'fi',
     ].join("\n");
 
-    const dbRes = await executeSshCommand(target, credential, `bash -c '${dbCmd}'`, host);
+    const dbRes = await executeSshScript(target, credential, "bash -s", dbCmd, host);
     if (dbRes.stdout.includes("CONTAINER:") && !dbRes.stdout.includes("NOT_READY")) {
       const cName = dbRes.stdout.split("CONTAINER:")[1]?.split("\n")[0]?.trim();
       checks.push({
@@ -444,9 +444,9 @@ export async function executeDeployRun(
     const timestampStr = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFile = `/srv/noc/backups/backup-${timestampStr}.sql.gz`;
 
-    // Gunakan pipefail agar kegagalan pg_dump tidak tersembunyi
-    const backupCmd = [
-      "set -o pipefail",
+    // Gunakan stdin script agar kutip dan pipefail tidak terpotong oleh bash -c
+    const backupScript = [
+      "set -euo pipefail",
       "mkdir -p /srv/noc/backups",
       'PG_CID=$(grep -E "^POSTGRES_CONTAINER=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
       'if [ -z "$PG_CID" ]; then PG_CID=$(docker ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
@@ -457,12 +457,12 @@ export async function executeDeployRun(
       'DB_NAME=$(echo "$DB_URL" | sed -E \'s|^.*/([^?]+).*$|\\1|\')',
       'if [ -z "$DB_USER" ] || [ "$DB_USER" = "$DB_URL" ]; then DB_USER="starter"; fi',
       'if [ -z "$DB_NAME" ] || [ "$DB_NAME" = "$DB_URL" ]; then DB_NAME="starter"; fi',
-      `docker exec "$PG_CID" pg_dump -U "$DB_USER" -d "$DB_NAME" --format=custom > "${backupFile}"`,
+      `docker exec "$PG_CID" pg_dump -U "$DB_USER" -d "$DB_NAME" | gzip > "${backupFile}"`,
       `test -s "${backupFile}" || (echo "File backup kosong atau gagal dibuat"; exit 1)`,
       `ls -lh "${backupFile}"`,
-    ].join(" && ");
+    ].join("\n");
 
-    const backupRes = await executeSshCommand(target, credential, `bash -c '${backupCmd}'`, host);
+    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host);
     if (backupRes.code !== 0) {
       await updateStep(step2.id, "gagal", backupRes.stderr || backupRes.stdout);
       throw new Error(`Backup database gagal: ${backupRes.stderr || backupRes.stdout}`);

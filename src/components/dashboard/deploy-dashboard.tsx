@@ -26,6 +26,10 @@ import {
   Copy,
   Check,
   BookmarkPlus,
+  Cpu,
+  HardDrive,
+  Radio,
+  Info,
 } from "lucide-react";
 import type { DeployTarget } from "@/db/schema/deploy-targets";
 import type { NetworkDetectionResult } from "@/services/deploy-targets.service";
@@ -61,6 +65,143 @@ function delay(ms: number): Promise<void> {
   setTimeout(resolve, ms);
   return promise;
 }
+
+interface ServerStatusData {
+  ok: boolean;
+  activeVersion?: string;
+  rollbackTarget?: string | null;
+  specs?: {
+    os?: string;
+    arch?: string;
+    hostname?: string;
+    uptimeSeconds?: number;
+    cpu?: {
+      cores: number;
+      model: string;
+      loadAvg: number[];
+    };
+    memory?: {
+      totalMb: number;
+      freeMb: number;
+      usedMb: number;
+      usedPercent: number;
+    };
+    swap?: {
+      totalMb: number;
+      usedMb: number;
+      freeMb: number;
+      usePercent: number;
+      active: boolean;
+    };
+    disk?: {
+      totalMb: number;
+      usedMb: number;
+      freeMb: number;
+      usePercent: number;
+      path: string;
+    };
+  };
+  activeProcess?: {
+    running: boolean;
+    command?: string;
+    startedAt?: string;
+  };
+  services?: { web: string; backend: string; postgres: string };
+  features?: Record<string, { status: string; port?: number; ports?: number[]; name: string }>;
+  recentRuns?: DeployRun[];
+  recentErrors?: string[];
+  terminalLogs?: string[];
+  diagnostics?: {
+    warnings: string[];
+    oomDetected: boolean;
+    oomDetails: string[];
+  };
+  updatedAt?: string;
+}
+
+interface FeatureStackItem {
+  id: string;
+  name: string;
+  tech: string;
+  port: string;
+  serviceKey: string;
+  upCmd: string;
+  logsCmd: string;
+  restartCmd: string;
+}
+
+const FEATURE_STACK: FeatureStackItem[] = [
+  {
+    id: "web",
+    name: "NOC Web Dashboard",
+    tech: "Next.js 16 (Turbopack Standalone)",
+    port: "3000 (TCP)",
+    serviceKey: "web",
+    upCmd: "sudo systemctl start noc-web",
+    logsCmd: "journalctl -u noc-web -n 50 -f",
+    restartCmd: "sudo systemctl restart noc-web",
+  },
+  {
+    id: "backend",
+    name: "NOC Backend Engine",
+    tech: "Go (Golang High-Concurrency)",
+    port: "8080 (TCP)",
+    serviceKey: "backend",
+    upCmd: "sudo systemctl start noc-backend",
+    logsCmd: "journalctl -u noc-backend -n 50 -f",
+    restartCmd: "sudo systemctl restart noc-backend",
+  },
+  {
+    id: "postgres",
+    name: "Database PostgreSQL & TimescaleDB",
+    tech: "Docker Container (TimescaleDB / noc-postgres)",
+    port: "5432 (TCP)",
+    serviceKey: "postgres",
+    upCmd: "docker compose --env-file /srv/noc/shared/.env -f compose.postgres.yaml up -d",
+    logsCmd: "docker logs -f noc-postgres --tail 50",
+    restartCmd: "docker restart noc-postgres",
+  },
+  {
+    id: "genieacs",
+    name: "GenieACS TR-069 CPE Provisioning",
+    tech: "Docker Container (CWMP, NBI, FS, UI)",
+    port: "7547 (CWMP), 9000 (UI)",
+    serviceKey: "genieacs",
+    upCmd: "docker compose -f compose.genieacs.yaml up -d",
+    logsCmd: "docker compose -f compose.genieacs.yaml logs -f --tail 50",
+    restartCmd: "docker compose -f compose.genieacs.yaml restart",
+  },
+  {
+    id: "osrm",
+    name: "OSRM Road Snap & Fiber Routing",
+    tech: "Docker Container (OSRM Routing Engine)",
+    port: "5000 (TCP)",
+    serviceKey: "osrm",
+    upCmd: "docker compose -f compose.osrm.yaml up -d osrm",
+    logsCmd: "docker compose -f compose.osrm.yaml logs -f --tail 50 osrm",
+    restartCmd: "docker compose -f compose.osrm.yaml restart osrm",
+  },
+  {
+    id: "9router",
+    name: "9router MikroTik Lab Simulator",
+    tech: "Docker Container (RouterOS Lab)",
+    port: "8728 (API), 161 (SNMP)",
+    serviceKey: "nineRouter",
+    upCmd: "docker compose -f compose.9router.yaml up -d",
+    logsCmd: "docker compose -f compose.9router.yaml logs -f --tail 50",
+    restartCmd: "docker compose -f compose.9router.yaml restart",
+  },
+  {
+    id: "netflow",
+    name: "NetFlow Traffic Collector",
+    tech: "Go Engine NetFlow/IPFIX Subsystem",
+    port: "2055 (UDP)",
+    serviceKey: "netflow",
+    upCmd: "sudo systemctl restart noc-backend",
+    logsCmd: "journalctl -u noc-backend | grep -i netflow",
+    restartCmd: "sudo systemctl restart noc-backend",
+  },
+];
 
 interface DeployDashboardProps {
   initialTarget: DeployTarget | null;
@@ -151,15 +292,10 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
   const [serverUrl, setServerUrl] = useState(() => (target?.host ? `http://${target.host}:3000` : ""));
   const [monitorToken, setMonitorToken] = useState("");
   const [monitoringLoading, setMonitoringLoading] = useState(false);
-  const [serverData, setServerData] = useState<{
-    ok: boolean;
-    activeVersion?: string;
-    rollbackTarget?: string | null;
-    services?: { web: string; backend: string; postgres: string };
-    recentRuns?: DeployRun[];
-    recentErrors?: string[];
-    updatedAt?: string;
-  } | null>(null);
+  const [serverData, setServerData] = useState<ServerStatusData | null>(null);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0);
+  const [terminalTab, setTerminalTab] = useState<"live" | "errors" | "runs">("live");
+  const [clearedTerminal, setClearedTerminal] = useState(false);
 
   async function fetchServerStatus(url = serverUrl, token = monitorToken, showNotice = true) {
     if (!url) {
@@ -216,6 +352,13 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
       // ignore
     }
   }, [target?.host]);
+  useEffect(() => {
+    if (autoRefreshInterval <= 0 || !serverUrl || !monitorToken) return;
+    const timer = setInterval(() => {
+      fetchServerStatus(serverUrl, monitorToken, false);
+    }, autoRefreshInterval * 1000);
+    return () => clearInterval(timer);
+  }, [autoRefreshInterval, serverUrl, monitorToken]);
   // Muat data pendukung saat mount
   useEffect(() => {
     loadSshMeta();

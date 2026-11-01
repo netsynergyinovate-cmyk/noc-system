@@ -366,7 +366,8 @@ export async function executeDeployRun(
 }> {
   const versionInfo = await getAppVersion();
   const host = effectiveHost || target.host;
-  const version = sanitizeVersion(versionInfo.fullVersion);
+  const buildSuffix = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  const version = sanitizeVersion(`${versionInfo.fullVersion}+build.${buildSuffix}`);
   if (!version) {
     throw new Error("Nomor versi tidak valid.");
   }
@@ -448,16 +449,18 @@ export async function executeDeployRun(
     const backupScript = [
       "set -euo pipefail",
       "mkdir -p /srv/noc/backups",
+      'DOCKER="docker"',
+      '$DOCKER info >/dev/null 2>&1 || DOCKER="sudo -n docker"',
       'PG_CID=$(grep -E "^POSTGRES_CONTAINER=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
-      'if [ -z "$PG_CID" ]; then PG_CID=$(docker ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
-      'if [ -z "$PG_CID" ]; then PG_CID=$(docker ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
+      'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
+      'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
       'if [ -z "$PG_CID" ]; then echo "Kontainer postgres tidak ditemukan di server"; exit 1; fi',
       'DB_URL=$(grep -E "^DATABASE_URL=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
       'DB_USER=$(echo "$DB_URL" | sed -E \'s|^.*://([^:]+):.*$|\\1|\')',
       'DB_NAME=$(echo "$DB_URL" | sed -E \'s|^.*/([^?]+).*$|\\1|\')',
       'if [ -z "$DB_USER" ] || [ "$DB_USER" = "$DB_URL" ]; then DB_USER="starter"; fi',
       'if [ -z "$DB_NAME" ] || [ "$DB_NAME" = "$DB_URL" ]; then DB_NAME="starter"; fi',
-      `docker exec "$PG_CID" pg_dump -U "$DB_USER" -d "$DB_NAME" | gzip > "${backupFile}"`,
+      `$DOCKER exec "$PG_CID" pg_dump -U "$DB_USER" -d "$DB_NAME" | gzip > "${backupFile}"`,
       `test -s "${backupFile}" || (echo "File backup kosong atau gagal dibuat"; exit 1)`,
       `ls -lh "${backupFile}"`,
     ].join("\n");
@@ -491,8 +494,21 @@ export async function executeDeployRun(
 
     // LANGKAH 4: Migrasi Skema Database dari Rilis Baru
     const step4 = await addStep(4, "Migrasi Skema Database", "berjalan");
-    const migCmd = `test -f "${releasePath}/scripts/migrate-server.mjs" && node "${releasePath}/scripts/migrate-server.mjs"`;
-    const migRes = await executeSshCommand(target, credential, migCmd, host);
+    const migScript = [
+      "set -euo pipefail",
+      `cd "${releasePath}"`,
+      "if [ -f /srv/noc/shared/.env ]; then",
+      "  set -a",
+      "  . /srv/noc/shared/.env",
+      "  set +a",
+      "fi",
+      'if [ -f "scripts/migrate-server.mjs" ]; then',
+      '  node "scripts/migrate-server.mjs"',
+      'else',
+      '  echo "Skrip migrasi tidak ditemukan, melewati."',
+      'fi',
+    ].join("\n");
+    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host);
     if (migRes.code !== 0) {
       await updateStep(step4.id, "gagal", migRes.stderr || migRes.stdout);
       throw new Error(`Migrasi database gagal: ${migRes.stderr || migRes.stdout}`);
@@ -621,7 +637,7 @@ export async function executeDeployRun(
     let healthy = false;
     let healthOutput = "";
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 15; i++) {
       const probeNext = await executeSshCommand(
         target,
         credential,

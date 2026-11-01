@@ -1,12 +1,12 @@
 import { getRawPool } from "@/db";
 import { ApiError, readJson, withApiSession } from "@/lib/api";
-import { isSuperAdmin, roleLabel } from "@/lib/roles";
+import { isPreviewableRole, isSuperAdmin, previewableRoles, roleLabel, type AppRole } from "@/lib/roles";
 
 export const runtime = "nodejs";
 
 interface SetRoleBody {
   userId: string;
-  role: "superadmin" | "admin" | "user";
+  role: AppRole;
 }
 
 /**
@@ -42,11 +42,11 @@ export function POST(request: Request) {
     }
 
     const targetRole = body.role;
-    if (!targetRole || !["superadmin", "admin", "user"].includes(targetRole)) {
+    if (!targetRole || !isPreviewableRole(targetRole)) {
       throw new ApiError(
         400,
         "BAD_REQUEST",
-        "Role harus salah satu dari: superadmin, admin, user.",
+        `Role harus salah satu dari: ${previewableRoles.join(", ")}.`,
       );
     }
 

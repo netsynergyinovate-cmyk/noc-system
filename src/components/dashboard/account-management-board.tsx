@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSessionUser } from "@/components/session-provider";
-import { isSuperAdmin, isAdmin, isStrictAdmin, isUser, roleLabel, roleNames } from "@/lib/roles";
+import { isSuperAdmin, isAdmin, isStrictAdmin, isUser, roleLabel, roleNames, previewableRoles, type AppRole } from "@/lib/roles";
 import { authClient } from "@/lib/auth-client";
 import { selectClassName } from "./select-class";
 
@@ -83,7 +83,7 @@ export function AccountManagementBoard() {
   const [createName, setCreateName] = useState("");
   const [createEmail, setCreateEmail] = useState("");
   const [createPassword, setCreatePassword] = useState("");
-  const [createRole, setCreateRole] = useState<"superadmin" | "admin" | "user">("user");
+  const [createRole, setCreateRole] = useState<AppRole>("user");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
@@ -577,12 +577,14 @@ export function AccountManagementBoard() {
                       <select
                         id="admin-create-role"
                         value={createRole}
-                        onChange={(e) => setCreateRole(e.target.value as "superadmin" | "admin" | "user")}
+                        onChange={(e) => setCreateRole(e.target.value as AppRole)}
                         className={cn(selectClassName, "h-8 w-full text-xs")}
                       >
-                        <option value="user">Petugas / User Biasa</option>
-                        <option value="admin">Admin (Operasional Utama)</option>
-                        <option value="superadmin">Super Admin (Kontrol Penuh)</option>
+                        {previewableRoles.map((r) => (
+                          <option key={r} value={r}>
+                            {roleLabel(r)}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -817,9 +819,12 @@ export function AccountManagementBoard() {
                                       disabled={isSaving}
                                       className={cn(selectClassName, "h-8 w-44 text-xs")}
                                     >
-                                      <option value="superadmin">👑 Super Admin (Kontrol Penuh)</option>
-                                      <option value="admin">🛡️ Admin Utama (Operasional NOC)</option>
-                                      <option value="user">👤 Petugas / User Biasa</option>
+                                      {previewableRoles.map((r) => (
+                                        <option key={r} value={r}>
+                                          {r === "superadmin" ? "👑 " : r === "admin" ? "🛡️ " : r === "developer" ? "💻 " : "👤 "}
+                                          {roleLabel(r)}
+                                        </option>
+                                      ))}
                                     </select>
                                     <Button
                                       size="sm"

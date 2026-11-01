@@ -16,6 +16,7 @@ import {
   Clock,
   RefreshCw,
   Eye,
+  EyeOff,
   Trash2,
   Lock,
   Layers,
@@ -59,6 +60,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DeployRunConsole, type DeployAccessInfo } from "./deploy-run-console";
 
 function delay(ms: number): Promise<void> {
   const { promise, resolve } = Promise.withResolvers<void>();
@@ -269,6 +271,8 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
     message: string;
     autoRollbackTriggered?: boolean;
   } | null>(null);
+  const [deployAccessInfo, setDeployAccessInfo] = useState<DeployAccessInfo | null>(null);
+  const [activeTab, setActiveTab] = useState("deploy");
 
   // Riwayat & Releases State
   const [runs, setRuns] = useState<DeployRun[]>([]);
@@ -553,14 +557,37 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               setActiveDeploySteps(detail.steps);
             }
             if (detail?.run && detail.run.status !== "berjalan") {
+              const isSuccess = detail.run.status === "berhasil";
               setDeployFinishedResult({
-                success: detail.run.status === "berhasil",
+                success: isSuccess,
                 message:
-                  detail.run.status === "berhasil"
+                  isSuccess
                     ? `Deploy versi ${detail.run.versi} berhasil terpasang di SERVER NATIVE!`
                     : `Deploy selesai dengan status: ${detail.run.status}`,
                 autoRollbackTriggered: detail.run.otomatis,
               });
+
+              if (isSuccess) {
+                try {
+                  const accessRes = await fetch("/api/deploy/access-info");
+                  if (accessRes.ok) {
+                    const accessJson = await accessRes.json();
+                    if (accessJson.data) {
+                      setDeployAccessInfo(accessJson.data);
+                      if (accessJson.data.url) {
+                        setServerUrl(accessJson.data.url);
+                        try { localStorage.setItem("noc_monitor_server_url", accessJson.data.url); } catch {}
+                      }
+                      if (accessJson.data.token) {
+                        setMonitorToken(accessJson.data.token);
+                        try { localStorage.setItem("noc_monitor_token", accessJson.data.token); } catch {}
+                      }
+                    }
+                  }
+                } catch {
+                  // non-fatal
+                }
+              }
               break;
             }
           } else {
@@ -841,7 +868,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
       )}
 
       {/* Tabs Menu Utama */}
-      <Tabs defaultValue="cli" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 w-full">
           <TabsTrigger value="cli" className="text-xs gap-1.5 font-semibold text-primary">
             <Terminal className="h-3.5 w-3.5" /> CLI noc-system
@@ -922,18 +949,188 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               </div>
               <div className="flex items-center gap-2 self-end md:self-auto pt-2 md:pt-4">
+                <div className="flex items-center gap-1.5 bg-background border rounded-md px-2.5 py-1 text-xs">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">Auto-refresh:</span>
+                  <select
+                    value={autoRefreshInterval}
+                    onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
+                    className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
+                  >
+                    <option value={0}>Nonaktif</option>
+                    <option value={5}>5 detik</option>
+                    <option value={10}>10 detik</option>
+                    <option value={30}>30 detik</option>
+                  </select>
+                </div>
                 <Button
                   variant="default"
                   size="sm"
                   className="text-xs h-8 gap-1.5"
                   disabled={monitoringLoading}
-                  onClick={() => fetchServerStatus(serverUrl, monitorToken, true)}
+                  onClick={() => {
+                    setClearedTerminal(false);
+                    fetchServerStatus(serverUrl, monitorToken, true);
+                  }}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${monitoringLoading ? "animate-spin" : ""}`} />
                   Perbarui Status Server
                 </Button>
               </div>
             </div>
+
+            {/* Panel Notifikasi Proses Aktif (Anti-Freeze Detection) */}
+            {serverData?.activeProcess?.running && (
+              <div className="mt-4 p-3.5 rounded-lg border border-blue-500/40 bg-blue-500/10 text-xs text-blue-700 dark:text-blue-300 flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-2.5">
+                  <RefreshCw className="h-4 w-4 animate-spin text-blue-500 shrink-0" />
+                  <div>
+                    <span className="font-bold">Proses Sedang Berjalan Aktif di Server: </span>
+                    <code className="font-mono bg-blue-900/30 px-1.5 py-0.5 rounded text-blue-200">
+                      {serverData.activeProcess.command || "noc-system deploy"}
+                    </code>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Server sedang melakukan kompilasi / migrasi di latar belakang. Terminal mungkin tampak diam tanpa teks — jangan menghentikan proses.
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-blue-500 text-blue-400 bg-blue-500/20 text-[10px]">
+                  BUSY / RUNNING
+                </Badge>
+              </div>
+            )}
+
+            {/* Panel Peringatan Diagnostik & Linux OOM Killer */}
+            {serverData?.diagnostics && (serverData.diagnostics.warnings.length > 0 || serverData.diagnostics.oomDetected) && (
+              <div className="mt-3 p-3.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                  Peringatan Diagnostik Stabilitas & Memori Server:
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-[11px] pl-1 text-amber-700 dark:text-amber-200">
+                  {serverData.diagnostics.warnings.map((warnMsg, idx) => (
+                    <li key={idx}>{warnMsg}</li>
+                  ))}
+                  {serverData.diagnostics.oomDetected && serverData.diagnostics.oomDetails.length > 0 && (
+                    <li className="font-mono text-[10px] bg-amber-950/40 p-1.5 rounded text-amber-200 mt-1">
+                      Log OOM: {serverData.diagnostics.oomDetails[serverData.diagnostics.oomDetails.length - 1]}
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Widget Spesifikasi Server Real-Time */}
+            {serverData?.specs && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {/* OS & Host */}
+                <div className="rounded-lg border bg-background p-3 shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                    <span>Sistem Operasi</span>
+                    <Server className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="mt-1 text-xs font-bold truncate text-foreground" title={serverData.specs.os}>
+                    {serverData.specs.os || "Linux"}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {serverData.specs.arch} • Host: {serverData.specs.hostname}
+                  </div>
+                </div>
+
+                {/* CPU Cores & Load */}
+                <div className="rounded-lg border bg-background p-3 shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                    <span>Prosesor (CPU)</span>
+                    <Cpu className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-foreground">
+                    {serverData.specs.cpu?.cores || 1} Cores
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                    Load: {serverData.specs.cpu?.loadAvg?.map((l) => l.toFixed(2)).join(", ") || "0.00"}
+                  </div>
+                </div>
+
+                {/* RAM (Memory) */}
+                <div className="rounded-lg border bg-background p-3 shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                    <span>RAM Digunakan</span>
+                    <Layers className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-foreground">
+                    {(serverData.specs.memory?.usedMb || 0) / 1024 > 1
+                      ? `${((serverData.specs.memory?.usedMb || 0) / 1024).toFixed(1)} GB`
+                      : `${serverData.specs.memory?.usedMb || 0} MB`}{" "}
+                    /{" "}
+                    {(serverData.specs.memory?.totalMb || 0) / 1024 > 1
+                      ? `${((serverData.specs.memory?.totalMb || 0) / 1024).toFixed(1)} GB`
+                      : `${serverData.specs.memory?.totalMb || 0} MB`}
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full ${
+                        (serverData.specs.memory?.usedPercent || 0) > 85
+                          ? "bg-red-500"
+                          : (serverData.specs.memory?.usedPercent || 0) > 70
+                          ? "bg-amber-500"
+                          : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${Math.min(100, serverData.specs.memory?.usedPercent || 0)}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1 flex justify-between">
+                    <span>Bebas: {serverData.specs.memory?.freeMb || 0} MB</span>
+                    <span>{serverData.specs.memory?.usedPercent || 0}%</span>
+                  </div>
+                </div>
+
+                {/* Swap Memory */}
+                <div className="rounded-lg border bg-background p-3 shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                    <span>Swap (Anti-OOM)</span>
+                    <Badge
+                      variant={serverData.specs.swap?.active ? "default" : "destructive"}
+                      className="text-[9px] px-1 py-0 h-4"
+                    >
+                      {serverData.specs.swap?.active ? "AKTIF" : "OFF"}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-foreground">
+                    {serverData.specs.swap?.active
+                      ? `${(serverData.specs.swap.usedMb / 1024).toFixed(1)} / ${(serverData.specs.swap.totalMb / 1024).toFixed(1)} GB`
+                      : "0 GB (Tanpa Swap)"}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {serverData.specs.swap?.active
+                      ? `Bebas: ${serverData.specs.swap.freeMb} MB (${serverData.specs.swap.usePercent}% terpakai)`
+                      : "Berisiko freeze saat kompilasi"}
+                  </div>
+                </div>
+
+                {/* Ruang Disk */}
+                <div className="rounded-lg border bg-background p-3 shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+                    <span>Ruang Disk</span>
+                    <HardDrive className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div className="mt-1 text-xs font-bold text-foreground">
+                    {((serverData.specs.disk?.freeMb || 0) / 1024).toFixed(1)} GB Bebas
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full ${
+                        (serverData.specs.disk?.usePercent || 0) > 85 ? "bg-red-500" : "bg-primary"
+                      }`}
+                      style={{ width: `${Math.min(100, serverData.specs.disk?.usePercent || 0)}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1 flex justify-between">
+                    <span>Total: {((serverData.specs.disk?.totalMb || 0) / 1024).toFixed(1)} GB</span>
+                    <span>{serverData.specs.disk?.usePercent || 0}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Kartu Ringkasan Real-Time Server */}
             {serverData && (
@@ -951,10 +1148,10 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
 
                 {/* Status Layanan Systemd */}
                 <div className="rounded-lg border bg-background p-4 shadow-xs">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kesehatan Layanan Server</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Kesehatan Layanan Inti</span>
                   <div className="mt-2 space-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span>Web (Next.js):</span>
+                      <span>Web (Next.js 16):</span>
                       <Badge variant={serverData.services?.web === "active" ? "default" : "destructive"} className="text-[10px] py-0">
                         {serverData.services?.web?.toUpperCase() || "INACTIVE"}
                       </Badge>
@@ -990,30 +1187,283 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               </div>
             )}
 
-            {/* Panel Pelacak Bug & Log Error Journalctl */}
-            <div className="mt-4 rounded-lg border bg-zinc-950 text-zinc-100 p-4 shadow-sm">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-400" />
-                  <span className="text-xs font-semibold text-zinc-200">Pelacak Bug & Log Galat Server (Journalctl Errors)</span>
+            {/* Pembaca Terminal Live (Monospace Dark Terminal Stream & Inspector) */}
+            <div className="mt-4 rounded-lg border bg-zinc-950 text-zinc-100 shadow-sm overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-zinc-800 px-4 py-2.5 gap-2 bg-zinc-900/80">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-200">
+                    <Terminal className="h-4 w-4 text-emerald-400" />
+                    <span>Terminal Stream & Inspector Server</span>
+                  </div>
+                  {/* Tab Selector */}
+                  <div className="flex items-center bg-zinc-950 rounded border border-zinc-800 p-0.5 text-[11px]">
+                    <button
+                      onClick={() => setTerminalTab("live")}
+                      className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                        terminalTab === "live"
+                          ? "bg-zinc-800 text-zinc-100"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      Live Log (50 baris)
+                    </button>
+                    <button
+                      onClick={() => setTerminalTab("errors")}
+                      className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                        terminalTab === "errors"
+                          ? "bg-zinc-800 text-red-300"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      Galat Fatal ({serverData?.recentErrors?.length || 0})
+                    </button>
+                    <button
+                      onClick={() => setTerminalTab("runs")}
+                      className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                        terminalTab === "runs"
+                          ? "bg-zinc-800 text-zinc-100"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      Riwayat Deploy ({serverData?.recentRuns?.length || 0})
+                    </button>
+                  </div>
                 </div>
-                <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-400">
-                  {serverData?.recentErrors?.length || 0} entri galat
-                </Badge>
+                <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 px-2 gap-1"
+                    onClick={() => {
+                      let textToCopy = "";
+                      if (terminalTab === "live") {
+                        textToCopy = (serverData?.terminalLogs || []).join("\n");
+                      } else if (terminalTab === "errors") {
+                        textToCopy = (serverData?.recentErrors || []).join("\n");
+                      } else {
+                        textToCopy = JSON.stringify(serverData?.recentRuns || [], null, 2);
+                      }
+                      copyToClipboard(textToCopy, "terminal-copy");
+                    }}
+                  >
+                    {copiedCmd === "terminal-copy" ? (
+                      <Check className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                    Salin Teks
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 px-2"
+                    onClick={() => setClearedTerminal(true)}
+                  >
+                    Bersihkan
+                  </Button>
+                </div>
               </div>
 
-              <div className="font-mono text-xs max-h-48 overflow-y-auto space-y-1 text-zinc-300">
-                {serverData?.recentErrors && serverData.recentErrors.length > 0 ? (
-                  serverData.recentErrors.map((err, idx) => (
-                    <div key={idx} className="p-1.5 rounded bg-zinc-900/60 border border-zinc-800/60 text-red-300 break-all">
-                      {err}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-zinc-500 py-3 text-center">
-                    Tidak ada log galat fatal terbaru di server. Sistem berjalan normal.
+              {/* Konten Terminal */}
+              <div className="p-3 font-mono text-xs max-h-64 overflow-y-auto space-y-1">
+                {clearedTerminal ? (
+                  <div className="text-zinc-500 py-4 text-center">
+                    Tampilan terminal dibersihkan sementara. Klik &apos;Perbarui Status Server&apos; untuk memuat ulang streaming log.
                   </div>
+                ) : terminalTab === "live" ? (
+                  serverData?.terminalLogs && serverData.terminalLogs.length > 0 ? (
+                    serverData.terminalLogs.map((logLine, idx) => (
+                      <div key={idx} className="leading-tight text-zinc-300 break-all select-text hover:bg-zinc-900/60 px-1 py-0.5 rounded">
+                        <span className="text-zinc-600 select-none mr-2">{String(idx + 1).padStart(2, "0")}</span>
+                        {logLine.includes("ERROR") || logLine.includes("error") || logLine.includes("fatal") ? (
+                          <span className="text-red-400">{logLine}</span>
+                        ) : logLine.includes("WARN") || logLine.includes("warn") ? (
+                          <span className="text-amber-300">{logLine}</span>
+                        ) : (
+                          logLine
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-zinc-500 py-4 text-center">
+                      Belum ada data terminal log terbaru dari server. Pastikan server aktif dan token monitor sudah benar.
+                    </div>
+                  )
+                ) : terminalTab === "errors" ? (
+                  serverData?.recentErrors && serverData.recentErrors.length > 0 ? (
+                    serverData.recentErrors.map((err, idx) => (
+                      <div key={idx} className="p-1.5 rounded bg-red-950/40 border border-red-900/50 text-red-300 break-all leading-relaxed">
+                        {err}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-zinc-500 py-4 text-center">
+                      Tidak ada log galat fatal terbaru di server. Seluruh proses berjalan normal.
+                    </div>
+                  )
+                ) : (
+                  serverData?.recentRuns && serverData.recentRuns.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {serverData.recentRuns.map((run, idx) => (
+                        <div key={idx} className="p-2 rounded bg-zinc-900/80 border border-zinc-800 flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={run.status === "berhasil" ? "default" : "destructive"}
+                              className="text-[9px] py-0"
+                            >
+                              {run.status.toUpperCase()}
+                            </Badge>
+                            <span className="font-bold text-zinc-200">v{run.versi}</span>
+                            <span className="text-zinc-400">({run.jenis})</span>
+                          </div>
+                          <div className="text-zinc-500 text-[10px]">
+                            {new Date(run.mulai).toLocaleString()} • Target: {run.titikBalikVersi || "Awal"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-zinc-500 py-4 text-center">
+                      Belum ada riwayat deployment rilis tercatat di database server.
+                    </div>
+                  )
                 )}
+              </div>
+            </div>
+
+            {/* Edukasi Anti-Freeze: Mengapa Terminal Tampak Freeze / Diam? */}
+            <div className="mt-4 p-4 rounded-lg border bg-amber-500/5 border-amber-500/20 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
+                <Info className="h-4 w-4 shrink-0" />
+                <span>Panduan Anti-Freeze: Mengapa Terminal VPS Tampak Membeku / Diam Saat Deploy?</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Saat menjalankan <code className="font-mono text-primary font-bold">noc-system deploy</code> atau <code className="font-mono text-primary font-bold">install.sh</code>, beberapa tahapan kompilasi berjalan dalam mode non-interaktif tanpa animasi bar progres. Hal ini merupakan perilaku normal:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-xs">
+                <div className="p-2.5 rounded border bg-background/80">
+                  <div className="font-bold text-foreground">1. npm ci (~500 MB)</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Mengunduh dan mengekstrak ratusan paket npm. Memakan waktu 1–3 menit di VPS.
+                  </div>
+                </div>
+                <div className="p-2.5 rounded border bg-background/80">
+                  <div className="font-bold text-foreground">2. go build (Biner Go)</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Mengunduh modul Golang dan mengompilasi biner server native berkecepatan tinggi (30–90 detik).
+                  </div>
+                </div>
+                <div className="p-2.5 rounded border bg-background/80">
+                  <div className="font-bold text-foreground">3. npm run build (Next.js)</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    Membundel seluruh halaman TypeScript via Turbopack standalone. Layar terminal akan diam 1–3 menit.
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold pt-1">
+                ✓ PERINGATAN OPERATOR: Jangan menekan <code className="font-mono bg-amber-950/20 px-1 py-0.5 rounded">Ctrl+C</code> saat terminal diam. Tunggu hingga pesan verifikasi sukses tercetak.
+              </p>
+            </div>
+
+            {/* Katalog & Panduan Instalasi Semua Fitur (Feature Stack Matrix) */}
+            <div className="mt-6 rounded-xl border bg-card p-5 shadow-xs space-y-4">
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold text-foreground">Katalog & Panduan Status Seluruh Fitur (Feature Stack Matrix)</span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">
+                    7 Komponen Ekosistem
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Daftar seluruh komponen tumpukan aplikasi NOC SYSTEM beserta port jaringan, status kontainer/service, dan perintah kendali 1-klik:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {FEATURE_STACK.map((item) => {
+                  const featStatus =
+                    serverData?.features?.[item.serviceKey]?.status ||
+                    (item.serviceKey === "web"
+                      ? serverData?.services?.web
+                      : item.serviceKey === "backend"
+                      ? serverData?.services?.backend
+                      : item.serviceKey === "postgres"
+                      ? serverData?.services?.postgres
+                      : "inactive");
+                  const isActive = featStatus === "active";
+
+                  return (
+                    <div key={item.id} className="rounded-lg border bg-background p-3.5 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-foreground">{item.name}</span>
+                          <Badge
+                            variant={isActive ? "default" : "secondary"}
+                            className={`text-[9px] py-0 px-1.5 ${
+                              isActive ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                            }`}
+                          >
+                            {isActive ? "ACTIVE / ONLINE" : "INACTIVE"}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{item.tech}</div>
+                        <div className="text-[11px] font-mono text-primary mt-1">Port: {item.port}</div>
+                      </div>
+
+                      {/* Action Command Snippets */}
+                      <div className="space-y-1.5 pt-1 border-t text-[11px] font-mono">
+                        <div className="flex items-center justify-between bg-muted/50 p-1.5 rounded">
+                          <span className="text-muted-foreground truncate mr-2">Up: {item.upCmd}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 shrink-0"
+                            onClick={() => copyToClipboard(item.upCmd, `up-${item.id}`)}
+                          >
+                            {copiedCmd === `up-${item.id}` ? (
+                              <Check className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between bg-muted/50 p-1.5 rounded">
+                          <span className="text-muted-foreground truncate mr-2">Logs: {item.logsCmd}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 shrink-0"
+                            onClick={() => copyToClipboard(item.logsCmd, `logs-${item.id}`)}
+                          >
+                            {copiedCmd === `logs-${item.id}` ? (
+                              <Check className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between bg-muted/50 p-1.5 rounded">
+                          <span className="text-muted-foreground truncate mr-2">Restart: {item.restartCmd}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 shrink-0"
+                            onClick={() => copyToClipboard(item.restartCmd, `restart-${item.id}`)}
+                          >
+                            {copiedCmd === `restart-${item.id}` ? (
+                              <Check className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1119,11 +1569,35 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               </div>
 
-              {/* Perintah 3: Status */}
+              {/* Perintah 3: Update */}
               <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">3. Cek Status Kesehatan Server</span>
+                    <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">3. Tarik Git & Update Otomatis</span>
+                    <Badge variant="secondary" className="text-[10px]">Git Pull</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Menyinkronkan kode dari repositori GitHub, memasang npm dependencies terbaru, dan mengeksekusi alur rilis penuh.
+                  </p>
+                  <div className="mt-3 p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
+                    <code>node bin/noc-system.mjs update</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => copyToClipboard("node bin/noc-system.mjs update", "update")}
+                    >
+                      {copiedCmd === "update" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Perintah 4: Status */}
+              <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">4. Cek Status Kesehatan Server</span>
                     <Badge variant="secondary" className="text-[10px]">Monitoring</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1143,11 +1617,59 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               </div>
 
-              {/* Perintah 4: Logs */}
+              {/* Perintah 5: Doctor */}
               <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">4. Pantau Bug & Live Log</span>
+                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">5. Diagnostik Server (Doctor)</span>
+                    <Badge variant="secondary" className="text-[10px]">Pre-Flight</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Memeriksa kelayakan CPU, RAM, Swap, sisa disk, status Docker daemon, port bentrok (3000, 8080, 5432), dan konektivitas.
+                  </p>
+                  <div className="mt-3 p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
+                    <code>node bin/noc-system.mjs doctor</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => copyToClipboard("node bin/noc-system.mjs doctor", "doctor")}
+                    >
+                      {copiedCmd === "doctor" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Perintah 6: Features */}
+              <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">6. Status Fitur Ekosistem (Features)</span>
+                    <Badge variant="secondary" className="text-[10px]">Stack Matrix</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Menampilkan status seluruh 7 komponen (Web, Backend, DB, GenieACS, OSRM, 9router, NetFlow) dan perintah Docker terkait.
+                  </p>
+                  <div className="mt-3 p-2.5 rounded bg-background border font-mono text-xs flex items-center justify-between text-foreground">
+                    <code>node bin/noc-system.mjs features</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => copyToClipboard("node bin/noc-system.mjs features", "features")}
+                    >
+                      {copiedCmd === "features" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Perintah 7: Logs */}
+              <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">7. Pantau Bug & Live Log</span>
                     <Badge variant="secondary" className="text-[10px]">Diagnostik</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1167,11 +1689,11 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               </div>
 
-              {/* Perintah 5: Rollback */}
-              <div className="rounded-lg border bg-muted/40 p-4 md:col-span-2 flex flex-col justify-between">
+              {/* Perintah 8: Rollback */}
+              <div className="rounded-lg border bg-muted/40 p-4 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-destructive">5. Pemulihan Cepat (Rollback)</span>
+                    <span className="text-xs font-semibold text-destructive">8. Pemulihan Cepat (Rollback)</span>
                     <Badge variant="destructive" className="text-[10px]">Emergency</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1316,81 +1838,21 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               </div>
             )}
 
-            {/* Progres Langkah Deploy Aktif */}
-            {(deployRunning || activeDeploySteps.length > 0) && (
-              <div className="mt-6 space-y-4">
-                <h4 className="text-sm font-semibold flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-primary" /> Progres Rantai Deploy Berurutan
-                </h4>
-
-                <div className="space-y-2">
-                  {[
-                    "Pre-flight & Koneksi SSH",
-                    "Backup Database Server",
-                    "Bangun Artefak Rilis & Unggah",
-                    "Migrasi Skema Database",
-                    "Pemindahan Konfigurasi Localhost -> Server",
-                    "Pencatatan Titik Balik Versi",
-                    "Penukaran Symlink current (Atomik)",
-                    "Restart Layanan systemd",
-                    "Health Check Pasca-Deploy",
-                  ].map((name, idx) => {
-                    const stepNum = idx + 1;
-                    const match = activeDeploySteps.find((s) => s.urutan === stepNum);
-                    const status = match ? match.status : deployRunning && activeDeploySteps.length === idx ? "berjalan" : "menunggu";
-
-                    return (
-                      <div
-                        key={name}
-                        className={`rounded-lg border p-3 text-xs flex items-center justify-between ${
-                          status === "berhasil"
-                            ? "bg-emerald-500/5 border-emerald-500/20"
-                            : status === "berjalan"
-                              ? "bg-primary/5 border-primary/30"
-                              : status === "gagal"
-                                ? "bg-destructive/10 border-destructive/30"
-                                : "bg-card text-muted-foreground"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-mono text-muted-foreground w-5">{stepNum}.</span>
-                          <span className="font-medium text-foreground">{name}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {status === "berhasil" && <Badge variant="outline" className="text-emerald-600 bg-emerald-500/10">Berhasil</Badge>}
-                          {status === "berjalan" && <Badge variant="outline" className="text-primary bg-primary/10 animate-pulse">Sedang Berjalan...</Badge>}
-                          {status === "gagal" && <Badge variant="destructive">Gagal</Badge>}
-                          {status === "menunggu" && <Badge variant="secondary">Menunggu</Badge>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Banner Penyelesaian Deploy */}
-            {deployFinishedResult && (
-              <div
-                className={`mt-6 rounded-xl p-4 text-sm ${
-                  deployFinishedResult.success
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                    : "bg-destructive/10 text-destructive border border-destructive/30"
-                }`}
-              >
-                <div className="font-bold flex items-center gap-2">
-                  {deployFinishedResult.success ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-                  {deployFinishedResult.success ? "Deploy Berhasil Terpasang!" : "Deploy Gagal"}
-                </div>
-                <p className="mt-1 text-xs opacity-90">{deployFinishedResult.message}</p>
-                {deployFinishedResult.autoRollbackTriggered && (
-                  <div className="mt-2 text-xs font-semibold underline">
-                    Rollback otomatis ke titik balik versi sebelumnya telah dieksekusi secara otomatis oleh sistem.
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Konsol Progres Deploy, Live Terminal SSH, dan Kartu Akses */}
+            <DeployRunConsole
+              steps={activeDeploySteps}
+              running={deployRunning}
+              finishedResult={deployFinishedResult}
+              accessInfo={deployAccessInfo}
+              sshUser={target?.sshUser || "netsi"}
+              sshHost={target?.host || "server"}
+              onOpenCliTab={() => {
+                setActiveTab("cli");
+                if (deployAccessInfo?.url && deployAccessInfo?.token) {
+                  fetchServerStatus(deployAccessInfo.url, deployAccessInfo.token, true);
+                }
+              }}
+            />
           </div>
         </TabsContent>
 

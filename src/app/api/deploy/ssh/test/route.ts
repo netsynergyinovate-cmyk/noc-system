@@ -15,6 +15,7 @@ const testSchema = z.object({
   tailscaleHost: z.string().optional().nullable(),
   privateKey: z.string().optional(),
   passphrase: z.string().optional(),
+  password: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -43,18 +44,20 @@ export async function POST(request: Request) {
 
     let privateKey = parsed.data?.privateKey;
     let passphrase = parsed.data?.passphrase;
+    let password = parsed.data?.password;
 
-    if (!privateKey && savedTarget) {
+    if (!privateKey && !password && savedTarget) {
       const savedCred = await getDecryptedSshCredential(savedTarget.id);
       if (savedCred) {
         privateKey = savedCred.privateKey;
         passphrase = passphrase || savedCred.passphrase;
+        password = password || savedCred.password;
       }
     }
 
-    if (!privateKey) {
+    if (!privateKey && !password) {
       return Response.json(
-        { error: "Kunci privat SSH belum disimpan atau dimasukkan." },
+        { error: "Kredensial SSH (Password atau Kunci Privat) belum disimpan atau dimasukkan." },
         { status: 400 },
       );
     }
@@ -65,7 +68,7 @@ export async function POST(request: Request) {
 
     const testResult = await testSshConnection(
       targetObj,
-      { privateKey, passphrase },
+      { privateKey, passphrase, password },
       detection.resolvedHost,
     );
 

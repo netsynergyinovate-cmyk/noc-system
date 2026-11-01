@@ -6,10 +6,11 @@ export const sshCredentials = pgTable("ssh_credentials", {
   targetId: uuid("target_id")
     .notNull()
     .references(() => deployTargets.id, { onDelete: "cascade" }),
-  // Kunci privat tersimpan terenkripsi AES-256-GCM, tidak pernah dikembalikan ke client
-  privateKeyEnc: text("private_key_enc").notNull(),
+  // Kunci privat atau kata sandi tersimpan terenkripsi AES-256-GCM
+  privateKeyEnc: text("private_key_enc"),
   passphraseEnc: text("passphrase_enc"),
-  // Fingerprint publik (SHA256:...) untuk identifikasi kunci tanpa membuka isinya
+  passwordEnc: text("password_enc"),
+  // Fingerprint publik (SHA256:...) atau penanda tipe kredensial
   fingerprint: text("fingerprint").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

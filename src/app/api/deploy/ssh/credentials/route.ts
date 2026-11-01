@@ -10,11 +10,25 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const saveKeySchema = z.object({
-  targetId: z.string().optional(),
-  privateKey: z.string().min(20, "Kunci privat SSH tidak boleh kosong"),
-  passphrase: z.string().optional().nullable(),
-});
+const saveKeySchema = z
+  .object({
+    targetId: z.string().optional(),
+    authType: z.enum(["key", "password"]).optional(),
+    privateKey: z.string().optional(),
+    passphrase: z.string().optional().nullable(),
+    password: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.authType === "password" || (data.password && !data.privateKey)) {
+        return Boolean(data.password && data.password.trim().length > 0);
+      }
+      return Boolean(data.privateKey && data.privateKey.trim().length >= 20);
+    },
+    {
+      message: "Wajib mengisi Password SSH atau Kunci Privat SSH (minimal 20 karakter).",
+    },
+  );
 
 export async function GET(request: Request) {
   const guard = evaluateDeployAccess(request);
@@ -64,11 +78,12 @@ export async function POST(request: Request) {
     }
 
     try {
-      const meta = await saveSshCredential(
-        targetId,
-        parsed.data.privateKey,
-        parsed.data.passphrase,
-      );
+      const meta = await saveSshCredential(targetId, {
+        authType: parsed.data.authType || (parsed.data.password ? "password" : "key"),
+        privateKey: parsed.data.privateKey,
+        passphrase: parsed.data.passphrase,
+        password: parsed.data.password,
+      });
       return Response.json({
         ok: true,
         data: meta,

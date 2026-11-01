@@ -11,7 +11,7 @@ coverage
 *.local
 
 # Local tooling and CI that the production image never runs.
-backend
+backend/bin
 .git
 .github
 .vscode

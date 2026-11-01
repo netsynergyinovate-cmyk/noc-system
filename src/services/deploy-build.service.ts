@@ -1,3 +1,4 @@
+import os from "os";
 import { exec } from "child_process";
 import { mkdir, rm, stat, copyFile, cp } from "fs/promises";
 import { resolve, join } from "path";
@@ -45,34 +46,55 @@ export async function buildReleaseBundle(
 ): Promise<BuildResult> {
   const startTime = Date.now();
   const rootDir = process.cwd();
-  const distDir = resolve(rootDir, ".deploy-cache", version);
-  const tarPath = resolve(rootDir, ".deploy-cache", `release-${version.replace(/[^a-zA-Z0-9._-]/g, "_")}.tar.gz`);
+  const cacheDir = resolve(os.tmpdir(), "noc-deploy-cache");
+  const distDir = resolve(cacheDir, version);
+  const tarPath = resolve(cacheDir, `release-${version.replace(/[^a-zA-Z0-9._-]/g, "_")}.tar.gz`);
 
   onLog?.(`Menyiapkan direktori build: ${distDir}`);
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
 
-  // 1. Build Go backend untuk linux/amd64
-  onLog?.("Mengompilasi backend Go untuk target linux/amd64...");
-  const backendDir = resolve(rootDir, "backend");
+  // 1. Dapatkan / build binary Go backend untuk linux/amd64
   const goOutput = resolve(distDir, "noc-backend");
-  await runCommand(
-    `go build -ldflags="-s -w" -o "${goOutput}" ./cmd/server`,
-    backendDir,
-    { GOOS: "linux", GOARCH: "amd64", CGO_ENABLED: "0" },
-  );
-  onLog?.("Binary Go noc-backend linux/amd64 berhasil dikompilasi.");
+  const prebuiltGo = resolve(rootDir, "noc-backend");
+  if (existsSync(prebuiltGo)) {
+    onLog?.("Menyalin biner Go noc-backend linux/amd64 yang sudah terkompilasi...");
+    await copyFile(prebuiltGo, goOutput);
+  } else {
+    onLog?.("Mengompilasi backend Go untuk target linux/amd64...");
+    const backendDir = resolve(rootDir, "backend");
+    await runCommand(
+      `go build -ldflags="-s -w" -o "${goOutput}" ./cmd/server`,
+      backendDir,
+      { GOOS: "linux", GOARCH: "amd64", CGO_ENABLED: "0" },
+    );
+    onLog?.("Binary Go noc-backend linux/amd64 berhasil dikompilasi.");
+  }
 
   // 2. Next.js Standalone Build
-  onLog?.("Membangun frontend Next.js standalone...");
-  // Selalu build ulang agar artefak rilis mencerminkan kode terbaru
-  await runCommand("npm run build", rootDir, { NEXT_TELEMETRY_DISABLED: "1" });
-  const standaloneDir = resolve(rootDir, ".next", "standalone");
-
-  // Salin file standalone ke bundle rilis
-  onLog?.("Menyalin artefak Next.js standalone ke direktori rilis...");
-  await cp(standaloneDir, distDir, { recursive: true });
-
+  const isPrebuiltContainer =
+    existsSync(resolve(rootDir, "server.js")) && !existsSync(resolve(rootDir, "src"));
+  if (isPrebuiltContainer) {
+    onLog?.("Menyalin artefak Next.js standalone dari kontainer lokal...");
+    await cp(resolve(rootDir, "server.js"), resolve(distDir, "server.js"));
+    if (existsSync(resolve(rootDir, "package.json"))) {
+      await copyFile(resolve(rootDir, "package.json"), resolve(distDir, "package.json"));
+    }
+    if (existsSync(resolve(rootDir, "node_modules"))) {
+      await cp(resolve(rootDir, "node_modules"), resolve(distDir, "node_modules"), {
+        recursive: true,
+      });
+    }
+    if (existsSync(resolve(rootDir, ".next"))) {
+      await cp(resolve(rootDir, ".next"), resolve(distDir, ".next"), { recursive: true });
+    }
+  } else {
+    onLog?.("Membangun frontend Next.js standalone...");
+    // Selalu build ulang agar artefak rilis mencerminkan kode terbaru
+    await runCommand("npm run build", rootDir, { NEXT_TELEMETRY_DISABLED: "1" });
+    const standaloneDir = resolve(rootDir, ".next", "standalone");
+    await cp(standaloneDir, distDir, { recursive: true });
+  }
   // Salin .next/static ke .next/standalone/.next/static bila belum ada
   const srcStatic = resolve(rootDir, ".next", "static");
   const destStatic = resolve(distDir, ".next", "static");
@@ -108,7 +130,6 @@ export async function buildReleaseBundle(
 
   // 4. Kompresi ke dalam release.tar.gz
   onLog?.("Mengompresi bundle rilis menjadi tar.gz...");
-  const cacheDir = resolve(rootDir, ".deploy-cache");
   await mkdir(cacheDir, { recursive: true });
 
   // Gunakan tar sistem (Windows 10/11 dan Linux sama-sama memiliki binary tar bawaan)
@@ -210,6 +231,7 @@ export async function uploadAndExtractRelease(
     username: target.sshUser,
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
+    password: credential.password,
     readyTimeout: 15000,
   };
 

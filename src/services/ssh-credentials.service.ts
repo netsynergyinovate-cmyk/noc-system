@@ -10,13 +10,15 @@ export interface SshCredentialMeta {
   targetId: string;
   fingerprint: string;
   hasPassphrase: boolean;
+  authType: "key" | "password";
   createdAt: string;
   rotatedAt: string | null;
 }
 
 export interface DecryptedSshCredential {
-  privateKey: string;
+  privateKey?: string;
   passphrase?: string;
+  password?: string;
   fingerprint: string;
 }
 
@@ -53,20 +55,56 @@ export function computeFingerprint(keyText: string, passphrase?: string | null):
  */
 export async function saveSshCredential(
   targetId: string,
-  privateKey: string,
-  passphrase?: string | null,
+  privateKeyOrOptions:
+    | string
+    | {
+        authType?: "key" | "password";
+        privateKey?: string | null;
+        passphrase?: string | null;
+        password?: string | null;
+      },
+  maybePassphrase?: string | null,
 ): Promise<SshCredentialMeta> {
-  const cleanKey = privateKey.trim();
-  if (!cleanKey.includes("PRIVATE KEY")) {
-    throw new Error("Format kunci privat tidak valid (wajib format OpenSSH atau PEM/RSA).");
-  }
+  const opts =
+    typeof privateKeyOrOptions === "string"
+      ? {
+          authType: "key" as const,
+          privateKey: privateKeyOrOptions,
+          passphrase: maybePassphrase,
+          password: null,
+        }
+      : {
+          authType: privateKeyOrOptions.authType || (privateKeyOrOptions.password ? "password" : "key"),
+          privateKey: privateKeyOrOptions.privateKey || null,
+          passphrase: privateKeyOrOptions.passphrase || null,
+          password: privateKeyOrOptions.password || null,
+        };
 
   const masterSecret = getMasterSecret();
-  const fingerprint = computeFingerprint(cleanKey, passphrase);
-  const privateKeyEnc = encryptWithKey(cleanKey, masterSecret);
-  const passphraseEnc = passphrase?.trim()
-    ? encryptWithKey(passphrase.trim(), masterSecret)
-    : null;
+  let privateKeyEnc: string | null = null;
+  let passphraseEnc: string | null = null;
+  let passwordEnc: string | null = null;
+  let fingerprint = "PASSWORD";
+  const authType = opts.authType as "key" | "password";
+
+  if (authType === "password" || opts.password) {
+    const cleanPass = (opts.password || "").trim();
+    if (!cleanPass) {
+      throw new Error("Password SSH tidak boleh kosong.");
+    }
+    passwordEnc = encryptWithKey(cleanPass, masterSecret);
+    fingerprint = "PASSWORD";
+  } else {
+    const cleanKey = (opts.privateKey || "").trim();
+    if (!cleanKey.includes("PRIVATE KEY")) {
+      throw new Error("Format kunci privat tidak valid (wajib format OpenSSH atau PEM/RSA).");
+    }
+    fingerprint = computeFingerprint(cleanKey, opts.passphrase);
+    privateKeyEnc = encryptWithKey(cleanKey, masterSecret);
+    passphraseEnc = opts.passphrase?.trim()
+      ? encryptWithKey(opts.passphrase.trim(), masterSecret)
+      : null;
+  }
 
   const existing = await db
     .select()
@@ -81,6 +119,7 @@ export async function saveSshCredential(
       .set({
         privateKeyEnc,
         passphraseEnc,
+        passwordEnc,
         fingerprint,
         rotatedAt: new Date(),
       })
@@ -94,6 +133,7 @@ export async function saveSshCredential(
         targetId,
         privateKeyEnc,
         passphraseEnc,
+        passwordEnc,
         fingerprint,
       })
       .returning();
@@ -105,6 +145,7 @@ export async function saveSshCredential(
     targetId: row.targetId,
     fingerprint: row.fingerprint,
     hasPassphrase: Boolean(row.passphraseEnc),
+    authType: Boolean(row.passwordEnc) ? "password" : "key",
     createdAt: row.createdAt.toISOString(),
     rotatedAt: row.rotatedAt ? row.rotatedAt.toISOString() : null,
   };
@@ -131,6 +172,7 @@ export async function getSshCredentialMeta(
     targetId: row.targetId,
     fingerprint: row.fingerprint,
     hasPassphrase: Boolean(row.passphraseEnc),
+    authType: Boolean(row.passwordEnc) ? "password" : "key",
     createdAt: row.createdAt.toISOString(),
     rotatedAt: row.rotatedAt ? row.rotatedAt.toISOString() : null,
   };
@@ -153,14 +195,20 @@ export async function getDecryptedSshCredential(
   const row = rows[0];
   const masterSecret = getMasterSecret();
 
-  const privateKey = decryptWithKey(row.privateKeyEnc, masterSecret);
+  const privateKey = row.privateKeyEnc
+    ? decryptWithKey(row.privateKeyEnc, masterSecret)
+    : undefined;
   const passphrase = row.passphraseEnc
     ? decryptWithKey(row.passphraseEnc, masterSecret)
+    : undefined;
+  const password = row.passwordEnc
+    ? decryptWithKey(row.passwordEnc, masterSecret)
     : undefined;
 
   return {
     privateKey,
     passphrase,
+    password,
     fingerprint: row.fingerprint,
   };
 }

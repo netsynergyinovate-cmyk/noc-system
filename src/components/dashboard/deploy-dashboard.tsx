@@ -84,11 +84,15 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
     tailscaleHost: target?.tailscaleHost || "",
   });
 
-  // Dialog Kunci SSH
+  // Dialog Kunci SSH / Password
   const [keyModalOpen, setKeyModalOpen] = useState(false);
-  const [sshKeyForm, setSshKeyForm] = useState({ privateKey: "", passphrase: "" });
+  const [sshKeyForm, setSshKeyForm] = useState({
+    authType: "password" as "password" | "key",
+    password: "",
+    privateKey: "",
+    passphrase: "",
+  });
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
-  // Telemetri Tanda Fitur Pengguna
   const [markersCount, setMarkersCount] = useState<number>(0);
 
   function copyToClipboard(text: string, id: string) {
@@ -306,12 +310,12 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
         body: JSON.stringify(sshKeyForm),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Gagal menyimpan kunci SSH");
+      if (!res.ok) throw new Error(json.error || "Gagal menyimpan kredensial SSH");
 
       setSshMeta(json.data);
       setKeyModalOpen(false);
-      setSshKeyForm({ privateKey: "", passphrase: "" });
-      setNotice({ type: "success", msg: "Kunci privat SSH terenkripsi AES-256-GCM berhasil disimpan." });
+      setSshKeyForm({ authType: "password", password: "", privateKey: "", passphrase: "" });
+      setNotice({ type: "success", msg: "Kredensial SSH terenkripsi AES-256-GCM berhasil disimpan." });
     } catch (err: unknown) {
       setNotice({ type: "error", msg: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -610,15 +614,19 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               </span>
               <Key className="h-4 w-4 text-muted-foreground" />
             </div>
-
             <div>
               {sshMeta ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="h-4 w-4" /> Kunci Tersimpan
+                    <CheckCircle2 className="h-4 w-4" />{" "}
+                    {sshMeta.authType === "password" || sshMeta.fingerprint === "PASSWORD"
+                      ? "Password SSH Tersimpan"
+                      : "Kunci Privat Tersimpan"}
                   </div>
                   <div className="text-xs font-mono text-muted-foreground break-all">
-                    {sshMeta.fingerprint}
+                    {sshMeta.authType === "password" || sshMeta.fingerprint === "PASSWORD"
+                      ? "Tipe: Kata Sandi Terenkripsi (AES-256-GCM)"
+                      : sshMeta.fingerprint}
                   </div>
                   {sshMeta.hasPassphrase && (
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -628,7 +636,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               ) : (
                 <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                  <AlertTriangle className="h-4 w-4" /> Kunci belum dipasang
+                  <AlertTriangle className="h-4 w-4" /> Kredensial belum dipasang
                 </div>
               )}
             </div>
@@ -641,7 +649,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               className="flex-1 text-xs"
               onClick={() => setKeyModalOpen(true)}
             >
-              {sshMeta ? "Ganti Kunci" : "Pasang Kunci"}
+              {sshMeta ? "Ganti Kredensial" : "Pasang Kredensial"}
             </Button>
             {sshMeta && (
               <Button
@@ -1656,49 +1664,97 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
         </DialogContent>
       </Dialog>
 
-      {/* DIALOG 2: Pasang / Ganti Kunci SSH */}
+      {/* DIALOG 2: Pasang / Ganti Kredensial SSH */}
       <Dialog open={keyModalOpen} onOpenChange={setKeyModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <form onSubmit={handleSaveSshKey}>
             <DialogHeader>
-              <DialogTitle>Kunci Privat SSH Terenkripsi</DialogTitle>
+              <DialogTitle>Kredensial SSH SERVER NATIVE</DialogTitle>
               <DialogDescription className="text-xs">
-                Kunci privat akan dienkripsi dengan AES-256-GCM sebelum disimpan ke database localhost.
-                Kunci asli tidak pernah ditampilkan kembali.
+                Kredensial SSH (Password atau Kunci Privat) dienkripsi dengan AES-256-GCM sebelum disimpan.
               </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-4 text-xs">
-              <div className="space-y-1.5">
-                <Label htmlFor="privateKey">Isi Kunci Privat (OpenSSH / PEM / RSA)</Label>
-                <textarea
-                  id="privateKey"
-                  className="w-full rounded-md border border-input bg-background p-2.5 font-mono text-xs min-h-[140px]"
-                  value={sshKeyForm.privateKey}
-                  onChange={(e) => setSshKeyForm({ ...sshKeyForm, privateKey: e.target.value })}
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
-                  required
-                />
+              <div className="flex rounded-lg border p-1 bg-muted/40 gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={sshKeyForm.authType === "password" ? "default" : "ghost"}
+                  className="flex-1 text-xs h-7"
+                  onClick={() => setSshKeyForm({ ...sshKeyForm, authType: "password" })}
+                >
+                  Kata Sandi SSH (Password)
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={sshKeyForm.authType === "key" ? "default" : "ghost"}
+                  className="flex-1 text-xs h-7"
+                  onClick={() => setSshKeyForm({ ...sshKeyForm, authType: "key" })}
+                >
+                  Kunci Privat SSH (Key Pair)
+                </Button>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="passphrase">Passphrase Kunci (Opsional)</Label>
-                <Input
-                  id="passphrase"
-                  type="password"
-                  value={sshKeyForm.passphrase}
-                  onChange={(e) => setSshKeyForm({ ...sshKeyForm, passphrase: e.target.value })}
-                  placeholder="Biarkan kosong jika tanpa passphrase"
-                />
-              </div>
+              {sshKeyForm.authType === "password" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="sshPassword">Kata Sandi SSH (Password user VPS)</Label>
+                  <Input
+                    id="sshPassword"
+                    type="password"
+                    value={sshKeyForm.password}
+                    onChange={(e) => setSshKeyForm({ ...sshKeyForm, password: e.target.value })}
+                    placeholder="Masukkan password user SSH VPS (contoh: password user netsi)"
+                    required
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Password ini disimpan terenkripsi AES-256-GCM di database kontrol lokal.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="privateKey">Isi Kunci Privat (OpenSSH / PEM / RSA)</Label>
+                    <textarea
+                      id="privateKey"
+                      className="w-full rounded-md border border-input bg-background p-2.5 font-mono text-xs min-h-[140px]"
+                      value={sshKeyForm.privateKey}
+                      onChange={(e) => setSshKeyForm({ ...sshKeyForm, privateKey: e.target.value })}
+                      placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="passphrase">Passphrase Kunci (Opsional)</Label>
+                    <Input
+                      id="passphrase"
+                      type="password"
+                      value={sshKeyForm.passphrase}
+                      onChange={(e) => setSshKeyForm({ ...sshKeyForm, passphrase: e.target.value })}
+                      placeholder="Biarkan kosong jika tanpa passphrase"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" size="sm" onClick={() => setKeyModalOpen(false)}>
                 Batal
               </Button>
-              <Button type="submit" size="sm" disabled={loading || !sshKeyForm.privateKey.trim()}>
-                {loading ? "Menyimpan..." : "Simpan Kunci Terenkripsi"}
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  loading ||
+                  (sshKeyForm.authType === "password"
+                    ? !sshKeyForm.password.trim()
+                    : !sshKeyForm.privateKey.trim())
+                }
+              >
+                {loading ? "Menyimpan..." : "Simpan Kredensial Terenkripsi"}
               </Button>
             </DialogFooter>
           </form>

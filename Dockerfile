@@ -8,6 +8,13 @@
 
 ARG NODE_VERSION=22-alpine
 
+# --- Build Go backend for native deployment bundle ----------------------------
+FROM golang:1.25-alpine AS go-builder
+WORKDIR /src
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /noc-backend ./cmd/server
 # --- Build dependencies ------------------------------------------------------
 FROM node:${NODE_VERSION} AS deps
 RUN apk add --no-cache libc6-compat
@@ -39,11 +46,14 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
-RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs \
- && mkdir .next && chown nextjs:nodejs .next
+RUN apk add --no-cache libc6-compat tar gzip \
+ && addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs \
+ && mkdir -p .next /tmp/noc-deploy-cache && chown -R nextjs:nodejs /app /tmp/noc-deploy-cache
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=go-builder --chown=nextjs:nodejs /noc-backend ./noc-backend
 # --- Migrator: apply committed SQL once per release --------------------------
 # Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has
 # no runtime dependencies, and the standalone bundle already carries pg.

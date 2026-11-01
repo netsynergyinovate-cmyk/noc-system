@@ -119,7 +119,7 @@ export function classifySshError(
  */
 export async function testSshConnection(
   target: Pick<DeployTarget, "host" | "port" | "sshUser" | "mode"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase">,
+  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
   effectiveHost?: string,
   timeoutMs = 7000,
 ): Promise<SshTestResult> {
@@ -183,6 +183,7 @@ export async function testSshConnection(
     username: target.sshUser,
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
+    password: credential.password,
     readyTimeout: timeoutMs,
     hostVerifier: (key: Buffer) => {
       const hash = crypto.createHash("sha256").update(key).digest("base64").replace(/=+$/, "");
@@ -218,7 +219,7 @@ export async function testSshConnection(
  */
 export async function executeSshCommand(
   target: Pick<DeployTarget, "host" | "port" | "sshUser"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase">,
+  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
   command: string,
   effectiveHost?: string,
   timeoutMs = 60000,
@@ -288,6 +289,7 @@ export async function executeSshCommand(
     username: target.sshUser,
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
+    password: credential.password,
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {
@@ -305,7 +307,7 @@ export async function executeSshCommand(
  */
 export async function executeSshScript(
   target: Pick<DeployTarget, "host" | "port" | "sshUser"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase">,
+  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
   command: string,
   stdinContent: string,
   effectiveHost?: string,
@@ -378,6 +380,7 @@ export async function executeSshScript(
     username: target.sshUser,
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
+    password: credential.password,
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {

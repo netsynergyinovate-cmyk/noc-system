@@ -2,7 +2,9 @@ name: PostgreSQL starter checks
 
 on:
   push:
+    branches: [ noc-system-main ]
   pull_request:
+    branches: [ noc-system-main ]
 
 permissions:
   contents: read

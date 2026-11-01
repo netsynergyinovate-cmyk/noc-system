@@ -54,6 +54,8 @@ export async function prepareEnvironment(cwd = root) {
   const additions = {};
   if (!process.env.BETTER_AUTH_SECRET)
     additions.BETTER_AUTH_SECRET = randomBytes(32).toString("hex");
+  if (!process.env.BETTER_AUTH_URL)
+    additions.BETTER_AUTH_URL = "http://localhost:3000";
   // Rahasia bersama dengan backend Go untuk tiket login WebSocket dan REST.
   if (!process.env.REALTIME_TOKEN_SECRET)
     additions.REALTIME_TOKEN_SECRET = randomBytes(32).toString("hex");

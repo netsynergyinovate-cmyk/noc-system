@@ -82,7 +82,8 @@ export function runStartupValidation(
   const authProblems: string[] = [];
   if ((source.BETTER_AUTH_SECRET?.length ?? 0) < 32)
     authProblems.push("BETTER_AUTH_SECRET wajib minimal 32 karakter.");
-  const authUrl = source.BETTER_AUTH_URL?.trim();
+  const rawAuthUrl = source.BETTER_AUTH_URL?.trim();
+  const authUrl = rawAuthUrl || (live ? "" : "http://localhost:3000");
   if (!authUrl) authProblems.push("BETTER_AUTH_URL belum diisi.");
   else {
     try {

@@ -65,11 +65,9 @@ export async function buildReleaseBundle(
 
   // 2. Next.js Standalone Build
   onLog?.("Membangun frontend Next.js standalone...");
-  // Periksa apakah standalone build sudah ada atau perlu build ulang
+  // Selalu build ulang agar artefak rilis mencerminkan kode terbaru
+  await runCommand("npm run build", rootDir, { NEXT_TELEMETRY_DISABLED: "1" });
   const standaloneDir = resolve(rootDir, ".next", "standalone");
-  if (!existsSync(standaloneDir)) {
-    await runCommand("npx next build", rootDir);
-  }
 
   // Salin file standalone ke bundle rilis
   onLog?.("Menyalin artefak Next.js standalone ke direktori rilis...");

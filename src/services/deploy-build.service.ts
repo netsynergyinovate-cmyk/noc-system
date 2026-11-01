@@ -124,6 +124,10 @@ export async function buildReleaseBundle(
   const destDrizzle = resolve(distDir, "drizzle");
   await cp(resolve(rootDir, "drizzle"), destDrizzle, { recursive: true });
 
+  const srcSystemd = resolve(rootDir, "systemd");
+  if (existsSync(srcSystemd)) {
+    await cp(srcSystemd, resolve(distDir, "systemd"), { recursive: true });
+  }
   // 4. Kompresi ke dalam release.tar.gz
   onLog?.("Mengompresi bundle rilis menjadi tar.gz...");
   await mkdir(cacheDir, { recursive: true });
@@ -256,6 +260,10 @@ export async function uploadAndExtractRelease(
     `tar -xzf "${remoteTarPath}" -C "${remoteReleasePath}"`,
     `rm -f "${remoteTarPath}"`,
     `chmod +x "${remoteReleasePath}/noc-backend"`,
+    `mkdir -p "${remoteReleasePath}/.next/cache"`,
+    `chmod -R u+rwX,go+rX "${remoteReleasePath}"`,
+    `chmod -R 777 "${remoteReleasePath}/.next/cache" 2>/dev/null || true`,
+    `sudo -n chown -R ${target.sshUser}:noc "${remoteReleasePath}" 2>/dev/null || true`,
     `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,
   ].join(" && ");
 

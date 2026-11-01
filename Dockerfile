@@ -54,6 +54,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/systemd ./systemd
 COPY --from=go-builder --chown=nextjs:nodejs /noc-backend ./noc-backend
 # --- Migrator: apply committed SQL once per release --------------------------
 # Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has

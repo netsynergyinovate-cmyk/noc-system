@@ -8,7 +8,7 @@ Type=simple
 User=noc
 Group=noc
 WorkingDirectory=/srv/noc/current
-EnvironmentFile=/srv/noc/shared/.env
+EnvironmentFile=-/srv/noc/shared/.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=HOSTNAME=0.0.0.0

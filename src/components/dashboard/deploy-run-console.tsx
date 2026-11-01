@@ -94,12 +94,13 @@ export function DeployTerminalBox({
   sshUser?: string;
   sshHost?: string;
 }) {
-  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const terminalScrollContainerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (running && terminalEndRef.current) {
-      terminalEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (running && terminalScrollContainerRef.current) {
+      terminalScrollContainerRef.current.scrollTop =
+        terminalScrollContainerRef.current.scrollHeight;
     }
   }, [steps, running]);
 
@@ -154,7 +155,7 @@ export function DeployTerminalBox({
       </div>
 
       {/* Konten Log Terminal */}
-      <div className="max-h-80 min-h-[220px] overflow-y-auto space-y-3 text-[11px] pr-1.5 select-text leading-relaxed">
+      <div ref={terminalScrollContainerRef} className="max-h-80 min-h-[220px] overflow-y-auto space-y-3 text-[11px] pr-1.5 select-text leading-relaxed">
         {steps.length === 0 && !running && (
           <div className="text-zinc-500 italic py-8 text-center">
             Belum ada eksekusi rilis yang berjalan.
@@ -198,7 +199,6 @@ export function DeployTerminalBox({
             <span className="animate-ping font-bold text-emerald-400">_</span>
           </div>
         )}
-        <div ref={terminalEndRef} />
       </div>
     </div>
   );

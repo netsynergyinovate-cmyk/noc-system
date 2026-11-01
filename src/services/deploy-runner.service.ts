@@ -681,7 +681,10 @@ export async function executeDeployRun(
     // LANGKAH 8: Restart Layanan systemd (noc-web & noc-backend)
     const step8 = await addStep(8, "Restart Layanan systemd", "berjalan");
     const step8Log = makeStepLogger(step8.id, `$ sudo -n systemctl restart noc-web noc-backend\n`);
-    const restartCmd = `sudo -n systemctl restart noc-web noc-backend`;
+    const restartCmd = [
+      `if [ -d "${releasePath}/systemd" ]; then sudo -n cp -f "${releasePath}/systemd/"*.service /etc/systemd/system/ 2>/dev/null && sudo -n systemctl daemon-reload || true; fi`,
+      `sudo -n systemctl restart noc-web noc-backend`,
+    ].join(" && ");
     const restartRes = await executeSshCommand(target, credential, restartCmd, host, 60000, step8Log.log);
     if (restartRes.code !== 0) {
       await step8Log.finalize("gagal", restartRes.stderr || restartRes.stdout);
@@ -732,8 +735,20 @@ export async function executeDeployRun(
     }
 
     if (!healthy) {
-      // KEGAGALAN HEALTH CHECK PASCA-SWAP -> PICU ROLLBACK OTOMATIS!
-      await step9Log.finalize("gagal", `Health check gagal: ${healthOutput}`);
+      let journalLog = "";
+      try {
+        const jRes = await executeSshCommand(
+          target,
+          credential,
+          "sudo -n journalctl -u noc-web --no-pager -n 30 2>&1 || sudo -n systemctl status noc-web --no-pager 2>&1",
+          host,
+          10000,
+        );
+        journalLog = jRes.stdout.trim();
+      } catch {}
+
+      const failDetail = `Health check gagal: ${healthOutput}\n\n[LOG SYSTEMD NOC-WEB]:\n${journalLog || "(Log tidak tersedia)"}`;
+      await step9Log.finalize("gagal", failDetail);
       if (titikBalikVersi) {
         const rollbackCmd = `ln -sfn "/srv/noc/releases/${titikBalikVersi}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current && sudo -n systemctl restart noc-web noc-backend`;
         const rollbackRes = await executeSshCommand(target, credential, rollbackCmd, host, 30000);

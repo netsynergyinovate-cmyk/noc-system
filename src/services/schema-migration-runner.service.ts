@@ -790,7 +790,7 @@ export function getCurrentAppVersion(
   if (env.APP_VERSION?.trim()) return env.APP_VERSION.trim();
   if (env.NEXT_PUBLIC_APP_VERSION?.trim())
     return env.NEXT_PUBLIC_APP_VERSION.trim();
-  return "0.1.0";
+  return "1.0.0.0";
 }
 
 /**

@@ -1,10 +1,12 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/dashboard/app-shell";
+import { getAppDisplayVersion } from "@/lib/app-version";
 import { AlertSoundController } from "@/components/dashboard/alert-sound-controller";
 import { ConfigurationGateBanner } from "@/components/dashboard/configuration-gate-banner";
 import { DashboardFeed } from "@/components/dashboard/dashboard-feed";
 import { RouterHealthBanner } from "@/components/dashboard/router-health-banner";
+import { FeatureMarkerInspector } from "@/components/dashboard/feature-marker-inspector";
 import { env } from "@/lib/env";
 import { evaluateOnboardingGate, isPathExemptFromGate } from "@/lib/dashboard/onboarding-gate";
 import { NEXT_PATH_HEADER } from "@/lib/route-guard";
@@ -31,9 +33,10 @@ export default async function DashboardLayout({
   // Rute konfigurasi (onboarding, router, pengaturan) dikecualikan agar pengguna bisa mengisi perangkat!
   if (env.DASHBOARD_DATA === "live" && !hasConnected && !isExempt)
     redirect("/setup");
+  const appVersion = getAppDisplayVersion();
 
   return (
-    <AppShell user={{ email: user.email }} locked={gateState.isLocked}>
+    <AppShell user={{ email: user.email }} locked={gateState.isLocked} appVersion={appVersion}>
       {/* Satu sambungan data untuk semua halaman aplikasi. */}
       <DashboardFeed />
       {/* Bunyi gangguan baru, terdengar di halaman mana pun yang dibuka. */}
@@ -46,6 +49,8 @@ export default async function DashboardLayout({
         </div>
       )}
       {children}
+      {/* Sarana penandaan elemen & fungsi untuk telemetri pengembang */}
+      <FeatureMarkerInspector />
     </AppShell>
   );
 }

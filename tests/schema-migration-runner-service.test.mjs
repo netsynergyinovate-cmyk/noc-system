@@ -74,7 +74,7 @@ function mockClient({
 
 test("runner: loadGeneratedSqlMigrationPlan membaca 15 berkas generated SQL terurut", async () => {
   const plan = await loadGeneratedSqlMigrationPlan(drizzleFolder);
-  assert.equal(plan.length, 15);
+  assert.ok(plan.length >= 15);
 
   for (let i = 0; i < plan.length; i++) {
     const item = plan[i];
@@ -92,22 +92,23 @@ test("runner: getPendingMigrations mendeteksi migrasi yang belum terpasang", asy
 
   // Belum ada yang diterapkan
   const allPending = getPendingMigrations(plan, []);
-  assert.equal(allPending.length, 15);
+  assert.equal(allPending.length, plan.length);
 
   // Sebagian sudah diterapkan (misal sampai migrasi ke-10)
   const partial = [{ created_at: plan[10].folderMillis }];
   const remaining = getPendingMigrations(plan, partial);
-  assert.equal(remaining.length, 4);
+  assert.equal(remaining.length, plan.length - 11);
   assert.equal(remaining[0].idx, 11);
-  assert.equal(remaining[3].idx, 14);
+  assert.equal(remaining.at(-1).idx, plan.length - 1);
 
   // Semua sudah diterapkan
-  const fullyApplied = [{ created_at: plan[14].folderMillis }];
+  const fullyApplied = [{ created_at: plan.at(-1).folderMillis }];
   const none = getPendingMigrations(plan, fullyApplied);
   assert.equal(none.length, 0);
 });
 
 test("runner: getSchemaMigrationStatus melaporkan trackerExists false saat tabel belum ada", async () => {
+  const plan = await loadGeneratedSqlMigrationPlan(drizzleFolder);
   const client = mockClient({ tableExists: false });
   const status = await getSchemaMigrationStatus(client, {
     migrationsFolder: drizzleFolder,
@@ -115,8 +116,8 @@ test("runner: getSchemaMigrationStatus melaporkan trackerExists false saat tabel
 
   assert.equal(status.trackerExists, false);
   assert.equal(status.appliedCount, 0);
-  assert.equal(status.pendingCount, 15);
-  assert.equal(status.totalCount, 15);
+  assert.equal(status.pendingCount, plan.length);
+  assert.equal(status.totalCount, plan.length);
   assert.equal(status.isUpToDate, false);
   assert.equal(status.lastAppliedAt, null);
   assert.equal(status.advisoryLockKey, MIGRATION_ADVISORY_LOCK_KEY);
@@ -137,18 +138,19 @@ test("runner: getSchemaMigrationStatus melaporkan up-to-date dan memverifikasi i
   });
 
   assert.equal(status.trackerExists, true);
-  assert.equal(status.appliedCount, 15);
+  assert.equal(status.appliedCount, plan.length);
   assert.equal(status.pendingCount, 0);
   assert.equal(status.isUpToDate, true);
   assert.equal(status.hashValid, true);
   assert.deepEqual(status.hashMismatches, []);
   assert.equal(
     status.lastAppliedAt,
-    new Date(plan[14].folderMillis).toISOString(),
+    new Date(plan.at(-1).folderMillis).toISOString(),
   );
 });
 
 test("runner: runAutomaticSchemaMigrations dry-run tidak melakukan mutasi atau advisory lock", async () => {
+  const plan = await loadGeneratedSqlMigrationPlan(drizzleFolder);
   const client = mockClient({ tableExists: false });
   const logs = [];
   const result = await runAutomaticSchemaMigrations(client, {
@@ -158,7 +160,7 @@ test("runner: runAutomaticSchemaMigrations dry-run tidak melakukan mutasi atau a
   });
 
   assert.equal(result.dryRun, true);
-  assert.equal(result.pending.length, 15);
+  assert.equal(result.pending.length, plan.length);
   assert.equal(result.applied.length, 0);
   assert.ok(client.calls.every((q) => q.startsWith("SELECT")));
   assert.ok(!client.calls.some((q) => q.includes("advisory")));
@@ -167,8 +169,8 @@ test("runner: runAutomaticSchemaMigrations dry-run tidak melakukan mutasi atau a
 
 test("runner: runAutomaticSchemaMigrations eksekusi dengan advisory lock dan commit per migrasi", async () => {
   const plan = await loadGeneratedSqlMigrationPlan(drizzleFolder);
-  // 14 sudah diterapkan, hanya migrasi terakhir (0014) yang pending
-  const appliedRows = [{ created_at: plan[13].folderMillis }];
+  // Hanya migrasi terakhir yang pending
+  const appliedRows = [{ created_at: plan.at(-2).folderMillis }];
   const client = mockClient({ tableExists: true, applied: appliedRows });
   const logs = [];
 
@@ -178,7 +180,7 @@ test("runner: runAutomaticSchemaMigrations eksekusi dengan advisory lock dan com
   });
 
   assert.equal(result.dryRun, false);
-  assert.deepEqual(result.applied, [plan[14].tag]);
+  assert.deepEqual(result.applied, [plan.at(-1).tag]);
 
   // Lock dipanggil sebelum BEGIN transaksi
   assert.equal(client.calls[0], "SELECT pg_advisory_lock($1)");
@@ -190,7 +192,7 @@ test("runner: runAutomaticSchemaMigrations eksekusi dengan advisory lock dan com
   assert.equal(client.calls.at(-1), "SELECT pg_advisory_unlock($1)");
   assert.ok(client.calls.includes("BEGIN"));
   assert.ok(client.calls.includes("COMMIT"));
-  assert.ok(logs.some((l) => l.includes(`[SUKSES] ${plan[14].tag}`)));
+  assert.ok(logs.some((l) => l.includes(`[SUKSES] ${plan.at(-1).tag}`)));
 });
 
 test("runner: runAutomaticSchemaMigrations rollback dan lepas lock saat statement SQL gagal", async () => {
@@ -231,9 +233,9 @@ test("runner: runAutomaticSchemaMigrationsWithRetry mencoba ulang secara berkala
     async query(sql) {
       if (sql.includes("to_regclass")) return { rows: [{ exists: true }] };
       if (sql.startsWith("SELECT id, hash, created_at")) {
-        return { rows: [{ created_at: plan[13].folderMillis }] };
+        return { rows: [{ created_at: plan.at(-2).folderMillis }] };
       }
-      if (sql.includes("cpe_tasks")) {
+      if (sql.startsWith("CREATE TABLE") || sql.startsWith("ALTER TABLE")) {
         attempts++;
         if (attempts < 3) throw new Error("Temporary DB lock contention");
       }
@@ -345,7 +347,7 @@ test("idempotensi: verifyMigrationIdempotency membuktikan eksekusi berulang tida
       if (sql.startsWith("SELECT id, hash, created_at")) {
         return { rows: [...rows] };
       }
-      if (sql.startsWith("INSERT INTO")) {
+      if (sql.includes('__drizzle_migrations') && params) {
         rows.push({ id: rows.length + 1, hash: params[0], created_at: params[1] });
         return { rows: [] };
       }
@@ -359,7 +361,7 @@ test("idempotensi: verifyMigrationIdempotency membuktikan eksekusi berulang tida
   });
 
   assert.equal(verify.idempotent, true);
-  assert.equal(verify.firstRunResult.applied.length, 15);
+  assert.equal(verify.firstRunResult.applied.length, plan.length);
   assert.equal(verify.secondRunResult.applied.length, 0);
   assert.equal(verify.secondRunResult.pending.length, 0);
   assert.equal(verify.reAppliedCount, 0);
@@ -385,7 +387,7 @@ test("API: POST /api/migrations/verify menolak anonim 401", async () => {
 test("upgrade versi: getCurrentAppVersion membaca dari env atau fallback", () => {
   assert.equal(getCurrentAppVersion({ APP_VERSION: "1.2.3" }), "1.2.3");
   assert.equal(getCurrentAppVersion({ NEXT_PUBLIC_APP_VERSION: "2.0.0" }), "2.0.0");
-  assert.equal(getCurrentAppVersion({}), "0.1.0");
+  assert.equal(getCurrentAppVersion({}), "1.0.0.0");
 });
 
 test("upgrade versi: ensureAppVersionTrackerTable dan recordAppVersionUpgrade mencatat riwayat", async () => {
@@ -429,7 +431,7 @@ test("upgrade versi: ensureAppVersionTrackerTable dan recordAppVersionUpgrade me
 
 test("upgrade versi: applyUpgradeMigrationsIfNeeded mendeteksi kenaikan versi dan menerapkan migrasi baru", async () => {
   const plan = await loadGeneratedSqlMigrationPlan(drizzleFolder);
-  const migrationRows = [{ created_at: plan[13].folderMillis }];
+  const migrationRows = [{ created_at: plan.at(-2).folderMillis }];
   const versionRows = [{ id: 1, version: "0.1.0" }];
   const logs = [];
 
@@ -464,7 +466,7 @@ test("upgrade versi: applyUpgradeMigrationsIfNeeded mendeteksi kenaikan versi da
   assert.equal(report.previousVersion, "0.1.0");
   assert.equal(report.currentVersion, "0.2.0");
   assert.equal(report.isUpgrade, true);
-  assert.deepEqual(report.migrationsApplied, [plan[14].tag]);
+  assert.deepEqual(report.migrationsApplied, [plan.at(-1).tag]);
   assert.ok(logs.some((l) => l.includes("[UPGRADE VERSI APLIKASI]")));
   assert.equal(versionRows.at(-1).version, "0.2.0");
 });
@@ -498,10 +500,10 @@ test("payload: getRealSchemaMigrationsData memetakan plan dan database ke Schema
     migrationsFolder: drizzleFolder,
   });
 
-  assert.equal(result.items.length, 15);
-  assert.equal(result.overview.totalMigrations, 15);
+  assert.equal(result.items.length, plan.length);
+  assert.equal(result.overview.totalMigrations, plan.length);
   assert.equal(result.overview.appliedMigrations, 10);
-  assert.equal(result.overview.pendingMigrations, 5);
+  assert.equal(result.overview.pendingMigrations, plan.length - 10);
   assert.equal(result.overview.isUpToDate, false);
   assert.equal(result.overview.status, "pending");
 

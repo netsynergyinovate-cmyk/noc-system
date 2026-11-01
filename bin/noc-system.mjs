@@ -47,16 +47,76 @@ function runCmd(cmd, options = {}) {
   }
 }
 
-function getAppVersion() {
-  const now = new Date();
-  const timeSuffix = now.toISOString().replace(/[-:T]/g, "").slice(0, 14);
-  try {
-    const pkgJson = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8"));
-    const gitHash = execSync("git rev-parse --short HEAD 2>/dev/null", { encoding: "utf-8" }).trim();
-    return `${pkgJson.version || "1.0.0"}+${gitHash || "local"}.${timeSuffix}`;
-  } catch {
-    return `1.0.0+build.${timeSuffix}`;
+function parseFourPartVersion(v) {
+  if (!v || typeof v !== "string") return [1, 0, 0, 0];
+  const clean = v.trim().replace(/^v/i, "").split("+")[0].trim();
+  const segments = clean.split(".");
+  const parsed = segments.map((s) => {
+    const num = Number.parseInt(s, 10);
+    return Number.isFinite(num) && num >= 0 ? num : 0;
+  });
+  return [parsed[0] ?? 1, parsed[1] ?? 0, parsed[2] ?? 0, parsed[3] ?? 0];
+}
+
+function formatFourPartVersion(parts) {
+  return `${parts[0]}.${parts[1]}.${parts[2]}.${parts[3]}`;
+}
+
+function bumpMinorVersion(v) {
+  const [major, minor] = parseFourPartVersion(v);
+  return formatFourPartVersion([major, minor + 1, 0, 0]);
+}
+
+function bumpBuildVersion(v) {
+  const [major, minor, patch, build] = parseFourPartVersion(v);
+  return formatFourPartVersion([major, minor, patch, build + 1]);
+}
+
+function getNextDeployVersion(explicitVersion) {
+  if (explicitVersion) {
+    return formatFourPartVersion(parseFourPartVersion(explicitVersion));
   }
+
+  let baseVersion = "1.0.0.0";
+  try {
+    const pkgPath = path.join(REPO_ROOT, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (pkg.version) baseVersion = pkg.version;
+    }
+  } catch {}
+
+  const [major, minor, patch, baseBuild] = parseFourPartVersion(baseVersion);
+  const prefix = `${major}.${minor}.${patch}.`;
+
+  const releasesDir = "/srv/noc/releases";
+  let maxBuild = -1;
+
+  if (fs.existsSync(releasesDir)) {
+    try {
+      const entries = fs.readdirSync(releasesDir);
+      for (const entry of entries) {
+        if (entry.startsWith(prefix)) {
+          const parts = parseFourPartVersion(entry);
+          if (parts[0] === major && parts[1] === minor && parts[2] === patch) {
+            if (parts[3] > maxBuild) {
+              maxBuild = parts[3];
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  if (maxBuild >= 0) {
+    return formatFourPartVersion([major, minor, patch, maxBuild + 1]);
+  }
+
+  return formatFourPartVersion([major, minor, patch, baseBuild]);
+}
+
+function getAppVersion() {
+  return getNextDeployVersion();
 }
 function recordDeploymentToDatabase(version, jenis, status, titikBalikVersi) {
   try {
@@ -335,7 +395,8 @@ async function cmdDeploy(args = [], options = {}) {
     }
   }
 
-  const version = (filteredArgs[0] && filteredArgs[0].includes("+")) ? filteredArgs[0] : getAppVersion();
+  const explicitVersionArg = filteredArgs.find((a) => !a.startsWith("-"));
+  const version = getNextDeployVersion(explicitVersionArg);
   log(`${ANSI.bold}Memulai Deployment Versi: ${version}${ANSI.reset}`);
 
   const releasePath = `/srv/noc/releases/${version}`;
@@ -431,7 +492,10 @@ async function cmdDeploy(args = [], options = {}) {
   // Langkah 5: Migrasi Database
   log("Langkah 5/6: Menjalankan migrasi database skema baru...");
   try {
-    runCmd("node scripts/migrate-server.mjs", { cwd: releasePath });
+    runCmd("node scripts/migrate-server.mjs", {
+      cwd: releasePath,
+      env: { ...process.env, APP_VERSION: version },
+    });
     ok("Migrasi database berhasil dijalankan.");
   } catch (err) {
     fail(`Migrasi database gagal: ${err.message}`);
@@ -614,12 +678,95 @@ function cmdLogs(args = []) {
 }
 
 // -----------------------------------------------------------------------------
+// 6. COMMAND: upgrade
+// -----------------------------------------------------------------------------
+async function cmdUpgrade() {
+  const pkgPath = path.join(REPO_ROOT, "package.json");
+  if (!fs.existsSync(pkgPath)) {
+    fail(`Berkas package.json tidak ditemukan di ${REPO_ROOT}`);
+    process.exit(1);
+  }
+
+  const raw = fs.readFileSync(pkgPath, "utf-8");
+  const pkg = JSON.parse(raw);
+  const currentVersion = pkg.version || "1.0.0.0";
+  const newVersion = bumpMinorVersion(currentVersion);
+
+  pkg.version = newVersion;
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", "utf-8");
+
+  ok(`Versi aplikasi di-upgrade menjadi: ${newVersion} (dari ${currentVersion})`);
+  console.log(`\n${ANSI.bold}Langkah selanjutnya sebelum deploy:${ANSI.reset}`);
+  console.log(`  1. Commit perubahan:   ${ANSI.cyan}git commit -am "chore: upgrade to v${newVersion}"${ANSI.reset}`);
+  console.log(`  2. Push ke GitHub:     ${ANSI.cyan}git push origin noc-system-main${ANSI.reset}`);
+  console.log(`  3. Update di server:   ${ANSI.cyan}noc-system update${ANSI.reset}\n`);
+}
+
+// -----------------------------------------------------------------------------
+// 7. COMMAND: version
+// -----------------------------------------------------------------------------
+async function cmdVersion() {
+  console.log(`\n${ANSI.bold}=== NOC SYSTEM - INFORMASI VERSI ===${ANSI.reset}`);
+
+  let localVersion = "1.0.0.0";
+  try {
+    const pkgPath = path.join(REPO_ROOT, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      if (pkg.version) localVersion = pkg.version;
+    }
+  } catch {}
+
+  console.log(`- Versi lokal (package.json):  ${ANSI.cyan}${localVersion}${ANSI.reset}`);
+
+  const currentLink = "/srv/noc/current";
+  let activeVersion = null;
+  if (fs.existsSync(currentLink)) {
+    try {
+      const target = fs.realpathSync(currentLink);
+      activeVersion = path.basename(target);
+    } catch {}
+  }
+
+  if (activeVersion) {
+    console.log(`- Versi server aktif (/srv/noc/current): ${ANSI.green}${activeVersion}${ANSI.reset}`);
+  } else {
+    console.log(`- Versi server aktif (/srv/noc/current): ${ANSI.gray}(belum terpasang / bukan server native)${ANSI.reset}`);
+  }
+
+  try {
+    const statusFile = "/srv/noc/shared/server-status.json";
+    if (fs.existsSync(statusFile)) {
+      const statusData = JSON.parse(fs.readFileSync(statusFile, "utf-8"));
+      if (statusData.version) {
+        console.log(`- Snapshot server-status.json: ${statusData.version} (status: ${statusData.status || "unknown"})`);
+      }
+    }
+  } catch {}
+  console.log();
+}
+
+// -----------------------------------------------------------------------------
 // MAIN ENTRYPOINT
 // -----------------------------------------------------------------------------
 const args = process.argv.slice(2);
 const command = args[0] || "help";
-
 switch (command) {
+  case "upgrade":
+    cmdUpgrade().catch((err) => {
+      fail(`Upgrade versi gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
+  case "version":
+  case "-v":
+  case "--version":
+    cmdVersion().catch((err) => {
+      fail(`Gagal membaca versi: ${err.message}`);
+      process.exit(1);
+    });
+    break;
   case "install":
   case "setup":
     cmdInstall().catch((err) => {
@@ -677,8 +824,11 @@ Penggunaan:
   ${ANSI.cyan}noc-system <perintah> [opsi]${ANSI.reset}
 
 Perintah Tersedia:
+  ${ANSI.green}upgrade${ANSI.reset}          Naikkan versi minor aplikasi (1.0.x.y -> 1.1.0.0) di package.json
+  ${ANSI.green}version${ANSI.reset}          Tampilkan versi lokal package.json dan rilis aktif server
   ${ANSI.green}install / setup${ANSI.reset}  Siapkan hierarki /srv/noc, docker postgres, dan systemd
-  ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (backup, build, migrasi, swap symlink, health check)
+  ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (auto-bump build jika tanpa argumen versi)
+  ${ANSI.green}update [ref]${ANSI.reset}     Tarik kode git terbaru lalu deploy otomatis
   ${ANSI.green}rollback${ANSI.reset}         Kembalikan symlink /srv/noc/current ke rilis sebelumnya
   ${ANSI.green}status${ANSI.reset}           Periksa versi aktif, status unit systemd, docker & health
   ${ANSI.green}logs${ANSI.reset}             Pantau log live systemd (opsi: --web, --backend, -n <jumlah>)

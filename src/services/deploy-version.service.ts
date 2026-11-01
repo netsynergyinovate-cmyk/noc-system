@@ -12,7 +12,7 @@ export interface VersionInfo {
  * Membaca versi aplikasi dari package.json dan hash commit git terakhir.
  */
 export async function getAppVersion(): Promise<VersionInfo> {
-  let semver = "0.1.0";
+  let semver = "1.0.0.0";
   try {
     const pkgRaw = await readFile(resolve(process.cwd(), "package.json"), "utf8");
     const pkg = JSON.parse(pkgRaw);
@@ -33,7 +33,7 @@ export async function getAppVersion(): Promise<VersionInfo> {
   });
 
   const commitHash = await promise;
-  const fullVersion = `${semver}+${commitHash}`;
+  const fullVersion = semver;
 
   return {
     semver,

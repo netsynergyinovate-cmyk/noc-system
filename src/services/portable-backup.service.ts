@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { getRawPool } from "@/db";
+import { getAppDisplayVersion } from "@/lib/app-version";
 
 export type BackupPackageType = "full" | "config_only" | "schema_only";
 
@@ -126,7 +127,7 @@ export async function createPortableBackupPackage(options: {
     type,
     createdAt: new Date().toISOString(),
     databaseEngine: "postgresql",
-    appVersion: "0.1.0",
+    appVersion: getAppDisplayVersion(),
     tablesIncluded: Object.keys(payload),
     recordCounts,
     totalRecords,

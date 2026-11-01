@@ -19,10 +19,12 @@ export function NocBrand() {
 export function AppShell({
   user,
   locked = false,
+  appVersion = "1.0.0.0",
   children,
 }: {
   user: { email: string };
   locked?: boolean;
+  appVersion?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -77,11 +79,21 @@ export function AppShell({
               <SignOutButton />
             </div>
           </div>
+          {/* Versi Aplikasi */}
+          <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground/75 select-none">
+            <span>Versi Aplikasi</span>
+            <span className="font-mono font-medium text-foreground/80">v{appVersion}</span>
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 lg:hidden">
-          <NocBrand />
+          <div className="flex items-center gap-2">
+            <NocBrand />
+            <span className="font-mono text-[10px] text-muted-foreground/80 font-medium px-1.5 py-0.5 rounded border border-border/60 bg-muted/30">
+              v{appVersion}
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <ConfigurationStatusBadge incomplete={locked} />
             <ThemeToggle />

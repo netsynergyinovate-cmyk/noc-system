@@ -327,7 +327,8 @@ async function cmdDeploy(args = [], options = {}) {
         runCmd(`git reset --hard "origin/${curBranch}"`, { cwd: REPO_ROOT });
       }
       log("Memasang dependensi project terbaru (npm ci)...");
-      runCmd("npm ci", { cwd: REPO_ROOT });
+      log("Mengunduh & mengekstrak dependensi (~500MB, butuh 1–3 menit). Harap tunggu...");
+      runCmd("npm ci --no-audit", { cwd: REPO_ROOT });
       ok("Kode sumber dan dependensi berhasil diperbarui dari git.");
     } catch (err) {
       warn(`Gagal memperbarui dari git: ${err.message}. Melanjutkan rilis dengan kode lokal.`);
@@ -398,7 +399,8 @@ async function cmdDeploy(args = [], options = {}) {
   ok(`Backend Go terkompilasi: ${backendBinPath}`);
 
   // Langkah 3: Build Frontend Next.js Standalone
-  log("Langkah 3/6: Membangun bundle Next.js Standalone...");
+  log("Langkah 3/6: Membangun bundle Next.js Standalone (npm run build)...");
+  log("Proses kompilasi Next.js & Turbopack butuh 1–2 menit. Harap tunggu...");
   runCmd("npm run build");
   ok("Bundle Next.js standalone berhasil dibuat.");
 

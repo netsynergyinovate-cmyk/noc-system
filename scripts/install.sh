@@ -47,6 +47,23 @@ if ! id -u noc &>/dev/null; then
   useradd --system --no-create-home --home-dir /srv/noc --shell /usr/sbin/nologin noc
 fi
 
+# Aktifkan swap darurat jika RAM server < 2.5GB dan swap < 512MB (mencegah silent OOM killed)
+TOTAL_RAM_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}' || echo "4096")
+TOTAL_SWAP_MB=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}' || echo "4096")
+if [ "${TOTAL_RAM_MB}" -lt 2500 ] && [ "${TOTAL_SWAP_MB}" -lt 512 ]; then
+  echo -e "${YELLOW}RAM server terbatas (${TOTAL_RAM_MB}MB) tanpa swap. Menyiapkan 2GB swapfile agar kompilasi bebas dari OOM...${NC}"
+  fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 2>/dev/null || true
+  if [ -f /swapfile ]; then
+    chmod 600 /swapfile
+    mkswap /swapfile >/dev/null 2>&1 || true
+    swapon /swapfile >/dev/null 2>&1 || true
+    if ! grep -q "/swapfile" /etc/fstab 2>/dev/null; then
+      echo "/swapfile none swap sw 0 0" >> /etc/fstab
+    fi
+    echo -e "${GREEN}✓ Swap 2GB berhasil diaktifkan.${NC}"
+  fi
+fi
+
 # 3. Update apt dan paket dasar
 echo -e "\n${CYAN}1/6 Memperbarui paket sistem dan memasang dependensi dasar...${NC}"
 apt-get update -y
@@ -164,11 +181,12 @@ fi
 
 # Pasang dependensi npm di source (wajib npm ci agar paket native linux tidak terpotong)
 echo -e "${CYAN}Memasang dependensi project (npm ci)...${NC}"
+echo -e "${YELLOW}Mengunduh & mengekstrak dependensi (~500MB). Proses ini butuh 1–3 menit (tanpa progress bar interaktif di pipa curl). Harap tunggu...${NC}"
 chown -R "${DEPLOY_USER}:${DEPLOY_GROUP}" "${SRC_DIR}"
 if [ "${DEPLOY_USER}" = "root" ]; then
-  npm ci
+  npm ci --no-audit
 else
-  sudo -u "${DEPLOY_USER}" npm ci
+  sudo -u "${DEPLOY_USER}" npm ci --no-audit
 fi
 
 SHARED_ENV="/srv/noc/shared/.env"

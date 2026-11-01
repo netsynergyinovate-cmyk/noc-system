@@ -1,6 +1,6 @@
 import os from "os";
 import { exec } from "child_process";
-import { mkdir, rm, stat, copyFile, cp } from "fs/promises";
+import { mkdir, rm, stat, copyFile, cp, writeFile } from "fs/promises";
 import { resolve, join } from "path";
 import { existsSync, createReadStream } from "fs";
 import { Client, type ConnectConfig } from "ssh2";
@@ -128,7 +128,42 @@ export async function buildReleaseBundle(
   if (existsSync(srcSystemd)) {
     await cp(srcSystemd, resolve(distDir, "systemd"), { recursive: true });
   }
-  // 4. Kompresi ke dalam release.tar.gz
+
+  // 4. Pasang package shim untuk chunk external Turbopack (mis. pg-<hash>, ssh2-<hash>)
+  onLog?.("Menyiapkan shim paket eksternal Turbopack...");
+  const shimPackages = [
+    { name: "pg-587764f78a6c7a9c", target: "pg" },
+    { name: "ssh2-f3b551c9be6f736f", target: "ssh2" },
+  ];
+  for (const shim of shimPackages) {
+    const sDir = resolve(distDir, "node_modules", shim.name);
+    await mkdir(sDir, { recursive: true });
+    await writeFile(
+      resolve(sDir, "package.json"),
+      JSON.stringify({
+        name: shim.name,
+        main: "./index.js",
+        module: "./index.mjs",
+        exports: {
+          ".": {
+            import: "./index.mjs",
+            require: "./index.js",
+            default: "./index.js",
+          },
+        },
+      }),
+    );
+    await writeFile(
+      resolve(sDir, "index.js"),
+      `module.exports = require("${shim.target}");\n`,
+    );
+    await writeFile(
+      resolve(sDir, "index.mjs"),
+      `export * from "${shim.target}";\nimport pkg from "${shim.target}";\nexport default pkg;\n`,
+    );
+  }
+
+  // 5. Kompresi ke dalam release.tar.gz
   onLog?.("Mengompresi bundle rilis menjadi tar.gz...");
   await mkdir(cacheDir, { recursive: true });
 
@@ -261,7 +296,7 @@ export async function uploadAndExtractRelease(
     `rm -f "${remoteTarPath}"`,
     `chmod +x "${remoteReleasePath}/noc-backend"`,
     `mkdir -p "${remoteReleasePath}/.next/cache"`,
-    `if [ -d "${remoteReleasePath}/node_modules/pg" ]; then for d in "${remoteReleasePath}/.next/node_modules/pg-"*; do [ -e "$d" ] && ln -sfn pg "${remoteReleasePath}/node_modules/$(basename "$d")" 2>/dev/null || true; done; fi`,
+    `chmod -R u+rwX,go+rX "${remoteReleasePath}"`,
     `chmod -R 777 "${remoteReleasePath}/.next/cache" 2>/dev/null || true`,
     `sudo -n chown -R ${target.sshUser}:noc "${remoteReleasePath}" 2>/dev/null || true`,
     `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,

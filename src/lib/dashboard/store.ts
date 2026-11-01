@@ -16,6 +16,8 @@ import type {
   MapFocusRequest,
   TrafficSeries,
 } from "./types";
+import { ALERT_EVENTS_SIGNAL } from "./realtime-ws";
+import { alertSignature, type Telemetry } from "./telemetry";
 
 interface DashboardState {
   // Diganti hanya saat status pelanggan berubah, bukan tiap detik.
@@ -44,6 +46,9 @@ interface DashboardState {
   incidentCards: IncidentCard[] | null;
   // Detik epoch pesan "incidents" terakhir.
   incidentsAt: number | null;
+  // Telemetri backend Go (resource router, OLT, VLAN PON, latensi, optik, alert); null
+  // sebelum pesan pertama. Didorong backend saat berubah, tidak pernah diambil berkala.
+  telemetry: Telemetry | null;
   // Pesan realtime dari sumber data (tiruan sekarang, WebSocket nanti).
   applySnapshot: (snapshot: DashboardSnapshot, nowSec: number) => void;
   applyDelta: (delta: DashboardDelta, nowSec: number) => void;
@@ -58,6 +63,7 @@ interface DashboardState {
   clearMapFocus: () => void;
   setLiveMode: (isLive: boolean, liveRouters?: DashboardRouter[]) => void;
   setLiveRouters: (routers: DashboardRouter[]) => void;
+  applyTelemetry: (telemetry: Telemetry) => void;
 }
 
 function countCustomers(customers: DashboardCustomer[]) {
@@ -104,7 +110,7 @@ export const initialCustomers = createMockCustomers();
 // Nomor permintaan sorot tidak pernah mundur, bahkan setelah sorotan ditutup.
 let focusSeq = 0;
 
-export const useDashboardStore = create<DashboardState>()((set) => ({
+export const useDashboardStore = create<DashboardState>()((set, get) => ({
   customers: initialCustomers,
   routers: mockRouters,
   ...countCustomers(initialCustomers),
@@ -118,6 +124,7 @@ export const useDashboardStore = create<DashboardState>()((set) => ({
   mapFocus: null,
   incidentCards: null,
   incidentsAt: null,
+  telemetry: null,
 
   applySnapshot: (snapshot, nowSec) =>
     set({
@@ -202,6 +209,18 @@ export const useDashboardStore = create<DashboardState>()((set) => ({
       incidentsAt: nowSec,
     })),
 
+  applyTelemetry: (telemetry) => {
+    const before = get().telemetry;
+    // Alert aktif berganti: penyinkron alert memuat daftarnya sekarang juga.
+    if (
+      before &&
+      alertSignature(before) !== alertSignature(telemetry) &&
+      typeof window !== "undefined"
+    )
+      window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
+    set({ telemetry });
+  },
+
   focusMap: (customerId) => set({ mapFocus: { seq: ++focusSeq, customerId } }),
 
   clearMapFocus: () => set({ mapFocus: null }),
@@ -225,6 +244,7 @@ export const useDashboardStore = create<DashboardState>()((set) => ({
       isMockFallback: false,
       incidentCards: isLive ? [] : null,
       incidentsAt: null,
+      telemetry: null,
     }),
 
   setLiveRouters: (liveRouters) =>

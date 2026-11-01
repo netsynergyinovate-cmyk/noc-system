@@ -3,11 +3,10 @@
 import { useState } from "react";
 import {
   ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
   Key,
   Server,
-  Lock,
-  Globe,
-  Database,
   Terminal,
   Copy,
   Check,
@@ -31,6 +30,47 @@ interface DeployChecklistGuideProps {
   vpsHost?: string;
 }
 
+function CommandResultCard({
+  result,
+  onClear,
+}: {
+  result: { ok: boolean; code?: number; stdout?: string; stderr?: string; error?: string };
+  onClear: () => void;
+}) {
+  return (
+    <div className="mt-2 rounded-lg border border-zinc-800 bg-black/95 font-mono text-[11px] overflow-hidden shadow-lg">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800">
+        <div className="flex items-center gap-2">
+          {result.ok ? (
+            <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Berhasil (Exit Code {result.code ?? 0})
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-red-400 font-bold">
+              <AlertTriangle className="h-3.5 w-3.5" /> Gagal (Exit Code {result.code ?? 1})
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[10px] text-zinc-400 hover:text-zinc-200"
+        >
+          Tutup Output
+        </button>
+      </div>
+
+      <div className="p-3 space-y-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
+        {result.stdout && <div className="text-emerald-300 font-mono">{result.stdout}</div>}
+        {result.stderr && <div className="text-amber-300/90 border-t border-zinc-800/60 pt-1 font-mono">{result.stderr}</div>}
+        {result.error && <div className="text-red-400 font-bold">{result.error}</div>}
+        {!result.stdout && !result.stderr && !result.error && (
+          <div className="text-zinc-500 italic">Perintah selesai dieksekusi tanpa keluaran teks.</div>
+        )}
+      </div>
+    </div>
+  );
+}
 export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployChecklistGuideProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>("quick-exec");
@@ -169,9 +209,10 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
             </Button>
           </div>
           {commandOutputs["custom-cmd"] && (
-            <div className="mt-2 p-2.5 rounded bg-black/90 font-mono text-[11px] border border-zinc-800 text-zinc-200 whitespace-pre-wrap max-h-40 overflow-y-auto">
-              {commandOutputs["custom-cmd"].stdout || commandOutputs["custom-cmd"].stderr || commandOutputs["custom-cmd"].error || "(Tidak ada output)"}
-            </div>
+            <CommandResultCard
+              result={commandOutputs["custom-cmd"]}
+              onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["custom-cmd"]; return n; })}
+            />
           )}
         </div>
 
@@ -208,9 +249,10 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
               {cmdUfwAll}
             </code>
             {commandOutputs["cmd-ufw"] && (
-              <div className="p-2 rounded bg-black font-mono text-[11px] border border-zinc-800 text-emerald-300 whitespace-pre-wrap">
-                {commandOutputs["cmd-ufw"].stdout || commandOutputs["cmd-ufw"].stderr || commandOutputs["cmd-ufw"].error}
-              </div>
+              <CommandResultCard
+                result={commandOutputs["cmd-ufw"]}
+                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-ufw"]; return n; })}
+              />
             )}
           </div>
 
@@ -243,9 +285,10 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
               {cmdSetUrl}
             </code>
             {commandOutputs["cmd-set-url"] && (
-              <div className="p-2 rounded bg-black font-mono text-[11px] border border-zinc-800 text-emerald-300 whitespace-pre-wrap">
-                {commandOutputs["cmd-set-url"].stdout || commandOutputs["cmd-set-url"].stderr || commandOutputs["cmd-set-url"].error || "Perintah berhasil dieksekusi di server."}
-              </div>
+              <CommandResultCard
+                result={commandOutputs["cmd-set-url"]}
+                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-set-url"]; return n; })}
+              />
             )}
           </div>
 
@@ -278,9 +321,10 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
               {cmdStatus}
             </code>
             {commandOutputs["cmd-status"] && (
-              <div className="p-2.5 rounded bg-black font-mono text-[11px] border border-zinc-800 text-emerald-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                {commandOutputs["cmd-status"].stdout || commandOutputs["cmd-status"].stderr || commandOutputs["cmd-status"].error}
-              </div>
+              <CommandResultCard
+                result={commandOutputs["cmd-status"]}
+                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-status"]; return n; })}
+              />
             )}
           </div>
         </div>

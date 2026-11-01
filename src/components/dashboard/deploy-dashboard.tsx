@@ -273,7 +273,28 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
     autoRollbackTriggered?: boolean;
   } | null>(null);
   const [deployAccessInfo, setDeployAccessInfo] = useState<DeployAccessInfo | null>(null);
-  const [activeTab, setActiveTab] = useState("deploy");
+  const [activeTab, setActiveTab] = useState<string>("cli");
+
+  useEffect(() => {
+    try {
+      const urlTab = new URLSearchParams(window.location.search).get("tab");
+      const saved = localStorage.getItem("noc_deploy_active_tab");
+      const tabToUse = urlTab || saved;
+      if (tabToUse) {
+        setActiveTab(tabToUse);
+      }
+    } catch {}
+  }, []);
+
+  function handleTabChange(tab: string) {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem("noc_deploy_active_tab", tab);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.replaceState(null, "", url.toString());
+    } catch {}
+  }
 
   // Riwayat & Releases State
   const [runs, setRuns] = useState<DeployRun[]>([]);
@@ -869,7 +890,7 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
       )}
 
       {/* Tabs Menu Utama */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 w-full">
           <TabsTrigger value="cli" className="text-xs gap-1.5 font-semibold text-primary">
             <Terminal className="h-3.5 w-3.5" /> CLI noc-system

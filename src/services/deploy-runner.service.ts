@@ -437,57 +437,78 @@ export async function executeDeployRun(
       currentActiveStepId = null;
     }
   }
-  let stepOutputBuf = "";
-  let lastFlush = Date.now();
-  let flushTimer: NodeJS.Timeout | null = null;
-
-  const flushOutput = async (stepId: string) => {
-    if (!stepOutputBuf) return;
-    try {
-      await db
-        .update(deploySteps)
-        .set({ keluaran: stepOutputBuf })
-        .where(eq(deploySteps.id, stepId));
-    } catch {}
-  };
 
   const makeStepLogger = (stepId: string, initialPrefix = "") => {
-    stepOutputBuf = initialPrefix;
+    let buf = initialPrefix;
+    let lastFlush = Date.now();
+    let timer: NodeJS.Timeout | null = null;
+
+    const flush = async () => {
+      if (!buf) return;
+      try {
+        await db
+          .update(deploySteps)
+          .set({ keluaran: buf })
+          .where(eq(deploySteps.id, stepId));
+      } catch {}
+    };
+
     if (initialPrefix) {
-      void flushOutput(stepId);
+      void flush();
     }
-    return (chunk: string) => {
-      stepOutputBuf = (stepOutputBuf + chunk).slice(-15000);
-      const now = Date.now();
-      if (now - lastFlush > 400) {
-        lastFlush = now;
-        void flushOutput(stepId);
-      } else if (!flushTimer) {
-        flushTimer = setTimeout(() => {
-          flushTimer = null;
-          lastFlush = Date.now();
-          void flushOutput(stepId);
-        }, 400);
-      }
+
+    return {
+      log: (chunk: string) => {
+        buf = (buf + chunk).slice(-15000);
+        const now = Date.now();
+        if (now - lastFlush > 300) {
+          lastFlush = now;
+          void flush();
+        } else if (!timer) {
+          timer = setTimeout(() => {
+            timer = null;
+            lastFlush = Date.now();
+            void flush();
+          }, 300);
+        }
+      },
+      finalize: async (status: DeployStep["status"], summary?: string) => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        const finalKeluaran = (buf + (summary ? "\n" + summary : "")).trim();
+        await db
+          .update(deploySteps)
+          .set({
+            status,
+            keluaran: finalKeluaran,
+            selesai: new Date(),
+          })
+          .where(eq(deploySteps.id, stepId));
+        if (currentActiveStepId === stepId && status !== "berjalan") {
+          currentActiveStepId = null;
+        }
+      },
     };
   };
 
   try {
     // LANGKAH 1: Pre-flight & Koneksi SSH
     const step1 = await addStep(1, "Pre-flight & Koneksi SSH", "berjalan");
-    const step1Log = makeStepLogger(step1.id, `ssh -p ${target.port} ${target.sshUser}@${host}\nMemeriksa latensi dan autentikasi...\n`);
+    const step1Logger = makeStepLogger(step1.id, `ssh -p ${target.port} ${target.sshUser}@${host}\nMemeriksa latensi dan autentikasi...\n`);
     const connTest = await testSshConnection(target, credential, host);
     if (!connTest.success) {
-      await updateStep(step1.id, "gagal", connTest.message);
+      await step1Logger.finalize("gagal", connTest.message);
       throw new Error(`Pre-flight koneksi SSH gagal: ${connTest.message}`);
     }
-    await updateStep(step1.id, "berhasil", `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`);
+    await step1Logger.finalize("berhasil", `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`);
 
     // LANGKAH 2: Backup Database Server
     const step2 = await addStep(2, "Backup Database Server", "berjalan");
     const timestampStr = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFile = `/srv/noc/backups/backup-${timestampStr}.sql.gz`;
-    const step2Log = makeStepLogger(step2.id, `$ docker exec <postgres> pg_dump -U starter -d starter | gzip > ${backupFile}\n`);
+    const step2Logger = makeStepLogger(step2.id, `$ docker exec <postgres> pg_dump -U starter -d starter | gzip > ${backupFile}\n`);
     // Gunakan stdin script agar kutip dan pipefail tidak terpotong oleh bash -c
     const backupScript = [
       "set -euo pipefail",
@@ -508,13 +529,12 @@ export async function executeDeployRun(
       `ls -lh "${backupFile}"`,
     ].join("\n");
 
-    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host, 60000, step2Log);
+    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host, 60000, step2Logger.log);
     if (backupRes.code !== 0) {
-      await updateStep(step2.id, "gagal", backupRes.stderr || backupRes.stdout);
+      await step2Logger.finalize("gagal", backupRes.stderr || backupRes.stdout);
       throw new Error(`Backup database gagal: ${backupRes.stderr || backupRes.stdout}`);
     }
-    await updateStep(step2.id, "berhasil", `Backup berhasil disimpan di ${backupFile} (${backupRes.stdout.trim()})`);
-
+    await step2Logger.finalize("berhasil", `Backup berhasil disimpan di ${backupFile} (${backupRes.stdout.trim()})`);
     // LANGKAH 3: Bangun Artefak Rilis & Unggah ke Server
     const step3 = await addStep(3, "Bangun Artefak Rilis & Unggah", "berjalan");
     const releasePath = `/srv/noc/releases/${version}`;
@@ -525,15 +545,14 @@ export async function executeDeployRun(
     // Build tarball di localhost
     const step3Log = makeStepLogger(step3.id, `Mempersiapkan artefak rilis terisolasi untuk ${version}...\n`);
     const buildResult = await buildReleaseBundle(version, (msg) => {
-      step3Log(`[BUILD] ${msg}\n`);
+      step3Log.log(`[BUILD] ${msg}\n`);
     });
 
     // Upload via SFTP dan ekstrak di server
     await uploadAndExtractRelease(target, credential, buildResult.tarPath, releasePath, host, (msg) => {
-      step3Log(`[SFTP] ${msg}\n`);
+      step3Log.log(`[SFTP] ${msg}\n`);
     });
-    await updateStep(
-      step3.id,
+    await step3Log.finalize(
       "berhasil",
       `Artefak rilis ${(buildResult.sizeBytes / 1024 / 1024).toFixed(2)} MB berhasil diunggah dan diekstrak di ${releasePath}`,
     );
@@ -555,12 +574,12 @@ export async function executeDeployRun(
       'fi',
     ].join("\n");
     const step4Log = makeStepLogger(step4.id, `$ cd ${releasePath} && node scripts/migrate-server.mjs\n`);
-    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host, 60000, step4Log);
+    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host, 60000, step4Log.log);
     if (migRes.code !== 0) {
-      await updateStep(step4.id, "gagal", migRes.stderr || migRes.stdout);
+      await step4Log.finalize("gagal", migRes.stderr || migRes.stdout);
       throw new Error(`Migrasi database gagal: ${migRes.stderr || migRes.stdout}`);
     }
-    await updateStep(step4.id, "berhasil", `Migrasi database sukses dieksekusi: ${migRes.stdout.trim() || "OK"}`);
+    await step4Log.finalize("berhasil", `Migrasi database sukses dieksekusi: ${migRes.stdout.trim() || "OK"}`);
 
     // LANGKAH 5: Pemindahan Konfigurasi Localhost -> Server (idempoten)
     const step5 = await addStep(5, "Pemindahan Konfigurasi Localhost -> Server", "berjalan");
@@ -618,13 +637,12 @@ export async function executeDeployRun(
           '$DOCKER exec -i "$PG_CID" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 --single-transaction -f -',
         ].join(" && ");
         const step5Log = makeStepLogger(step5.id, `Menyinkronkan ${totalInserted} baris konfigurasi ke database server...\n`);
-        const execRes = await executeSshScript(target, credential, execCmd, combinedSql, host, 60000, step5Log);
+        const execRes = await executeSshScript(target, credential, execCmd, combinedSql, host, 60000, step5Log.log);
         if (execRes.code !== 0) {
           throw new Error(`Sinkronisasi konfigurasi database gagal: ${execRes.stderr || execRes.stdout}`);
         }
+        await step5Log.finalize("berhasil", `Konfigurasi berhasil disinkronkan (${totalInserted} baris).`);
       }
-
-      await updateStep(step5.id, "berhasil", `Konfigurasi berhasil disinkronkan (${totalInserted} baris konfigurasi dipindahkan dalam satu transaksi atomik).`);
     } catch (err: unknown) {
       await updateStep(step5.id, "gagal", err instanceof Error ? err.message : String(err));
       throw new Error(`Pemindahan konfigurasi gagal: ${err instanceof Error ? err.message : String(err)}`);
@@ -668,9 +686,9 @@ export async function executeDeployRun(
     const step8 = await addStep(8, "Restart Layanan systemd", "berjalan");
     const step8Log = makeStepLogger(step8.id, `$ sudo -n systemctl restart noc-web noc-backend\n`);
     const restartCmd = `sudo -n systemctl restart noc-web noc-backend`;
-    const restartRes = await executeSshCommand(target, credential, restartCmd, host, 60000, step8Log);
+    const restartRes = await executeSshCommand(target, credential, restartCmd, host, 60000, step8Log.log);
     if (restartRes.code !== 0) {
-      await updateStep(step8.id, "gagal", restartRes.stderr || restartRes.stdout);
+      await step8Log.finalize("gagal", restartRes.stderr || restartRes.stdout);
       // Restart gagal setelah swap -> picu rollback otomatis jika ada titik balik
       if (titikBalikVersi) {
         await executeSshCommand(
@@ -682,7 +700,7 @@ export async function executeDeployRun(
       }
       throw new Error(`Restart unit systemd gagal: ${restartRes.stderr || restartRes.stdout}`);
     }
-    await updateStep(step8.id, "berhasil", "Layanan noc-web dan noc-backend berhasil di-restart.");
+    await step8Log.finalize("berhasil", "Layanan noc-web dan noc-backend berhasil di-restart.");
 
     // LANGKAH 9: Health Check Setelah Deploy (Next.js :3000 dan Go :8080)
     const step9 = await addStep(9, "Health Check Pasca-Deploy", "berjalan");
@@ -706,7 +724,7 @@ export async function executeDeployRun(
 
       const nextCode = probeNext.stdout.trim();
       const goCode = probeGo.stdout.trim();
-      step9Log(`Percobaan ${i + 1}/15: curl :3000 -> HTTP ${nextCode || "ERR"}, curl :8080 -> HTTP ${goCode || "ERR"}\n`);
+      step9Log.log(`Percobaan ${i + 1}/15: curl :3000 -> HTTP ${nextCode || "ERR"}, curl :8080 -> HTTP ${goCode || "ERR"}\n`);
 
       if (nextCode === "200" && goCode === "200") {
         healthy = true;
@@ -719,8 +737,7 @@ export async function executeDeployRun(
 
     if (!healthy) {
       // KEGAGALAN HEALTH CHECK PASCA-SWAP -> PICU ROLLBACK OTOMATIS!
-      await updateStep(step9.id, "gagal", `Health check gagal: ${healthOutput}`);
-
+      await step9Log.finalize("gagal", `Health check gagal: ${healthOutput}`);
       if (titikBalikVersi) {
         const rollbackCmd = `ln -sfn "/srv/noc/releases/${titikBalikVersi}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current && sudo -n systemctl restart noc-web noc-backend`;
         const rollbackRes = await executeSshCommand(target, credential, rollbackCmd, host, 30000);
@@ -785,7 +802,7 @@ export async function executeDeployRun(
       };
     }
 
-    await updateStep(step9.id, "berhasil", healthOutput);
+    await step9Log.finalize("berhasil", healthOutput);
 
     // Tandai rilis aktif di deploy_releases
     await db

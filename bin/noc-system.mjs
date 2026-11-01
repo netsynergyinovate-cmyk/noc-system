@@ -470,8 +470,15 @@ async function cmdDeploy(args = [], options = {}) {
 
   // Langkah 3: Build Frontend Next.js Standalone
   log("Langkah 3/6: Membangun bundle Next.js Standalone (npm run build)...");
-  log("Proses kompilasi Next.js & Turbopack butuh 1–2 menit. Harap tunggu...");
-  runCmd("npm run build");
+  log("Tahap 'Creating an optimized production build...' membundel puluhan rute & TypeScript.");
+  log("Layar akan diam selama 1–3 menit di VPS. Harap tunggu dan JANGAN tekan Ctrl+C...");
+  runCmd("npm run build", {
+    env: {
+      ...process.env,
+      NEXT_TELEMETRY_DISABLED: "1",
+      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=2048",
+    },
+  });
   ok("Bundle Next.js standalone berhasil dibuat.");
 
   // Langkah 4: Siapkan Direktori Rilis

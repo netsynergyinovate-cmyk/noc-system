@@ -1060,6 +1060,60 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               </div>
             </div>
 
+            {/* Panduan Prasyarat jika Target atau Kunci SSH belum diisi */}
+            {(!target || !sshMeta) && (
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-700 dark:text-amber-300">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <span className="font-semibold text-sm">Tombol Deploy Dinonaktifkan (Prasyarat Belum Lengkap)</span>
+                    <p className="text-muted-foreground">
+                      Untuk menjalankan deploy otomatis dari dasbor ini, sistem memerlukan alamat IP VPS dan Kunci Privat SSH:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 mt-2 text-foreground font-medium">
+                      <li>
+                        Target Server:{" "}
+                        {target ? (
+                          <span className="text-emerald-600 font-semibold">✓ {target.host}:{target.port} (User: {target.sshUser})</span>
+                        ) : (
+                          <span className="text-destructive font-semibold">✗ Belum diisi (Host & User VPS)</span>
+                        )}
+                      </li>
+                      <li>
+                        Kunci Privat SSH:{" "}
+                        {sshMeta ? (
+                          <span className="text-emerald-600 font-semibold">✓ Kunci tersimpan ({sshMeta.fingerprint})</span>
+                        ) : (
+                          <span className="text-destructive font-semibold">✗ Kunci belum dipasang</span>
+                        )}
+                      </li>
+                    </ul>
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                      {!target && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs bg-background border-amber-500/40 text-amber-900 dark:text-amber-200"
+                          onClick={() => setEditTargetOpen(true)}
+                        >
+                          1. Atur Target Server (IP & User VPS)
+                        </Button>
+                      )}
+                      {!sshMeta && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs bg-background border-amber-500/40 text-amber-900 dark:text-amber-200"
+                          onClick={() => setKeyModalOpen(true)}
+                        >
+                          2. Pasang Kunci Privat SSH
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Hasil Uji Kesiapan (Dry Run) */}
             {dryRunResult && (
               <div className="mt-6 rounded-xl border p-4 bg-muted/30">

@@ -55,6 +55,26 @@ export const auth = betterAuth({
           authorizationUrl: `${env.LOGTO_ENDPOINT}/oidc/auth?direct_sign_in=social:github&prompt=login`,
           tokenUrl: `${env.LOGTO_INTERNAL_ENDPOINT || env.LOGTO_ENDPOINT}/oidc/token`,
           userInfoUrl: `${env.LOGTO_INTERNAL_ENDPOINT || env.LOGTO_ENDPOINT}/oidc/me`,
+          mapProfileToUser: async (profile) => {
+            const rawEmail =
+              typeof profile.email === "string" && profile.email
+                ? profile.email
+                : "developer@github.local";
+            const at = rawEmail.indexOf("@");
+            const devEmail =
+              at !== -1
+                ? `${rawEmail.slice(0, at)}+developer@${rawEmail.slice(at + 1)}`
+                : `${rawEmail}+developer@github.local`;
+            const rawName =
+              typeof profile.name === "string" && profile.name
+                ? profile.name
+                : "Developer";
+            return {
+              email: devEmail,
+              name: rawName.includes("Developer") ? rawName : `${rawName} (Developer)`,
+              role: "developer",
+            };
+          },
         },
       ],
     }),
@@ -88,7 +108,7 @@ export const auth = betterAuth({
               .from(schema.user)
               .where(eq(schema.user.id, account.userId))
               .limit(1);
-            if (target && !roleNames(target.role).includes("superadmin")) {
+            if (target && !roleNames(target.role).includes("superadmin") && !roleNames(target.role).includes("admin")) {
               await db
                 .update(schema.user)
                 .set({ role: "developer" })

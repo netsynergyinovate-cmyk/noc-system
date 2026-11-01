@@ -176,6 +176,11 @@ export async function testSshConnection(
       latencyMs: Date.now() - startTime,
     });
   });
+  if (credential.password) {
+    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
+      finish(prompts.map(() => credential.password || ""));
+    });
+  }
 
   const connectConfig: ConnectConfig = {
     host,
@@ -184,6 +189,7 @@ export async function testSshConnection(
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
     password: credential.password,
+    tryKeyboard: Boolean(credential.password),
     readyTimeout: timeoutMs,
     hostVerifier: (key: Buffer) => {
       const hash = crypto.createHash("sha256").update(key).digest("base64").replace(/=+$/, "");
@@ -282,6 +288,11 @@ export async function executeSshCommand(
       reject(err);
     }
   });
+  if (credential.password) {
+    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
+      finish(prompts.map(() => credential.password || ""));
+    });
+  }
 
   conn.connect({
     host,
@@ -290,6 +301,7 @@ export async function executeSshCommand(
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
     password: credential.password,
+    tryKeyboard: Boolean(credential.password),
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {
@@ -373,6 +385,11 @@ export async function executeSshScript(
       reject(err);
     }
   });
+  if (credential.password) {
+    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
+      finish(prompts.map(() => credential.password || ""));
+    });
+  }
 
   conn.connect({
     host,
@@ -381,6 +398,7 @@ export async function executeSshScript(
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
     password: credential.password,
+    tryKeyboard: Boolean(credential.password),
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {

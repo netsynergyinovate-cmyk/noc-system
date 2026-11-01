@@ -226,6 +226,12 @@ export async function uploadAndExtractRelease(
     rejectAll(new Error(`Koneksi SSH untuk SFTP gagal: ${err.message}`));
   });
 
+  if (credential.password) {
+    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
+      finish(prompts.map(() => credential.password || ""));
+    });
+  }
+
   const connectConfig: ConnectConfig = {
     host,
     port: target.port,
@@ -233,9 +239,9 @@ export async function uploadAndExtractRelease(
     privateKey: credential.privateKey,
     passphrase: credential.passphrase,
     password: credential.password,
+    tryKeyboard: Boolean(credential.password),
     readyTimeout: 15000,
   };
-
   conn.connect(connectConfig);
 
   return promise;

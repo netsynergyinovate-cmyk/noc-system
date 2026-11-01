@@ -112,21 +112,15 @@ export async function buildReleaseBundle(
     await cp(srcPublic, destPublic, { recursive: true });
   }
 
-  // 3. Salin skrip migrasi dan folder drizzle
+  // 3. Salin folder scripts dan folder drizzle
   onLog?.("Menyalin skrip migrasi dan folder drizzle...");
   const destScripts = resolve(distDir, "scripts");
-  await mkdir(destScripts, { recursive: true });
-  await copyFile(
-    resolve(rootDir, "scripts", "migrate-server.mjs"),
-    resolve(destScripts, "migrate-server.mjs"),
-  );
-  if (existsSync(resolve(rootDir, "scripts", "setup-timescale.mjs"))) {
-    await copyFile(
-      resolve(rootDir, "scripts", "setup-timescale.mjs"),
-      resolve(destScripts, "setup-timescale.mjs"),
-    );
+  const srcScripts = resolve(rootDir, "scripts");
+  if (existsSync(srcScripts)) {
+    await cp(srcScripts, destScripts, { recursive: true });
+  } else {
+    await mkdir(destScripts, { recursive: true });
   }
-
   const destDrizzle = resolve(distDir, "drizzle");
   await cp(resolve(rootDir, "drizzle"), destDrizzle, { recursive: true });
 

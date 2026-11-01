@@ -61,6 +61,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DeployRunConsole, DeployTerminalBox, type DeployAccessInfo } from "./deploy-run-console";
+import { DeployChecklistGuide } from "./deploy-checklist-guide";
 
 function delay(ms: number): Promise<void> {
   const { promise, resolve } = Promise.withResolvers<void>();
@@ -1748,6 +1749,16 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                   {deployRunning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                   Jalankan Deploy
                 </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab("preflight")}
+                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex"
+                  title="Lihat checklist akun, port, dan variabel environment"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Panduan & Checklist
+                </Button>
               </div>
             </div>
 
@@ -2027,6 +2038,9 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
                 </div>
               </div>
             </div>
+
+            {/* Panduan Lengkap Checklist Pra-Deploy */}
+            <DeployChecklistGuide />
           </div>
         </TabsContent>
 

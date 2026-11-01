@@ -476,7 +476,6 @@ async function cmdDeploy(args = [], options = {}) {
     env: {
       ...process.env,
       NEXT_TELEMETRY_DISABLED: "1",
-      NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=2048",
     },
   });
   ok("Bundle Next.js standalone berhasil dibuat.");

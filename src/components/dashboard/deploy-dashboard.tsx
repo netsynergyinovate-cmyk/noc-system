@@ -56,11 +56,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+function delay(ms: number): Promise<void> {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  setTimeout(resolve, ms);
+  return promise;
+}
+
 interface DeployDashboardProps {
   initialTarget: DeployTarget | null;
   initialDetection: NetworkDetectionResult | null;
 }
-
 export function DeployDashboard({ initialTarget, initialDetection }: DeployDashboardProps) {
   const [target, setTarget] = useState<DeployTarget | null>(initialTarget);
   const [detection, setDetection] = useState<NetworkDetectionResult | null>(initialDetection);
@@ -386,10 +391,15 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
 
       const runId = json.data?.runId;
       if (runId) {
-        while (true) {
-          await new Promise((r) => setTimeout(r, 1500));
+        const maxPollAttempts = 400; // ~10 menit batas waktu polling
+        let attempts = 0;
+        let consecutiveErrors = 0;
+        while (attempts < maxPollAttempts) {
+          attempts++;
+          await delay(1500);
           const detRes = await fetch(`/api/deploy/history?runId=${runId}`);
           if (detRes.ok) {
+            consecutiveErrors = 0;
             const detJson = await detRes.json();
             const detail = detJson.data;
             if (detail?.steps) {
@@ -406,7 +416,15 @@ export function DeployDashboard({ initialTarget, initialDetection }: DeployDashb
               });
               break;
             }
+          } else {
+            consecutiveErrors++;
+            if (consecutiveErrors > 10) {
+              throw new Error("Gagal mengambil status deploy dari server setelah 10 kali percobaan berturut-turut.");
+            }
           }
+        }
+        if (attempts >= maxPollAttempts) {
+          throw new Error("Waktu tunggu pemantauan deploy habis (timeout 10 menit). Periksa status di tab Riwayat.");
         }
       }
     } catch (err: unknown) {

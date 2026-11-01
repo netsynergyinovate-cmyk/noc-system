@@ -73,7 +73,8 @@ export async function buildReleaseBundle(
 
   // 2. Next.js Standalone Build
   const isPrebuiltContainer =
-    existsSync(resolve(rootDir, "server.js")) && !existsSync(resolve(rootDir, "src"));
+    process.env.NOC_PREBUILT_RELEASE === "1" ||
+    (existsSync(resolve(rootDir, "server.js")) && existsSync(resolve(rootDir, "noc-backend")));
   if (isPrebuiltContainer) {
     onLog?.("Menyalin artefak Next.js standalone dari kontainer lokal...");
     await cp(resolve(rootDir, "server.js"), resolve(distDir, "server.js"));

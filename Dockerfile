@@ -44,6 +44,7 @@ FROM node:${NODE_VERSION} AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
+    NOC_PREBUILT_RELEASE=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 RUN apk add --no-cache libc6-compat tar gzip \

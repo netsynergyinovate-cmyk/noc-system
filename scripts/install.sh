@@ -2,7 +2,7 @@
 # ==============================================================================
 # NOC SYSTEM - One-Command Server Bootstrap & Installer for Ubuntu
 # Penggunaan di Server Ubuntu:
-#   curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/jrxx-dev/NOC-2/scripts/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash
 # Atau jalankan langsung:
 #   sudo bash scripts/install.sh
 # ==============================================================================

@@ -248,7 +248,7 @@ async function cmdDeploy(args = [], options = {}) {
         const curBranch = execSync("git rev-parse --abbrev-ref HEAD 2>/dev/null", {
           cwd: REPO_ROOT,
           encoding: "utf-8",
-        }).trim() || "main";
+        }).trim() || "noc-system-main";
         log(`Menyinkronkan branch ${curBranch} dengan origin...`);
         runCmd(`git reset --hard "origin/${curBranch}"`, { cwd: REPO_ROOT });
       }

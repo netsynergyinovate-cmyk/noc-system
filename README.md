@@ -1,87 +1,97 @@
-# NOC SYSTEM — Network Operations Center & ISP Automation Platform
+<div align="center">
 
-[![Node.js](https://img.shields.io/badge/Node.js-22.12+-green.svg)](https://nodejs.org)
-[![Go](https://img.shields.io/badge/Go-1.25+-blue.svg)](https://go.dev)
-[![Next.js](https://img.shields.io/badge/Next.js-16%20Standalone-black.svg)](https://nextjs.org)
-[![TimescaleDB](https://img.shields.io/badge/Database-TimescaleDB%20Postgres-blue.svg)](https://www.timescale.com)
-[![Docker](https://img.shields.io/badge/Docker-24+-2496ED.svg)](https://www.docker.com)
+# 🛰️ NOC SYSTEM
+
+### Network Operations Center & ISP Automation Platform
+
+MikroTik · OLT HSGQ · GenieACS TR-069 · OSRM · NetFlow · Billing RunsNet · Diagnosa 9 Lapisan
+
+[![Node.js](https://img.shields.io/badge/Node.js-22.12+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![PostgreSQL](https://img.shields.io/badge/TimescaleDB-Postgres%2017-336791?logo=postgresql&logoColor=white)](https://www.timescale.com)
+[![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**NOC SYSTEM** adalah platform Network Operations Center (NOC) all-in-one kelas operator ISP yang mengintegrasikan pemantauan infrastruktur jaringan MikroTik Core, OLT HSGQ (EPON/GPON), manajemen CPE TR-069 via GenieACS, pemetaan kabel optik ODP dengan road-snapping OSRM, telemetri NetFlow, sinkronisasi billing RunsNet, serta Mesin Diagnosa Otomatis 9 Lapisan (*9-Layer Diagnostic Engine*).
+[Instal Cepat](#-instal-cepat) · [Fitur](#-fitur-utama) · [Arsitektur](#-arsitektur) · [CLI](#-referensi-cli-noc-system) · [Troubleshooting](#-pemecahan-masalah--anti-freeze) · [Lisensi](#-lisensi)
+
+<img src="screenshots/01-dashboard-redesign.png" alt="Dashboard NOC SYSTEM" width="860">
+
+</div>
 
 ---
 
-## Daftar Isi
-- [Fitur Utama Platform](#fitur-utama-platform)
-- [Arsitektur Sistem](#arsitektur-sistem)
-- [Spesifikasi Server](#spesifikasi-server)
-- [Instalasi di Server Produksi (Ubuntu Native)](#instalasi-di-server-produksi-ubuntu-native)
-- [Instalasi Lingkungan Pengembangan Lokal](#instalasi-lingkungan-pengembangan-lokal)
-- [Katalog & Panduan Fitur Ekosistem](#katalog--panduan-fitur-ekosistem)
-- [Referensi Perintah CLI noc-system](#referensi-perintah-cli-noc-system)
-- [Panduan Pemecahan Masalah & Diagnostik Anti-Freeze](#panduan-pemecahan-masalah--diagnostik-anti-freeze)
-- [Lisensi](#lisensi)
+**NOC SYSTEM** adalah platform NOC all-in-one untuk operator ISP: memantau MikroTik Core, OLT HSGQ (EPON/GPON), mengelola CPE TR-069 lewat GenieACS, memetakan kabel optik dengan road-snapping OSRM, menerima telemetri NetFlow, menyinkronkan billing RunsNet, dan menjalankan mesin diagnosa otomatis 9 lapisan.
 
----
+## ⚡ Instal Cepat
 
-## Fitur Utama Platform
+Di server **Ubuntu 20.04 / 22.04 / 24.04** (akses `sudo`):
 
-1. **MikroTik Router Core Management**:
-   - Polling koneksi PPPoE aktif, antrean (*simple queues*), dan penggunaan bandwidth real-time.
-   - Manajemen status isolir pelanggan langsung dari router core via backend Go.
-2. **OLT HSGQ Management (EPON / GPON)**:
-   - Pemantauan redaman optik ONU Rx/Tx secara live via driver Telnet & HTTP.
-   - Deteksi otomatis fluktuasi sinyal optik abnormal dengan ambang batas terkalibrasi (`<= -26 dBm` peringatan, `<= -30 dBm` kritis/loss).
-3. **CPE TR-069 Automation (GenieACS Integration)**:
-   - Provisioning otomatis modem ONT/CPE pelanggan melalui protokol CWMP standar TR-069.
-   - Monitoring parameter Wi-Fi, reboot jarak jauh, dan inventori perangkat.
-4. **Peta Infrastruktur Optik & OSRM Road Snap**:
-   - Pemetaan interaktif kabel feeder, distribusi, OLT, ODC, dan ODP.
-   - Snapping rute kabel optik mengikuti jalur jalan riil memanfaatkan engine OSRM lokal offline.
-5. **NetFlow / IPFIX Traffic Telemetry**:
-   - Penerima telemetri paket NetFlow v5/v9 dan IPFIX pada port UDP 2055 untuk analisis lalu lintas data.
-6. **Billing RunsNet Integration**:
-   - Sinkronisasi data tagihan, pembayaran, status isolir, dan terminasi pelanggan secara kontinu.
-7. **9-Layer Root-Cause Diagnostic Engine**:
-   - Menganalisis gangguan pelanggan secara menyeluruh melewati 9 lapisan: Physical/Optical, PON Port, PPPoE Session, IP Assignment, Traffic Flow, Bandwidth Queue, Billing Status, DNS Health, dan Router Core Reachability.
-
----
-
-## Arsitektur Sistem
-
+```bash
+curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash
+sudo noc-system deploy              # rilis pertama
+sudo noc-system features up all     # Logto, GenieACS, OSRM, 9router
 ```
-                    ┌───────────────────────────────────────────┐
-                    │          Operator / Web Browser           │
-                    └─────────────────────┬─────────────────────┘
-                                          │ HTTP :3000
-                                          ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ SERVER NATIVE UBUNTU (/srv/noc)                                                 │
-│                                                                                 │
-│  ┌───────────────────────────────┐     RPC / HTTP     ┌──────────────────────┐  │
-│  │   noc-web (Next.js 16)        ├───────────────────►│ noc-backend (Go)     │  │
-│  │   • Standalone Turbopack      │                    │ • High Concurrency   │  │
-│  │   • Port 3000 (systemd)       │◄───────────────────┤ • Port 8080 (systemd)│  │
-│  └───────────────┬───────────────┘                    └───────────┬──────────┘  │
-│                  │                                                │             │
-│                  │ SQL Pool                                       │ SQL / UDP   │
-│                  ▼                                                ▼             │
-│  ┌───────────────────────────────────────────────────────────────────────────┐  │
-│  │ DOCKER CONTAINER SERVICES                                                 │  │
-│  │  • noc-postgres  : PostgreSQL 17 + TimescaleDB (:5432)                     │  │
-│  │  • genieacs       : CWMP (:7547) & NBI UI (:9000)                         │  │
-│  │  • osrm          : Road Routing Engine (:5000)                            │  │
-│  │  • 9router       : MikroTik Lab Simulator (:8728, :161)                   │  │
-│  └───────────────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────┬────────────────────────────────────────┘
-                                         │ Telnet / API / SNMP / TR-069
-                                         ▼
-                 ┌──────────────────────────────────────────────┐
-                 │          Perangkat Jaringan Riil             │
-                 │  • MikroTik Core Router                      │
-                 │  • OLT HSGQ (EPON/GPON)                      │
-                 │  • ONT / CPE Pelanggan (TR-069)              │
-                 └──────────────────────────────────────────────┘
+
+Dashboard: `http://<IP_SERVER>:3000`. Panduan lengkap: [Instalasi Produksi](#instalasi-di-server-produksi-ubuntu-native).
+
+| Tahap | Perintah | Hasil |
+|---|---|---|
+| 1. Bootstrap | `install.sh` | Docker, Node 22, Go 1.25, user `noc`, CLI `noc-system` |
+| 2. Rilis | `noc-system deploy` | Build, migrasi DB, systemd `noc-web` + `noc-backend` |
+| 3. Add-on | `noc-system features up <id\|all>` | Logto, GenieACS, OSRM, 9router + tautan akses |
+| 4. Cek | `noc-system doctor` / `features` | Status dan spesifikasi server |
+
+## ✨ Fitur Utama
+
+| | Modul | Kemampuan |
+|---|---|---|
+| 🌐 | **MikroTik Core** | Polling PPPoE aktif, simple queue, bandwidth real-time, kontrol isolir pelanggan |
+| 📡 | **OLT HSGQ (EPON/GPON)** | Redaman optik ONU Rx/Tx live via Telnet & HTTP; peringatan `<= -26 dBm`, kritis `<= -30 dBm` |
+| 📶 | **CPE TR-069 (GenieACS)** | Provisioning ONT/CPE via CWMP, monitoring Wi-Fi, reboot jarak jauh, inventori |
+| 🗺️ | **Peta Optik + OSRM** | Peta feeder/distribusi/OLT/ODC/ODP, kabel mengikuti jalan nyata (OSRM offline) |
+| 📊 | **NetFlow / IPFIX** | Telemetri NetFlow v5 pada UDP 2055 untuk analisis lalu lintas per pelanggan |
+| 💳 | **Billing RunsNet** | Sinkronisasi tagihan, pembayaran, isolir, dan terminasi |
+| 🔐 | **Login SSO (Logto)** | Masuk dengan GitHub/Google selain email + password |
+| 🩺 | **Diagnosa 9 Lapisan** | Optik, port PON, sesi PPPoE, IP, traffic flow, queue, billing, DNS, reachability router |
+
+<details>
+<summary><b>📸 Tangkapan layar</b></summary>
+
+| | |
+|---|---|
+| ![Peta](screenshots/10-interactive-network-map.png) | ![Trafik](screenshots/09-trafik-bandwidth.png) |
+| ![Pelanggan](screenshots/06-daftar-pelanggan.png) | ![GenieACS](screenshots/08-genieacs-server.png) |
+| ![NetFlow](screenshots/15-analisis-netflow.png) | ![Onboarding](screenshots/21-pusat-onboarding.png) |
+
+</details>
+
+## 🏗️ Arsitektur
+
+```mermaid
+flowchart TB
+    Op["👤 Operator / Browser"] -->|HTTP :3000| Web
+
+    subgraph Server["Server Native Ubuntu (/srv/noc)"]
+        Web["noc-web<br/>Next.js 16 · systemd :3000"]
+        Be["noc-backend<br/>Go · systemd :8080 · NetFlow UDP :2055"]
+        subgraph Docker["Layanan Docker (network nocsystem_default)"]
+            Pg[("PostgreSQL 17 + TimescaleDB<br/>:5432")]
+            Genie["GenieACS<br/>CWMP :7547 · NBI :7557 · UI :7558"]
+            Osrm["OSRM<br/>:5000"]
+            Nine["9router (AI proxy)<br/>:20128"]
+            Logto["Logto SSO<br/>OIDC :3301 · Admin :3002 (loopback)"]
+        end
+        Web <-->|REST / WebSocket| Be
+        Web --> Pg
+        Be --> Pg
+        Web -.-> Osrm
+        Web -.-> Logto
+    end
+
+    Be -->|REST www / www-ssl| Mt["MikroTik Core"]
+    Be -->|Telnet / HTTP| Olt["OLT HSGQ"]
+    Genie -->|TR-069| Cpe["ONT / CPE pelanggan"]
 ```
 
 ---
@@ -182,27 +192,32 @@ http://<IP_SERVER_ANDA>:3000
    ```bash
    npm run dev
    ```
-   Buka [http://localhost:3000](http://localhost:3000) di peramban web.
+   Buka [http://localhost:3001](http://localhost:3001) di peramban web.
 
 ---
 
 ## Katalog & Panduan Fitur Ekosistem
 
-NOC SYSTEM dilengkapi dengan 7 komponen ekosistem yang dapat diaktifkan sesuai kebutuhan operasional:
+NOC SYSTEM punya 8 komponen. Add-on Docker dipasang per fitur dengan `sudo noc-system features up <id>`; CLI memeriksa status kontainer dan mencetak tautan akses.
 
-| No | Komponen | Port Jaringan | Perintah Menyalakan (Up) | Perintah Log | Perintah Restart |
-|---|---|---|---|---|---|
-| **1** | **NOC Web Dashboard** | 3000 (TCP) | `sudo systemctl start noc-web` | `journalctl -u noc-web -n 50 -f` | `sudo systemctl restart noc-web` |
-| **2** | **NOC Backend Engine** | 8080 (TCP) | `sudo systemctl start noc-backend` | `journalctl -u noc-backend -n 50 -f` | `sudo systemctl restart noc-backend` |
-| **3** | **Database PostgreSQL & TimescaleDB** | 5432 (TCP) | `docker compose -f compose.postgres.yaml up -d` | `docker logs -f noc-postgres --tail 50` | `docker restart noc-postgres` |
-| **4** | **GenieACS TR-069 CPE Provisioning** | 7547 (CWMP), 7557 (NBI), 7558 (UI) | `npm run genieacs:up` *(butuh network `nocsystem_default`)* | `npm run genieacs:logs` | `docker compose -f compose.genieacs.yaml restart` |
-| **5** | **OSRM Road Snap & Fiber Routing** | 5000 (TCP) | `npm run osrm:download && npm run osrm:prepare && npm run osrm:up` | `npm run osrm:logs` | `docker compose -f compose.osrm.yaml restart osrm` |
-| **6** | **9router Decolua AI Proxy & Lab** | 20128 (TCP - UI & /v1) | `npm run 9router:up` *(butuh network `nocsystem_default`)* | `npm run 9router:logs` | `docker compose -f compose.9router.yaml restart` |
-| **7** | **NetFlow Traffic Collector** | 2055 (UDP) | *Aktif otomatis bersama noc-backend* | `journalctl -u noc-backend \| grep -i netflow` | `sudo systemctl restart noc-backend` |
+| No | Komponen | Port | Pasang / Nyalakan | Log |
+|---|---|---|---|---|
+| **1** | **NOC Web Dashboard** | 3000 | `sudo systemctl start noc-web` | `journalctl -u noc-web -n 50 -f` |
+| **2** | **NOC Backend Engine** | 8080 | `sudo systemctl start noc-backend` | `journalctl -u noc-backend -n 50 -f` |
+| **3** | **PostgreSQL & TimescaleDB** | 5432 | `docker compose -f compose.postgres.yaml up -d` | `docker logs -f noc-postgres --tail 50` |
+| **4** | **GenieACS TR-069** | 7547 (CWMP), 7557 (NBI), 7558 (UI) | `sudo noc-system features up genieacs` | `npm run genieacs:logs` |
+| **5** | **OSRM Road Snap** | 5000 | `sudo NOC_OSRM_REGION=java noc-system features up osrm` | `npm run osrm:logs` |
+| **6** | **9router AI Proxy** | 20128 (UI & /v1) | `sudo noc-system features up 9router` | `npm run 9router:logs` |
+| **7** | **Logto SSO** | 3301 (OIDC), 3002 (Admin) — hanya loopback | `sudo noc-system features up logto` | `npm run logto:logs` |
+| **8** | **NetFlow Collector** | 2055 (UDP) | Aktif otomatis bersama `noc-backend` | `journalctl -u noc-backend \| grep -i netflow` |
+
+**OSRM:** wilayah dipilih lewat `NOC_OSRM_REGION` (`sumatra` bawaan, `java`, `kalimantan`, `sulawesi`, `maluku`, `nusa-tenggara`, `papua`). Unduh dan olah data hanya sekali per wilayah; wilayah besar butuh RAM jauh lebih banyak saat `osrm-extract`.
+
+**Logto di server:** Admin Console hanya di loopback, akses lewat `ssh -L 3002:127.0.0.1:3002 user@server`. Setelah `features up logto`, ikuti langkah yang dicetak CLI: buat aplikasi + konektor GitHub, daftarkan redirect `https://<domain>/api/auth/callback/logto-github` (tanpa spasi di akhir), isi `LOGTO_ENDPOINT`, `LOGTO_INTERNAL_ENDPOINT`, `LOGTO_CLIENT_ID`, `LOGTO_CLIENT_SECRET` di `/srv/noc/shared/.env`, lalu `sudo systemctl restart noc-web`.
 
 ---
 
-## Referensi Perintah CLI noc-system
+## 🔧 Referensi CLI noc-system
 
 Engine CLI `noc-system` terpasang secara global di `/usr/local/bin/noc-system` di server produksi:
 
@@ -213,8 +228,8 @@ noc-system <perintah> [opsi]
 ### Daftar Subperintah
 - `noc-system doctor` / `noc-system specs`:
   Memeriksa kelayakan spesifikasi perangkat keras server sebelum instalasi/deploy (CPU cores, RAM bebas, swap active, sisa disk, status Docker daemon, port 3000/8080/5432, dan koneksi internet).
-- `noc-system features`:
-  Menampilkan ringkasan status 7 komponen ekosistem aplikasi dan perintah kendali Docker Compose terkait.
+- `noc-system features [up <logto|genieacs|osrm|9router|all>]`:
+  Tanpa argumen: status 8 komponen beserta tautan akses. Dengan `up`: memasang add-on Docker per fitur (memakai `/srv/noc/shared/.env`, memeriksa status kontainer sebelum mencetak tautan, GenieACS otomatis memasang konfigurasi dari repo, OSRM mengikuti `NOC_OSRM_REGION`).
 - `noc-system deploy [versi]`:
   Mengeksekusi rilis produksi penuh: backup DB otomatis, kompilasi Go, build bundle Next.js standalone via Turbopack, migrasi skema database, swap atomik `/srv/noc/current`, dan health check 45 detik. Jika tanpa argumen versi, digit build otomatis dinaikkan (+1).
 - `noc-system update [ref]`:
@@ -234,7 +249,7 @@ noc-system <perintah> [opsi]
 
 ---
 
-## Panduan Pemecahan Masalah & Diagnostik Anti-Freeze
+## 🛟 Pemecahan Masalah & Anti-Freeze
 
 ### 1. Mengapa Layar Terminal Tampak Diam / Membeku Saat Deploy?
 Saat menjalankan `install.sh` atau `noc-system deploy`, terdapat tahapan yang membundel kode dalam jumlah besar secara non-interaktif:
@@ -320,6 +335,6 @@ node bin/noc-system.mjs doctor
 
 ---
 
-## Lisensi
+## 📄 Lisensi
 
 Dilisensikan di bawah [MIT License](LICENSE). Hak Cipta (c) 2026 NOC SYSTEM contributors & ngodingpakeai contributors. Lihat juga [Pemberitahuan Pihak Ketiga](THIRD_PARTY_NOTICES.md).

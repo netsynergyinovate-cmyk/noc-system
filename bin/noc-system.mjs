@@ -1254,6 +1254,11 @@ async function cmdFeatures(args = []) {
       }
       console.log(`\n${ANSI.bold}${ANSI.cyan}>>> Memasang ${f.name}${ANSI.reset}`);
       try {
+        if (id === "genieacs" && fs.existsSync(ENV_FILE) && !/^GENIEACS_JWT_SECRET=\S+/m.test(fs.readFileSync(ENV_FILE, "utf-8"))) {
+          // compose.genieacs.yaml menolak start tanpa rahasia ini dan installer tidak membuatnya.
+          fs.appendFileSync(ENV_FILE, `\nGENIEACS_JWT_SECRET=${crypto.randomBytes(32).toString("hex")}\n`);
+          ok(`GENIEACS_JWT_SECRET dibuat di ${ENV_FILE}`);
+        }
         const envFlag = fs.existsSync(ENV_FILE) ? `--env-file ${ENV_FILE} ` : "";
         let cmd = f.compose.replaceAll("docker compose -f", `docker compose ${envFlag}-f`);
         if (id === "osrm") {

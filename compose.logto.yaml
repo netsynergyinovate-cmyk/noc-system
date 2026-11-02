@@ -25,8 +25,9 @@ services:
     restart: unless-stopped
     entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm start"]
     ports:
-      # Logto Core Service / OIDC Endpoint (http://localhost:3301)
-      - "127.0.0.1:3301:3001"
+      # Logto Core Service / OIDC Endpoint (http://localhost:3301). Browser pengguna harus bisa
+      # menjangkaunya (login SSO): di jaringan LAN tanpa reverse proxy isi LOGTO_BIND=0.0.0.0.
+      - "${LOGTO_BIND:-127.0.0.1}:3301:3001"
       # Logto Interactive Admin Console (http://localhost:3002)
       - "127.0.0.1:3002:3002"
     environment:

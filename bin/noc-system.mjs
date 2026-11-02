@@ -435,6 +435,16 @@ async function cmdInstall() {
     throw err;
   }
 
+  // 6. Akun superadmin pertama, agar pemasang langsung bisa masuk (kata sandi acak dicetak sekali)
+  log("6. Menyiapkan akun superadmin pertama...");
+  try {
+    runCmd("node scripts/create-superadmin.mjs", {
+      env: { ...process.env, ...(dbUrl ? { DATABASE_URL: dbUrl } : {}) },
+    });
+  } catch (err) {
+    warn(`Akun superadmin belum dibuat: ${err.message}. Jalankan manual: noc-system admin create`);
+  }
+
   console.log(`\n${ANSI.green}${ANSI.bold}Instalasi awal selesai!${ANSI.reset}`);
   console.log(`Langkah berikutnya: Jalankan ${ANSI.cyan}noc-system deploy${ANSI.reset} untuk merilis versi terbaru.`);
 }
@@ -1447,6 +1457,26 @@ async function cmdData(args) {
   throw new Error("Pakai: noc-system data export [berkas] | noc-system data import <berkas.sql.gz> --yes");
 }
 
+// Membuat/menaikkan akun superadmin. Email lewat --email atau NOC_ADMIN_EMAIL; kata sandi
+// hanya lewat env NOC_ADMIN_PASSWORD (kosong = dibuat acak dan dicetak sekali).
+async function cmdAdmin(args) {
+  if (args[0] !== "create") throw new Error("Pakai: noc-system admin create [--email <email>] [--name <nama>] [--reset-password]");
+  const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
+  let dbUrl = "";
+  try {
+    const m = fs.readFileSync("/srv/noc/shared/.env", "utf-8").match(/^DATABASE_URL=(.+)$/m);
+    if (m) dbUrl = m[1].trim().replace(/^["']|["']$/g, "");
+  } catch {}
+  runCmd("node scripts/create-superadmin.mjs" + (args.includes("--reset-password") ? " --reset-password" : ""), {
+    env: {
+      ...process.env,
+      ...(dbUrl ? { DATABASE_URL: dbUrl } : {}),
+      ...(flag("--email") ? { NOC_ADMIN_EMAIL: flag("--email") } : {}),
+      ...(flag("--name") ? { NOC_ADMIN_NAME: flag("--name") } : {}),
+    },
+  });
+}
+
 const command = args[0] || "help";
 switch (command) {
   case "upgrade":
@@ -1527,6 +1557,13 @@ switch (command) {
     }
     break;
 
+  case "admin":
+    cmdAdmin(args.slice(1)).catch((err) => {
+      fail(`Perintah admin gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
   case "data":
     cmdData(args.slice(1)).catch((err) => {
       fail(`Perintah data gagal: ${err.message}`);
@@ -1546,6 +1583,7 @@ Perintah Tersedia:
   ${ANSI.green}upgrade${ANSI.reset}          Naikkan versi minor aplikasi (1.0.x.y -> 1.1.0.0) di package.json
   ${ANSI.green}version${ANSI.reset}          Tampilkan versi lokal package.json dan rilis aktif server
   ${ANSI.green}install / setup${ANSI.reset}  Siapkan hierarki /srv/noc, docker postgres, dan systemd
+  ${ANSI.green}admin create${ANSI.reset}   Buat akun superadmin (--email, --name, --reset-password; kata sandi via NOC_ADMIN_PASSWORD)
   ${ANSI.green}data export|import${ANSI.reset} Pindahkan data antar server (terpisah dari install; impor butuh --yes)
   ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (auto-bump build jika tanpa argumen versi)
   ${ANSI.green}update [ref]${ANSI.reset}     Tarik kode git terbaru lalu deploy otomatis

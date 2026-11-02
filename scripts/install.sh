@@ -258,7 +258,7 @@ cd "${SRC_DIR}"
 if [ "${DEPLOY_USER}" = "root" ]; then
   NOC_DEVICE_SECRET="${NOC_DEVICE_SECRET:-}" NOC_PUBLIC_URL="${NOC_PUBLIC_URL:-}" node bin/noc-system.mjs install
 else
-  sudo -u "${DEPLOY_USER}" --preserve-env=NOC_DEVICE_SECRET,NOC_PUBLIC_URL,NOC_ROUTER_SECRET_KEY,GITHUB_TOKEN sg docker -c "node bin/noc-system.mjs install"
+  sudo -u "${DEPLOY_USER}" --preserve-env=NOC_DEVICE_SECRET,NOC_PUBLIC_URL,NOC_ROUTER_SECRET_KEY,NOC_ADMIN_EMAIL,NOC_ADMIN_NAME,NOC_ADMIN_PASSWORD,GITHUB_TOKEN sg docker -c "node bin/noc-system.mjs install"
 fi
 
 # Pastikan user 'noc' dan group dapat mengakses shared, releases, backups dengan aman

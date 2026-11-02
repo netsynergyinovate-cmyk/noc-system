@@ -177,8 +177,12 @@ export default function NewRouterPage() {
                     <FormItem>
                       <FormLabel>Host / IP Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="10.10.0.1" {...field} />
+                        <Input placeholder="contoh: 192.168.88.1" {...field} />
                       </FormControl>
+                      <FormDescription>
+                        Alamat router yang bisa dijangkau dari server NOC, diambil dari router Anda sendiri (alamat yang
+                        dipakai di Winbox/SSH, atau <code>/ip address print</code>). Lihat langkah 2 pada panduan di atas.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

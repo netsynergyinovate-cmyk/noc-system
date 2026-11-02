@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-import { execSync, spawn } from "node:child_process";
+import { execSync, spawn, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import process from "node:process";
+import zlib from "node:zlib";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -427,6 +429,14 @@ async function cmdDeploy(args = [], options = {}) {
       log("Mengunduh & mengekstrak dependensi (~500MB, butuh 1–3 menit). Harap tunggu...");
       await runCmdWithHeartbeat("npm ci --no-audit", "Pemasangan dependensi project (npm ci)", { cwd: REPO_ROOT });
       ok("Kode sumber dan dependensi berhasil diperbarui dari git.");
+      // Kode CLI baru sudah ada di disk, tapi proses ini masih memuat yang lama:
+      // jalankan ulang sebagai `deploy` supaya build memakai kode yang baru ditarik.
+      const rerun = spawnSync(
+        process.execPath,
+        [fileURLToPath(import.meta.url), "deploy", ...filteredArgs.filter((a) => a.startsWith("-"))],
+        { stdio: "inherit" },
+      );
+      process.exit(rerun.status ?? 1);
     } catch (err) {
       warn(`Gagal memperbarui dari git: ${err.message}. Melanjutkan rilis dengan kode lokal.`);
     }
@@ -1296,9 +1306,54 @@ function dataDbTarget() {
   return { cid, user, db, url };
 }
 
-function dumpDatabase({ cid, user, db }, out) {
+// Tanpa shell (bash/gzip): berjalan sama di Linux server dan Windows dev.
+async function dumpDatabase({ cid, user, db }, out) {
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  runCmd(`bash -c 'set -o pipefail && docker exec "${cid}" pg_dump -U "${user}" -d "${db}" --clean --if-exists --no-owner --no-privileges | gzip > "${out}" && test -s "${out}" && chmod 600 "${out}"'`);
+  const child = spawn(
+    "docker",
+    ["exec", cid, "pg_dump", "-U", user, "-d", db, "--clean", "--if-exists", "--no-owner", "--no-privileges"],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr.on("data", (d) => (stderr += d));
+  const { promise: exited, resolve, reject } = Promise.withResolvers();
+  child.on("error", reject);
+  child.on("close", resolve);
+  let streamErr;
+  try {
+    await pipeline(child.stdout, zlib.createGzip(), fs.createWriteStream(out, { mode: 0o600 }));
+  } catch (err) {
+    streamErr = err;
+    child.kill();
+  }
+  const code = await exited;
+  if (code !== 0 || streamErr) {
+    fs.rmSync(out, { force: true });
+    throw new Error(code !== 0 ? `pg_dump gagal (kode ${code}): ${stderr.trim().slice(-300)}` : streamErr.message);
+  }
+}
+
+async function restoreDatabase({ cid, user, db }, file) {
+  const child = spawn(
+    "docker",
+    ["exec", "-i", cid, "psql", "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-q"],
+    { stdio: ["pipe", "ignore", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr.on("data", (d) => (stderr += d));
+  const { promise: exited, resolve, reject } = Promise.withResolvers();
+  child.on("error", reject);
+  child.on("close", resolve);
+  let streamErr;
+  try {
+    await pipeline(fs.createReadStream(file), zlib.createGunzip(), child.stdin);
+  } catch (err) {
+    streamErr = err; // psql yang berhenti lebih dulu menimbulkan EPIPE; galat psql lebih informatif
+    child.kill();
+  }
+  const code = await exited;
+  if (code !== 0) throw new Error(`psql gagal (kode ${code}): ${stderr.trim().slice(-300)}`);
+  if (streamErr) throw streamErr;
 }
 
 async function cmdData(args) {
@@ -1309,7 +1364,7 @@ async function cmdData(args) {
     const target = dataDbTarget();
     const out = path.resolve(file || `/srv/noc/backups/data-${stamp}.sql.gz`);
     log(`Mengekspor database ke ${out} ...`);
-    dumpDatabase(target, out);
+    await dumpDatabase(target, out);
     ok(`Ekspor selesai: ${out}`);
     warn("Berkas ini berisi SEMUA data (pelanggan, akun, kredensial router terenkripsi). Simpan aman dan hapus setelah dipakai.");
     warn("Salin juga DEVICE_SECRET (dan ROUTER_SECRET_KEY bila ada) dari /srv/noc/shared/.env ke server tujuan; tanpa itu kredensial router tidak bisa dibuka.");
@@ -1323,12 +1378,12 @@ async function cmdData(args) {
     const target = dataDbTarget();
     const backup = `/srv/noc/backups/pre-import-${stamp}.sql.gz`;
     log(`Cadangan data saat ini: ${backup}`);
-    dumpDatabase(target, backup);
+    await dumpDatabase(target, backup);
     const units = "noc-web noc-backend";
     try { runCmd(`systemctl stop ${units}`); } catch {}
     try {
       log(`Memulihkan ${file} ke database ${target.db} ...`);
-      runCmd(`bash -c 'set -o pipefail && gunzip -c "${path.resolve(file)}" | docker exec -i "${target.cid}" psql -U "${target.user}" -d "${target.db}" -v ON_ERROR_STOP=1 --single-transaction -q'`);
+      await restoreDatabase(target, path.resolve(file));
       ok("Data dipulihkan.");
       runCmd("node scripts/migrate-server.mjs", {
         env: { ...process.env, ...(target.url ? { DATABASE_URL: target.url } : {}) },

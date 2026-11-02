@@ -82,3 +82,16 @@ test("probeRest: 401 Basic = REST MikroTik hidup; layanan web lain dan port tert
 test("sourceIpFor memilih alamat sumber tanpa mengirim paket: loopback untuk host loopback", async () => {
   assert.equal(await sourceIpFor("127.0.0.1", 80), "127.0.0.1");
 });
+
+test("probeRest: TCP tersambung lalu diputus dilaporkan 'reset' (ciri allow-list), bukan 'tidak ada'", async () => {
+  const { promise, resolve } = Promise.withResolvers();
+  const net = await import("node:net");
+  const server = net.createServer((socket) => socket.destroy());
+  server.listen(0, "127.0.0.1", () => resolve());
+  await promise;
+  try {
+    assert.deepEqual(await probeRest("127.0.0.1", server.address().port), { port: server.address().port, status: "reset" });
+  } finally {
+    server.close();
+  }
+});

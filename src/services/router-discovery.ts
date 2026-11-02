@@ -92,9 +92,11 @@ export function expandCidr(cidr: string): string[] {
   return hosts;
 }
 
-export type RestProbe = { port: number; status: 200 | 401 };
+// "reset": TCP tersambung lalu langsung diputus tanpa jawaban HTTP, ciri khas allow-list /ip service MikroTik yang
+// belum memuat alamat server ini (router ada di sana tetapi belum mengizinkan kita).
+export type RestProbe = { port: number; status: 200 | 401 | "reset" };
 
-// Layanan REST MikroTik menjawab 401 (atau 200) pada /rest/system/resource tanpa kredensial.
+// Layanan REST MikroTik menjawab 401 (atau 200 JSON) pada /rest/system/resource tanpa kredensial.
 export function probeRest(host: string, port: number, timeoutMs = 1200): Promise<RestProbe | null> {
   const { promise, resolve } = Promise.withResolvers<RestProbe | null>();
   const req = http.request({ host, port, path: "/rest/system/resource", method: "GET", timeout: timeoutMs }, (res) => {
@@ -108,7 +110,9 @@ export function probeRest(host: string, port: number, timeoutMs = 1200): Promise
     req.destroy();
     resolve(null);
   });
-  req.once("error", () => resolve(null));
+  req.once("error", (err: NodeJS.ErrnoException) => {
+    resolve(err.code === "ECONNRESET" || /socket hang up|other side closed/i.test(err.message) ? { port, status: "reset" } : null);
+  });
   req.end();
   return promise;
 }
@@ -151,6 +155,7 @@ export async function discoverRouters(cidr?: string): Promise<{ candidates: Rout
   });
   // Gateway/tetangga selalu ditampilkan (petunjuk); hasil pindaian hanya bila REST-nya hidup.
   const candidates = probed.filter((c) => c.rest.length > 0 || c.via.some((v) => v !== "pindai"));
-  candidates.sort((a, b) => Number(b.rest.length > 0) - Number(a.rest.length > 0));
+  const rank = (c: RouterCandidate) => (c.rest.some((r) => r.status !== "reset") ? 2 : c.rest.length > 0 ? 1 : 0);
+  candidates.sort((a, b) => rank(b) - rank(a));
   return { candidates, scanned: range.length };
 }

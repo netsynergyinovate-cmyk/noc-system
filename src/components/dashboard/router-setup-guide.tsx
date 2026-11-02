@@ -66,7 +66,7 @@ const PROBLEMS: Array<[string, string]> = [
   ["Port 8728 / 8729 / 8291 / 2024", "Itu API biner dan Winbox, bukan REST. Pakai port layanan www atau www-ssl dari langkah 3."],
 ];
 
-type Candidate = { address: string; via: string[]; rest: Array<{ port: number; status: number }> };
+type Candidate = { address: string; via: string[]; rest: Array<{ port: number; status: number | "reset" }> };
 
 async function postJson<T>(url: string, body: unknown): Promise<{ ok: boolean; data?: T; error?: string }> {
   try {
@@ -125,13 +125,24 @@ function RouterFinder({ onUse }: { onUse?: (address: string, port?: number) => v
               <div key={c.address} className="flex flex-wrap items-center gap-2 text-xs">
                 <code className="font-mono">{c.address}</code>
                 <span className="text-muted-foreground">({c.via.join(", ")})</span>
-                {c.rest.length > 0 ? (
-                  <span className="text-success">REST hidup di port {c.rest.map((p) => p.port).join(", ")}</span>
+                {c.rest.some((p) => p.status !== "reset") ? (
+                  <span className="text-success">
+                    REST hidup di port {c.rest.filter((p) => p.status !== "reset").map((p) => p.port).join(", ")}
+                  </span>
+                ) : c.rest.length > 0 ? (
+                  <span className="text-warning">
+                    port {c.rest.map((p) => p.port).join(", ")} tersambung lalu diputus: kemungkinan router, tetapi IP server
+                    belum diizinkan di /ip service (langkah 4)
+                  </span>
                 ) : (
                   <span className="text-muted-foreground">REST tidak terdeteksi di port 80/8081/8080</span>
                 )}
                 {onUse && (
-                  <button type="button" className="rounded border px-2 py-0.5 hover:bg-muted" onClick={() => onUse(c.address, c.rest[0]?.port)}>
+                  <button
+                    type="button"
+                    className="rounded border px-2 py-0.5 hover:bg-muted"
+                    onClick={() => onUse(c.address, c.rest.find((p) => p.status !== "reset")?.port ?? c.rest[0]?.port)}
+                  >
                     Pakai
                   </button>
                 )}

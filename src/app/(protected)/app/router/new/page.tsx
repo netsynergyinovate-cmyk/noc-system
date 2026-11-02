@@ -150,7 +150,14 @@ export default function NewRouterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RouterSetupGuide />
+          <RouterSetupGuide
+            host={host}
+            port={port}
+            onUseRouter={(address, restPort) => {
+              form.setValue("host", address, { shouldValidate: true });
+              form.setValue("port", restPort ? String(restPort) : "", { shouldValidate: true });
+            }}
+          />
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField

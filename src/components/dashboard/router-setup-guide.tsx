@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 
 // Panduan langkah demi langkah menambah router MikroTik. Dipakai di halaman Tambah Router.
 // Semua perintah RouterOS di sini adalah perintah baca/aktifkan layanan yang umum; nilai
@@ -66,14 +66,138 @@ const PROBLEMS: Array<[string, string]> = [
   ["Port 8728 / 8729 / 8291 / 2024", "Itu API biner dan Winbox, bukan REST. Pakai port layanan www atau www-ssl dari langkah 3."],
 ];
 
-export function RouterSetupGuide() {
-  // Hostname hanya ada di browser: snapshot server kosong, tanpa setState di dalam effect.
-  const serverHost = useSyncExternalStore(
-    () => () => {},
-    () => window.location.hostname,
-    () => "",
-  );
+type Candidate = { address: string; via: string[]; rest: Array<{ port: number; status: number }> };
 
+async function postJson<T>(url: string, body: unknown): Promise<{ ok: boolean; data?: T; error?: string }> {
+  try {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, error: json?.error?.message ?? `Gagal (HTTP ${res.status}).` };
+    return { ok: true, data: json?.data as T };
+  } catch {
+    return { ok: false, error: "Server aplikasi tidak menjawab. Coba lagi." };
+  }
+}
+
+// Mencari kandidat alamat router dari server NOC: gateway server, tetangga bermerek MikroTik, dan satu rentang
+// jaringan privat yang disebut operator (mis. 10.20.30.0/24).
+function RouterFinder({ onUse }: { onUse?: (address: string, port?: number) => void }) {
+  const [cidr, setCidr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ candidates: Candidate[]; scanned: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const find = async () => {
+    setBusy(true);
+    setError(null);
+    const r = await postJson<{ candidates: Candidate[]; scanned: number }>("/api/routers/discover", { cidr: cidr.trim() || undefined });
+    setBusy(false);
+    if (r.ok && r.data) setResult(r.data);
+    else setError(r.error ?? "Gagal mencari.");
+  };
+  return (
+    <div className="mt-3 rounded border bg-background p-3">
+      <p className="font-medium">Cari alamat router otomatis dari server NOC</p>
+      <p className="mt-1 text-muted-foreground">
+        Server memeriksa gateway-nya dan perangkat bermerek MikroTik di jaringannya. Jika router Anda ada di jaringan lain,
+        isi rentang jaringannya (alamat privat, maksimal /24, mis. <code>192.168.88.0/24</code>; lihat kolom NETWORK pada{" "}
+        <code>/ip address print</code>).
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          value={cidr}
+          onChange={(e) => setCidr(e.target.value)}
+          placeholder="Rentang jaringan (opsional), mis. 192.168.88.0/24"
+          className="min-w-64 flex-1 rounded border bg-background px-2 py-1 text-xs"
+        />
+        <button type="button" onClick={find} disabled={busy} className="rounded border px-3 py-1 text-xs hover:bg-muted">
+          {busy ? "Mencari..." : "Cari router"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-destructive">{error}</p>}
+      {result && (
+        <div className="mt-2 space-y-1">
+          {result.candidates.length === 0 ? (
+            <p className="text-muted-foreground">
+              Tidak ada kandidat. Isi rentang jaringan router, atau pakai alamat dari Winbox/SSH (cara di atas).
+            </p>
+          ) : (
+            result.candidates.map((c) => (
+              <div key={c.address} className="flex flex-wrap items-center gap-2 text-xs">
+                <code className="font-mono">{c.address}</code>
+                <span className="text-muted-foreground">({c.via.join(", ")})</span>
+                {c.rest.length > 0 ? (
+                  <span className="text-success">REST hidup di port {c.rest.map((p) => p.port).join(", ")}</span>
+                ) : (
+                  <span className="text-muted-foreground">REST tidak terdeteksi di port 80/8081/8080</span>
+                )}
+                {onUse && (
+                  <button type="button" className="rounded border px-2 py-0.5 hover:bg-muted" onClick={() => onUse(c.address, c.rest[0]?.port)}>
+                    Pakai
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+          {result.scanned > 0 && <p className="text-muted-foreground">{result.scanned} alamat dipindai.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Alamat sumber server NOC ke host yang sedang diisi di form: persis yang harus diizinkan di /ip service.
+function ServerIpHelper({ host, port }: { host?: string; port?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<{ host: string; sourceIp: string | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const trimmed = (host ?? "").trim();
+  const lookup = async () => {
+    setBusy(true);
+    setError(null);
+    const p = Number(port);
+    const r = await postJson<{ host: string; sourceIp: string | null }>("/api/routers/source-ip", {
+      host: trimmed,
+      port: Number.isInteger(p) && p > 0 ? p : undefined,
+    });
+    setBusy(false);
+    if (r.ok && r.data) setInfo(r.data);
+    else setError(r.error ?? "Gagal mengambil alamat.");
+  };
+  return (
+    <div className="mt-2 rounded border bg-background p-3">
+      <button
+        type="button"
+        onClick={lookup}
+        disabled={busy || trimmed === ""}
+        className="rounded border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        {busy ? "Memeriksa..." : "Ambil IP server NOC untuk host di form"}
+      </button>
+      {trimmed === "" && <span className="ml-2 text-xs text-muted-foreground">Isi kolom Host di bawah dulu.</span>}
+      {error && <p className="mt-2 text-destructive">{error}</p>}
+      {info && info.sourceIp && (
+        <>
+          <p className="mt-2">
+            Server NOC menyambung ke <code>{info.host}</code> dengan alamat <code className="font-mono">{info.sourceIp}</code>.
+            Tulis alamat itu ke daftar. Ganti <code>&lt;DAFTAR-LAMA&gt;</code> dengan isi kolom ADDRESS dari langkah 3
+            (dipisah koma, mis. <code>10.20.30.0/24,192.168.101.0/24</code>); jika kolomnya kosong, tidak perlu perintah ini.
+          </p>
+          <Cmd>{`/ip service set www address=<DAFTAR-LAMA>,${info.sourceIp}/32`}</Cmd>
+        </>
+      )}
+      {info && !info.sourceIp && <p className="mt-2 text-destructive">Server tidak menemukan rute ke {info.host}.</p>}
+    </div>
+  );
+}
+
+type GuideProps = {
+  // Nilai form saat ini, agar petunjuk memakai host/port yang sedang diisi.
+  host?: string;
+  port?: string;
+  onUseRouter?: (address: string, port?: number) => void;
+};
+
+export function RouterSetupGuide({ host, port, onUseRouter }: GuideProps) {
   return (
     <details className="mb-6 rounded-md border bg-muted/40 p-4 text-sm" open>
       <summary className="cursor-pointer font-medium">
@@ -114,6 +238,7 @@ export function RouterSetupGuide() {
               menjawab: <code>ping X</code>.
             </li>
           </ul>
+          <RouterFinder onUse={onUseRouter} />
         </li>
 
         <li>
@@ -129,16 +254,9 @@ export function RouterSetupGuide() {
           <b>Izinkan IP server NOC.</b> Kolom ADDRESS layanan itu menentukan siapa yang boleh mengakses. Jika kosong,
           semua alamat diizinkan. Jika berisi daftar, <b>tambahkan</b> IP server ke daftar yang sudah ada (jangan
           mengganti, supaya perangkat lain tidak terkunci):
-          <Cmd>{"/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER-NOC>/32"}</Cmd>
-          {serverHost ? (
-            <>
-              Alamat yang Anda pakai untuk membuka aplikasi ini: <code>{serverHost}</code>. Itu hanya perkiraan: alamat
-              yang dipakai server NOC untuk menyambung ke router bisa berbeda (domain, beberapa antarmuka, NAT). Nilai
-              pastinya ditampilkan di hasil &quot;Uji Koneksi&quot; saat gagal; cek juga di router:
-            </>
-          ) : (
-            <>Jika ada NAT di jalur, alamat yang dilihat router bisa berbeda. Cek yang sebenarnya saat uji gagal:</>
-          )}
+          <ServerIpHelper host={host} port={port} />
+          Jika ada NAT di jalur, alamat yang dilihat router bisa berbeda dari yang ditampilkan di atas. Cek yang
+          sebenarnya di router saat uji gagal:
           <Cmd>{"/ip firewall connection print where dst-port=<port-www>"}</Cmd>
         </li>
 

@@ -229,6 +229,7 @@ export async function executeSshCommand(
   command: string,
   effectiveHost?: string,
   timeoutMs = 60000,
+  onOutput?: (chunk: string) => void,
 ): Promise<SshExecutionResult> {
   const host = effectiveHost || target.host;
   const { promise, resolve, reject } = Promise.withResolvers<SshExecutionResult>();
@@ -272,11 +273,15 @@ export async function executeSshCommand(
       });
 
       stream.on("data", (data: Buffer) => {
-        stdout += data.toString();
+        const str = data.toString();
+        stdout += str;
+        onOutput?.(str);
       });
 
       stream.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
+        const str = data.toString();
+        stderr += str;
+        onOutput?.(str);
       });
     });
   });
@@ -324,6 +329,7 @@ export async function executeSshScript(
   stdinContent: string,
   effectiveHost?: string,
   timeoutMs = 60000,
+  onOutput?: (chunk: string) => void,
 ): Promise<SshExecutionResult> {
   const host = effectiveHost || target.host;
   const { promise, resolve, reject } = Promise.withResolvers<SshExecutionResult>();
@@ -367,11 +373,15 @@ export async function executeSshScript(
       });
 
       stream.on("data", (data: Buffer) => {
-        stdout += data.toString();
+        const str = data.toString();
+        stdout += str;
+        onOutput?.(str);
       });
 
       stream.stderr.on("data", (data: Buffer) => {
-        stderr += data.toString();
+        const str = data.toString();
+        stderr += str;
+        onOutput?.(str);
       });
 
       stream.end(stdinContent);

@@ -405,6 +405,7 @@ async function cmdInstall() {
 
   if (fs.existsSync("/etc/systemd/system/noc-web.service") && fs.existsSync("/etc/systemd/system/noc-backend.service")) {
     ok("Unit systemd noc-web dan noc-backend sudah terpasang di /etc/systemd/system/.");
+    try { runCmd("sudo systemctl enable noc-web noc-backend", { silent: true }); } catch {}
   } else if (fs.existsSync(unitWebPath) && fs.existsSync(unitBackendPath)) {
     try {
       runCmd(`sudo cp "${unitWebPath}" "${unitBackendPath}" /etc/systemd/system/`);

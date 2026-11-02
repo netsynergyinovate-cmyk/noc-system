@@ -1143,10 +1143,21 @@ async function cmdFeatures(args = []) {
     },
   ];
 
+  const ENV_FILE = "/srv/noc/shared/.env";
+  const envHost = (() => {
+    try {
+      const url = process.env.NOC_PUBLIC_URL || fs.readFileSync(ENV_FILE, "utf-8").match(/^BETTER_AUTH_URL=(.+)$/m)?.[1];
+      return url ? new URL(url.trim().replace(/^["']|["']$/g, "")).hostname : "";
+    } catch {
+      return "";
+    }
+  })();
   const host =
     process.env.NOC_HOST ||
-    Object.values(os.networkInterfaces())
-      .flat()
+    envHost ||
+    Object.entries(os.networkInterfaces())
+      .filter(([name]) => !/^(docker|br-|veth|tailscale|wg|virbr)/.test(name))
+      .flatMap(([, list]) => list)
       .find((i) => i && i.family === "IPv4" && !i.internal)?.address ||
     "localhost";
 
@@ -1163,8 +1174,44 @@ async function cmdFeatures(args = []) {
       }
       console.log(`\n${ANSI.bold}${ANSI.cyan}>>> Memasang ${f.name}${ANSI.reset}`);
       try {
-        runCmd(f.compose);
+        const envFlag = fs.existsSync(ENV_FILE) ? `--env-file ${ENV_FILE} ` : "";
+        let cmd = f.compose.replaceAll("docker compose -f", `docker compose ${envFlag}-f`);
+        if (id === "osrm") {
+          // Unduh + olah data hanya sekali; jalan ulang cukup menyalakan kontainer.
+          const dataDir = path.join(REPO_ROOT, "docker", "osrm", "data");
+          const prepared = fs.existsSync(dataDir) && fs.readdirSync(dataDir).some((n) => n.includes(".osrm"));
+          if (prepared) cmd = cmd.replace("npm run osrm:download && npm run osrm:prepare && ", "");
+        }
+        runCmd(cmd);
+        let up = false;
+        for (let i = 0; i < 10 && !up; i++) {
+          try {
+            up = execSync(f.check, { encoding: "utf-8" }).includes("Up");
+          } catch {}
+          if (!up) execSync("sleep 3");
+        }
+        if (!up) throw new Error("kontainer tidak berstatus Up setelah 30 detik; cek: " + f.logs);
+        if (id === "genieacs") {
+          // Pasang provision/preset/virtual parameter dari repo (idempoten); NBI butuh beberapa detik.
+          let applied = false;
+          for (let i = 0; i < 6 && !applied; i++) {
+            try {
+              runCmd("node scripts/genieacs-apply-config.mjs");
+              applied = true;
+            } catch {
+              execSync("sleep 5");
+            }
+          }
+          if (!applied) warn("Konfigurasi GenieACS belum terpasang; ulangi nanti: npm run genieacs:config");
+        }
         ok(`${f.name} aktif. Tautan: ${f.url ? f.url.replace("{host}", host) : f.port}`);
+        if (id === "logto") {
+          console.log(`${ANSI.bold}Langkah Logto selanjutnya:${ANSI.reset}
+  1. Admin Console hanya di loopback: ssh -L 3002:127.0.0.1:3002 user@${host}, buka http://localhost:3002
+  2. Buat aplikasi Traditional Web + konektor GitHub; daftarkan redirect ${envHost ? "https://" + envHost : "<URL-APP>"}/api/auth/callback/logto-github (tanpa spasi di akhir)
+  3. Di ${ENV_FILE}: LOGTO_ENDPOINT=<URL publik Logto lewat reverse proxy ke 127.0.0.1:3301>, LOGTO_INTERNAL_ENDPOINT=http://127.0.0.1:3301, LOGTO_CLIENT_ID, LOGTO_CLIENT_SECRET
+  4. sudo systemctl restart noc-web`);
+        }
       } catch (err) {
         fail(`${f.name} gagal: ${err.message}`);
         failed.push(id);

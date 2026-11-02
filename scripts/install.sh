@@ -299,4 +299,6 @@ if [ -n "${CURRENT_TOKEN}" ]; then
   echo -e "  ${BOLD}2. Token Monitor :${NC} ${CYAN}${CURRENT_TOKEN}${NC}"
   echo -e "\n${NC}Salin kedua nilai di atas ke tab 'CLI noc-system' pada halaman ${BOLD}/app/deploy${NC} setelah 'sudo noc-system deploy' selesai."
 fi
+echo -e "\n${YELLOW}${BOLD}LOGIN SUPERADMIN:${NC} ${GREEN}${NOC_ADMIN_EMAIL:-admin@noc.local}${NC}"
+echo -e "Kata sandi dicetak SEKALI di bagian 'Akun NOC' di atas (jika tidak terlihat, buat ulang: ${CYAN}noc-system admin create --reset-password${NC})."
 echo ""

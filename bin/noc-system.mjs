@@ -36,6 +36,16 @@ function fail(msg) {
   console.error(`${ANSI.red}✗${ANSI.reset} ${msg}`);
 }
 
+// Port backend Go dari BACKEND_ADDR di /srv/noc/shared/.env (bawaan 8080), karena
+// 8080 bisa sudah dipakai layanan lain di server (mis. Caddy).
+function backendPort() {
+  try {
+    const m = fs.readFileSync("/srv/noc/shared/.env", "utf-8").match(/^BACKEND_ADDR=.*:(\d+)\s*$/m);
+    if (m) return m[1];
+  } catch {}
+  return "8080";
+}
+
 function runCmd(cmd, options = {}) {
   try {
     return execSync(cmd, {
@@ -253,7 +263,21 @@ async function cmdInstall() {
     genDeviceSecret;
   const genRealtimeSecret = crypto.randomBytes(32).toString("hex");
   const genWebhookToken = crypto.randomBytes(32).toString("hex");
-  const genPublicUrl = process.env.NOC_PUBLIC_URL || "http://localhost:3000";
+  const lanIp = Object.entries(os.networkInterfaces())
+    .filter(([name]) => !/^(docker|br-|veth|tailscale|wg|virbr)/.test(name))
+    .flatMap(([, list]) => list)
+    .find((i) => i && i.family === "IPv4" && !i.internal)?.address;
+  const genPublicUrl = process.env.NOC_PUBLIC_URL || `http://${lanIp || "localhost"}:3000`;
+  // Nilai turunan dari URL publik: tanpa ini WebSocket dan CORS tetap menunjuk placeholder contoh.
+  const finalizeEnv = (text) => {
+    const u = new URL(genPublicUrl);
+    const ws = u.protocol === "https:" ? `wss://${u.host}/ws` : `ws://${u.hostname}:${backendPort()}/ws`;
+    return text
+      .replace(/^NEXT_PUBLIC_REALTIME_WS_URL=(.*<.*>.*|wss:\/\/noc\.example\.com\/ws)$/m, `NEXT_PUBLIC_REALTIME_WS_URL=${ws}`)
+      .replace(/^ALLOWED_ORIGINS=(.*<.*>.*|https:\/\/noc\.example\.com)$/m, `ALLOWED_ORIGINS=${u.origin}`)
+      // Placeholder billing yang aktif membuat backend mencoba sinkron ke billing.example.com tiap 5 menit.
+      .replace(/^(BILLING_(?:URL|USERNAME|PASSWORD))=(.*<.*>.*|https:\/\/billing\.example\.com)$/gm, "# $1=$2");
+  };
   if (!process.env.NOC_DEVICE_SECRET && !process.env.DEVICE_SECRET && !fs.existsSync(targetEnv)) {
     warn("DEVICE_SECRET dibuat acak (32 karakter). Jika Anda menggunakan halaman Deploy dari localhost untuk mengontrol server ini, samakan nilai DEVICE_SECRET di /srv/noc/shared/.env dengan localhost agar verifikasi kesiapan (dry-run) lulus.");
   }
@@ -292,7 +316,7 @@ async function cmdInstall() {
         curEnv += `\nMONITOR_TOKEN=${genMonitorToken}`;
       }
     }
-    fs.writeFileSync(targetEnv, curEnv.trim() + "\n", "utf-8");
+    fs.writeFileSync(targetEnv, finalizeEnv(curEnv.trim() + "\n"), "utf-8");
     ok(`Berkas ${targetEnv} diselaraskan tanpa placeholder.`);
   } else {
     const templatePath = path.join(REPO_ROOT, ".env.server.example");
@@ -327,7 +351,7 @@ async function cmdInstall() {
         `MONITOR_TOKEN=${genMonitorToken}`,
       ].join("\n") + "\n";
     }
-    fs.writeFileSync(targetEnv, content, "utf-8");
+    fs.writeFileSync(targetEnv, finalizeEnv(content), "utf-8");
     ok(`Berkas ${targetEnv} berhasil dibuat dengan konfigurasi aman.`);
   }
 
@@ -653,7 +677,7 @@ async function cmdDeploy(args = [], options = {}) {
     } catch {}
 
     try {
-      const beRes = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:8080/healthz 2>/dev/null || echo '000'", { encoding: "utf-8" }).trim();
+      const beRes = execSync(`curl -s -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:${backendPort()}/healthz 2>/dev/null || echo '000'`, { encoding: "utf-8" }).trim();
       backendOk = beRes === "200";
     } catch {}
 
@@ -815,9 +839,9 @@ async function cmdStatus() {
   // 4. Endpoint Health
   try {
     const webRes = execSync("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/health", { encoding: "utf-8" }).trim();
-    const beRes = execSync("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/healthz", { encoding: "utf-8" }).trim();
+    const beRes = execSync(`curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${backendPort()}/healthz`, { encoding: "utf-8" }).trim();
     console.log(`- Web Health (:3000):     ${webRes === "200" ? ANSI.green + "200 OK" : ANSI.red + webRes}${ANSI.reset}`);
-    console.log(`- Backend Health (:8080): ${beRes === "200" ? ANSI.green + "200 OK" : ANSI.red + beRes}${ANSI.reset}`);
+    console.log(`- Backend Health (:${backendPort()}): ${beRes === "200" ? ANSI.green + "200 OK" : ANSI.red + beRes}${ANSI.reset}`);
   } catch {}
 
   // 5. Info Pemantau (Dashboard /app/deploy)

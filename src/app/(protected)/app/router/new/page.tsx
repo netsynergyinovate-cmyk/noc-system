@@ -149,6 +149,38 @@ export default function NewRouterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <details className="mb-6 rounded-md border bg-muted/40 p-4 text-sm" open>
+            <summary className="cursor-pointer font-medium">
+              Persiapan di MikroTik (lakukan sebelum &quot;Uji Koneksi&quot;)
+            </summary>
+            <ol className="mt-3 list-decimal space-y-2 pl-5">
+              <li>
+                Cek layanan REST dan port yang berlaku: <code>/ip service print where name~&quot;www&quot;</code>.
+                Isi kolom <b>Port REST</b> di bawah sesuai kolom PORT (bawaan 80 untuk <code>www</code>, 443 untuk{" "}
+                <code>www-ssl</code>). Jika tidak ada port tertulis, pakai bawaan.
+              </li>
+              <li>
+                Jika layanan bertanda <code>X</code> (nonaktif): <code>/ip service enable www</code>.
+              </li>
+              <li>
+                Kolom <b>ADDRESS</b> layanan itu harus memuat <b>IP server NOC</b>. TAMBAHKAN ke daftar yang ada, jangan
+                mengganti: <code>/ip service set www address=&lt;DAFTAR-LAMA&gt;,&lt;IP-SERVER-NOC&gt;/32</code>. Jika
+                kosong, semua alamat diizinkan.
+              </li>
+              <li>
+                Gunakan akun router dengan izin <code>read</code>, <code>api</code>, dan <code>rest-api</code> (RouterOS
+                v7.9+; tambah <code>write</code> bila ingin kontrol isolir). RouterOS di bawah v7.1 tidak punya REST.
+              </li>
+              <li>
+                Host cukup IP atau domain (mis. <code>10.20.30.1</code>); port diisi di kolom terpisah, atau ditulis{" "}
+                <code>10.20.30.1:8081</code>.
+              </li>
+            </ol>
+            <p className="mt-3 text-muted-foreground">
+              Jika uji koneksi gagal dengan &quot;Router menutup koneksi&quot;, IP server belum ada di kolom ADDRESS; jika
+              &quot;Koneksi ditolak&quot;, layanan mati atau port salah; jika &quot;timeout&quot;, cek rute dan firewall router.
+            </p>
+          </details>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField

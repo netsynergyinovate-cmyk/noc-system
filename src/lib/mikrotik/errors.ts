@@ -7,6 +7,7 @@ export type MikrotikErrorCode =
   | "NOT_FOUND"
   | "TIMEOUT"
   | "CONNECTION_REFUSED"
+  | "CONNECTION_CLOSED"
   | "DNS_ERROR"
   | "NETWORK_ERROR"
   | "HTTP_ERROR"
@@ -60,6 +61,13 @@ const TABLE: Record<MikrotikErrorCode, Omit<MikrotikMappedError, "code" | "messa
     retryable: false,
     title: "Login router ditolak",
     hint: "Periksa username dan password akun RouterOS (butuh hak akses api/rest).",
+  },
+  CONNECTION_CLOSED: {
+    status: 502,
+    retryable: true,
+    title: "Router menutup koneksi",
+    hint: "Router menerima sambungan lalu langsung memutusnya. Biasanya IP server ini tidak ada di daftar yang diizinkan layanan www (/ip service, kolom address). TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti). Jika jalur melewati NAT, alamat yang dilihat router bisa berbeda: cek /ip firewall connection print where dst-port=<port-www>.",
+    command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
   },
   CONNECTION_REFUSED: {
     status: 502,
@@ -168,6 +176,8 @@ export function mapMikrotikError(err: unknown, context?: Context): MikrotikMappe
     const label = `router${where(context)}`;
     if (e.name === "AbortError" || /ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/.test(text))
       return build("TIMEOUT", `Koneksi ke ${label} lambat atau terputus (timeout).`);
+    if (/ECONNRESET|UND_ERR_SOCKET|other side closed|socket hang up|EPIPE/i.test(text))
+      return build("CONNECTION_CLOSED", `Router${where(context)} menutup koneksi setelah tersambung: kemungkinan IP server ini tidak diizinkan di address= layanan www.`);
     if (text.includes("ECONNREFUSED"))
       return build("CONNECTION_REFUSED", `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`);
     if (/ENOTFOUND|EAI_AGAIN/.test(text))

@@ -589,9 +589,13 @@ async function cmdDeploy(args = [], options = {}) {
   // Langkah 5: Migrasi Database
   log("Langkah 5/6: Menjalankan migrasi database skema baru...");
   try {
+    // Dari REPO_ROOT, bukan folder rilis: bundle standalone tidak memuat paket `pg`.
     runCmd("node scripts/migrate-server.mjs", {
-      cwd: releasePath,
-      env: { ...process.env, APP_VERSION: version },
+      env: {
+        ...process.env,
+        ...(sharedEnv.DATABASE_URL ? { DATABASE_URL: sharedEnv.DATABASE_URL } : {}),
+        APP_VERSION: version,
+      },
     });
     ok("Migrasi database berhasil dijalankan.");
   } catch (err) {

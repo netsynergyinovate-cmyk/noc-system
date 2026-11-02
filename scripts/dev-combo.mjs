@@ -47,8 +47,8 @@ const envLocalPath = path.join(rootDir, ".env.local");
 if (fs.existsSync(envLocalPath)) {
   let content = fs.readFileSync(envLocalPath, "utf8");
   const updates = {
-    LOGTO_ENDPOINT: "http://auth.synergy-inovate.my.id:3301",
-    LOGTO_INTERNAL_ENDPOINT: "http://auth.synergy-inovate.my.id:3301",
+    LOGTO_ENDPOINT: "http://192.168.0.25:3301",
+    LOGTO_INTERNAL_ENDPOINT: "http://192.168.0.25:3301",
     LOGTO_ADMIN_ENDPOINT: "http://localhost:3002", // SSH tunnel: ssh -L 3002:127.0.0.1:3002 netsi@192.168.0.25
     DATABASE_URL: "postgresql://starter:starter_password@127.0.0.1:5432/starter",
   };

@@ -247,6 +247,8 @@ noc-system <perintah> [opsi]
   Memeriksa kelayakan spesifikasi perangkat keras server sebelum instalasi/deploy (CPU cores, RAM bebas, swap active, sisa disk, status Docker daemon, port 3000/8080/5432, dan koneksi internet).
 - `noc-system features [up <logto|genieacs|osrm|9router|all>]`:
   Tanpa argumen: status 8 komponen beserta tautan akses. Dengan `up`: memasang add-on Docker per fitur (memakai `/srv/noc/shared/.env`, memeriksa status kontainer sebelum mencetak tautan, GenieACS otomatis memasang konfigurasi dari repo, OSRM mengikuti `NOC_OSRM_REGION`).
+- `noc-system data export [berkas]` / `noc-system data import <berkas.sql.gz> --yes`:
+  Memindahkan **data** antar server. `install` dan `deploy` hanya membuat skema kosong, jadi server klien tidak menerima data Anda kecuali Anda menjalankan impor secara sengaja. Impor menimpa database, membuat cadangan `pre-import-*.sql.gz` lebih dulu, menjalankan migrasi skema, dan menyalakan ulang layanan. Salin `DEVICE_SECRET` ke server tujuan supaya kredensial router terenkripsi bisa dibuka.
 - `noc-system deploy [versi]`:
   Mengeksekusi rilis produksi penuh: backup DB otomatis, kompilasi Go, build bundle Next.js standalone via Turbopack, migrasi skema database, swap atomik `/srv/noc/current`, dan health check 45 detik. Jika tanpa argumen versi, digit build otomatis dinaikkan (+1).
 - `noc-system update [ref]`:

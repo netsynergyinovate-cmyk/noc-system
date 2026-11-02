@@ -1276,6 +1276,75 @@ async function cmdFeatures(args = []) {
 // MAIN ENTRYPOINT
 // -----------------------------------------------------------------------------
 const args = process.argv.slice(2);
+// Pindah data antar server. Sengaja terpisah dari `install`/`deploy`, yang hanya
+// membuat skema kosong: data pelanggan tidak ikut ke server lain tanpa perintah ini.
+function dataDbTarget() {
+  const q = (filter) =>
+    execSync(`docker ps ${filter} --format "{{.Names}}"`, { encoding: "utf-8" }).trim().split("\n")[0]?.trim();
+  const cid = q('--filter "name=noc-postgres"') || q('--filter "publish=5432"');
+  if (!cid) throw new Error("Kontainer PostgreSQL (noc-postgres / port 5432) tidak ditemukan atau akses Docker ditolak (coba sudo).");
+  let user = "starter", db = "starter", url = "";
+  try {
+    const m = fs.readFileSync("/srv/noc/shared/.env", "utf-8").match(/^DATABASE_URL=(.+)$/m);
+    if (m) {
+      url = m[1].trim().replace(/^["']|["']$/g, "");
+      const u = new URL(url);
+      if (u.username) user = decodeURIComponent(u.username);
+      if (u.pathname.length > 1) db = u.pathname.slice(1);
+    }
+  } catch {}
+  return { cid, user, db, url };
+}
+
+function dumpDatabase({ cid, user, db }, out) {
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  runCmd(`bash -c 'set -o pipefail && docker exec "${cid}" pg_dump -U "${user}" -d "${db}" --clean --if-exists --no-owner --no-privileges | gzip > "${out}" && test -s "${out}" && chmod 600 "${out}"'`);
+}
+
+async function cmdData(args) {
+  const [sub, ...rest] = args;
+  const file = rest.find((a) => !a.startsWith("--"));
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  if (sub === "export") {
+    const target = dataDbTarget();
+    const out = path.resolve(file || `/srv/noc/backups/data-${stamp}.sql.gz`);
+    log(`Mengekspor database ke ${out} ...`);
+    dumpDatabase(target, out);
+    ok(`Ekspor selesai: ${out}`);
+    warn("Berkas ini berisi SEMUA data (pelanggan, akun, kredensial router terenkripsi). Simpan aman dan hapus setelah dipakai.");
+    warn("Salin juga DEVICE_SECRET (dan ROUTER_SECRET_KEY bila ada) dari /srv/noc/shared/.env ke server tujuan; tanpa itu kredensial router tidak bisa dibuka.");
+    return;
+  }
+  if (sub === "import") {
+    if (!file || !fs.existsSync(file)) throw new Error("Pakai: noc-system data import <berkas.sql.gz> --yes");
+    if (!rest.includes("--yes")) {
+      throw new Error("Impor MENIMPA data database server ini. Cadangan otomatis dibuat dulu. Ulangi dengan --yes bila yakin.");
+    }
+    const target = dataDbTarget();
+    const backup = `/srv/noc/backups/pre-import-${stamp}.sql.gz`;
+    log(`Cadangan data saat ini: ${backup}`);
+    dumpDatabase(target, backup);
+    const units = "noc-web noc-backend";
+    try { runCmd(`systemctl stop ${units}`); } catch {}
+    try {
+      log(`Memulihkan ${file} ke database ${target.db} ...`);
+      runCmd(`bash -c 'set -o pipefail && gunzip -c "${path.resolve(file)}" | docker exec -i "${target.cid}" psql -U "${target.user}" -d "${target.db}" -v ON_ERROR_STOP=1 --single-transaction -q'`);
+      ok("Data dipulihkan.");
+      runCmd("node scripts/migrate-server.mjs", {
+        env: { ...process.env, ...(target.url ? { DATABASE_URL: target.url } : {}) },
+      });
+      ok("Skema disesuaikan dengan versi kode ini.");
+    } catch (err) {
+      fail(`Impor gagal: ${err.message}. Cadangan sebelum impor: ${backup}`);
+      throw err;
+    } finally {
+      try { runCmd(`systemctl start ${units}`); } catch {}
+    }
+    return;
+  }
+  throw new Error("Pakai: noc-system data export [berkas] | noc-system data import <berkas.sql.gz> --yes");
+}
+
 const command = args[0] || "help";
 switch (command) {
   case "upgrade":
@@ -1356,6 +1425,13 @@ switch (command) {
     }
     break;
 
+  case "data":
+    cmdData(args.slice(1)).catch((err) => {
+      fail(`Perintah data gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
   case "help":
   default:
     console.log(`
@@ -1368,6 +1444,7 @@ Perintah Tersedia:
   ${ANSI.green}upgrade${ANSI.reset}          Naikkan versi minor aplikasi (1.0.x.y -> 1.1.0.0) di package.json
   ${ANSI.green}version${ANSI.reset}          Tampilkan versi lokal package.json dan rilis aktif server
   ${ANSI.green}install / setup${ANSI.reset}  Siapkan hierarki /srv/noc, docker postgres, dan systemd
+  ${ANSI.green}data export|import${ANSI.reset} Pindahkan data antar server (terpisah dari install; impor butuh --yes)
   ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (auto-bump build jika tanpa argumen versi)
   ${ANSI.green}update [ref]${ANSI.reset}     Tarik kode git terbaru lalu deploy otomatis
   ${ANSI.green}doctor / specs${ANSI.reset}   Periksa kelayakan server (CPU, RAM, Swap, Disk, Port, Docker)

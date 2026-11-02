@@ -1086,8 +1086,8 @@ async function cmdFeatures(args = []) {
     },
     {
       id: "postgres",
-      name: "Database PostgreSQL & TimescaleDB",
-      tech: "Docker (TimescaleDB / noc-postgres)",
+      name: "Database PostgreSQL 17",
+      tech: "Docker (postgres:17-alpine / noc-postgres)",
       port: "5432 (TCP)",
       check: 'docker ps --filter "name=noc-postgres" --format "{{.Status}}" 2>/dev/null',
       compose: "docker compose --env-file /srv/noc/shared/.env -f compose.postgres.yaml up -d",

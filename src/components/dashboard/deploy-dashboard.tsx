@@ -156,8 +156,8 @@ const FEATURE_STACK: FeatureStackItem[] = [
   },
   {
     id: "postgres",
-    name: "Database PostgreSQL & TimescaleDB",
-    tech: "Docker Container (TimescaleDB / noc-postgres)",
+    name: "Database PostgreSQL 17",
+    tech: "Docker Container (postgres:17-alpine / noc-postgres)",
     port: "5432 (TCP)",
     serviceKey: "postgres",
     upCmd: "docker compose --env-file /srv/noc/shared/.env -f compose.postgres.yaml up -d",

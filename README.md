@@ -9,13 +9,13 @@ MikroTik · OLT HSGQ · GenieACS TR-069 · OSRM · NetFlow · Billing RunsNet ·
 [![Node.js](https://img.shields.io/badge/Node.js-22.12+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
-[![PostgreSQL](https://img.shields.io/badge/TimescaleDB-Postgres%2017-336791?logo=postgresql&logoColor=white)](https://www.timescale.com)
-[![Docker](https://img.shields.io/badge/Docker-24+-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Instal Cepat](#-instal-cepat) · [Fitur](#-fitur-utama) · [Arsitektur](#-arsitektur) · [CLI](#-referensi-cli-noc-system) · [Troubleshooting](#-pemecahan-masalah--anti-freeze) · [Lisensi](#-lisensi)
 
-<img src="screenshots/01-dashboard-redesign.png" alt="Dashboard NOC SYSTEM" width="860">
+<img src="screenshots/20-pengaman-deploy.png" alt="Pengaman Deploy NOC SYSTEM" width="860">
 
 </div>
 
@@ -34,6 +34,8 @@ sudo noc-system features up all     # Logto, GenieACS, OSRM, 9router
 ```
 
 Dashboard: `http://<IP_SERVER>:3000`. Panduan lengkap: [Instalasi Produksi](#instalasi-di-server-produksi-ubuntu-native).
+
+> **Status pengujian:** `install.sh` dan `noc-system features up` baru diuji di Windows/Git Bash dan belum dijalankan end-to-end di Ubuntu bersih. Coba di satu VPS kosong sebelum dipakai di produksi atau klien.
 
 | Tahap | Perintah | Hasil |
 |---|---|---|
@@ -58,11 +60,9 @@ Dashboard: `http://<IP_SERVER>:3000`. Panduan lengkap: [Instalasi Produksi](#ins
 <details>
 <summary><b>📸 Tangkapan layar</b></summary>
 
-| | |
-|---|---|
-| ![Peta](screenshots/10-interactive-network-map.png) | ![Trafik](screenshots/09-trafik-bandwidth.png) |
-| ![Pelanggan](screenshots/06-daftar-pelanggan.png) | ![GenieACS](screenshots/08-genieacs-server.png) |
-| ![NetFlow](screenshots/15-analisis-netflow.png) | ![Onboarding](screenshots/21-pusat-onboarding.png) |
+| | | |
+|---|---|---|
+| ![Pelanggan](screenshots/06-daftar-pelanggan.png) | ![NetFlow](screenshots/15-analisis-netflow.png) | ![Onboarding](screenshots/21-pusat-onboarding.png) |
 
 </details>
 
@@ -76,7 +76,7 @@ flowchart TB
         Web["noc-web<br/>Next.js 16 · systemd :3000"]
         Be["noc-backend<br/>Go · systemd :8080 · NetFlow UDP :2055"]
         subgraph Docker["Layanan Docker (network nocsystem_default)"]
-            Pg[("PostgreSQL 17 + TimescaleDB<br/>:5432")]
+            Pg[("PostgreSQL 17<br/>:5432")]
             Genie["GenieACS<br/>CWMP :7547 · NBI :7557 · UI :7558"]
             Osrm["OSRM<br/>:5000"]
             Nine["9router (AI proxy)<br/>:20128"]
@@ -133,7 +133,7 @@ Skrip bootstrap akan otomatis:
 - Mengaktifkan swapfile darurat 2GB jika RAM server < 2.5 GB.
 - Memasang Docker Engine, Node.js 22 LTS, dan Go Compiler 1.25.
 - Menyiapkan user sistem `noc`, hierarki `/srv/noc`, repositori, dan dependensi npm.
-- Menginisialisasi kontainer Docker PostgreSQL (TimescaleDB) dan unit systemd.
+- Menginisialisasi kontainer Docker PostgreSQL 17 dan unit systemd.
 - Memasang CLI global `/usr/local/bin/noc-system`.
 
 ---
@@ -154,7 +154,21 @@ Alur deploy akan:
 
 ---
 
-### 3. Akses Dashboard Web & Monitoring Server
+### 3. Instal di Server Klien
+Instalasi yang sama dipakai untuk server klien. Tiap klien mendapat `DEVICE_SECRET`, `BETTER_AUTH_SECRET`, dan password DB acak sendiri:
+```bash
+export NOC_PUBLIC_URL="https://noc.klien.com"
+curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=NOC_PUBLIC_URL bash
+sudo noc-system deploy
+sudo NOC_OSRM_REGION=java noc-system features up all   # wilayah sesuai lokasi klien
+```
+- Logto, router, dan OLT klien dikonfigurasi sendiri; jangan memakai client ID/secret Logto milik penyedia.
+- Polling MikroTik butuh port REST router (`www` atau `www-ssl`) yang bisa dijangkau dari server klien.
+- Jika server sudah berisi database lama dengan kredensial router terenkripsi, jalankan installer dengan `NOC_DEVICE_SECRET=<nilai-lama>`.
+
+---
+
+### 4. Akses Dashboard Web & Monitoring Server
 Buka peramban web dan arahkan ke alamat IP server Anda:
 ```
 http://<IP_SERVER_ANDA>:3000
@@ -204,7 +218,7 @@ NOC SYSTEM punya 8 komponen. Add-on Docker dipasang per fitur dengan `sudo noc-s
 |---|---|---|---|---|
 | **1** | **NOC Web Dashboard** | 3000 | `sudo systemctl start noc-web` | `journalctl -u noc-web -n 50 -f` |
 | **2** | **NOC Backend Engine** | 8080 | `sudo systemctl start noc-backend` | `journalctl -u noc-backend -n 50 -f` |
-| **3** | **PostgreSQL & TimescaleDB** | 5432 | `docker compose -f compose.postgres.yaml up -d` | `docker logs -f noc-postgres --tail 50` |
+| **3** | **PostgreSQL 17** | 5432 | `docker compose -f compose.postgres.yaml up -d` | `docker logs -f noc-postgres --tail 50` |
 | **4** | **GenieACS TR-069** | 7547 (CWMP), 7557 (NBI), 7558 (UI) | `sudo noc-system features up genieacs` | `npm run genieacs:logs` |
 | **5** | **OSRM Road Snap** | 5000 | `sudo NOC_OSRM_REGION=java noc-system features up osrm` | `npm run osrm:logs` |
 | **6** | **9router AI Proxy** | 20128 (UI & /v1) | `sudo noc-system features up 9router` | `npm run 9router:logs` |

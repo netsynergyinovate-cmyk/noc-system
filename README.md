@@ -36,6 +36,8 @@ sudo noc-system features up all     # opsional: Logto, GenieACS, OSRM, 9router
 
 Installer mencetak **kata sandi superadmin sekali** di bagian `Akun NOC` (jangan ditutup sebelum disalin). Setelah `deploy`, buka `http://<IP_LAN_SERVER>:3000` dan masuk dengan email tadi. Tanpa `NOC_ADMIN_EMAIL`, akun bawaan adalah `admin@noc.local`; ganti kata sandinya setelah masuk. Lupa kata sandi: `sudo noc-system admin create --reset-password`.
 
+Panduan lengkap: [Instalasi di Server Produksi](#instalasi-di-server-produksi-ubuntu-native).
+
 > **Status pengujian:** alur instal bersih (`install.sh` → `noc-system deploy` → sign-in superadmin → tiket realtime + WebSocket) diuji di server **Ubuntu 26.04** (2 vCPU, 3 GB RAM). Ubuntu 20.04/22.04/24.04 dan mesin tanpa Docker/Node/Go sebelumnya belum diuji. `noc-system features up` baru diuji di Windows. Coba di satu VPS kosong sebelum dipakai untuk klien.
 
 | Tahap | Perintah | Hasil |

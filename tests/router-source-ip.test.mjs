@@ -36,3 +36,22 @@ test("CONNECTION_CLOSED mikrotik: judul, saran menambah (bukan mengganti) allow-
   assert.match(r.hint, /jangan mengganti/i);
   assert.match(r.command, /address=<DAFTAR-LAMA>/);
 });
+
+test("CONNECTION_REFUSED mikrotik: arahkan cek port (router bisa memakai port lain), jangan menyuruh mengaktifkan www-ssl", () => {
+  const r = d("CONNECTION_REFUSED", "mikrotik");
+  assert.match(r.hint, /port lain|8081|kolom Port/i);
+  assert.equal(r.command, '/ip service print where name~"www"');
+  assert.doesNotMatch(r.command, /disabled=no|port=/);
+});
+
+test("NETWORK_ERROR mikrotik: bukan fallback generik, menyebut alamat, rute, dan firewall", () => {
+  const r = d("NETWORK_ERROR", "mikrotik");
+  assert.notEqual(r.title, "Koneksi gagal");
+  assert.match(r.hint, /alamat/i);
+  assert.match(r.hint, /rute|ping/i);
+  assert.match(r.hint, /firewall/i);
+});
+
+test("CONNECTION_CLOSED menyebut kemungkinan HTTPS dicentang pada port HTTP", () => {
+  assert.match(d("CONNECTION_CLOSED", "mikrotik").hint, /HTTPS/);
+});

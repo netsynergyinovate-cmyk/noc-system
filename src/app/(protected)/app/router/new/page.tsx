@@ -193,7 +193,8 @@ export default function NewRouterPage() {
                         <Input inputMode="numeric" placeholder="80 atau 443" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Port layanan www / www-ssl di router.
+                        Port layanan www / www-ssl di router. Kosong = 80 (HTTP) atau 443 (HTTPS). Wajib diisi bila router
+                        memakai port lain (mis. 8081): lihat <code>/ip service print where name~&quot;www&quot;</code>.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

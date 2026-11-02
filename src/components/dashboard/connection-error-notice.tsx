@@ -61,7 +61,7 @@ export function describeConnectionTroubleshoot(
     case "CONNECTION_CLOSED":
       return {
         title: "Router menutup koneksi",
-        hint: "Router menerima sambungan lalu langsung memutusnya: IP server ini biasanya belum ada di kolom address= layanan www. TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti):",
+        hint: "Router menerima sambungan lalu langsung memutusnya: IP server ini biasanya belum ada di kolom address= layanan www. TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti). Jika HTTPS dicentang padahal port ini layanan HTTP (www), hilangkan centang HTTPS.",
         command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
       };
     case "CONNECTION_REFUSED":
@@ -70,9 +70,16 @@ export function describeConnectionTroubleshoot(
         hint: genieacs
           ? "Port 7557 NBI mati atau layanan GenieACS NBI tidak berjalan. Periksa status layanan di server:"
           : mikrotik
-            ? "Port layanan tertutup. Aktifkan layanan REST dan izinkan alamat server ini di router:"
+            ? "Port yang diuji tertutup: layanan www mati, atau router memakai port lain (mis. 8081) sedangkan kolom Port kosong dan dianggap 80. Cek port yang berlaku di router, lalu isi di kolom Port atau tulis IP:port di Host:"
             : "Port tertutup atau layanan tidak berjalan. Periksa port dan firewall.",
-        command: genieacs ? "systemctl status genieacs-nbi" : mikrotik ? RESTORE_REST : undefined,
+        command: genieacs ? "systemctl status genieacs-nbi" : mikrotik ? '/ip service print where name~"www"' : undefined,
+      };
+    case "NETWORK_ERROR":
+      return {
+        title: "Router tidak terjangkau",
+        hint: mikrotik
+          ? "Server NOC tidak mendapat jawaban dari alamat ini. Periksa alamat router (lihat langkah 2 panduan), rute dari server (ip route get <alamat>, ping), dan firewall router (chain input)."
+          : "Perangkat tidak terjangkau. Periksa alamat, rute jaringan, dan firewall.",
       };
     case "WRONG_PORT":
       return {

@@ -291,6 +291,10 @@ async function cmdInstall() {
       .replace(/^(GENIEACS_URL|GENIEACS_NBI_URL)=http:\/\/genieacs:7557\s*$/gm, "$1=http://127.0.0.1:7557")
       .replace(/^(GENIEACS_(?:NBI_)?(?:USER|USERNAME|PASSWORD)=.*<.*>.*)$/gm, "# $1");
     if (!/^BACKEND_INTERNAL_URL=/m.test(out)) out = out.replace(/\s*$/, `\nBACKEND_INTERNAL_URL=http://127.0.0.1:${port}\n`);
+    // URL aplikasi berupa domain tapi server juga dibuka lewat IP LAN: Better Auth menolak origin lain (403).
+    if (u.protocol === "http:" && lanIp && u.hostname !== lanIp && !/^BETTER_AUTH_TRUSTED_ORIGINS=/m.test(out)) {
+      out = out.replace(/\s*$/, `\nBETTER_AUTH_TRUSTED_ORIGINS=http://${lanIp}:3000\n`);
+    }
     return out;
   };
   if (!process.env.NOC_DEVICE_SECRET && !process.env.DEVICE_SECRET && !fs.existsSync(targetEnv)) {

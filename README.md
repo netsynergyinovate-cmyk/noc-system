@@ -182,7 +182,8 @@ Buka peramban web dan arahkan ke alamat **IP LAN** server (bukan IP publik, kecu
 ```
 http://<IP_LAN_SERVER>:3000
 ```
-- Masuk dengan akun superadmin dari installer. Pendaftaran mandiri (`/sign-up`) dimatikan secara bawaan (`ALLOW_SIGN_UP`), jadi akun tambahan untuk operator dibuat lewat `noc-system admin create --email ...`.
+- Masuk dengan akun superadmin dari installer. Pendaftaran mandiri (`/sign-up`) tertutup secara bawaan (`ALLOW_SIGN_UP=false`; API membalas `EMAIL_PASSWORD_SIGN_UP_DISABLED`), jadi akun tambahan dibuat oleh superadmin di **Pengaturan → Akun**, atau lewat `noc-system admin create --email ...`.
+- Login hanya diterima dari origin yang sama dengan `BETTER_AUTH_URL` (galat `Invalid origin` / 403 bila diakses dari alamat lain). Untuk akses lewat IP padahal URL aplikasi memakai domain, isi `BETTER_AUTH_TRUSTED_ORIGINS=http://<IP>:3000` di `/srv/noc/shared/.env` lalu `sudo systemctl restart noc-web`.
 - Masuk ke dashboard `/app/deploy` tab **CLI noc-system**.
 - Masukkan **Alamat Server** (`http://<IP_SERVER>:3000`) dan **Token Monitor** (diambil dari output installer atau `noc-system status`).
 - Panel akan menampilkan spesifikasi server real-time, live terminal stream 50 baris journalctl, status proses aktif, dan matriks fitur secara langsung.

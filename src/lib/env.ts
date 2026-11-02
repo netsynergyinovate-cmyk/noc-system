@@ -45,7 +45,7 @@ const schema = z.object({
   // "true" yang membuka (dipakai tes E2E).
   ALLOW_SIGN_UP: z
     .enum(["true", "false"])
-    .default("true")
+    .default("false")
     .transform((value) => value === "true"),
   // Kunci 32 byte untuk mengenkripsi kredensial perangkat (AES-256-GCM).
   DEVICE_SECRET: z

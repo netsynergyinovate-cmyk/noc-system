@@ -155,6 +155,13 @@ export default function NewRouterPage() {
             </summary>
             <ol className="mt-3 list-decimal space-y-2 pl-5">
               <li>
+                <b>Alamat router yang diisi di Host</b> adalah alamat yang bisa dijangkau dari <b>server NOC</b>, biasanya
+                alamat yang sama dengan yang Anda pakai di Winbox atau SSH untuk masuk ke router. Daftar semua alamat router:{" "}
+                <code>/ip address print</code>. Pilih alamat pada jaringan yang sama dengan server, atau yang dilewati
+                server untuk sampai ke router (di server: <code>ip route get &lt;alamat&gt;</code> atau{" "}
+                <code>tracepath &lt;alamat&gt;</code>). Alamat publik (WAN) router sering tidak diizinkan layanan www.
+              </li>
+              <li>
                 Cek layanan REST dan port yang berlaku: <code>/ip service print where name~&quot;www&quot;</code>.
                 Isi kolom <b>Port REST</b> di bawah sesuai kolom PORT (bawaan 80 untuk <code>www</code>, 443 untuk{" "}
                 <code>www-ssl</code>). Jika tidak ada port tertulis, pakai bawaan.

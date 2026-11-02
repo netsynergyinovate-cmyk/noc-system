@@ -2,7 +2,9 @@ name: noc-genieacs
 
 services:
   genieacs-mongo:
-    image: mongo:6.0
+    # MongoDB >= 5.0 butuh CPU dengan AVX; CPU lama (mis. Pentium G3250) mati dengan SIGILL.
+    # `noc-system features up genieacs` mengisi GENIEACS_MONGO_IMAGE=mongo:4.4 bila AVX tidak ada.
+    image: ${GENIEACS_MONGO_IMAGE:-mongo:6.0}
     restart: unless-stopped
     volumes:
       - genieacs_mongo_data:/data/db

@@ -1259,6 +1259,14 @@ async function cmdFeatures(args = []) {
           fs.appendFileSync(ENV_FILE, `\nGENIEACS_JWT_SECRET=${crypto.randomBytes(32).toString("hex")}\n`);
           ok(`GENIEACS_JWT_SECRET dibuat di ${ENV_FILE}`);
         }
+        if (id === "genieacs" && fs.existsSync(ENV_FILE) && !/^GENIEACS_MONGO_IMAGE=\S+/m.test(fs.readFileSync(ENV_FILE, "utf-8"))) {
+          let hasAvx = true;
+          try { hasAvx = /\bavx\b/.test(fs.readFileSync("/proc/cpuinfo", "utf-8")); } catch {}
+          if (!hasAvx) {
+            fs.appendFileSync(ENV_FILE, "\nGENIEACS_MONGO_IMAGE=mongo:4.4\n");
+            warn("CPU tanpa AVX: GenieACS memakai mongo:4.4 (MongoDB >= 5.0 tidak bisa jalan di CPU ini).");
+          }
+        }
         const envFlag = fs.existsSync(ENV_FILE) ? `--env-file ${ENV_FILE} ` : "";
         let cmd = f.compose.replaceAll("docker compose -f", `docker compose ${envFlag}-f`);
         if (id === "osrm") {

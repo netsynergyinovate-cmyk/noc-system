@@ -271,12 +271,24 @@ async function cmdInstall() {
   // Nilai turunan dari URL publik: tanpa ini WebSocket dan CORS tetap menunjuk placeholder contoh.
   const finalizeEnv = (text) => {
     const u = new URL(genPublicUrl);
-    const ws = u.protocol === "https:" ? `wss://${u.host}/ws` : `ws://${u.hostname}:${backendPort()}/ws`;
-    return text
+    // 8080 sering sudah dipakai layanan lain (mis. Caddy); pindah ke 8090 bila terisi.
+    let port = text.match(/^BACKEND_ADDR=.*:(\d+)\s*$/m)?.[1] || "8080";
+    try {
+      if (port === "8080" && execSync("ss -ltn 'sport = :8080' 2>/dev/null", { encoding: "utf-8" }).split("\n").length > 2) port = "8090";
+    } catch {}
+    // BACKEND_URL dipakai BROWSER (tiket WebSocket + REST), jadi harus alamat yang bisa dijangkau klien;
+    // BACKEND_INTERNAL_URL dipakai server Next.js sendiri dan boleh loopback.
+    const browserBackend = u.protocol === "https:" ? u.origin : `http://${u.hostname}:${port}`;
+    const ws = u.protocol === "https:" ? `wss://${u.host}/ws` : `ws://${u.hostname}:${port}/ws`;
+    let out = text
+      .replace(/^BACKEND_ADDR=.*$/m, `BACKEND_ADDR=0.0.0.0:${port}`)
+      .replace(/^BACKEND_URL=http:\/\/(?:127\.0\.0\.1|localhost):\d+\s*$/m, `BACKEND_URL=${browserBackend}`)
       .replace(/^NEXT_PUBLIC_REALTIME_WS_URL=(.*<.*>.*|wss:\/\/noc\.example\.com\/ws)$/m, `NEXT_PUBLIC_REALTIME_WS_URL=${ws}`)
       .replace(/^ALLOWED_ORIGINS=(.*<.*>.*|https:\/\/noc\.example\.com)$/m, `ALLOWED_ORIGINS=${u.origin}`)
       // Placeholder billing yang aktif membuat backend mencoba sinkron ke billing.example.com tiap 5 menit.
       .replace(/^(BILLING_(?:URL|USERNAME|PASSWORD))=(.*<.*>.*|https:\/\/billing\.example\.com)$/gm, "# $1=$2");
+    if (!/^BACKEND_INTERNAL_URL=/m.test(out)) out = out.replace(/\s*$/, `\nBACKEND_INTERNAL_URL=http://127.0.0.1:${port}\n`);
+    return out;
   };
   if (!process.env.NOC_DEVICE_SECRET && !process.env.DEVICE_SECRET && !fs.existsSync(targetEnv)) {
     warn("DEVICE_SECRET dibuat acak (32 karakter). Jika Anda menggunakan halaman Deploy dari localhost untuk mengontrol server ini, samakan nilai DEVICE_SECRET di /srv/noc/shared/.env dengan localhost agar verifikasi kesiapan (dry-run) lulus.");

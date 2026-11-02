@@ -531,9 +531,22 @@ async function cmdDeploy(args = [], options = {}) {
   log("Langkah 3/6: Membangun bundle Next.js Standalone (npm run build)...");
   log("Tahap 'Creating an optimized production build...' membundel puluhan rute & TypeScript.");
   log("Layar akan diam selama 1–3 menit di VPS. Harap tunggu dan JANGAN tekan Ctrl+C...");
+  // NEXT_PUBLIC_* ditanam ke bundle klien saat build, jadi env server harus ikut
+  // terbaca di sini. Placeholder hanya cadangan agar validasi env build lolos;
+  // nilai nyata dibaca saat runtime dari /srv/noc/shared/.env.
+  const sharedEnv = {};
+  try {
+    for (const line of fs.readFileSync("/srv/noc/shared/.env", "utf-8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      if (m && m[2].trim() !== "") sharedEnv[m[1]] = m[2].trim().replace(/^(["'])(.*)\1$/, "$2");
+    }
+  } catch {}
   await runCmdWithHeartbeat("npm run build", "Bundle Next.js Standalone (Turbopack)", {
     env: {
+      DATABASE_URL: "postgresql://build:build@127.0.0.1:5432/build",
+      BETTER_AUTH_SECRET: "placeholder-for-build-only-replaced-at-runtime",
       ...process.env,
+      ...sharedEnv,
       NEXT_TELEMETRY_DISABLED: "1",
     },
   });

@@ -78,10 +78,12 @@ export function RouterTestPanel({
           type: "mikrotik",
           mode: "real",
           message:
-            json?.error?.message ||
-            (res.status === 403
-              ? "Akun Anda tidak memiliki izin untuk menguji router (Perlu peran admin)."
-              : "Uji koneksi gagal."),
+            res.status === 422
+              ? "Data uji belum lengkap atau tidak valid. Periksa Host, Port (1-65535), Username, dan Password."
+              : json?.error?.message ||
+                (res.status === 403
+                  ? "Akun Anda tidak memiliki izin untuk menguji router (Perlu peran admin)."
+                  : "Uji koneksi gagal."),
         };
         setResult(failRes);
         onTestComplete?.(failRes);

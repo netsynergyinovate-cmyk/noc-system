@@ -39,7 +39,9 @@ export function describeConnectionTroubleshoot(
           ? "GenieACS NBI tidak merespons. Periksa firewall port 7557 dan jaringan ke server GenieACS."
           : olt
             ? "Host OLT tidak merespons. Periksa alamat IP manajemen OLT, kabel uplink, dan port SNMP 161 atau HTTP API HSGQ."
-            : "Periksa kabel/jaringan, firewall, dan pastikan IP serta port benar, lalu coba lagi.",
+            : mikrotik
+              ? "Router tidak menjawab tepat waktu. Periksa alamat, rute, dan firewall router. Jika port yang diisi adalah Winbox atau layanan lain (mis. 8291, 2024), ganti dengan port layanan www/www-ssl dari /ip service print."
+              : "Periksa kabel/jaringan, firewall, dan pastikan IP serta port benar, lalu coba lagi.",
       };
     case "AUTH_FAILED":
       return {

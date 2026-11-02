@@ -96,8 +96,8 @@ export function sanitizeHost(raw: string, port?: number): URL {
 
 // Port yang oleh konvensi berarti HTTPS (www-ssl bawaan RouterOS = 443).
 export const TLS_PORTS: ReadonlySet<number> = new Set([443, 8443]);
-// Port API biner RouterOS (bukan REST): REST tidak menjawab di sini.
-export const API_PROTOCOL_PORTS: ReadonlySet<number> = new Set([8728, 8729]);
+// Port bawaan yang bukan REST: API biner RouterOS (8728/8729) dan Winbox (8291). REST tidak menjawab di sini.
+export const API_PROTOCOL_PORTS: ReadonlySet<number> = new Set([8728, 8729, 8291]);
 
 // Kolom `routers.host` tidak punya kolom TLS, jadi HTTPS dibaca dari skema
 // ("https://...") atau dari port 443/8443. Satu aturan untuk semua pembaca.

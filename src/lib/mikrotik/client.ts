@@ -198,13 +198,13 @@ export class MikrotikRestClient {
   }
 
   private async request(path: string, method = "GET", body?: unknown): Promise<unknown> {
-    // 8728/8729 adalah API biner RouterOS: fetch ke sana hanya macet atau ditolak.
+    // 8728/8729 (API biner) dan 8291 (Winbox) bukan REST: fetch ke sana hanya macet atau ditolak.
     if (API_PROTOCOL_PORTS.has(this.target.port)) {
       throw new MikrotikError(
         mapMikrotikError(
           new DeviceConnectionError(
             "WRONG_PORT",
-            `Port ${this.target.port} adalah API biner RouterOS, bukan REST. Pakai port layanan www (80) atau www-ssl (443).`,
+            `Port ${this.target.port} bukan layanan REST (${this.target.port === 8291 ? "Winbox" : "API biner RouterOS"}). Pakai port layanan www atau www-ssl dari /ip service print.`,
           ),
           this.ctx,
         ),

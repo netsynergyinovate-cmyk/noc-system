@@ -55,3 +55,9 @@ test("NETWORK_ERROR mikrotik: bukan fallback generik, menyebut alamat, rute, dan
 test("CONNECTION_CLOSED menyebut kemungkinan HTTPS dicentang pada port HTTP", () => {
   assert.match(d("CONNECTION_CLOSED", "mikrotik").hint, /HTTPS/);
 });
+
+test("TIMEOUT mikrotik: petunjuk menyebut port Winbox/layanan lain, tidak generik", () => {
+  const r = d("TIMEOUT", "mikrotik");
+  assert.match(r.hint, /Winbox|8291|2024/);
+  assert.match(r.hint, /www/);
+});

@@ -25,3 +25,12 @@ test("penolakan port dan timeout tidak ikut terpetakan sebagai CONNECTION_CLOSED
   const timeout = mapMikrotikError(Object.assign(new Error("fetch failed"), { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }));
   assert.equal(timeout.code, "TIMEOUT");
 });
+
+test("port Winbox 8291 ditolak sebagai WRONG_PORT tanpa koneksi (bukan 'koneksi ditolak' yang menyesatkan)", async () => {
+  const { MikrotikRestClient } = await import("../src/lib/mikrotik/client.ts");
+  const res = await new MikrotikRestClient({
+    host: "10.0.0.5", port: 8291, username: "a", password: "b", mode: "real", timeoutMs: 500,
+  }).testConnection();
+  assert.deepEqual([res.ok, res.code], [false, "WRONG_PORT"]);
+  assert.match(res.message, /Winbox/);
+});

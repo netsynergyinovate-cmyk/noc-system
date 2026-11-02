@@ -286,7 +286,10 @@ async function cmdInstall() {
       .replace(/^NEXT_PUBLIC_REALTIME_WS_URL=(.*<.*>.*|wss:\/\/noc\.example\.com\/ws)$/m, `NEXT_PUBLIC_REALTIME_WS_URL=${ws}`)
       .replace(/^ALLOWED_ORIGINS=(.*<.*>.*|https:\/\/noc\.example\.com)$/m, `ALLOWED_ORIGINS=${u.origin}`)
       // Placeholder billing yang aktif membuat backend mencoba sinkron ke billing.example.com tiap 5 menit.
-      .replace(/^(BILLING_(?:URL|USERNAME|PASSWORD))=(.*<.*>.*|https:\/\/billing\.example\.com)$/gm, "# $1=$2");
+      .replace(/^(BILLING_(?:URL|USERNAME|PASSWORD))=(.*<.*>.*|https:\/\/billing\.example\.com)$/gm, "# $1=$2")
+      // Web berjalan native (bukan di jaringan Docker): nama layanan `genieacs` tidak ter-resolve; NBI ada di loopback.
+      .replace(/^(GENIEACS_URL|GENIEACS_NBI_URL)=http:\/\/genieacs:7557\s*$/gm, "$1=http://127.0.0.1:7557")
+      .replace(/^(GENIEACS_(?:NBI_)?(?:USER|USERNAME|PASSWORD)=.*<.*>.*)$/gm, "# $1");
     if (!/^BACKEND_INTERNAL_URL=/m.test(out)) out = out.replace(/\s*$/, `\nBACKEND_INTERNAL_URL=http://127.0.0.1:${port}\n`);
     return out;
   };

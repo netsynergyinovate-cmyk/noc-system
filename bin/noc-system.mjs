@@ -1491,6 +1491,20 @@ async function cmdData(args) {
 // hanya lewat env NOC_ADMIN_PASSWORD (kosong = dibuat acak dan dicetak sekali).
 async function cmdAdmin(args) {
   if (args[0] !== "create") throw new Error("Pakai: noc-system admin create [--email <email>] [--name <nama>] [--reset-password]");
+  const usage = 'Pakai: noc-system admin create --email <email> [--name "<nama>"] [--reset-password]';
+  // Jangan jatuh diam-diam ke email bawaan: flag salah ketik atau nama tanpa tanda kutip harus gagal.
+  const rest = args.slice(1);
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a === "--reset-password") continue;
+    if (a === "--email" || a === "--name") {
+      const v = rest[i + 1];
+      if (!v || v.startsWith("--")) throw new Error(`${a} butuh nilai. ${usage}`);
+      i++;
+      continue;
+    }
+    throw new Error(`Argumen tidak dikenal: ${a}. Nama berspasi harus diberi tanda kutip. ${usage}`);
+  }
   const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
   let dbUrl = "";
   try {

@@ -73,8 +73,8 @@ const TABLE: Record<MikrotikErrorCode, Omit<MikrotikMappedError, "code" | "messa
     status: 502,
     retryable: true,
     title: "Koneksi ditolak router",
-    hint: "Port REST mati atau salah. Aktifkan layanan www di RouterOS.",
-    command: "/ip service set www disabled=no port=80",
+    hint: "Port REST mati atau salah. Cek layanan www dan PORT yang berlaku di router, lalu isi port itu di form (atau tulis IP:port di host). Jika bertanda X, aktifkan dengan /ip service enable www.",
+    command: '/ip service print where name~"www"',
   },
   NOT_FOUND: {
     status: 502,

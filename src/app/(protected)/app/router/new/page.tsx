@@ -168,8 +168,9 @@ export default function NewRouterPage() {
                 kosong, semua alamat diizinkan.
               </li>
               <li>
-                Gunakan akun router dengan izin <code>read</code>, <code>api</code>, dan <code>rest-api</code> (RouterOS
-                v7.9+; tambah <code>write</code> bila ingin kontrol isolir). RouterOS di bawah v7.1 tidak punya REST.
+                Gunakan akun router dengan izin baca (dan izin tulis bila memakai kontrol isolir). RouterOS di bawah v7.1
+                tidak punya REST. Jika uji koneksi menjawab 401 padahal kata sandi benar, periksa policy grup akun di{" "}
+                <code>/user group print</code> (pada RouterOS v7 yang lebih baru, REST bisa membutuhkan policy tambahan).
               </li>
               <li>
                 Host cukup IP atau domain (mis. <code>10.20.30.1</code>); port diisi di kolom terpisah, atau ditulis{" "}

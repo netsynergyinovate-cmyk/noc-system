@@ -30,10 +30,13 @@ test("NOT_FOUND: memuat command www-ssl; HTTP 404", () => {
   assert.equal(mapMikrotikError(404).code, "NOT_FOUND");
 });
 
-test("CONNECTION_REFUSED: memuat command www port 80; ECONNREFUSED", () => {
+test("CONNECTION_REFUSED: command hanya memeriksa layanan www (tidak memaksa port); ECONNREFUSED", () => {
   const m = mapMikrotikError(dce("CONNECTION_REFUSED"));
   assert.deepEqual([m.code, m.status, m.retryable], ["CONNECTION_REFUSED", 502, true]);
-  assert.equal(m.command, "/ip service set www disabled=no port=80");
+  // Tidak boleh memindahkan www ke port lain: router yang sengaja memakai port non-80 akan rusak.
+  assert.equal(m.command, '/ip service print where name~"www"');
+  assert.doesNotMatch(m.command, /port=/);
+  assert.match(m.hint, /isi port itu di form|IP:port/i);
   const n = mapMikrotikError(Object.assign(new Error("fetch failed"), { cause: { code: "ECONNREFUSED" } }));
   assert.equal(n.code, "CONNECTION_REFUSED");
 });

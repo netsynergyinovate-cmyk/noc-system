@@ -1177,10 +1177,27 @@ async function cmdFeatures(args = []) {
         const envFlag = fs.existsSync(ENV_FILE) ? `--env-file ${ENV_FILE} ` : "";
         let cmd = f.compose.replaceAll("docker compose -f", `docker compose ${envFlag}-f`);
         if (id === "osrm") {
-          // Unduh + olah data hanya sekali; jalan ulang cukup menyalakan kontainer.
+          // Wilayah lewat NOC_OSRM_REGION (nama Geofabrik Indonesia); unduh/olah hanya sekali per wilayah.
+          const region = process.env.NOC_OSRM_REGION || "sumatra";
+          if (!/^(sumatra|java|kalimantan|sulawesi|maluku|nusa-tenggara|papua)$/.test(region)) {
+            throw new Error(`NOC_OSRM_REGION '${region}' tidak dikenal (sumatra|java|kalimantan|sulawesi|maluku|nusa-tenggara|papua)`);
+          }
           const dataDir = path.join(REPO_ROOT, "docker", "osrm", "data");
-          const prepared = fs.existsSync(dataDir) && fs.readdirSync(dataDir).some((n) => n.includes(".osrm"));
-          if (prepared) cmd = cmd.replace("npm run osrm:download && npm run osrm:prepare && ", "");
+          const has = (part) =>
+            fs.existsSync(dataDir) && fs.readdirSync(dataDir).some((n) => n.startsWith(`${region}-latest`) && n.includes(part));
+          const compose = `OSRM_REGION=${region} docker compose ${envFlag}-f compose.osrm.yaml`;
+          const steps = ["docker network create nocsystem_default 2>/dev/null || true"];
+          if (!has(".osrm")) {
+            if (!has(".osm.pbf")) {
+              steps.push(
+                `curl -fL --create-dirs -o docker/osrm/data/${region}-latest.osm.pbf https://download.geofabrik.de/asia/indonesia/${region}-latest.osm.pbf`,
+              );
+            }
+            steps.push(`${compose} run --rm osrm-prepare`);
+          }
+          steps.push(`${compose} up -d osrm`);
+          cmd = steps.join(" && ");
+          console.log(`Wilayah OSRM: ${region}`);
         }
         runCmd(cmd);
         let up = false;

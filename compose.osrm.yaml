@@ -1,7 +1,7 @@
 name: noc-osrm
 
 # OSRM self-host untuk POST /api/snap (tempel jalur kabel peta ke jalan nyata).
-# Data OSM Sumatra disiapkan sekali (npm run osrm:download, lalu osrm:prepare),
+# Data OSM wilayah (OSRM_REGION, bawaan sumatra; mis. java, kalimantan) disiapkan sekali (npm run osrm:download, lalu osrm:prepare),
 # baru npm run osrm:up. Hasil olahan di docker/osrm/data (di-gitignore).
 # Langkah lengkap dan kebutuhan RAM: docs/noc/road-snap.md.
 
@@ -13,7 +13,7 @@ services:
     container_name: nocsystem-osrm
     restart: unless-stopped
     # Klien peta boleh mengirim sampai 2000 titik; bawaan OSRM hanya 500 per rute.
-    command: osrm-routed --algorithm mld --max-viaroute-size 2000 /data/sumatra-latest.osrm
+    command: osrm-routed --algorithm mld --max-viaroute-size 2000 /data/${OSRM_REGION:-sumatra}-latest.osrm
     ports:
       # Untuk `npm run dev` di host (OSRM_BASE_URL bawaan http://127.0.0.1:5000).
       - "127.0.0.1:5000:5000"
@@ -31,7 +31,7 @@ services:
     working_dir: /data
     entrypoint: ["sh", "-c"]
     command:
-      - osrm-extract -p /opt/foot.lua sumatra-latest.osm.pbf && osrm-partition sumatra-latest.osrm && osrm-customize sumatra-latest.osrm
+      - osrm-extract -p /opt/foot.lua ${OSRM_REGION:-sumatra}-latest.osm.pbf && osrm-partition ${OSRM_REGION:-sumatra}-latest.osrm && osrm-customize ${OSRM_REGION:-sumatra}-latest.osrm
     volumes:
       - ./docker/osrm/data:/data
 

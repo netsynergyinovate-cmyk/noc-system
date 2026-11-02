@@ -28,7 +28,8 @@ MikroTik · OLT HSGQ · GenieACS TR-069 · OSRM · NetFlow · Billing RunsNet ·
 Di server **Ubuntu 20.04 / 22.04 / 24.04** (akses `sudo`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh -o /tmp/noc-install.sh
+sudo bash /tmp/noc-install.sh       # periksa skrip dulu bila perlu
 sudo noc-system deploy              # rilis pertama
 sudo noc-system features up all     # Logto, GenieACS, OSRM, 9router
 ```
@@ -118,7 +119,8 @@ Buka terminal SSH server Ubuntu Anda sebagai pengguna `root` atau `sudo`:
 
 #### Opsi A: Repositori Publik
 ```bash
-curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh -o /tmp/noc-install.sh
+sudo bash /tmp/noc-install.sh
 ```
 
 #### Opsi B: Repositori Privat (dengan GitHub Token)
@@ -158,7 +160,8 @@ Alur deploy akan:
 Instalasi yang sama dipakai untuk server klien. Tiap klien mendapat `DEVICE_SECRET`, `BETTER_AUTH_SECRET`, dan password DB acak sendiri:
 ```bash
 export NOC_PUBLIC_URL="https://noc.klien.com"
-curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh | sudo --preserve-env=NOC_PUBLIC_URL bash
+curl -fsSL https://raw.githubusercontent.com/netsynergyinovate-cmyk/noc-system/noc-system-main/scripts/install.sh -o /tmp/noc-install.sh
+sudo --preserve-env=NOC_PUBLIC_URL bash /tmp/noc-install.sh
 sudo noc-system deploy
 sudo NOC_OSRM_REGION=java noc-system features up all   # wilayah sesuai lokasi klien
 ```

@@ -61,8 +61,8 @@ export function diagnoseUnreachable(lastError: string): UnreachableDiagnosis {
     return {
       cause: "closed",
       title: "Router menutup koneksi",
-      hint: "Router menerima sambungan lalu langsung menutupnya. Biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan www (misalnya IP berubah karena pindah jaringan atau komputer dinyalakan ulang). Tambahkan IP baru server, atau pakai rentang jaringan.",
-      command: "/ip service set www address=<IP-SERVER-BARU>/32",
+      hint: "Router menerima sambungan lalu langsung menutupnya. Biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan www (/ip service, kolom address). TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti), atau pakai rentang jaringan. Jika jalur ke router melewati NAT, alamat yang dilihat router bisa berbeda: cek dengan `/ip firewall connection print where dst-port=<port-www>` lalu daftarkan alamat di kolom src-address.",
+      command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
     };
   }
   if (/timeout|timed out|deadline|tidak menjawab|i\/o timeout|unreachable/.test(e)) {

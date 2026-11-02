@@ -1588,7 +1588,7 @@ async function cmdRouter(args) {
         (res) => {
           res.resume();
           const local = res.socket.localAddress;
-          if (res.statusCode === 401) resolve({ level: "ok", text: `REST hidup (HTTP 401): jaringan dan allow-list beres. Periksa username/password akun router. Sumber yang dilihat router: ${local}` });
+          if (res.statusCode === 401) resolve({ level: "ok", text: `REST hidup (HTTP 401): jaringan dan allow-list beres. Periksa username/password akun router. IP sumber server ini: ${local} (router bisa melihat alamat lain bila ada NAT di jalur: /ip firewall connection print where dst-address~"${url.hostname}:${port}").` });
           else if (res.statusCode === 200) resolve({ level: "ok", text: "REST hidup dan menjawab tanpa kredensial (HTTP 200)." });
           else if (res.statusCode === 404) resolve({ level: "fail", text: "HTTP 404: layanan web hidup tetapi /rest tidak ada. RouterOS harus v7.1+; atau port ini bukan layanan www." });
           else resolve({ level: "fail", text: `HTTP ${res.statusCode}: bukan jawaban REST MikroTik yang diharapkan.` });
@@ -1599,7 +1599,7 @@ async function cmdRouter(args) {
         const local = req.socket?.localAddress;
         const code = e.code || e.message;
         if (code === "ECONNREFUSED") resolve({ level: "fail", text: "Ditolak (ECONNREFUSED): layanan www/www-ssl mati atau port salah. Di router: /ip service print where name~\"www|api\"." });
-        else if (code === "ECONNRESET" || /hang up|reset|EPIPE/i.test(String(code))) resolve({ level: "fail", text: `Koneksi diputus router setelah TCP tersambung: IP server${local ? ` (${local})` : ""} kemungkinan tidak ada di address= layanan www. Di router: /ip service set www address=<daftar-lama>,<IP-server>/32 (lihat sumber nyata: /ip firewall connection print where dst-address~"${url.hostname}:${port}").` });
+        else if (code === "ECONNRESET" || /hang up|reset|EPIPE/i.test(String(code))) resolve({ level: "fail", text: `Koneksi diputus router setelah TCP tersambung: IP server tidak ada di address= layanan www. IP sumber server ini: ${local || "?"}, tetapi jika ada NAT di jalur router melihat alamat lain; cek yang sebenarnya di router: /ip firewall connection print where dst-address~"${url.hostname}:${port}". Lalu TAMBAHKAN (jangan ganti): /ip service set www address=<daftar-lama>,<sumber-nyata>/32.` });
         else if (code === "EHOSTUNREACH" || code === "ENETUNREACH") resolve({ level: "fail", text: `Tidak ada rute ke router (${code}). Cek gateway dan routing server.` });
         else resolve({ level: "fail", text: `Galat ${code}.` });
       });

@@ -412,18 +412,24 @@ async function cmdDeploy(args = [], options = {}) {
   if (isUpdate) {
     log(`${ANSI.bold}Menjalankan pembaruan kode dari repositori git...${ANSI.reset}`);
     try {
-      runCmd("git fetch --all --prune", { cwd: REPO_ROOT });
+      // Jalan sebagai root (sudo) tapi repo milik user biasa: git harus memakai pemilik repo,
+      // jika tidak berkas di .git (FETCH_HEAD, dll.) jadi milik root dan update berikutnya gagal.
+      const st = fs.statSync(REPO_ROOT);
+      const asOwner = process.getuid?.() === 0 && st.uid !== 0 ? { uid: st.uid, gid: st.gid } : {};
+      runCmd("git fetch --all --prune", { cwd: REPO_ROOT, ...asOwner });
       const targetRef = filteredArgs[0];
       if (targetRef && !targetRef.includes("+")) {
         log(`Berpindah ke ref/tag git: ${targetRef}...`);
-        runCmd(`git checkout "${targetRef}"`, { cwd: REPO_ROOT });
+        runCmd(`git checkout "${targetRef}"`, { cwd: REPO_ROOT, ...asOwner });
       } else {
         const curBranch = execSync("git rev-parse --abbrev-ref HEAD 2>/dev/null", {
           cwd: REPO_ROOT,
           encoding: "utf-8",
+          ...asOwner,
         }).trim() || "noc-system-main";
+        if (curBranch === "HEAD") throw new Error("repositori ter-detach (bukan di cabang); jalankan: noc-system update <cabang-atau-tag>");
         log(`Menyinkronkan branch ${curBranch} dengan origin...`);
-        runCmd(`git reset --hard "origin/${curBranch}"`, { cwd: REPO_ROOT });
+        runCmd(`git reset --hard "origin/${curBranch}"`, { cwd: REPO_ROOT, ...asOwner });
       }
       log("Memasang dependensi project terbaru (npm ci)...");
       log("Mengunduh & mengekstrak dependensi (~500MB, butuh 1–3 menit). Harap tunggu...");
@@ -566,18 +572,18 @@ async function cmdDeploy(args = [], options = {}) {
   log(`Langkah 4/6: Menyiapkan direktori rilis di ${releasePath}...`);
   if (!fs.existsSync(releasePath)) fs.mkdirSync(releasePath, { recursive: true });
 
-  // Salin bundle Next.js (termasuk .next di dalam standalone)
-  runCmd(`cp -a "${path.join(REPO_ROOT, ".next", "standalone", ".")}" "${releasePath}/"`);
+  // Salin isi bundle Next.js. Akhiran "/." sengaja ditulis manual: path.join menghapusnya
+  // sehingga cp menyalin folder `standalone` itu sendiri ke dalam rilis.
+  runCmd(`cp -a "${path.join(REPO_ROOT, ".next", "standalone")}/." "${releasePath}/"`);
   runCmd(`mkdir -p "${releasePath}/.next" && cp -r "${path.join(REPO_ROOT, ".next", "static")}" "${releasePath}/.next/"`);
   const publicDir = path.join(REPO_ROOT, "public");
   if (fs.existsSync(publicDir)) {
     runCmd(`cp -r "${publicDir}" "${releasePath}/"`);
   }
 
-  // Salin backend Go
-  runCmd(`mkdir -p "${releasePath}/backend/bin"`);
-  runCmd(`cp "${backendBinPath}" "${releasePath}/backend/bin/noc-backend"`);
-  runCmd(`chmod +x "${releasePath}/backend/bin/noc-backend"`);
+  // Salin backend Go ke akar rilis (sesuai ExecStart di systemd/noc-backend.service)
+  runCmd(`cp "${backendBinPath}" "${releasePath}/noc-backend"`);
+  runCmd(`chmod +x "${releasePath}/noc-backend"`);
 
   // Salin skrip migrasi
   runCmd(`cp -r "${path.join(REPO_ROOT, "scripts")}" "${path.join(REPO_ROOT, "drizzle")}" "${path.join(REPO_ROOT, "package.json")}" "${releasePath}/"`);

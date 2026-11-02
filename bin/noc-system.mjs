@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { execSync, spawn, spawnSync } from "node:child_process";
+import http from "node:http";
+import https from "node:https";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -1521,6 +1523,92 @@ async function cmdAdmin(args) {
   });
 }
 
+// Hapus SEMUA data aplikasi lalu mulai dari awal (skema baru + superadmin baru). Hanya database aplikasi:
+// Logto (cluster sendiri) dan MongoDB GenieACS tidak tersentuh. Cadangan otomatis dibuat dulu.
+async function cmdReset(args) {
+  const extra = args.filter((a) => a !== "--yes");
+  if (extra.length) throw new Error(`Argumen tidak dikenal: ${extra[0]}. Pakai: noc-system reset --yes`);
+  if (!args.includes("--yes")) {
+    throw new Error(
+      "reset MENGHAPUS seluruh data aplikasi (pelanggan, router, akun, riwayat) dan membuat superadmin baru. " +
+        "Cadangan `pre-reset-*.sql.gz` dibuat dulu di /srv/noc/backups. Ulangi dengan --yes bila yakin.",
+    );
+  }
+  const target = dataDbTarget();
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backup = `/srv/noc/backups/pre-reset-${stamp}.sql.gz`;
+  log(`Cadangan data saat ini: ${backup}`);
+  await dumpDatabase(target, backup);
+  const units = "noc-web noc-backend";
+  try { runCmd(`systemctl stop ${units}`); } catch {}
+  try {
+    log(`Menghapus semua objek di database ${target.db} ...`);
+    const wipe = spawnSync(
+      "docker",
+      ["exec", target.cid, "psql", "-U", target.user, "-d", target.db, "-v", "ON_ERROR_STOP=1", "-c",
+        "DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE; CREATE SCHEMA public;"],
+      { encoding: "utf-8" },
+    );
+    if (wipe.status !== 0) throw new Error(`psql gagal: ${(wipe.stderr || "").trim().slice(-300)}`);
+    ok("Database dikosongkan.");
+    const env = { ...process.env, ...(target.url ? { DATABASE_URL: target.url } : {}) };
+    runCmd("node scripts/migrate-server.mjs", { env });
+    ok("Skema dibuat ulang.");
+    runCmd("node scripts/create-superadmin.mjs", { env });
+  } catch (err) {
+    fail(`Reset gagal: ${err.message}. Cadangan sebelum reset: ${backup}`);
+    throw err;
+  } finally {
+    try { runCmd(`systemctl start ${units}`); } catch {}
+  }
+}
+
+// Diagnosa koneksi REST ke router MikroTik dari server ini (tanpa kredensial): menjelaskan KENAPA gagal.
+// Tanpa argumen: semua router di database. Argumen: host[:port] atau http(s)://host[:port].
+async function cmdRouter(args) {
+  if (args[0] !== "check") throw new Error("Pakai: noc-system router check [host[:port]]");
+  let hosts = args.slice(1).filter((a) => !a.startsWith("--"));
+  if (!hosts.length) {
+    const t = dataDbTarget();
+    const out = execSync(`docker exec ${t.cid} psql -U ${t.user} -d ${t.db} -Atc "select name||'|'||host from routers"`, { encoding: "utf-8" });
+    hosts = out.split("\n").filter(Boolean).map((l) => l.split("|")[1]);
+    if (!hosts.length) throw new Error("Belum ada router di database. Beri argumen: noc-system router check <host[:port]>");
+  }
+  for (const raw of hosts) {
+    const h = raw.trim();
+    const url = new URL(/^https?:\/\//.test(h) ? h : `http://${h}`);
+    const tls = url.protocol === "https:" || url.port === "443" || url.port === "8443";
+    const port = Number(url.port || (tls ? 443 : 80));
+    console.log(`\n${ANSI.bold}${ANSI.cyan}>>> ${url.hostname}:${port} (${tls ? "HTTPS" : "HTTP"})${ANSI.reset}`);
+    if (!url.port) warn("Host tanpa port: backend memakai port 80 (HTTP) atau 443 (HTTPS). Jika layanan www dipindah port, isi host sebagai IP:port.");
+    const verdict = await new Promise((resolve) => {
+      const mod = tls ? https : http;
+      const req = mod.request(
+        { host: url.hostname, port, path: "/rest/system/resource", method: "GET", timeout: 5000, rejectUnauthorized: false },
+        (res) => {
+          res.resume();
+          const local = res.socket.localAddress;
+          if (res.statusCode === 401) resolve({ level: "ok", text: `REST hidup (HTTP 401): jaringan dan allow-list beres. Periksa username/password akun router. Sumber yang dilihat router: ${local}` });
+          else if (res.statusCode === 200) resolve({ level: "ok", text: "REST hidup dan menjawab tanpa kredensial (HTTP 200)." });
+          else if (res.statusCode === 404) resolve({ level: "fail", text: "HTTP 404: layanan web hidup tetapi /rest tidak ada. RouterOS harus v7.1+; atau port ini bukan layanan www." });
+          else resolve({ level: "fail", text: `HTTP ${res.statusCode}: bukan jawaban REST MikroTik yang diharapkan.` });
+        },
+      );
+      req.on("timeout", () => { req.destroy(); resolve({ level: "fail", text: "Timeout: paket dijatuhkan (firewall) atau tidak ada rute ke router. Cek `ip route get`, firewall router (chain input), dan ping." }); });
+      req.on("error", (e) => {
+        const local = req.socket?.localAddress;
+        const code = e.code || e.message;
+        if (code === "ECONNREFUSED") resolve({ level: "fail", text: "Ditolak (ECONNREFUSED): layanan www/www-ssl mati atau port salah. Di router: /ip service print where name~\"www|api\"." });
+        else if (code === "ECONNRESET" || /hang up|reset|EPIPE/i.test(String(code))) resolve({ level: "fail", text: `Koneksi diputus router setelah TCP tersambung: IP server${local ? ` (${local})` : ""} kemungkinan tidak ada di address= layanan www. Di router: /ip service set www address=<daftar-lama>,<IP-server>/32 (lihat sumber nyata: /ip firewall connection print where dst-address~"${url.hostname}:${port}").` });
+        else if (code === "EHOSTUNREACH" || code === "ENETUNREACH") resolve({ level: "fail", text: `Tidak ada rute ke router (${code}). Cek gateway dan routing server.` });
+        else resolve({ level: "fail", text: `Galat ${code}.` });
+      });
+      req.end();
+    });
+    (verdict.level === "ok" ? ok : fail)(verdict.text);
+  }
+}
+
 const command = args[0] || "help";
 switch (command) {
   case "upgrade":
@@ -1601,6 +1689,20 @@ switch (command) {
     }
     break;
 
+  case "reset":
+    cmdReset(args.slice(1)).catch((err) => {
+      fail(`Perintah reset gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
+  case "router":
+    cmdRouter(args.slice(1)).catch((err) => {
+      fail(`Perintah router gagal: ${err.message}`);
+      process.exit(1);
+    });
+    break;
+
   case "admin":
     cmdAdmin(args.slice(1)).catch((err) => {
       fail(`Perintah admin gagal: ${err.message}`);
@@ -1627,6 +1729,8 @@ Perintah Tersedia:
   ${ANSI.green}upgrade${ANSI.reset}          Naikkan versi minor aplikasi (1.0.x.y -> 1.1.0.0) di package.json
   ${ANSI.green}version${ANSI.reset}          Tampilkan versi lokal package.json dan rilis aktif server
   ${ANSI.green}install / setup${ANSI.reset}  Siapkan hierarki /srv/noc, docker postgres, dan systemd
+  ${ANSI.green}router check${ANSI.reset}   Diagnosa koneksi REST ke router dari server ini (jelaskan penyebab gagal)
+  ${ANSI.green}reset --yes${ANSI.reset}    Hapus SEMUA data aplikasi, buat skema + superadmin baru (cadangan otomatis)
   ${ANSI.green}admin create${ANSI.reset}   Buat akun superadmin (--email, --name, --reset-password; kata sandi via NOC_ADMIN_PASSWORD)
   ${ANSI.green}data export|import${ANSI.reset} Pindahkan data antar server (terpisah dari install; impor butuh --yes)
   ${ANSI.green}deploy [versi]${ANSI.reset}   Rilis versi baru (auto-bump build jika tanpa argumen versi)

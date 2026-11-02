@@ -445,12 +445,14 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
                 <li>
                   <strong>HTTP (www)</strong>, hilangkan centang TLS:
                   <br />
-                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service set www disabled=no port=80</code>
+                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service print where name~&quot;www&quot;</code>
+                  <br />
+                  Jika bertanda X: <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service enable www</code>. Jangan mengubah portnya; isi port yang tertera ke kolom Port.
                 </li>
                 <li>
                   <strong>HTTPS (www-ssl)</strong>, centang TLS. Sertifikat self-signed bawaan ditolak, jadi pasang sertifikat valid:
                   <br />
-                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service set www-ssl disabled=no port=443 certificate=&lt;nama-sertifikat&gt;</code>
+                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service set www-ssl disabled=no certificate=&lt;nama-sertifikat&gt;</code>
                 </li>
                 <li>
                   Firewall router harus mengizinkan alamat server aplikasi ke port itu (cek <code>/ip service print</code> kolom <code>address</code>).

@@ -71,9 +71,12 @@ interface RuntimeStatus {
   };
 }
 
-const SCRIPT_MIKROTIK = `# 1. Aktifkan service REST API di RouterOS v7
-/ip service set www disabled=no port=80
-/ip service set www-ssl disabled=no port=443
+const SCRIPT_MIKROTIK = `# 1. Cek layanan REST dan PORT yang berlaku. JANGAN mengubah port: router bisa memakai port lain (mis. 8081)
+# dan layanan lain bisa bergantung padanya. Isi port itu di form Router.
+/ip service print where name~"www"
+/ip service enable www
+# HTTPS (www-ssl) butuh sertifikat valid: /ip service set www-ssl disabled=no certificate=<nama-sertifikat>
+# Kolom address layanan harus memuat IP server NOC (TAMBAHKAN ke daftar yang ada, jangan mengganti).
 
 # 2. Buat grup dengan izin monitoring
 /user group add name=noc-agent policy=read,api,rest,test

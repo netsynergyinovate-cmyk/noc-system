@@ -613,6 +613,21 @@ async function cmdDeploy(args = [], options = {}) {
       if (m && m[2].trim() !== "") sharedEnv[m[1]] = m[2].trim().replace(/^(["'])(.*)\1$/, "$2");
     }
   } catch {}
+  // RAM sempit (mis. 3 GB) + OSRM (~1 GB) membuat build berjam-jam karena swap thrash. OSRM hanya dipakai untuk
+  // snap jalur kabel, jadi dihentikan selama build dan SELALU dinyalakan lagi (juga bila build gagal).
+  const pausedAddons = [];
+  try {
+    const availMb = Math.round(Number(fs.readFileSync("/proc/meminfo", "utf-8").match(/MemAvailable:\s+(\d+)\s+kB/)?.[1] ?? "0") / 1024);
+    if (availMb > 0 && availMb < 2500) {
+      const running = execSync('docker ps --filter "name=nocsystem-osrm" --format "{{.Names}}"', { encoding: "utf-8" }).split("\n").map((s) => s.trim()).filter(Boolean);
+      for (const name of running) {
+        warn(`RAM tersedia ${availMb} MB: ${name} dihentikan sementara selama build agar tidak swap thrash (dinyalakan lagi sesudahnya).`);
+        execSync(`docker stop ${name}`, { stdio: "ignore" });
+        pausedAddons.push(name);
+      }
+    }
+  } catch {}
+  try {
   await runCmdWithHeartbeat("npm run build", "Bundle Next.js Standalone (Turbopack)", {
     env: {
       DATABASE_URL: "postgresql://build:build@127.0.0.1:5432/build",
@@ -622,6 +637,11 @@ async function cmdDeploy(args = [], options = {}) {
       NEXT_TELEMETRY_DISABLED: "1",
     },
   });
+  } finally {
+    for (const name of pausedAddons) {
+      try { execSync(`docker start ${name}`, { stdio: "ignore" }); } catch { warn(`Gagal menyalakan ${name}; jalankan: docker start ${name}`); }
+    }
+  }
   ok("Bundle Next.js standalone berhasil dibuat.");
 
   // Langkah 4: Siapkan Direktori Rilis

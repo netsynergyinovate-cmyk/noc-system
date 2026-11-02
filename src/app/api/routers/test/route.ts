@@ -5,7 +5,7 @@ import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
-import { outboundSourceIp } from "@/services/outbound-source-ip";
+import { outboundSourceIp, tcpConnectedTimeoutMessage } from "@/services/outbound-source-ip";
 
 // Endpoint ini membuat SERVER menghubungi host yang disebut pemanggil, jadi
 // hanya peran dengan router:manage. Izin diperiksa lebih dulu: akun hanya-lihat
@@ -38,6 +38,8 @@ export const POST = (request: Request) =>
     const { host, port, tls, endpoint } = client.target;
     // Alamat sumber server ke router: hanya berguna saat gagal (allow-list router). Mode simulator tidak punya jaringan.
     const sourceIp = !result.ok && (parsed.data.mode ?? "real") === "real" ? await outboundSourceIp(host, port) : null;
+    // TCP tersambung tetapi tidak ada jawaban HTTP sampai timeout: hampir pasti bukan layanan REST (Winbox/API/lainnya).
+    const message = result.code === "TIMEOUT" && sourceIp ? tcpConnectedTimeoutMessage(host, port) : result.message;
 
     // Riwayat uji disimpan walau gagal; password sudah disaring (recordClientTestResult).
     await recordClientTestResult({
@@ -61,7 +63,7 @@ export const POST = (request: Request) =>
         status: result.status ?? (result.ok ? "connected" : "error"),
         code: result.code ?? (result.ok ? "OK" : "HTTP_ERROR"),
         statusCode: result.statusCode,
-        message: result.message,
+        message,
         latencyMs: result.latencyMs,
         endpointTested: result.endpointTested ?? endpoint,
         timestamp: result.timestamp ?? Math.floor(Date.now() / 1000),

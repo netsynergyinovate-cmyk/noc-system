@@ -61,3 +61,12 @@ test("TIMEOUT mikrotik: petunjuk menyebut port Winbox/layanan lain, tidak generi
   assert.match(r.hint, /Winbox|8291|2024/);
   assert.match(r.hint, /www/);
 });
+
+test("tcpConnectedTimeoutMessage menyebut port, host, kemungkinan Winbox/API, dan arahan ke port www", async () => {
+  const { tcpConnectedTimeoutMessage } = await import("../src/services/outbound-source-ip.ts");
+  const m = tcpConnectedTimeoutMessage("10.0.0.1", 2024);
+  assert.match(m, /2024/);
+  assert.match(m, /10\.0\.0\.1/);
+  assert.match(m, /Winbox/);
+  assert.match(m, /\/ip service print/);
+});

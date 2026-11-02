@@ -1059,7 +1059,7 @@ async function cmdDoctor() {
 // -----------------------------------------------------------------------------
 // 9. COMMAND: features
 // -----------------------------------------------------------------------------
-async function cmdFeatures() {
+async function cmdFeatures(args = []) {
   console.log(`\n${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}`);
   console.log(`${ANSI.bold}${ANSI.cyan}        NOC SYSTEM - FEATURE STACK & COMPOSER MATRIX      ${ANSI.reset}`);
   console.log(`${ANSI.bold}${ANSI.cyan}==========================================================${ANSI.reset}\n`);
@@ -1073,6 +1073,7 @@ async function cmdFeatures() {
       check: "systemctl is-active noc-web 2>/dev/null",
       compose: "systemd: sudo systemctl start/restart noc-web",
       logs: "journalctl -u noc-web -f -n 50",
+      url: "http://{host}:3000",
     },
     {
       id: "backend",
@@ -1100,6 +1101,7 @@ async function cmdFeatures() {
       check: 'docker ps --filter "name=genieacs" --format "{{.Status}}" 2>/dev/null',
       compose: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.genieacs.yaml up -d",
       logs: "docker compose -f compose.genieacs.yaml logs -f --tail 50",
+      url: "http://{host}:7558 (UI GenieACS)",
     },
     {
       id: "osrm",
@@ -1118,6 +1120,17 @@ async function cmdFeatures() {
       check: 'docker ps --filter "name=9router" --format "{{.Status}}" 2>/dev/null',
       compose: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.9router.yaml up -d",
       logs: "docker compose -f compose.9router.yaml logs -f --tail 50",
+      url: "http://{host}:20128 (9router UI & /v1 proxy)",
+    },
+    {
+      id: "logto",
+      name: "Logto SSO (login GitHub/Google)",
+      tech: "Docker (Logto Core + Postgres)",
+      port: "3301 (OIDC), 3002 (Admin Console) - bind 127.0.0.1",
+      check: 'docker ps --filter "name=nocsystem-logto" --format "{{.Status}}" 2>/dev/null',
+      compose: "docker network create nocsystem_default 2>/dev/null || true && docker compose -f compose.logto.yaml up -d",
+      logs: "docker compose -f compose.logto.yaml logs -f --tail 50",
+      url: "http://localhost:3002 (Admin Console, akses via SSH tunnel: ssh -L 3002:127.0.0.1:3002 user@{host})",
     },
     {
       id: "netflow",
@@ -1129,6 +1142,37 @@ async function cmdFeatures() {
       logs: "journalctl -u noc-backend | grep -i netflow",
     },
   ];
+
+  const host =
+    process.env.NOC_HOST ||
+    Object.values(os.networkInterfaces())
+      .flat()
+      .find((i) => i && i.family === "IPv4" && !i.internal)?.address ||
+    "localhost";
+
+  // Langkah pasang per fitur: `noc-system features up <id|all>` (hanya fitur Docker).
+  if (args[0] === "up") {
+    const addons = ["logto", "genieacs", "osrm", "9router"];
+    const targets = args[1] === "all" ? addons : [args[1]];
+    const failed = [];
+    for (const id of targets) {
+      const f = features.find((x) => x.id === id && !x.compose.startsWith("systemd"));
+      if (!f) {
+        fail(`Fitur '${id}' tidak bisa dipasang lewat 'up'. Pilihan: ${addons.join(", ")}, all`);
+        process.exit(1);
+      }
+      console.log(`\n${ANSI.bold}${ANSI.cyan}>>> Memasang ${f.name}${ANSI.reset}`);
+      try {
+        runCmd(f.compose);
+        ok(`${f.name} aktif. Tautan: ${f.url ? f.url.replace("{host}", host) : f.port}`);
+      } catch (err) {
+        fail(`${f.name} gagal: ${err.message}`);
+        failed.push(id);
+      }
+    }
+    if (failed.length) process.exit(1);
+    return;
+  }
 
   for (const f of features) {
     let isActive = false;
@@ -1143,9 +1187,11 @@ async function cmdFeatures() {
 
     console.log(`${ANSI.bold}• ${f.name}${ANSI.reset} - ${statusBadge}`);
     console.log(`  Teknologi      : ${f.tech} • Port: ${f.port}`);
+    if (f.url) console.log(`  Tautan         : ${ANSI.cyan}${f.url.replace("{host}", host)}${ANSI.reset}`);
     console.log(`  Perintah Up    : ${ANSI.cyan}${f.compose}${ANSI.reset}`);
     console.log(`  Perintah Logs  : ${ANSI.cyan}${f.logs}${ANSI.reset}\n`);
   }
+  console.log(`Pasang per fitur: ${ANSI.cyan}noc-system features up <logto|genieacs|osrm|9router|all>${ANSI.reset}\n`);
 }
 
 
@@ -1219,7 +1265,7 @@ switch (command) {
     break;
 
   case "features":
-    cmdFeatures().catch((err) => {
+    cmdFeatures(args.slice(1)).catch((err) => {
       fail(`Gagal membaca fitur: ${err.message}`);
       process.exit(1);
     });

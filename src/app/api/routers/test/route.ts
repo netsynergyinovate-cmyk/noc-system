@@ -5,6 +5,7 @@ import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
+import { outboundSourceIp } from "@/services/outbound-source-ip";
 
 // Endpoint ini membuat SERVER menghubungi host yang disebut pemanggil, jadi
 // hanya peran dengan router:manage. Izin diperiksa lebih dulu: akun hanya-lihat
@@ -35,6 +36,8 @@ export const POST = (request: Request) =>
     const result = { ...raw, message: redactSecrets(raw.message, secrets) };
     // Tujuan akhir yang benar-benar dihubungi (skema/port sudah disimpulkan klien).
     const { host, port, tls, endpoint } = client.target;
+    // Alamat sumber server ke router: hanya berguna saat gagal (allow-list router). Mode simulator tidak punya jaringan.
+    const sourceIp = !result.ok && (parsed.data.mode ?? "real") === "real" ? await outboundSourceIp(host, port) : null;
 
     // Riwayat uji disimpan walau gagal; password sudah disaring (recordClientTestResult).
     await recordClientTestResult({
@@ -66,6 +69,7 @@ export const POST = (request: Request) =>
         "cpu-load": result.resource?.cpuLoad,
         uptime: result.resource?.uptime,
         "board-name": result.resource?.boardName,
+        sourceIp,
       },
       result,
     });

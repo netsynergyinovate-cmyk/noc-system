@@ -81,8 +81,9 @@ export function RouterSetupGuide() {
           <Cmd>{"/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER-NOC>/32"}</Cmd>
           {serverHost ? (
             <>
-              Alamat server NOC yang Anda buka sekarang: <code>{serverHost}</code>. Itu belum tentu alamat yang
-              dilihat router (bisa berbeda bila ada NAT atau proxy). Cek yang sebenarnya saat uji gagal:
+              Alamat yang Anda pakai untuk membuka aplikasi ini: <code>{serverHost}</code>. Itu hanya perkiraan: alamat
+              yang dipakai server NOC untuk menyambung ke router bisa berbeda (domain, beberapa antarmuka, NAT). Nilai
+              pastinya ditampilkan di hasil &quot;Uji Koneksi&quot; saat gagal; cek juga di router:
             </>
           ) : (
             <>Jika ada NAT di jalur, alamat yang dilihat router bisa berbeda. Cek yang sebenarnya saat uji gagal:</>

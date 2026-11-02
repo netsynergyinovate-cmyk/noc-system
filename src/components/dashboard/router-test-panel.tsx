@@ -66,6 +66,7 @@ export function RouterTestPanel({
             boardName: testData?.["board-name"],
             cpuLoad: testData?.["cpu-load"],
             uptime: testData?.uptime,
+            sourceIp: testData?.sourceIp ?? undefined,
           },
         };
         setResult(testRes);
@@ -157,6 +158,7 @@ export function RouterTestPanel({
           message={result.message}
           deviceType="mikrotik"
           target={host}
+          sourceIp={typeof result.data?.sourceIp === "string" ? result.data.sourceIp : undefined}
           onRetry={runTest}
           isRetrying={testing}
           compact={compact}

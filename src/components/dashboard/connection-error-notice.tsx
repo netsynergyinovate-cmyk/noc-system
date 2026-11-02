@@ -10,6 +10,8 @@ type Props = {
   code?: string;
   message?: string;
   deviceType?: "mikrotik" | "olt" | "genieacs" | "billing";
+  // Alamat sumber server ke perangkat (dari uji koneksi gagal); ditampilkan agar bisa diizinkan di router.
+  sourceIp?: string;
   target?: string;
   onRetry?: () => void;
   isRetrying?: boolean;
@@ -56,6 +58,12 @@ export function describeConnectionTroubleshoot(
           : "Alamat layanan tidak ditemukan. Periksa host, port, dan path.",
         command: mikrotik ? RESTORE_REST : undefined,
       };
+    case "CONNECTION_CLOSED":
+      return {
+        title: "Router menutup koneksi",
+        hint: "Router menerima sambungan lalu langsung memutusnya: IP server ini biasanya belum ada di kolom address= layanan www. TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti):",
+        command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
+      };
     case "CONNECTION_REFUSED":
       return {
         title: "Koneksi ditolak",
@@ -93,7 +101,7 @@ export function describeConnectionTroubleshoot(
 
 function iconFor(code?: string) {
   if (code === "TIMEOUT") return AlertTriangle;
-  if (code === "AUTH_FAILED" || code === "CONNECTION_REFUSED") return XCircle;
+  if (code === "AUTH_FAILED" || code === "CONNECTION_REFUSED" || code === "CONNECTION_CLOSED") return XCircle;
   return AlertCircle;
 }
 
@@ -102,6 +110,7 @@ export function ConnectionErrorNotice({
   message,
   deviceType,
   target,
+  sourceIp,
   onRetry,
   isRetrying = false,
   compact = false,
@@ -133,6 +142,13 @@ export function ConnectionErrorNotice({
             <pre className="overflow-x-auto rounded-md border bg-background p-2 font-mono text-xs">
               {help.command}
             </pre>
+          )}
+          {sourceIp && (
+            <p className="text-muted-foreground">
+              IP server NOC yang dipakai ke router ini: <code className="font-mono">{sourceIp}</code>. Izinkan alamat itu di
+              router (jika ada NAT di jalur, router melihat alamat lain; cek dengan{" "}
+              <code className="font-mono">/ip firewall connection print</code>).
+            </p>
           )}
         </>
       )}

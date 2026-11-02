@@ -275,7 +275,8 @@ CURRENT_TOKEN=$(grep -E "^MONITOR_TOKEN=" "${SHARED_ENV}" 2>/dev/null | cut -d= 
 # Deteksi IP Server untuk kemudahan input di /app/deploy
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 PUBLIC_IP=$(curl -s -m 2 https://api.ipify.org 2>/dev/null || echo "")
-DISPLAY_IP="${PUBLIC_IP:-${SERVER_IP:-127.0.0.1}}"
+# Jaringan lokal lebih dulu: IP publik (NAT) tidak meneruskan port 3000 ke server.
+DISPLAY_IP="${SERVER_IP:-${PUBLIC_IP:-127.0.0.1}}"
 
 echo -e "\n${GREEN}${BOLD}==========================================================${NC}"
 echo -e "${GREEN}${BOLD}✓ INSTALASI BOOTSTRAP NOC SYSTEM BERHASIL!${NC}"
@@ -294,6 +295,7 @@ echo -e "  - ${BOLD}noc-system rollback${NC}  : Kembali ke rilis sebelumnya jika
 if [ -n "${CURRENT_TOKEN}" ]; then
   echo -e "\n${YELLOW}${BOLD}KREDENSIAL PEMANTAU REAL-TIME (DASHBOARD /app/deploy):${NC}"
   echo -e "  ${BOLD}1. Alamat Server :${NC} ${GREEN}http://${DISPLAY_IP}:3000${NC} (gunakan ini jika belum ada domain)"
+  [ -n "${PUBLIC_IP}" ] && [ "${PUBLIC_IP}" != "${DISPLAY_IP}" ] && echo -e "     IP publik ${PUBLIC_IP} hanya bisa dipakai jika port 3000 diteruskan (port forward) di router."
   echo -e "  ${BOLD}2. Token Monitor :${NC} ${CYAN}${CURRENT_TOKEN}${NC}"
   echo -e "\n${NC}Salin kedua nilai di atas ke tab 'CLI noc-system' pada halaman ${BOLD}/app/deploy${NC} setelah 'sudo noc-system deploy' selesai."
 fi

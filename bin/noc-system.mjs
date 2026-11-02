@@ -1048,6 +1048,14 @@ async function cmdDoctor() {
     report("Swap Memori", "WARN", "Tidak aktif! Disarankan mengaktifkan swapfile: sudo fallocate -l 2G /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile");
   }
 
+  // 3b. AVX: MongoDB >= 5.0 (GenieACS bawaan mongo:6.0) mati dengan SIGILL tanpa AVX
+  try {
+    if (process.platform === "linux") {
+      const hasAvx = /\bavx\b/.test(fs.readFileSync("/proc/cpuinfo", "utf-8"));
+      report("CPU AVX", hasAvx ? "PASS" : "WARN", hasAvx ? "Tersedia (MongoDB 6.0 untuk GenieACS aman)" : "Tidak ada: GenieACS otomatis memakai mongo:4.4 (features up genieacs)");
+    }
+  } catch {}
+
   // 4. Ruang Disk
   try {
     const targetDir = fs.existsSync("/srv/noc") ? "/srv/noc" : (process.platform === "win32" ? "C:\\" : "/");
@@ -1299,7 +1307,9 @@ async function cmdFeatures(args = []) {
         let up = false;
         for (let i = 0; i < 10 && !up; i++) {
           try {
-            up = execSync(f.check, { encoding: "utf-8" }).includes("Up");
+            // Semua kontainer fitur harus "Up": filter name=genieacs juga memuat mongo yang bisa crash-loop.
+            const states = execSync(f.check, { encoding: "utf-8" }).trim().split("\n").filter(Boolean);
+            up = states.length > 0 && states.every((l) => l.startsWith("Up"));
           } catch {}
           if (!up) execSync("sleep 3");
         }

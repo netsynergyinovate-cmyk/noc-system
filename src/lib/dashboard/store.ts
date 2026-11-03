@@ -63,6 +63,9 @@ interface DashboardState {
   clearMapFocus: () => void;
   setLiveMode: (isLive: boolean, liveRouters?: DashboardRouter[]) => void;
   setLiveRouters: (routers: DashboardRouter[]) => void;
+  // Router dihapus: snapshot live hanya datang saat WebSocket tersambung, jadi tanpa ini baris router (dan
+  // pelanggannya) tetap tampil sampai halaman dimuat ulang.
+  removeRouter: (routerId: string) => void;
   applyTelemetry: (telemetry: Telemetry) => void;
 }
 
@@ -251,5 +254,16 @@ export const useDashboardStore = create<DashboardState>()((set, get) => ({
     set({
       routers: liveRouters,
       activeRouterCount: liveRouters.filter((r) => r.active).length,
+    }),
+  removeRouter: (routerId) =>
+    set((state) => {
+      const routers = state.routers.filter((r) => r.id !== routerId);
+      const customers = state.customers.filter((c) => c.routerId !== routerId);
+      return {
+        routers,
+        customers,
+        ...countCustomers(customers),
+        activeRouterCount: countActiveRouters(routers),
+      };
     }),
 }));

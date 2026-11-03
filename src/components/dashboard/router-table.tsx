@@ -1178,6 +1178,7 @@ export function RouterTable() {
           router={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onDeleted={() => {
+            useDashboardStore.getState().removeRouter(deleteTarget.id);
             setDeleteTarget(null);
             setSelectedRouterId(null);
             void handleRefresh();

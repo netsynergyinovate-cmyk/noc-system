@@ -21,7 +21,7 @@ type Querier interface {
 const routersSQL = `SELECT id::text, name, host, status FROM routers WHERE status = 'aktif'`
 
 const customersSQL = `SELECT id::text, name, pppoe_username, router_id::text, address, odp_name,
-	billing_status, optical_power::float8, is_online, latitude::float8, longitude::float8, isolir_router
+	billing_status, optical_power::float8, is_online, latitude::float8, longitude::float8
 	FROM customers ORDER BY name`
 
 // LoadRouters membaca router aktif dari database.
@@ -64,13 +64,11 @@ func LoadCustomers(ctx context.Context, q Querier) ([]state.Customer, error) {
 			c                      state.Customer
 			routerID, address, odp *string
 			optical, lat, lon      *float64
-			isolirRouter           *bool
 		)
 		if err := rows.Scan(&c.ID, &c.Name, &c.PPPoEUsername, &routerID, &address, &odp,
-			&c.BillingStatus, &optical, &c.IsOnline, &lat, &lon, &isolirRouter); err != nil {
+			&c.BillingStatus, &optical, &c.IsOnline, &lat, &lon); err != nil {
 			return nil, fmt.Errorf("baca baris pelanggan: %w", err)
 		}
-		c.IsolirRouter = isolirRouter
 		if routerID == nil {
 			continue
 		}
@@ -137,9 +135,6 @@ func SyncDatabaseState(ctx context.Context, q Querier, mgr *state.Manager, logge
 			// syslog, lebih baru daripada kolom is_online di database. Tanpa ini
 			// sinkron tiap 15 detik mengembalikan status ke nilai database.
 			c.IsOnline = old.IsOnline
-			if c.IsolirRouter == nil && old.IsolirRouter != nil {
-				c.IsolirRouter = old.IsolirRouter
-			}
 		}
 		if err := mgr.UpsertCustomer(c); err != nil {
 			logger.Warn("pelanggan dilewati", "customer", c.ID, "error", err)

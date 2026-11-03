@@ -65,13 +65,6 @@ func (r *fakeRows) Scan(dest ...any) error {
 				f := v.(float64)
 				*p = &f
 			}
-		case **bool:
-			if v == nil {
-				*p = nil
-			} else {
-				b := v.(bool)
-				*p = &b
-			}
 		default:
 			return errors.New("tipe tujuan tidak didukung")
 		}
@@ -103,11 +96,11 @@ func sampleQuerier() *fakeQuerier {
 		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}},
 		customers: [][]any{
 			// lengkap
-			{"c1", "Budi", "budi", "r1", "Jl. A", "ODP-1", "lunas", -20.5, true, -6.2, 106.8, true},
+			{"c1", "Budi", "budi", "r1", "Jl. A", "ODP-1", "lunas", -20.5, true, -6.2, 106.8},
 			// semua kolom nullable kosong
-			{"c2", "Dewi", "dewi", "r1", nil, nil, "isolir", nil, false, nil, nil, nil},
+			{"c2", "Dewi", "dewi", "r1", nil, nil, "isolir", nil, false, nil, nil},
 			// tanpa router: dilewati
-			{"c3", "Eko", "eko", nil, nil, nil, "lunas", nil, false, nil, nil, nil},
+			{"c3", "Eko", "eko", nil, nil, nil, "lunas", nil, false, nil, nil},
 		},
 	}
 }
@@ -138,12 +131,6 @@ func TestLoadCustomersNullable(t *testing.T) {
 	if empty.Address != "" || empty.ODPName != "" || empty.HasOptical || empty.HasLocation ||
 		empty.IsOnline || empty.BillingStatus != "isolir" {
 		t.Fatalf("NULL harus jadi nilai nol: %+v", empty)
-	}
-	if full.IsolirRouter == nil || !*full.IsolirRouter {
-		t.Fatalf("isolir_router lengkap salah: %+v", full.IsolirRouter)
-	}
-	if empty.IsolirRouter != nil {
-		t.Fatalf("NULL isolir_router harus nil: %+v", empty.IsolirRouter)
 	}
 }
 
@@ -188,8 +175,8 @@ func TestSyncDatabaseStateRemovesRoutersGoneFromDatabase(t *testing.T) {
 	two := &fakeQuerier{
 		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}, {"r2", "RTR-2", "10.0.0.2", "aktif"}},
 		customers: [][]any{
-			{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil, nil},
-			{"c2", "Dewi", "dewi", "r2", nil, nil, "lunas", nil, true, nil, nil, nil},
+			{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil},
+			{"c2", "Dewi", "dewi", "r2", nil, nil, "lunas", nil, true, nil, nil},
 		},
 	}
 	if _, _, err := SyncDatabaseState(context.Background(), two, mgr, quiet()); err != nil {
@@ -197,7 +184,7 @@ func TestSyncDatabaseStateRemovesRoutersGoneFromDatabase(t *testing.T) {
 	}
 	one := &fakeQuerier{
 		routers:   [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}},
-		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil, nil}},
+		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil}},
 	}
 	if _, _, err := SyncDatabaseState(context.Background(), one, mgr, quiet()); err != nil {
 		t.Fatal(err)

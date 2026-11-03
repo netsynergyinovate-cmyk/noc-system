@@ -16,10 +16,12 @@ import { RouterQueueTable } from "./router-queue-table";
 import { RouterTrafficCard } from "./router-traffic-card";
 import { RouterStatusBadge } from "./router-status-badge";
 import { RouterConfigDialog } from "./router-config-dialog";
+import { RouterDeleteDialog } from "./router-delete-dialog";
 import { RouterPppoeTable } from "./router-pppoe-table";
 import { RouterPingTool } from "./router-ping-tool";
 import { Badge } from "@/components/ui/badge";
 import {
+  Trash2,
   Server,
   Cpu,
   Radio,
@@ -254,6 +256,7 @@ export function RouterTable() {
 
   const [selectedRouterId, setSelectedRouterId] = useState<string | null>(null);
   const [configRouter, setConfigRouter] = useState<MockRouterDetail | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<RouterStatusFilter>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -930,6 +933,16 @@ export function RouterTable() {
                           >
                             <Terminal className="size-3 text-emerald-400" />
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteTarget({ id: router.id, name: router.name })}
+                            className="h-7 px-2 rounded-lg bg-muted hover:bg-muted border-border text-foreground/90 font-mono text-[11px]"
+                            title="Hapus Router"
+                            aria-label={`Hapus router ${router.name}`}
+                          >
+                            <Trash2 className="size-3 text-rose-400" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -1153,8 +1166,19 @@ export function RouterTable() {
           onSaved={() => {
             void handleRefresh();
           }}
-          onDeleted={() => {
+          onRequestDelete={() => {
+            setDeleteTarget({ id: configRouter.id, name: configRouter.name });
             setConfigRouter(null);
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <RouterDeleteDialog
+          router={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setDeleteTarget(null);
             setSelectedRouterId(null);
             void handleRefresh();
           }}

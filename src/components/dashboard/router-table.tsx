@@ -1153,6 +1153,11 @@ export function RouterTable() {
           onSaved={() => {
             void handleRefresh();
           }}
+          onDeleted={() => {
+            setConfigRouter(null);
+            setSelectedRouterId(null);
+            void handleRefresh();
+          }}
         />
       )}
 

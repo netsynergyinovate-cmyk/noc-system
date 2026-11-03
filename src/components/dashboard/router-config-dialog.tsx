@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Activity, Check, RefreshCw, Save, Server, ShieldCheck, X } from "lucide-react";
+import { Activity, Check, RefreshCw, Save, Server, ShieldCheck, Trash2, X } from "lucide-react";
 import type { MockRouterDetail } from "@/lib/dashboard/routers";
 
 interface RouterConfigDialogProps {
@@ -13,6 +13,7 @@ interface RouterConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
+  onDeleted?: () => void;
 }
 
 export function RouterConfigDialog({
@@ -20,6 +21,7 @@ export function RouterConfigDialog({
   open,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: RouterConfigDialogProps) {
   const [name, setName] = useState(router?.name ?? "");
   const [host, setHost] = useState(router?.host ?? "");
@@ -33,6 +35,12 @@ export function RouterConfigDialog({
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Hapus: percobaan pertama tanpa force; bila router masih dipakai server menjawab 409 berisi jumlah datanya,
+  // lalu operator harus mengetik nama router sebelum penghapusan paksa.
+  const [deleting, setDeleting] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState<string | null>(null);
+  const [confirmName, setConfirmName] = useState("");
 
   // Sinkronkan state saat dialog dibuka untuk router baru
   const handleOpenChange = (nextOpen: boolean) => {
@@ -115,6 +123,27 @@ export function RouterConfigDialog({
       setErrorMessage(e instanceof Error ? e.message : "Terjadi kesalahan saat menyimpan konfigurasi.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete(force: boolean) {
+    if (!router) return;
+    setDeleting(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`/api/routers/${router.id}${force ? "?force=true" : ""}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (res.status === 409 && json?.error?.code === "ROUTER_IN_USE") {
+        setDeleteBlocked(json.error.message);
+        return;
+      }
+      if (!res.ok) throw new Error(json?.error?.message ?? `Gagal menghapus router (HTTP ${res.status}).`);
+      onDeleted?.();
+      onOpenChange(false);
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus router.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -257,6 +286,55 @@ export function RouterConfigDialog({
                 {testResult.latencyMs !== undefined && (
                   <span className="font-semibold text-emerald-400">{testResult.latencyMs} ms</span>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Hapus router */}
+          <div className="p-3 rounded-xl border border-rose-800/50 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-rose-300 font-medium">Hapus router ini dari aplikasi</span>
+              {!deleteBlocked && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={deleting}
+                  onClick={() => void handleDelete(false)}
+                  className="h-7 text-[11px] gap-1 border-rose-800/60 text-rose-300 hover:bg-rose-950/40"
+                >
+                  <Trash2 className="size-3" />
+                  {deleting ? "Menghapus..." : "Hapus Router"}
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Hanya menghapus data di aplikasi ini. Pengaturan di MikroTik tidak diubah.
+            </p>
+            {errorMessage && <p className="text-[11px] text-rose-300">{errorMessage}</p>}
+            {deleteBlocked && (
+              <div className="space-y-2 text-[11px]">
+                <p className="text-rose-300">{deleteBlocked}</p>
+                <p className="text-muted-foreground">
+                  Menghapus paksa akan <b>menghapus permanen</b> semua pelanggan, alert, dan log jaringan milik router ini.
+                  Ketik nama router (<code>{router.name}</code>) untuk melanjutkan.
+                </p>
+                <input
+                  value={confirmName}
+                  onChange={(e) => setConfirmName(e.target.value)}
+                  placeholder={router.name}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={deleting || confirmName !== router.name}
+                  onClick={() => void handleDelete(true)}
+                  className="h-7 text-[11px] gap-1 bg-rose-700 text-white hover:bg-rose-600"
+                >
+                  <Trash2 className="size-3" />
+                  {deleting ? "Menghapus..." : "Hapus Paksa Beserta Datanya"}
+                </Button>
               </div>
             )}
           </div>

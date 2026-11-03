@@ -1,11 +1,11 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
 import { impliesTls, sanitizeHost, storedRouterHost } from "@/lib/device-connection";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
-import { routers } from "@/db/schema";
+import { alerts, customers, networkLogs, routers } from "@/db/schema";
 import { CreateRouterInput, UpdateRouterInput } from "@/validators/routers";
 import { encryptAES256GCM, decryptAES256GCM } from "@/lib/encryption";
 
@@ -164,13 +164,33 @@ export async function updateRouter(id: string, input: UpdateRouterInput) {
   return updated;
 }
 
-export async function deleteRouter(id: string) {
-  const [deleted] = await db
-    .delete(routers)
-    .where(eq(routers.id, id))
-    .returning({ id: routers.id });
-  if (!deleted) {
-    throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
-  }
-  return { ok: true, id: deleted.id };
+// Pelanggan, alert, dan log jaringan memakai FK `restrict`: router yang masih dipakai TIDAK terhapus diam-diam.
+// Tanpa `force` jawabannya 409 berisi jumlah datanya; dengan `force` semuanya dihapus dalam satu transaksi
+// (gagal di tengah = tidak ada yang terhapus). Data deret waktu, syslog, dan exporter ikut terhapus lewat cascade.
+export async function deleteRouter(id: string, { force = false }: { force?: boolean } = {}) {
+  return db.transaction(async (tx) => {
+    const used = async (table: typeof customers | typeof alerts | typeof networkLogs) => {
+      const [row] = await tx.select({ n: count() }).from(table).where(eq(table.routerId, id));
+      return row.n;
+    };
+    const usage = { pelanggan: await used(customers), alert: await used(alerts), logJaringan: await used(networkLogs) };
+    const inUse = Object.values(usage).some((n) => n > 0);
+    if (inUse && !force) {
+      throw new ApiError(
+        409,
+        "ROUTER_IN_USE",
+        `Router masih dipakai: ${usage.pelanggan} pelanggan, ${usage.alert} alert, ${usage.logJaringan} log jaringan.`,
+      );
+    }
+    if (inUse) {
+      await tx.delete(networkLogs).where(eq(networkLogs.routerId, id));
+      await tx.delete(alerts).where(eq(alerts.routerId, id));
+      await tx.delete(customers).where(eq(customers.routerId, id));
+    }
+    const [deleted] = await tx.delete(routers).where(eq(routers.id, id)).returning({ id: routers.id });
+    if (!deleted) {
+      throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
+    }
+    return { ok: true, id: deleted.id, removed: usage };
+  });
 }

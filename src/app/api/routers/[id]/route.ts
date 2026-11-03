@@ -64,7 +64,8 @@ export async function DELETE(
       if (!uuidSchema.safeParse(id).success) {
         throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
       }
-      const result = await deleteRouter(id);
+      const force = new URL(request.url).searchParams.get("force") === "true";
+      const result = await deleteRouter(id, { force });
       return NextResponse.json({ ok: true, data: result });
     }),
   );

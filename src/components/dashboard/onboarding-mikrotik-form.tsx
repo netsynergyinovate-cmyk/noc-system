@@ -218,6 +218,7 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
         port={form.port > 0 ? String(form.port) : ""}
         onUseRouter={(address, restPort) => {
           handleFieldChange("host", address);
+          handleFieldChange("useTls", false); // kandidat pindaian selalu HTTP (www)
           if (restPort) handleFieldChange("port", restPort);
         }}
       />

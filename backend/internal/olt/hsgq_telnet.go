@@ -11,8 +11,8 @@ import (
 )
 
 // Driver "hsgq-telnet": OLT HSGQ seri XE (EPON) yang hanya punya CLI telnet
-// (mis. HSGQ-XE08ID). Semua perintah berupa "show": tidak ada yang mengubah
-// konfigurasi OLT. Satu sesi dipakai untuk satu putaran polling lalu ditutup,
+// (mis. HSGQ-XE08ID). Polling hanya memakai perintah "show": tidak ada yang mengubah
+// konfigurasi OLT. Operasi tulis (ikat TR-069, reboot ONU) ada di file terpisah dan hanya dipanggil operator. Satu sesi dipakai untuk satu putaran polling lalu ditutup,
 // karena jumlah sesi VTY OLT terbatas.
 
 const (

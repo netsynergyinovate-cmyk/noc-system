@@ -326,7 +326,7 @@ function Body({ deviceId }: { deviceId: string }) {
             setRefreshNote(
               json.refreshed
                 ? "Data segar berhasil dibaca langsung dari modem via TR-069."
-                : "Modem belum merespons connection request; menampilkan data terkini tersimpan.",
+                : `Modem tidak merespons connection request (perintah masuk antrean GenieACS). Menampilkan data tersimpan; terakhir melapor ${timeText(json.data.lastInform)}, ACS di modem: ${json.data.acs.url || "—"}.`,
             );
           }
         } else {
@@ -434,6 +434,7 @@ function Body({ deviceId }: { deviceId: string }) {
           : "text-destructive";
 
   const connectedHosts = d.hosts.filter((h) => h.active);
+  const wifiHostCount = connectedHosts.filter((h) => /802\.11|wifi|wlan/i.test(h.interfaceType)).length;
 
   return (
     <div className="space-y-3">
@@ -614,7 +615,19 @@ function Body({ deviceId }: { deviceId: string }) {
         )}
       </Section>
 
-      <Section title={`Perangkat terhubung (${connectedHosts.length} aktif saat ini)`}>
+      <Section title={`Perangkat terhubung (${connectedHosts.length} aktif · Wi-Fi ${wifiHostCount} · Ethernet ${connectedHosts.length - wifiHostCount})`}>
+        {d.ethernet.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5 text-[11px]" data-testid="ethernet-ports">
+            {d.ethernet.map((p) => (
+              <span
+                key={p.index}
+                className={`rounded-full border px-2 py-0.5 ${p.linkUp ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "text-muted-foreground"}`}
+              >
+                {p.name}: {p.linkUp ? `link${p.speedMbps ? ` ${p.speedMbps} Mbps` : ""}` : p.enabled ? "tidak ada kabel" : "nonaktif"}
+              </span>
+            ))}
+          </div>
+        )}
         {connectedHosts.length === 0 ? (
           <p className="text-xs text-muted-foreground">Tidak ada perangkat yang sedang terhubung ke modem saat ini.</p>
         ) : (

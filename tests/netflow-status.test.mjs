@@ -3,17 +3,18 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { buildNetflowStatus, NETFLOW_ACTIVE_WINDOW_MS } = await import(
+const { buildNetflowStatus, NETFLOW_FRESH_MS } = await import(
   "../src/lib/dashboard/netflow-status.ts"
 );
 
 const now = Date.UTC(2026, 0, 1, 12, 0, 0);
 const base = { isDemo: false, totalSamples: 10, activeRoutersCount: 2, nowMs: now };
 
-test("aktif bila sampel terakhir tepat 5 menit; tidak aktif lewat itu", () => {
-  const edge = new Date(now - NETFLOW_ACTIVE_WINDOW_MS);
+test("aktif bila sampel terakhir tepat 15 menit; tidak aktif lewat itu", () => {
+  assert.equal(NETFLOW_FRESH_MS, 15 * 60 * 1000);
+  const edge = new Date(now - NETFLOW_FRESH_MS);
   assert.equal(buildNetflowStatus({ ...base, lastCapturedAt: edge }).isActive, true);
-  const old = new Date(now - NETFLOW_ACTIVE_WINDOW_MS - 1);
+  const old = new Date(now - NETFLOW_FRESH_MS - 1);
   assert.equal(buildNetflowStatus({ ...base, lastCapturedAt: old }).isActive, false);
 });
 

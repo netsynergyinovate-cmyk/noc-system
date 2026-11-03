@@ -61,6 +61,7 @@ export interface AlertItem {
   endTimeUncertaintySeconds: number | null;
   handledBy: string | null;
   handledAt: number | null;
+  opticalPowerDbm: number | null;
   location: {
     name: string;
     address: string | null;
@@ -106,6 +107,11 @@ function toItem(r: AlertRow): AlertItem {
     endTimeUncertaintySeconds: r.endTimeUncertaintySeconds,
     handledBy: r.handledBy,
     handledAt: sec(r.handledAt),
+    // Rx pada saat alert optik dibuat rule engine (detail.opticalPowerDbm).
+    opticalPowerDbm:
+      typeof r.detail?.opticalPowerDbm === "number"
+        ? r.detail.opticalPowerDbm
+        : null,
     location: {
       name:
         r.locationName ??
@@ -134,6 +140,7 @@ function mockItems(nowSec: number): AlertItem[] {
     title: null,
     message: null,
     handledAt: null,
+    opticalPowerDbm: null,
     ticket: {
       status: "open",
       priority: "medium",

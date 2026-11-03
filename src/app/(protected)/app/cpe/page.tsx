@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/session";
 import { CpeBoard } from "@/components/dashboard/cpe-board";
-import { PonPortsTable } from "@/components/dashboard/pon-ports-table";
 import { UnreachableDeviceBanner } from "@/components/dashboard/unreachable-device-banner";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 
@@ -21,12 +20,11 @@ export default async function CpePage() {
           <MockDataNotice source="OLT & CPE" real />
         </div>
         <p className="text-sm text-muted-foreground">
-          Pemantauan modem ONT pelanggan, redaman optik fiber (RX dBm), status port PON, dan kendali jarak jauh CPE.
+          Pemantauan OLT, port PON, status ONU, dan pemetaan pelanggan.
         </p>
       </div>
       <UnreachableDeviceBanner scope="olt" />
       <CpeBoard />
-      <PonPortsTable />
     </div>
   );
 }

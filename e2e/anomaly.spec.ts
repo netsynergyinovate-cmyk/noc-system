@@ -394,6 +394,8 @@ test("menu membuka halaman anomali, yang menampilkan ringkasan, daftar, dan atur
   await expect(menu.locator("[aria-current=page]")).toHaveText(
     "Deteksi Anomali",
   );
+  // Halaman terbuka di "Hari ini"; daftar 7 hari dipilih lewat tab periodenya.
+  await page.getByTestId("anomaly-range-7d").click();
 
   const rows = page.getByTestId("anomaly-row");
   await expect(rows.first()).toBeVisible();
@@ -403,7 +405,12 @@ test("menu membuka halaman anomali, yang menampilkan ringkasan, daftar, dan atur
   // Angka di kartu sama dengan isi daftar.
   const summary = page.getByRole("region", { name: "Ringkasan anomali" });
   await expect(summary).toContainText("Anomali aktif");
-  await expect(summary.getByText(String(count), { exact: true })).toBeVisible();
+  // Kartu "Tercatat" (bukan sembarang angka sama di kartu lain, mis. Selesai).
+  await expect(
+    summary
+      .locator("p", { hasText: /^Tercatat/ })
+      .locator("xpath=following-sibling::p[1]"),
+  ).toHaveText(String(count));
   await expect(
     page.getByText(`${count} anomali dalam 7 hari terakhir`),
   ).toBeVisible();

@@ -29,6 +29,7 @@ export interface LiveAlertItem {
   endTimeSource: string | null;
   endTimeUncertaintySeconds: number | null;
   handledBy: string | null;
+  opticalPowerDbm?: number | null;
   location: AlertLocation;
 }
 
@@ -79,7 +80,7 @@ function toRaw(item: LiveAlertItem): RawAnomaly | null {
     routerId: item.routerId ?? "",
     customerId: item.customerId,
     interfaceName: null,
-    measured: null,
+    measured: item.type === "optical" ? (item.opticalPowerDbm ?? null) : null,
   };
 }
 

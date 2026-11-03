@@ -225,11 +225,14 @@ Pengaman: hanya IPv4 di `ONT_WEB_ALLOWED_CIDRS`, port 80, redirect tidak diikuti
 
 - Next.js memanggil NBI (`src/lib/genieacs`) untuk daftar CPE, detail, ganti Wi-Fi, baca secret, antrean task.
 - Backend Go **tidak** memanggil GenieACS; hanya menulis URL ACS ke OLT/modem.
+- Redaman pelanggan **tidak** bergantung pada GenieACS: poller Go membaca ONU lewat telnet OLT (`hsgq-telnet`) ke `olt_onus`, lalu disalin ke `customers.optical_power` bila ONU terpetakan. Pemetaan dijalankan otomatis tiap 5 menit untuk semua OLT aktif (`startOnuAutoMatch`, `src/services/devices.service.ts`), memakai pencocok yang sama dengan tombol "Cocokkan otomatis"; ambigu dibiarkan, dan ONU yang pernah dilepas petugas (`audit_log` `onu-unmapped`) tidak dipetakan ulang otomatis. Nilai "RX/TX Modem" di GenieACS hanya pelengkap sisi modem.
+  - Urutan bukti pemetaan: serial/MAC, nama (kode di depan nama ONU diabaikan, kecuali bertentangan dengan ekor nomor PPPoE), lalu untuk ONU yang belum cocok: MAC ONU vs `caller-id` sesi `/ppp/active` (`src/lib/dashboard/onu-caller-id.ts`, cermin `PPPActiveByMAC`; hanya model CDTC dan HWTC H113, HSGQ tidak). Pencocokan lewat sesi dilewati bila satu router aktif gagal dibaca atau label ONU bertentangan dengan pelanggan hasil sesi. Satu pelanggan diklaim beberapa ONU: dipakai hanya bila tepat satu yang online. Setiap pemetaan otomatis dicatat di `audit_log` (`onu-auto-matched`, `detail.pairs` = ONU, pelanggan, dasar `by`).
 
 ### 4.5 NetFlow
 
-- Kolektor Go **NetFlow v5** saja, UDP 2055. **Data belum disimpan** (sink hanya menghitung).
-- Halaman `/app/netflow` masih MOCK walau `/api/netflow*` dan tabel `netflow_samples` sudah ada.
+- Kolektor Go **NetFlow v5** saja (IPv4), UDP 2055. `Aggregator` menyimpan agregat ke `netflow_samples`: per pelanggan per bucket 5 menit per arah, 10 lawan teratas + satu baris "lainnya", `captured_at` = awal bucket; hanya bucket selesai yang ditulis (data terbaru ±5–11 menit), retensi 7 hari (`NETFLOW_RETENTION_DAYS`). Pelanggan dipetakan dari `/ppp/active` (30 dtk), hanya PPPoE. Tanpa `DATABASE_URL` agregator hanya menghitung.
+- Aggregator Go adalah **satu-satunya penulis** `netflow_samples`; endpoint `POST /api/netflow*` di Next.js sudah dihapus. Dibaca diagnosa pelanggan (Fase 6) dengan kesegaran 15 menit per router.
+- Halaman `/app/netflow` masih MOCK walau `GET /api/netflow*` dan tabel `netflow_samples` sudah ada.
 
 ### 4.6 Billing
 
@@ -270,7 +273,7 @@ Aturan pencocokan PPPoE ada dua kali (TS `matchBilling`, Go `MatchInvoices`) den
 | `billing` | Scraper + scheduler per jam | `billing_*`, `customers.billing_status` |
 | `hub` | WebSocket (maks 100 klien, umur koneksi 30 mnt) | – |
 | `httpapi` | REST `/api/v1`, `/healthz`, `/hooks/ppp` | via paket lain |
-| `netflow` | Kolektor NetFlow v5 | – (belum menyimpan) |
+| `netflow` | Kolektor NetFlow v5 + `Aggregator` (penulis tunggal `netflow_samples`) | `netflow_samples` |
 | `wire` | Bentuk JSON bersama | – |
 
 ### 5.3 Rule engine
@@ -460,7 +463,7 @@ Lencana "Online" di sidebar **statis** (selalu hijau). Menu API Key tampil untuk
 | `/app/alert/whatsapp` | Riwayat notifikasi WA | MOCK | API `/api/whatsapp/logs` tidak dipakai |
 | `/app/alert/whatsapp/penerima` | Kelola penerima WA | MOCK | API key gateway di localStorage; kirim uji palsu |
 | `/app/anomali` | Anomali (link penuh, CPU, port, optik, offline) | NYATA (live) | `/api/anomalies*` tidak dipakai; status "ditinjau" lokal |
-| `/app/netflow` | Analisis flow | MOCK | Backend belum menyimpan flow |
+| `/app/netflow` | Analisis flow | MOCK | Backend sudah menyimpan agregat ke `netflow_samples`, tetapi halaman belum membacanya |
 | `/app/traffic` | Tren bandwidth | NYATA | – |
 | `/app/router` | MikroTik: resource, trafik, PPPoE, queue, ping | SEBAGIAN | Grafik diberi jitter acak; fallback angka palsu di live; klaim "Winbox" palsu |
 | `/app/router/new` | Tambah router | NYATA | – |
@@ -593,8 +596,8 @@ Centang `[x]` = sudah nyata di kode. `[ ]` = belum / masih tiruan. Gunakan bagia
 ### 9.10 Trafik & NetFlow
 - [x] Arsip trafik router (`traffic_samples`, retensi 30 hari)
 - [x] Trafik per VLAN/PON (`vlan_traffic_samples`)
-- [ ] NetFlow disimpan ke `netflow_samples` dan agregasi top talker
-- [ ] Halaman NetFlow memakai data nyata
+- [x] NetFlow v5 disimpan ke `netflow_samples` (agregat per pelanggan per 5 menit, top 10 lawan + "lainnya", retensi 7 hari; Aggregator Go satu-satunya penulis)
+- [ ] Halaman NetFlow memakai data nyata (`/app/netflow` masih mock)
 - [ ] NetFlow v9 / IPFIX (MikroTik Traffic-Flow v9)
 - [ ] Laporan bandwidth per pelanggan / per paket
 
@@ -684,7 +687,7 @@ Centang `[x]` = sudah nyata di kode. `[ ]` = belum / masih tiruan. Gunakan bagia
 | Uji koneksi router | `/setup`, `/app/router/new`, `/app/router/test`, `/app/pengaturan/perangkat` |
 | Billing | Go `billing_*` vs Next.js `runsnet_*`; `billing-board.tsx` + subtree `billing-*` yatim |
 | API tanpa pemakai | ±20 route `/api/map/*`, `/api/infrastructure*`, `/api/devices/{status,hierarchy/tree}`, `/api/dashboard/metrics`, `/api/config/status`, `/api/setup/status`, `/api/onboarding/{gate,tips,mikrotik/test}`, `/api/olts/test`, `/api/notes`, `/api/snap` |
-| API ada, UI masih mock | `/api/netflow*`, `/api/migrations*`, `/api/export`, `/api/alignment*`, `/api/transfer*`, `/api/seed*`, `/api/whatsapp/*`, `/api/anomalies*`, `/api/alerts/[id]/{ticket,notify}` |
+| API ada, UI masih mock | `GET /api/netflow*` (halaman `/app/netflow` masih mock; endpoint tulis `POST` sudah dihapus), `/api/migrations*`, `/api/export`, `/api/alignment*`, `/api/transfer*`, `/api/seed*`, `/api/whatsapp/*`, `/api/anomalies*`, `/api/alerts/[id]/{ticket,notify}` |
 | Service yatim | lihat [6.3](#63-service-penting) |
 | Dependensi tak dipakai | `leafer-ui` (tidak diimpor di `src/`) |
 | Konfigurasi Go mati | `DASHBOARD_DATA`, `MIKROTIK_REST_*`, `OLT_HSGQ_*` diparse tapi tidak dipakai |

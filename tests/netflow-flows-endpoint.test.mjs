@@ -18,11 +18,11 @@ const routeNetflow = await import("../src/app/api/netflow/route.ts");
 const { getTopFlows } = await import("../src/services/netflow.service.ts");
 const { parseNetflowQuery } = await import("../src/validators/netflow.ts");
 
-test("route exports GET dan POST handler", () => {
+test("route hanya mengekspor GET (jalur tulis TS dihapus)", () => {
   assert.equal(typeof routeFlows.GET, "function");
-  assert.equal(typeof routeFlows.POST, "function");
+  assert.equal(routeFlows.POST, undefined);
   assert.equal(typeof routeNetflow.GET, "function");
-  assert.equal(typeof routeNetflow.POST, "function");
+  assert.equal(routeNetflow.POST, undefined);
 });
 
 test("getTopFlows: mengembalikan daftar flow dan agregat total", async () => {

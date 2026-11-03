@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/db";
+import { effectiveBillingStatus } from "@/lib/effective-billing";
 import {
   runsnetCustomers,
   runsnetInvoices,
@@ -13,6 +14,8 @@ const RUNSNET_URL = process.env.RUNSNET_URL || "https://app.runsnet.id";
 const RUNSNET_USERNAME = process.env.RUNSNET_USERNAME || "netsynergyinovate@yahoo.com";
 const RUNSNET_PASSWORD = process.env.RUNSNET_PASSWORD || "netsynergyinovate@yahoo.com";
 const RUNSNET_TARGET = process.env.RUNSNET_TARGET || "ID00000000024";
+// Batas waktu pengambilan IP/MAC saat sinkron; sisanya dilewati supaya total sinkron tetap di bawah batas proxy.
+const SESSION_ENRICH_BUDGET_MS = 25_000;
 
 function stripHtml(raw: unknown): string {
   if (raw === null || raw === undefined) return "";
@@ -53,11 +56,44 @@ function buildDtParams(start = 0, length = 100, search = "") {
   return p;
 }
 
+// Jaringan ke RunsNet kadang putus sesaat (mis. UND_ERR_CONNECT_TIMEOUT): beri batas waktu dan ulangi, jangan
+// gagalkan seluruh sinkron karena satu paket yang hilang.
+async function rfetch(url: string, init?: RequestInit): Promise<Response> {
+  const attempts = 3;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
+      if (res.status < 502 || res.status > 504 || attempt === attempts) return res;
+    } catch (err) {
+      lastError = err;
+    }
+    await new Promise((r) => setTimeout(r, attempt * 1000));
+  }
+  const cause = (lastError as { cause?: { code?: string } } | undefined)?.cause?.code;
+  throw new Error(`Tidak dapat menghubungi RunsNet setelah ${attempts} percobaan${cause ? ` (${cause})` : ""}. Periksa koneksi internet server.`);
+}
+
+// Semua halaman harus terbaca; hasil sebagian tidak boleh dianggap sukses.
+function assertComplete(label: string, start: number, total: number) {
+  if (Number.isFinite(total) && start < total) {
+    throw new Error(`Data ${label} RunsNet tidak lengkap: ${start} dari ${total} baris terbaca.`);
+  }
+}
+
+// Rentang pembayaran dibuka lebar (format MM/DD/YYYY): dari awal pencatatan sampai setahun ke depan.
+const PAYMENT_FROM = "01/01/2020";
+function paymentTo(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
 /**
  * Autentikasi ke RunsNet dan dapatkan session cookie aktif.
  */
 export async function loginRunsnet(): Promise<string> {
-  const getLogin = await fetch(`${RUNSNET_URL}/login.php`, {
+  const getLogin = await rfetch(`${RUNSNET_URL}/login.php`, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     },
@@ -71,7 +107,7 @@ export async function loginRunsnet(): Promise<string> {
   loginParams.append("password", RUNSNET_PASSWORD);
   loginParams.append("simpan", "");
 
-  const postLogin = await fetch(`${RUNSNET_URL}/view/control/bagan_login.php`, {
+  const postLogin = await rfetch(`${RUNSNET_URL}/view/control/bagan_login.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -142,7 +178,7 @@ export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCus
 
   while (start < total) {
     const url = `${RUNSNET_URL}/view/model/previewc/query/pelanggan.php?data1=&data2=&data3=&data4=&target=${RUNSNET_TARGET}&data6=`;
-    const res = await fetch(url, {
+    const res = await rfetch(url, {
       method: "POST",
       headers: {
         "Cookie": `PHPSESSID=${session}`,
@@ -192,13 +228,14 @@ export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCus
     start += length;
   }
 
+  assertComplete("pelanggan", start, total);
   return result;
 }
 
 /**
  * Menarik semua invoice dari RunsNet dengan pagination lengkap.
  */
-export async function scrapeRunsnetInvoices(session: string, maxPages = 20): Promise<ParsedInvoice[]> {
+export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Promise<ParsedInvoice[]> {
   const result: ParsedInvoice[] = [];
   let start = 0;
   const length = 100;
@@ -208,7 +245,7 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 20): Pro
   while (start < total && pageCount < maxPages) {
     pageCount++;
     const url = `${RUNSNET_URL}/view/model/previewc/query/invoice.php?data1=&data2=&data3=&data4=&data5=&target=${RUNSNET_TARGET}`;
-    const res = await fetch(url, {
+    const res = await rfetch(url, {
       method: "POST",
       headers: {
         "Cookie": `PHPSESSID=${session}`,
@@ -261,13 +298,14 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 20): Pro
     start += length;
   }
 
+  assertComplete("invoice", start, total);
   return result;
 }
 
 /**
  * Menarik riwayat payment dari RunsNet dengan rentang tanggal luas.
  */
-export async function scrapeRunsnetPayments(session: string, maxPages = 20): Promise<ParsedPayment[]> {
+export async function scrapeRunsnetPayments(session: string, maxPages = 200): Promise<ParsedPayment[]> {
   const result: ParsedPayment[] = [];
   let start = 0;
   const length = 100;
@@ -276,8 +314,8 @@ export async function scrapeRunsnetPayments(session: string, maxPages = 20): Pro
 
   while (start < total && pageCount < maxPages) {
     pageCount++;
-    const url = `${RUNSNET_URL}/view/model/previewc/query/payment.php?data1=01/01/2025&data2=12/31/2026&data4=&target=${RUNSNET_TARGET}`;
-    const res = await fetch(url, {
+    const url = `${RUNSNET_URL}/view/model/previewc/query/payment.php?data1=${PAYMENT_FROM}&data2=${paymentTo()}&data4=&target=${RUNSNET_TARGET}`;
+    const res = await rfetch(url, {
       method: "POST",
       headers: {
         "Cookie": `PHPSESSID=${session}`,
@@ -328,6 +366,7 @@ export async function scrapeRunsnetPayments(session: string, maxPages = 20): Pro
     start += length;
   }
 
+  assertComplete("pembayaran", start, total);
   return result;
 }
 
@@ -469,6 +508,34 @@ export async function runRunsnetSync() {
         });
     }
 
+    // IP dan MAC sesi terakhir tiap pelanggan dari detail RunsNet. Pelanggan yang sedang offline sering tetap punya
+    // sesi terakhir, tapi sebagian lain membuat RunsNet menunggu perangkat sampai habis waktu (10 dtk, lalu dilewati).
+    // Terakhir dan best-effort: kegagalan di sini tidak boleh merusak data tagihan yang sudah tersimpan, dan nilai
+    // lama dipertahankan bila RunsNet gagal menjawab.
+    // Dibatasi waktu (reverse proxy biasanya memutus permintaan sekitar 60 dtk): yang terhubung didahulukan, dan
+    // batch baru tidak dimulai setelah batas habis; sisanya tetap memakai nilai lama dan dihitung di "n dari m".
+    let sessionRead = 0;
+    const ordered = [...customersData].sort(
+      (a, b) => Number(b.connectivity.toLowerCase() === "terhubung") - Number(a.connectivity.toLowerCase() === "terhubung"),
+    );
+    const deadline = Date.now() + SESSION_ENRICH_BUDGET_MS;
+    for (let i = 0; i < ordered.length && Date.now() < deadline; i += 6) {
+      await Promise.all(
+        ordered.slice(i, i + 6).map(async (c) => {
+          try {
+            const live = await fetchLiveWith(session, c.custId);
+            if (live === null || live === "expired") return;
+            await db
+              .update(runsnetCustomers)
+              .set({ ipAddress: live.ipAddress, macAddress: live.macAddress, ipSyncedAt: new Date() })
+              .where(eq(runsnetCustomers.custId, c.custId));
+            sessionRead++;
+          } catch (err) {
+            console.warn("[RUNSNET SYNC] IP/MAC gagal diambil", c.custId, err instanceof Error ? err.message : err);
+          }
+        }),
+      );
+    }
     // Update log sukses
     await db
       .update(runsnetSyncLogs)
@@ -486,6 +553,8 @@ export async function runRunsnetSync() {
       customersCount: customersData.length,
       invoicesCount: invoicesData.length,
       paymentsCount: paymentsData.length,
+      sessionRead,
+      sessionTotal: customersData.length,
     };
   } catch (error) {
     const err = error instanceof Error ? error.message : String(error);
@@ -652,6 +721,88 @@ export async function getDelinquentCustomers(periode?: string) {
   `)) as unknown as { rows: DelinquentCustomerItem[] };
 
   return rawRows.rows || [];
+}
+
+/** Info sesi layanan satu pelanggan dari RunsNet (halaman detail aplikasi billing). Sengaja hanya kolom ini. */
+export interface RunsnetCustomerLive {
+  ipAddress: string | null;
+  macAddress: string | null;
+  lastLogin: string | null;
+  lastLogout: string | null;
+  sessionTime: string | null;
+  statusLayanan: string | null;
+  uploadUsage: string | null;
+  downloadUsage: string | null;
+}
+
+/**
+ * Mengurai HTML detail pelanggan RunsNet ("label: nilai"). Halaman itu juga memuat kata sandi PPPoE, NIK, dan
+ * kontak; semuanya sengaja dibuang di sini dan tidak pernah disimpan atau dikirim ke browser.
+ */
+export function parseCustomerLive(html: string): RunsnetCustomerLive {
+  const fields = new Map<string, string>();
+  for (const m of html.matchAll(/<b>([^<]+)<\/b>\s*<\/div>\s*<div[^>]*>\s*:?\s*([\s\S]*?)<\/div>/g)) {
+    fields.set(m[1].trim().toLowerCase(), stripHtml(m[2]).replace(/^:\s*/, ""));
+  }
+  const pick = (test: (label: string) => boolean) => {
+    for (const [label, value] of fields) if (test(label) && value) return value;
+    return null;
+  };
+  return {
+    ipAddress: pick((l) => l === "ip address"),
+    macAddress: pick((l) => l === "mac address"),
+    lastLogin: pick((l) => l === "last login"),
+    lastLogout: pick((l) => l === "last logout"),
+    sessionTime: pick((l) => l === "session time"),
+    statusLayanan: pick((l) => l === "status layanan"),
+    uploadUsage: pick((l) => /upload/.test(l)),
+    downloadUsage: pick((l) => /download/.test(l)),
+  };
+}
+
+// Sesi RunsNet dipakai ulang beberapa menit supaya tiap buka detail tidak login lagi.
+let liveSession: { id: string; at: number } | null = null;
+const LIVE_SESSION_MS = 10 * 60_000;
+
+/** null = RunsNet tidak menjawab/ pelanggan offline; "expired" = jawaban tanpa isi detail (sesi kedaluwarsa). */
+async function fetchLiveWith(session: string, custId: string): Promise<RunsnetCustomerLive | null | "expired"> {
+  try {
+    const res = await fetch(`${RUNSNET_URL}/view/model/previewc/fungsi/pelanggan_detail.php?data1=${encodeURIComponent(custId)}`, {
+      method: "POST",
+      headers: {
+        Cookie: `PHPSESSID=${session}`,
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const json: { data?: { data_a?: string } } | null = await res.json().catch(() => null);
+    const html = json?.data?.data_a;
+    return typeof html === "string" && html.includes("IP Address") ? parseCustomerLive(html) : "expired";
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Info sesi pelanggan langsung dari RunsNet. null bila RunsNet tidak menjawab (mis. pelanggan offline: server
+ * RunsNet menunggu perangkat sampai habis waktu), jadi pemanggil tampil "tidak tersedia" dan bukan galat.
+ */
+export async function getRunsnetCustomerLive(custId: string): Promise<RunsnetCustomerLive | null> {
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(custId)) throw new Error("ID pelanggan tidak valid.");
+  // Hanya pelanggan yang sudah ada di database: endpoint ini bukan proxy bebas ke RunsNet dengan akun bersama.
+  const [known] = await db.select({ id: runsnetCustomers.custId }).from(runsnetCustomers).where(eq(runsnetCustomers.custId, custId)).limit(1);
+  if (!known) return null;
+  for (const fresh of [false, true]) {
+    if (fresh || !liveSession || Date.now() - liveSession.at > LIVE_SESSION_MS) {
+      liveSession = { id: await loginRunsnet(), at: Date.now() };
+    }
+    const live = await fetchLiveWith(liveSession.id, custId);
+    if (live !== "expired") return live;
+    // Jawaban tanpa isi detail: kemungkinan sesi kedaluwarsa; coba sekali lagi dengan login baru.
+  }
+  return null;
 }
 
 /**
@@ -835,6 +986,8 @@ export async function syncCustomerNamesFromBilling(options?: {
     if (matchedRunsnet && matchedRunsnet.name) {
       matchedCount++;
       const newStatus = matchedRunsnet.status?.toLowerCase() === "isolir" ? "isolir" : "lunas";
+      // Yang ditampilkan ke dasbor: router dulu, billing cadangan (billing_status tetap data billing).
+      const shown = effectiveBillingStatus(c.isolirRouter, newStatus);
       const isNameDiff = c.name !== matchedRunsnet.name;
       const isStatusDiff = c.billingStatus !== newStatus;
 
@@ -854,7 +1007,7 @@ export async function syncCustomerNamesFromBilling(options?: {
           pppoeUsername: c.pppoeUsername,
           oldName: c.name,
           newName: matchedRunsnet.name,
-          billingStatus: newStatus,
+          billingStatus: shown,
         });
       } else {
         // Nama dan status sudah sinkron
@@ -863,7 +1016,7 @@ export async function syncCustomerNamesFromBilling(options?: {
           pppoeUsername: c.pppoeUsername,
           oldName: c.name,
           newName: c.name,
-          billingStatus: c.billingStatus,
+          billingStatus: shown,
         });
       }
     } else {

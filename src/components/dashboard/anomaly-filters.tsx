@@ -25,15 +25,19 @@ const severities: IncidentSeverity[] = ["critical", "warning", "info"];
 function Field({
   id,
   label,
+  className,
   children,
 }: {
   id: string;
   label: string;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <div className={className ?? "flex flex-col gap-1"}>
+      <Label htmlFor={id} className="text-[11px] font-medium text-muted-foreground">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -62,25 +66,73 @@ export function AnomalyFilterBar({
     0,
   );
   const statusTotal = counts.status.active + counts.status.resolved;
+  const statusTabs: { value: AnomalyStatusFilter; label: string; count: number }[] = [
+    { value: "all", label: "Semua", count: statusTotal },
+    { value: "active", label: "Aktif", count: counts.status.active },
+    { value: "unreviewed", label: "Belum selesai", count: counts.status.unreviewed },
+    { value: "resolved", label: "Selesai", count: counts.status.resolved },
+  ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] lg:items-end">
-      <Field id="anomaly-search" label="Cari">
+    <div className="flex flex-col gap-1.5 bg-muted/40 p-2 rounded-lg border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div
+          role="group"
+          aria-label="Status"
+          className="inline-flex rounded-md border border-border bg-background p-0.5"
+        >
+          {statusTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              aria-pressed={filters.status === tab.value}
+              title={
+                tab.value === "unreviewed"
+                  ? "Aktif dan belum ditandai ditinjau. Tanda ditinjau tersimpan per peramban."
+                  : undefined
+              }
+              data-testid={`anomaly-status-${tab.value}`}
+              onClick={() => onChange({ ...filters, status: tab.value })}
+              className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                filters.status === tab.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+              <span className="font-mono tabular-nums opacity-80">{n(tab.count)}</span>
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
+          onClick={() => onChange(defaultAnomalyFilters)}
+          disabled={!hasActiveAnomalyFilters(filters)}
+          title="Reset filter"
+        >
+          Reset filter
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-1.5 items-end">
+      <Field id="anomaly-search" label="Cari" className="lg:col-span-5 flex flex-col gap-1">
         <Input
           id="anomaly-search"
           type="search"
           data-testid="anomaly-search-input"
           placeholder="Pelanggan, router, ODP, keterangan"
+          className="h-8 text-[11px] bg-background"
           value={filters.query ?? ""}
           onChange={(event) =>
             onChange({ ...filters, query: event.target.value })
           }
         />
       </Field>
-      <Field id="anomaly-router" label="Router">
+      <Field id="anomaly-router" label="Router" className="lg:col-span-3 flex flex-col gap-1">
         <select
           id="anomaly-router"
-          className={selectClassName}
+          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
           value={filters.routerId ?? "all"}
           onChange={(event) =>
             onChange({ ...filters, routerId: event.target.value })
@@ -94,10 +146,10 @@ export function AnomalyFilterBar({
           ))}
         </select>
       </Field>
-      <Field id="anomaly-kind" label="Jenis">
+      <Field id="anomaly-kind" label="Jenis" className="lg:col-span-2 flex flex-col gap-1">
         <select
           id="anomaly-kind"
-          className={selectClassName}
+          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
           value={filters.kind}
           onChange={(event) =>
             onChange({
@@ -114,10 +166,10 @@ export function AnomalyFilterBar({
           ))}
         </select>
       </Field>
-      <Field id="anomaly-severity" label="Tingkat">
+      <Field id="anomaly-severity" label="Tingkat" className="lg:col-span-2 flex flex-col gap-1">
         <select
           id="anomaly-severity"
-          className={selectClassName}
+          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
           value={filters.severity}
           onChange={(event) =>
             onChange({
@@ -135,34 +187,7 @@ export function AnomalyFilterBar({
           ))}
         </select>
       </Field>
-      <Field id="anomaly-status" label="Status">
-        <select
-          id="anomaly-status"
-          className={selectClassName}
-          value={filters.status}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              status: event.target.value as AnomalyStatusFilter,
-            })
-          }
-        >
-          <option value="all">Semua status ({n(statusTotal)})</option>
-          <option value="active">Aktif ({n(counts.status.active)})</option>
-          <option value="resolved">
-            Selesai ({n(counts.status.resolved)})
-          </option>
-        </select>
-      </Field>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="lg:mb-0.5"
-        onClick={() => onChange(defaultAnomalyFilters)}
-        disabled={!hasActiveAnomalyFilters(filters)}
-      >
-        Reset filter
-      </Button>
+      </div>
     </div>
   );
 }

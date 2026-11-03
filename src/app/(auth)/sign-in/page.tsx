@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth-form";
+import { env } from "@/lib/env";
 import {
   isSessionExpiredParam,
   safeNextPath,
@@ -26,5 +27,12 @@ export default async function SignInPage({
     : isSessionExpiredParam(params[SESSION_EXPIRED_PARAM])
       ? "session-expired"
       : null;
-  return <AuthForm mode="sign-in" redirectTo={next} notice={notice} />;
+  return (
+    <AuthForm
+      mode="sign-in"
+      redirectTo={next}
+      notice={notice}
+      allowSignUp={env.ALLOW_SIGN_UP}
+    />
+  );
 }

@@ -14,8 +14,10 @@ import {
   evaluateQueue,
   evaluateRunsnetStatus,
   pair,
-  pickVerdict,
+  decideVerdict,
 } from "../src/lib/diagnostics.ts";
+
+const emptyEvidence = { router: null, pon: null, windowMinutes: 15 };
 
 const now = new Date("2026-10-22T10:00:00Z");
 const src = "Router uji";
@@ -334,14 +336,20 @@ test("Kesimpulan: tunggakan tidak menutupi queue penuh, isolir tetap menang", ()
     src,
     now,
   );
-  assert.equal(pickVerdict([...full, arrears]).layer, "mikrotik");
+  assert.equal(
+    decideVerdict([...full, arrears], emptyEvidence, null, now).layer,
+    "mikrotik",
+  );
   const isolir = evaluateRunsnetStatus({
     custId: "1",
     connectivity: null,
     syncedAt: now,
     status: "Isolir",
   });
-  assert.equal(pickVerdict([...full, arrears, isolir]).layer, "billing");
+  assert.equal(
+    decideVerdict([...full, arrears, isolir], emptyEvidence, null, now).layer,
+    "billing",
+  );
 });
 
 test("Billing vs router: isolir tanpa sebab billing = fail", () => {

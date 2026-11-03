@@ -13,11 +13,10 @@ interface Ticket {
 const TICKET_MIN_REMAINING_SECONDS = 10;
 
 export class BackendError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
+  readonly status: number;
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
     this.name = "BackendError";
   }
 }

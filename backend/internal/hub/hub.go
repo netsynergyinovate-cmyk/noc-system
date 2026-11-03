@@ -100,6 +100,7 @@ type Hub struct {
 	lastEmitted int64                   // detik terakhir yang sudah disiarkan
 	flushTimer  *time.Timer             // pengiriman cepat perubahan status yang sedang menunggu
 	closed      bool
+	telemetry   *websocket.PreparedMessage // telemetri terakhir; nil sebelum ada yang dipublikasikan
 }
 
 // New membuat Hub. Panggil Run agar delta mulai dikirim.
@@ -215,6 +216,25 @@ func (h *Hub) PublishEvents(events []wire.Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.broadcastLocked(eventsMessage{Type: typeEvents, Events: events})
+}
+
+// PublishTelemetry menyimpan telemetri sebagai yang terakhir (dikirim ke klien yang
+// baru tersambung) dan menyiarkannya segera ke semua klien.
+func (h *Hub) PublishTelemetry(t wire.Telemetry) {
+	prepared, err := prepare(telemetryMessage{Type: typeTelemetry, Data: t})
+	if err != nil {
+		h.opts.Logger.Error("gagal menyiapkan telemetri WebSocket", "error", err)
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.closed {
+		return
+	}
+	h.telemetry = prepared
+	for c := range h.clients {
+		h.sendLocked(c, prepared)
+	}
 }
 
 // tick menyiarkan semua detik yang belum disiarkan sampai now-Delay. Biasanya
@@ -333,6 +353,9 @@ func (h *Hub) register(c *client) error {
 		return err
 	}
 	c.send <- prepared // kosong dan berkapasitas > 0, tidak memblokir
+	if h.telemetry != nil {
+		c.send <- h.telemetry // buffer minimal 76, jadi muat sesudah snapshot
+	}
 	// Status tagihan di snapshot ini sudah mencakup semua perubahan sampai nomor urut
 	// ini; delta berikutnya tidak perlu mengulangnya untuk klien ini.
 	c.billingSeen = billingSeq

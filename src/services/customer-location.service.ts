@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, eq, isNotNull, or } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import { auditLog, customers, oltOnus, olts, routers } from "@/db/schema";
 import type {
   UpdateCustomerLocationInput,
@@ -529,7 +530,7 @@ export async function getGeocodedCustomers(
         latitude: customers.latitude,
         longitude: customers.longitude,
         odpName: customers.odpName,
-        billingStatus: customers.billingStatus,
+        billingStatus: effectiveBillingStatusSql,
         opticalPower: customers.opticalPower,
         isOnline: customers.isOnline,
         lastUpdatedAt: customers.lastUpdatedAt,
@@ -708,7 +709,7 @@ export async function getCustomerMapDetail(
         latitude: customers.latitude,
         longitude: customers.longitude,
         odpName: customers.odpName,
-        billingStatus: customers.billingStatus,
+        billingStatus: effectiveBillingStatusSql,
         opticalPower: customers.opticalPower,
         isOnline: customers.isOnline,
         lastUpdatedAt: customers.lastUpdatedAt,

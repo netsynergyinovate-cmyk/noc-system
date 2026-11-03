@@ -48,5 +48,15 @@ export async function register() {
         console.error("Gagal memulai pemicu diagnosa otomatis:", err);
       }
     }
+
+    // Di luar gerbang canBoot: pencocokan ONU hanya butuh database, sedangkan canBoot menuntut variabel MikroTik REST
+    // lama yang tidak dipakai lagi (router kini disimpan di database). Tanpa ini pemetaan ONU->pelanggan tidak jalan.
+    try {
+      // Impor dinamis: hanya runtime Node; impor statis menarik db/pg ke bundel edge.
+      const { startOnuAutoMatch } = await import("@/services/devices.service");
+      startOnuAutoMatch();
+    } catch (err) {
+      console.error("Gagal memulai pencocokan ONU otomatis:", err);
+    }
   }
 }

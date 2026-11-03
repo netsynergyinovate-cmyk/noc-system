@@ -95,6 +95,12 @@ function macValue(s: string): number | null {
   return /^[0-9a-fA-F]{12}$/.test(h) ? parseInt(h, 16) : null;
 }
 
+/** SN ONU sebagai MAC `AA:BB:CC:DD:EE:FF` bila tepat 12 digit hex (OLT yang hanya melapor MAC); selain itu null. */
+export function onuMac(serialNumber: string): string | null {
+  const h = serialNumber.replace(/[:-]/g, "").trim();
+  return /^[0-9a-fA-F]{12}$/.test(h) ? h.toUpperCase().match(/../g)!.join(":") : null;
+}
+
 /** Lima oktet pertama (tanpa oktet terakhir). */
 const macPrefix = (v: number) => Math.floor(v / 256);
 

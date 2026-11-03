@@ -24,6 +24,7 @@ import {
 } from "@/lib/dashboard/onboarding-mikrotik";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { RouterSetupGuide } from "@/components/dashboard/router-setup-guide";
+import { RouterBootstrapPanel } from "@/components/dashboard/router-bootstrap-panel";
 
 interface OnboardingMikrotikFormProps {
   onSuccess?: () => void;
@@ -213,15 +214,26 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
           <span>{savedNotice}</span>
         </div>
       )}
-      <RouterSetupGuide
-        host={form.host}
-        port={form.port > 0 ? String(form.port) : ""}
-        onUseRouter={(address, restPort, tls) => {
-          handleFieldChange("host", address);
-          handleFieldChange("useTls", tls === true);
-          if (restPort) handleFieldChange("port", restPort);
+      <RouterBootstrapPanel
+        onProvisioned={(c) => {
+          handleFieldChange("host", c.host);
+          handleFieldChange("useTls", c.useSsl);
+          handleFieldChange("port", c.port ?? (c.useSsl ? 443 : 80));
+          handleFieldChange("username", c.username);
+          handleFieldChange("password", c.password);
         }}
       />
+      {testResult && !testResult.ok && (
+        <RouterSetupGuide
+          host={form.host}
+          port={form.port > 0 ? String(form.port) : ""}
+          onUseRouter={(address, restPort, tls) => {
+            handleFieldChange("host", address);
+            handleFieldChange("useTls", tls === true);
+            if (restPort) handleFieldChange("port", restPort);
+          }}
+        />
+      )}
 
       {/* Field Isian Form */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

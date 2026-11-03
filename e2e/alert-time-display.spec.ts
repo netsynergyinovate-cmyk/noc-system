@@ -320,7 +320,7 @@ for (const scheme of ["light", "dark"] as const) {
         return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
       };
       const marker = document.querySelector("[data-time-source]")!;
-      const row = marker.closest("tr")!;
+      const row = marker.closest("[data-testid=alert-row]")!;
       // Baris peringatan bisa bertinta; pakai latar kartu sebagai dasar terburuk
       // dan latar baris bila ia buram.
       const card = marker.closest("[data-slot=card]")!;

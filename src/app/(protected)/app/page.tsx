@@ -6,7 +6,6 @@ import { StreamDisconnectedBanner } from "@/components/dashboard/stream-disconne
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
 import { LiveStatus } from "@/components/dashboard/live-status";
-import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
 import { readFocusId } from "@/lib/dashboard/map-focus";
 import { requireSession } from "@/lib/session";
 
@@ -23,20 +22,20 @@ export default async function DashboardPage({
   return (
     <div className="flex w-full flex-col gap-3">
       {focusId && <MapFocusFromUrl customerId={focusId} />}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">
+          <h1 className="text-lg font-bold tracking-tight text-foreground">
             Dashboard NOC
           </h1>
-          <p className="text-xs text-muted-foreground">
-            Telemetri riil MikroTik Core CIARA, OLT HSGQ, dan pelanggan PPPoE aktif.
+          <p className="text-[11px] text-muted-foreground">
+            Telemetri riil MikroTik, OLT, dan pelanggan PPPoE, diterima langsung
+            dari backend.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <MockDataNotice real />
           <AnomalyBadge />
           <LiveStatus />
-          <DashboardAutoRefresh />
         </div>
       </div>
       <StreamDisconnectedBanner />

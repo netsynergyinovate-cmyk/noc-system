@@ -1,11 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {
-  DASHBOARD_AUTO_REFRESH_INTERVAL_MS,
-  resolveDashboardEmptyState,
-  shouldTriggerAutoRefresh,
-} from "../src/lib/dashboard/dashboard-empty-state.ts";
+import { resolveDashboardEmptyState } from "../src/lib/dashboard/dashboard-empty-state.ts";
 
 const base = {
   customerCount: 10,
@@ -40,21 +36,9 @@ test("null pada kondisi normal", () => {
   assert.equal(resolveDashboardEmptyState(base), null);
 });
 
-test("shouldTriggerAutoRefresh: ambang basi tepat", () => {
-  assert.equal(shouldTriggerAutoRefresh(null, 100), true);
-  assert.equal(shouldTriggerAutoRefresh(100, 109), false);
-  assert.equal(shouldTriggerAutoRefresh(100, 110), true);
-  assert.equal(shouldTriggerAutoRefresh(100, 104, 5), false);
-  assert.equal(shouldTriggerAutoRefresh(100, 105, 5), true);
-  assert.equal(DASHBOARD_AUTO_REFRESH_INTERVAL_MS, 5000);
-});
-
-test("komponen diekspor dan membawa test id", () => {
+test("komponen tampilan kosong diekspor dan membawa test id", () => {
   const view = readFileSync("src/components/dashboard/dashboard-empty-view.tsx", "utf8");
-  const ctl = readFileSync("src/components/dashboard/dashboard-auto-refresh.tsx", "utf8");
   assert.match(view, /export function DashboardEmptyView/);
   assert.match(view, /data-testid="dashboard-empty-view"/);
   assert.match(view, /data-empty-reason/);
-  assert.match(ctl, /export function DashboardAutoRefresh/);
-  assert.match(ctl, /data-testid="dashboard-auto-refresh-control"/);
 });

@@ -31,11 +31,13 @@ export function RouterTestPanel({
 }: Props) {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<DeviceConnectionTestResult | null>(null);
+  const [groupCheck, setGroupCheck] = useState<{ group: string; policy: string; missing: string[]; fix: string | null } | null>(null);
 
   async function runTest() {
     if (testing) return;
     setTesting(true);
     setResult(null);
+    setGroupCheck(null);
 
     try {
       const res = await fetch("/api/routers/test", {
@@ -69,6 +71,7 @@ export function RouterTestPanel({
             sourceIp: testData?.sourceIp ?? undefined,
           },
         };
+        setGroupCheck(testData?.groupCheck ?? null);
         setResult(testRes);
         onTestComplete?.(testRes);
       } else {
@@ -181,6 +184,22 @@ export function RouterTestPanel({
             </div>
           ))}
         </dl>
+      )}
+
+      {result?.ok && groupCheck && (
+        <div className="mt-3 space-y-1 text-sm">
+          {groupCheck.missing.length === 0 ? (
+            <p className="text-success">Izin grup <code>{groupCheck.group}</code> cukup (read, write, api, rest-api).</p>
+          ) : (
+            <>
+              <p className="text-amber-600">
+                Grup <code>{groupCheck.group}</code> belum memuat izin: {groupCheck.missing.join(", ")}.{" "}
+                <code>write</code> dibutuhkan agar aplikasi bisa menjalankan perintah ke router. Jalankan di terminal MikroTik:
+              </p>
+              <pre className="overflow-x-auto rounded-md border bg-background p-2 font-mono text-xs">{groupCheck.fix}</pre>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

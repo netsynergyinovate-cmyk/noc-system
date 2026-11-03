@@ -15,7 +15,7 @@ import (
 
 // Kolom yang diminta ke router untuk jalur cadangan.
 const (
-	pppActiveProplist = "name,service"
+	pppActiveProplist = "name,service,address"
 	resourceProplist  = "cpu-load,free-memory,total-memory,uptime,version,board-name"
 	interfaceProplist = "name,type,running,disabled,rx-error,tx-error,rx-drop,tx-drop"
 )
@@ -24,6 +24,7 @@ const (
 type PPPSession struct {
 	Name    string
 	Service string // pppoe, pptp, l2tp, ...
+	Address string // IP sesi; dipakai NetFlow untuk mengenali pelanggan
 }
 
 // PPPActive mengambil daftar sesi PPP aktif (/ppp/active).
@@ -35,13 +36,14 @@ func (c *Client) PPPActive(ctx context.Context) ([]PPPSession, error) {
 	var rows []struct {
 		Name    string `json:"name"`
 		Service string `json:"service"`
+		Address string `json:"address"`
 	}
 	if err := json.Unmarshal(body, &rows); err != nil {
 		return nil, fmt.Errorf("jawaban /ppp/active bukan daftar yang valid: %w", err)
 	}
 	sessions := make([]PPPSession, 0, len(rows))
 	for _, row := range rows {
-		sessions = append(sessions, PPPSession{Name: row.Name, Service: row.Service})
+		sessions = append(sessions, PPPSession{Name: row.Name, Service: row.Service, Address: row.Address})
 	}
 	return sessions, nil
 }

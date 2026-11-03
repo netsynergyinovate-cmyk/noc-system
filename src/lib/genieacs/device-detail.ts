@@ -85,6 +85,17 @@ export interface DetailHost {
   active: boolean;
 }
 
+export interface DetailEthernetPort {
+  index: number;
+  name: string;
+  /** Status mentah TR-098: "Up", "NoLink", "Disabled". */
+  status: string;
+  linkUp: boolean;
+  /** MaxBitRate (Mbps) yang dinegosiasikan; null bila tidak dilaporkan. */
+  speedMbps: number | null;
+  enabled: boolean;
+}
+
 export interface CpeDetail {
   deviceId: string;
   serialNumber: string;
@@ -115,6 +126,7 @@ export interface CpeDetail {
   wans: DetailWan[];
   wlans: DetailWlan[];
   hosts: DetailHost[];
+  ethernet: DetailEthernetPort[];
   activeClients: number;
 }
 
@@ -157,6 +169,22 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
   const wlans: DetailWlan[] = [];
   const lan = instances(r, `${IGD}.LANDevice`)[0];
   const hosts: DetailHost[] = [];
+  // Port LAN fisik (LANEthernetInterfaceConfig): link naik atau tidak dan kecepatannya, terlepas dari ada tidaknya host.
+  const ethernet: DetailEthernetPort[] = [];
+  if (lan) {
+    for (const e of instances(lan.node, "LANEthernetInterfaceConfig")) {
+      const status = text(sub(e.node, "Status"));
+      const speed = num(sub(e.node, "MaxBitRate"));
+      ethernet.push({
+        index: Number(e.index),
+        name: text(sub(e.node, "Name")) || `LAN${e.index}`,
+        status,
+        linkUp: /^up$/i.test(status),
+        speedMbps: speed,
+        enabled: sub(e.node, "Enable") === undefined ? true : bool(sub(e.node, "Enable")),
+      });
+    }
+  }
   if (lan) {
     const associatedMacs = new Set<string>();
     const associatedHosts: DetailHost[] = [];
@@ -291,6 +319,7 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     wans,
     wlans,
     hosts,
+    ethernet,
     activeClients: wlans.reduce((n, w) => n + w.clients, 0) + hosts.filter((h) => h.active && !/802\.11/.test(h.interfaceType)).length,
   };
 }

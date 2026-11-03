@@ -10,8 +10,10 @@ import type { CustomerTrafficRange } from "@/validators/customer-traffic";
 // 30 hari per 2 jam.
 const HISTORY: Record<Exclude<CustomerTrafficRange, "live">, { seconds: number; step: number }> = {
   "24h": { seconds: 24 * 3600, step: 300 },
+  "3d": { seconds: 3 * 24 * 3600, step: 900 },
   "7d": { seconds: 7 * 24 * 3600, step: 1800 },
   "30d": { seconds: 30 * 24 * 3600, step: 7200 },
+  "90d": { seconds: 90 * 24 * 3600, step: 21600 },
 };
 
 export interface ByteTotals {

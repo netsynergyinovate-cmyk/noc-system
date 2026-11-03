@@ -1,6 +1,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import { networkInfrastructure, customers } from "@/db/schema";
 import { getLocalMockMapData } from "./network-map-mock";
 import type { ReassignHierarchyParentInput } from "@/validators/hierarchy-reassign";
@@ -136,7 +137,7 @@ export async function getNetworkHierarchyData(options?: {
           pppoeUsername: customers.pppoeUsername,
           isOnline: customers.isOnline,
           opticalPower: customers.opticalPower,
-          billingStatus: customers.billingStatus,
+          billingStatus: effectiveBillingStatusSql,
           latitude: customers.latitude,
           longitude: customers.longitude,
           odpName: customers.odpName,

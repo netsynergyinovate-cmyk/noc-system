@@ -79,7 +79,7 @@ const SCRIPT_MIKROTIK = `# 1. Cek layanan REST dan PORT yang berlaku. JANGAN men
 # Kolom address layanan harus memuat IP server NOC (TAMBAHKAN ke daftar yang ada, jangan mengganti).
 
 # 2. Buat grup dengan izin monitoring
-/user group add name=noc-agent policy=read,api,rest-api,test
+/user group add name=noc-agent policy=read,write,api,rest-api,test
 
 # 3. Buat user operator NOC
 /user add name=noc-monitor group=noc-agent password="StrongSecretPassword123"`;

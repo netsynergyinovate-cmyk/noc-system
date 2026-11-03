@@ -292,7 +292,7 @@ func TestSyncKeepsOnlineStatusFromPolling(t *testing.T) {
 	mgr := state.NewManager()
 	q := &fakeQuerier{
 		routers:   [][]any{{"r1", "Core", "10.0.0.1", "aktif"}},
-		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, false, nil, nil}},
+		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, false, nil, nil, nil}},
 	}
 	if _, _, err := SyncDatabaseState(context.Background(), q, mgr, discard); err != nil {
 		t.Fatal(err)

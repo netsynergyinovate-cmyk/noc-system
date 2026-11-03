@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { withApiSession } from "@/lib/api";
+import { withApiPermission } from "@/lib/api";
 import {
   runDataTransferTransactionally,
   TRANSFERRABLE_TABLES,
@@ -10,14 +10,12 @@ export const runtime = "nodejs";
 
 const transferTriggerSchema = z.object({
   dryRun: z.boolean().optional(),
-  conflictStrategy: z
-    .enum(["upsert", "skip_existing", "overwrite"])
-    .optional(),
+  conflictStrategy: z.enum(["upsert", "skip_existing", "overwrite"]).optional(),
   tables: z.array(z.enum(TRANSFERRABLE_TABLES)).optional(),
 });
 
 export function GET(request: Request) {
-  return withApiSession(request, async () => {
+  return withApiPermission(request, { system: ["manage"] }, async () => {
     const config = getTransferConnectionConfig();
     return Response.json({
       data: {
@@ -33,7 +31,7 @@ export function GET(request: Request) {
 }
 
 export function POST(request: Request) {
-  return withApiSession(request, async (session) => {
+  return withApiPermission(request, { system: ["manage"] }, async (session) => {
     let body = {};
     try {
       body = await request.json();

@@ -796,3 +796,23 @@ func TestReauthTimerIsStoppedWhenTheClientLeavesEarly(t *testing.T) {
 		t.Error("hub memiliki klien yang seharusnya sudah pergi")
 	}
 }
+
+func TestTelemetryIsReplayedToNewClientsAndBroadcastToConnectedOnes(t *testing.T) {
+	h := newHarness(t, nil)
+	early := h.connect()
+	readAs[snapshotMessage](t, early, typeSnapshot)
+
+	cpu := 42
+	h.hub.PublishTelemetry(wire.Telemetry{Routers: []wire.RouterTelemetry{{CPULoad: &cpu}}})
+	got := readAs[telemetryMessage](t, early, typeTelemetry)
+	if got.Data.Routers[0].CPULoad == nil || *got.Data.Routers[0].CPULoad != 42 {
+		t.Fatalf("klien tersambung harus menerima telemetri segera: %+v", got.Data)
+	}
+
+	late := h.connect()
+	readAs[snapshotMessage](t, late, typeSnapshot)
+	got = readAs[telemetryMessage](t, late, typeTelemetry)
+	if got.Data.Routers[0].CPULoad == nil || *got.Data.Routers[0].CPULoad != 42 {
+		t.Fatalf("klien baru harus menerima telemetri terakhir setelah snapshot: %+v", got.Data)
+	}
+}

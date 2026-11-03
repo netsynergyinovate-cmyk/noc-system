@@ -54,6 +54,9 @@ type Customer struct {
 	ODPName       string
 	BillingStatus string // "lunas" atau "isolir"
 
+	// IsolirRouter adalah status isolir dari router MikroTik (nil = tidak ada bukti).
+	IsolirRouter *bool
+
 	Latitude, Longitude float64
 	HasLocation         bool
 
@@ -72,6 +75,19 @@ type Customer struct {
 	StatusSince   time.Time
 	LastUpdatedAt time.Time
 }
+// EffectiveBillingStatus mengembalikan status isolir/lunas efektif pelanggan:
+// status dari router (IsolirRouter) bila ada bukti, atau status tagihan (BillingStatus)
+// sebagai cadangan.
+func (c Customer) EffectiveBillingStatus() string {
+	if c.IsolirRouter != nil {
+		if *c.IsolirRouter {
+			return BillingIsolir
+		}
+		return BillingLunas
+	}
+	return c.BillingStatus
+}
+
 
 // Health menurunkan warna titik dari status dan sinyal optik. Aturannya sama
 // dengan getCustomerHealth di frontend.

@@ -10,6 +10,7 @@ import { createMockFeed } from "./mock-feed";
 import { connectRealtimeWs } from "./realtime-ws";
 import { useDashboardStore } from "./store";
 import type { ConnectionStatus } from "./types";
+import type { Telemetry } from "./telemetry";
 
 // Putus (atau belum tersambung) selama ini, data tiruan dipakai supaya layar
 // tidak kosong. Begitu WebSocket hidup lagi, data tiruan dihentikan.
@@ -49,6 +50,7 @@ export interface FeedDeps {
     applyDelta: (d: any, t: number) => void;
     applyIncidents: (i: any, t: number) => void;
     setConnection: (c: ConnectionStatus) => void;
+    applyTelemetry?: (t: Telemetry) => void;
   };
   alerts: () => {
     applySnapshot: (s: any, t: number) => void;
@@ -163,6 +165,10 @@ export function createRealtimeFeedEngine(options: FeedEngineOptions) {
         if (id !== gen || state.isPaused) return;
         d.dash().applyIncidents(cards, time);
         measure(time);
+      },
+      onTelemetry: (telemetry) => {
+        if (id !== gen || state.isPaused) return;
+        d.dash().applyTelemetry?.(telemetry);
       },
       onStatusChange: (status) => {
         if (id !== gen) return;

@@ -114,7 +114,7 @@ func TestPPPActiveParsesSessions(t *testing.T) {
 	if len(sessions) != 3 || sessions[0] != (PPPSession{Name: "dewi", Service: "pppoe"}) || sessions[2].Service != "l2tp" {
 		t.Errorf("sessions = %+v", sessions)
 	}
-	if got := fake.proplists["/rest/ppp/active"]; got != "name,service" {
+	if got := fake.proplists["/rest/ppp/active"]; got != "name,service,address" {
 		t.Errorf(".proplist = %q, want hanya kolom yang dibutuhkan", got)
 	}
 	fake.set("/rest/ppp/active", `{"bukan":"daftar"}`)

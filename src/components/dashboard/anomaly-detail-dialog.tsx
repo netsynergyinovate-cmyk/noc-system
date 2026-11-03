@@ -25,10 +25,12 @@ import {
 } from "@/lib/dashboard/anomaly-detail-logic";
 import { formatDbm, formatElapsed } from "@/lib/dashboard/format";
 import { incidentLabels } from "@/lib/dashboard/incidents";
-import { AnomalySubject, type SubjectLookup } from "./anomaly-subject";
+import { AnomalySubject, subjectLabel, type SubjectLookup } from "./anomaly-subject";
+import { DiagnoseButton } from "./diagnose-button";
 import { useNowSeconds } from "@/lib/dashboard/use-now";
 import { RunningDuration } from "./running-duration";
 import { SeverityBadge } from "./status-badge";
+import { anomalyKindInfo } from "./anomaly-kind-visual";
 
 function measuredText(anomaly: Anomaly) {
   if (anomaly.kind === "offline" || anomaly.measured === null) return "—";
@@ -102,8 +104,25 @@ function DetailBody({
             <AnomalySubject anomaly={a} lookup={lookup} />
           </dd>
           <dt className="text-muted-foreground">Terukur</dt>
-          <dd className="tabular-nums">{measuredText(a)}</dd>
-          <dt className="text-muted-foreground">Ambang batas</dt>
+          <dd className="tabular-nums space-y-1">
+            <div className="font-semibold text-foreground text-sm">{measuredText(a)}</div>
+            <p className="text-[11px] text-muted-foreground leading-normal">
+              {anomalyKindInfo[a.kind]?.explain}
+            </p>
+            <div className="flex flex-wrap items-center gap-1 text-[11px] font-mono">
+              <span className="font-sans text-muted-foreground">Sumber data:</span>
+              {anomalyKindInfo[a.kind]?.sources.map((s, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5 border border-border/70 text-[11px]"
+                >
+                  <span className="font-sans font-medium text-foreground">{s.system}:</span>
+                  <span className="text-foreground">{s.path}</span>
+                  <span className="text-muted-foreground font-sans">({s.via})</span>
+                </span>
+              ))}
+            </div>
+          </dd>
           <dd>{rule.limit}</dd>
           <dt className="text-muted-foreground">Mulai</dt>
           <dd className="tabular-nums">{formatAlertTime(a.startedAt, now)}</dd>
@@ -156,26 +175,37 @@ function DetailBody({
             </code>
           </section>
         )}
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          <span className="font-medium">Status penanganan:</span>
-          {review ? (
-            <Badge
-              variant="secondary"
-              className="gap-1.5"
-              data-testid="anomaly-detail-reviewed"
-            >
-              <CircleCheck className="size-3.5" aria-hidden="true" />
-              Ditinjau oleh {review.operator}
-            </Badge>
-          ) : (
-            <Button
-              type="button"
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">Status penanganan:</span>
+            {review ? (
+              <Badge
+                variant="secondary"
+                className="gap-1.5 text-xs"
+                data-testid="anomaly-detail-reviewed"
+              >
+                <CircleCheck className="size-3.5" aria-hidden="true" />
+                Ditinjau oleh {review.operator}
+              </Badge>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 text-xs"
+                data-testid="mark-anomaly-handled-btn"
+                onClick={() => onMarkReviewed(a)}
+              >
+                Tandai Telah Ditinjau
+              </Button>
+            )}
+          </div>
+          {a.customerId && (
+            <DiagnoseButton
+              customerId={a.customerId}
+              customerName={subjectLabel(a, lookup)}
               size="sm"
-              data-testid="mark-anomaly-handled-btn"
-              onClick={() => onMarkReviewed(a)}
-            >
-              Tandai Telah Ditinjau
-            </Button>
+              className="h-8 text-xs"
+            />
           )}
         </div>
       </div>

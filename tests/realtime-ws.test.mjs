@@ -146,3 +146,13 @@ test("tiket gagal -> disconnected dan fallbackToMock", async () => {
   assert.deepEqual(statuses, ["connecting", "disconnected"]);
   assert.equal(fell, 1);
 });
+
+test("telemetry tiba tanpa `time` dan diteruskan apa adanya; tanpa data diabaikan", () => {
+  const seen = [];
+  const opts = { ...collect().opts, onTelemetry: (t) => seen.push(t) };
+  const data = { routers: [], alerts: { total: 0, items: [] } };
+  assert.equal(handleRealtimeMessage(JSON.stringify({ type: "telemetry", data }), opts), true);
+  assert.deepEqual(seen, [data]);
+  assert.equal(handleRealtimeMessage(JSON.stringify({ type: "telemetry" }), opts), false);
+  assert.equal(seen.length, 1);
+});

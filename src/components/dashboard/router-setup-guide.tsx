@@ -294,9 +294,9 @@ export function RouterSetupGuide({ host, port, onUseRouter }: GuideProps) {
 
         <li>
           <b>Buat akun REST khusus.</b> Grup harus punya <b>kedua</b> izin <code>api</code> dan <code>rest-api</code>{" "}
-          (tanpa keduanya, hasilnya 401 walau kata sandi benar), ditambah <code>read</code> dan <code>test</code>.
-          Tambahkan <code>write</code> hanya bila memakai kontrol isolir.
-          <Cmd>{"/user group add name=noc-rest policy=read,api,rest-api,test"}</Cmd>
+          (tanpa keduanya, hasilnya 401 walau kata sandi benar), ditambah <code>read</code>, <code>test</code>, dan <code>write</code>.
+          <code>write</code> wajib agar aplikasi nantinya bisa menjalankan perintah ke router langsung dari aplikasi, bukan hanya memantau.
+          <Cmd>{"/user group add name=noc-rest policy=read,write,api,rest-api,test"}</Cmd>
           <Cmd>{"/user add name=noc-api group=noc-rest password=<KATA-SANDI>"}</Cmd>
           Periksa hasilnya; kolom <code>POLICY</code> grup <code>noc-rest</code> harus memuat <code>rest-api</code>:
           <Cmd>{"/user group print"}</Cmd>

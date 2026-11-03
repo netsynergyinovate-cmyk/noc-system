@@ -105,9 +105,87 @@ const pppActive = [
   },
 ];
 
-function mikrotik(req, res) {
+async function mikrotik(req, res) {
   if (!basicOk(req)) return unauthorized(res);
   const path = new URL(req.url, "http://x").pathname;
+  if (req.method === "POST") {
+    const raw = await readBody(req);
+    let body = {};
+    try {
+      body = JSON.parse(raw || "{}");
+    } catch {
+      return json(res, 400, { error: "bad json" });
+    }
+    if (path === "/rest/tool/ping") {
+      const addr = String(body.address ?? "8.8.8.8").trim();
+      if (
+        addr === "unresolved.invalid" ||
+        addr === "nxdomain.invalid" ||
+        addr === "bad-dns.invalid"
+      ) {
+        return json(res, 400, {
+          detail: "failure: dns name does not exist",
+          error: 400,
+          message: "failure: dns name does not exist",
+        });
+      }
+      const count = Math.min(Math.max(Number(body.count) || 2, 1), 10);
+      const host = addr === "google.com" ? "142.250.190.46" : addr;
+      const rows = Array.from({ length: count }, (_, i) => ({
+        seq: String(i),
+        host,
+        size: "56",
+        ttl: "57",
+        time: `${(12 + i * 0.5).toFixed(1)}ms`,
+        sent: String(i + 1),
+        received: String(i + 1),
+        "min-rtt": "12ms",
+        "avg-rtt": "12.3ms",
+        "max-rtt": "13ms",
+        "packet-loss": "0",
+      }));
+      return json(res, 200, rows);
+    }
+    if (path === "/rest/tool/traceroute") {
+      const target = String(body.address ?? "8.8.8.8").trim();
+      const traceHops = [
+        {
+          hop: 1,
+          address: "10.10.0.1",
+          loss: "0%",
+          sent: 2,
+          received: 2,
+          "avg-rtt": "1.2ms",
+          last: "1.1ms",
+        },
+        {
+          hop: 2,
+          address: "103.10.0.1",
+          loss: "0%",
+          sent: 2,
+          received: 2,
+          "avg-rtt": "8.5ms",
+          last: "8.4ms",
+        },
+        {
+          hop: 3,
+          address: target,
+          loss: "0%",
+          sent: 2,
+          received: 2,
+          "avg-rtt": "15.3ms",
+          last: "15.1ms",
+        },
+      ];
+      return json(res, 200, traceHops);
+    }
+    if (path === "/rest/interface/ethernet/monitor") {
+      return json(res, 200, [
+        { name: body.numbers || "ether1", status: "link-ok", rate: "1Gbps" },
+      ]);
+    }
+    return json(res, 404, { error: "not found" });
+  }
   if (req.method !== "GET") return json(res, 405, { error: "method" });
   if (path === "/rest/system/resource")
     return json(res, 200, {

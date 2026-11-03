@@ -151,3 +151,14 @@ export function apiOltToDashboard(o: ApiOlt): DashboardOlt {
     lastSeenAt: Number.isNaN(seen) ? null : Math.floor(seen / 1000),
   };
 }
+/** Poller backend berjalan tiap ~15 dtk, tapi satu putaran OLT telnet bisa memakan puluhan detik. */
+export const OLT_STALE_AFTER_SEC = 300;
+
+export type OltLinkState = "waiting" | "online" | "stale" | "down";
+
+/** waiting: OLT aktif tapi belum pernah dipoll; stale: terakhir terlihat terlalu lama; down: dinonaktifkan. */
+export function oltLinkState(olt: Pick<DashboardOlt, "status" | "lastSeenAt">, nowSec: number): OltLinkState {
+  if (olt.status !== "aktif") return "down";
+  if (olt.lastSeenAt === null) return "waiting";
+  return nowSec - olt.lastSeenAt > OLT_STALE_AFTER_SEC ? "stale" : "online";
+}

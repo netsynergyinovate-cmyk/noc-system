@@ -5,6 +5,7 @@ import type {
   DashboardDelta,
   DashboardSnapshot,
 } from "./types";
+import type { Telemetry } from "./telemetry";
 
 export const RECONNECT_MS = 3000;
 
@@ -16,6 +17,7 @@ export interface RealtimeWsOptions {
   onDelta: (delta: DashboardDelta, time: number) => void;
   onAlerts?: (alerts: AlertsMessage, time: number) => void;
   onIncidents?: (cards: IncidentCard[], time: number) => void;
+  onTelemetry?: (telemetry: Telemetry) => void;
   onStatusChange: (status: ConnectionStatus) => void;
   // Dipanggil saat tiket gagal diambil, supaya pemanggil bisa memakai data tiruan.
   fallbackToMock?: () => void;
@@ -30,7 +32,7 @@ export function handleRealtimeMessage(
   raw: unknown,
   opts: Pick<
     RealtimeWsOptions,
-    "onSnapshot" | "onDelta" | "onAlerts" | "onIncidents"
+    "onSnapshot" | "onDelta" | "onAlerts" | "onIncidents" | "onTelemetry"
   >,
 ): boolean {
   let msg: any;
@@ -47,10 +49,17 @@ export function handleRealtimeMessage(
     if (typeof window !== "undefined") window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
     return true;
   }
+  // Telemetri tidak membawa `time`: hub hanya mengirimnya saat isinya berubah.
+  if (msg && typeof msg === "object" && msg.type === "telemetry" && msg.data) {
+    opts.onTelemetry?.(msg.data);
+    return true;
+  }
   if (!msg || typeof msg !== "object" || typeof msg.time !== "number")
     return false;
   if (msg.type === "snapshot") {
     opts.onSnapshot(msg, msg.time);
+    // Tiap (re)connect: event gangguan yang terlewat saat putus dibaca ulang dari database.
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
     return true;
   }
   if (msg.type === "delta") {

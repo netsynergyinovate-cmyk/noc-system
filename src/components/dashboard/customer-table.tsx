@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, RefreshCw } from "lucide-react";
+import { ExternalLink, Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +26,10 @@ import { useDashboardStore } from "@/lib/dashboard/store";
 import type { BillingStatus, DashboardCustomer } from "@/lib/dashboard/types";
 import { selectClassName } from "./select-class";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
+import { useCustomerLiveStatus } from "@/lib/dashboard/use-customer-live-status";
+import type { CustomerLiveStatus } from "@/lib/dashboard/customer-live";
 import { BillingBadge, HealthBadge } from "./status-badge";
 import { CustomerCpeDialog } from "./customer-cpe-dialog";
 import { DashboardEmptyView } from "./dashboard-empty-view";
@@ -33,6 +37,7 @@ import { resolveDashboardEmptyState } from "@/lib/dashboard/dashboard-empty-stat
 
 // Pelanggan tiruan (mode demo) tidak punya baris database, jadi tidak punya halaman detail.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
 const statusOptions: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "Semua status" },
@@ -46,10 +51,19 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
 const CustomerRow = memo(function CustomerRow({
   customer,
   routerName,
+  live,
 }: {
   customer: DashboardCustomer;
   routerName: string;
+  live: CustomerLiveStatus | undefined;
 }) {
+  // Redaman: modem (GenieACS) atau OLT dari data langsung; nilai di tabel pelanggan hanya cadangan.
+  const optical = { dbm: live?.rxDbm ?? (customer.isOnline ? (customer.opticalPowerDbm ?? null) : null) };
+  // Modem yang tidak sedang inform ke GenieACS: nilai terakhir tetap tampil tapi redup, dengan waktu bacaannya.
+  const staleTitle =
+    live?.informAt && !live.modemOnline
+      ? `Bacaan terakhir modem, ${new Date(live.informAt * 1000).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" })}`
+      : undefined;
   return (
     <tr className="border-t">
       <td className="px-4 py-3">
@@ -71,8 +85,47 @@ const CustomerRow = memo(function CustomerRow({
       <td className="px-4 py-3">
         <HealthBadge health={getCustomerHealth(customer)} />
       </td>
+      <td className="px-4 py-3">
+        {live?.ip && IPV4.test(live.ip) ? (
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-xs">{live.ip}</span>
+            <a
+              href={`http://${live.ip}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Buka ${live.ip} di tab baru`}
+              title="Buka di tab baru"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </a>
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`} title={staleTitle}>
+        {live?.uptime ?? "—"}
+        {live?.uptime && live.staleNote && <div className="text-[10px] font-normal">{live.staleNote}</div>}
+      </td>
+      <td className="px-4 py-3 text-xs">{live?.ssid ?? <span className="text-muted-foreground">—</span>}</td>
+      <td className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`} title={staleTitle}>
+        {live?.clients ?? "—"}
+        {live?.clients != null && live.staleNote && <div className="text-[10px] font-normal">{live.staleNote}</div>}
+      </td>
       <td className="px-4 py-3 tabular-nums">
-        <OpticalRx dbm={customer.isOnline ? customer.opticalPowerDbm : null} />
+        {optical.dbm !== null ? (
+          <div>
+            <OpticalRx dbm={optical.dbm} />
+            {live?.rxSource && (
+              <div className="mt-0.5 text-[10px] text-muted-foreground">{live.rxSource === "genieacs" ? "dari modem" : "dari OLT"}</div>
+            )}
+          </div>
+        ) : live?.onuLos ? (
+          <OpticalRx dbm={null} />
+        ) : (
+          <span className="text-xs text-muted-foreground">Belum ada data</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <BillingBadge status={customer.billingStatus} />
@@ -87,6 +140,8 @@ const CustomerRow = memo(function CustomerRow({
 export function CustomerTable() {
   const customers = useDashboardStore((state) => state.customers);
   const routers = useDashboardStore((state) => state.routers);
+  const isDemo = useSession(selectPreviewEnabled);
+  const live = useCustomerLiveStatus(!isDemo);
   const [filters, setFilters] = useState<CustomerFilters>(defaultFilters);
   const [isSyncingBilling, setIsSyncingBilling] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{
@@ -171,9 +226,21 @@ export function CustomerTable() {
     () => new Map(routers.map((router) => [router.id, router.name])),
     [routers],
   );
+  // Redaman langsung (modem atau OLT) dipakai untuk badge status dan filter "Sinyal lemah", supaya sama dengan kolom
+  // Sinyal optik; nilai di tabel pelanggan hanya cadangan sampai poller menyalin redaman OLT ke sana.
+  const withLive = useMemo(
+    () =>
+      live
+        ? customers.map((c) => {
+            const rx = live[c.id]?.rxDbm;
+            return rx != null ? { ...c, opticalPowerDbm: rx } : c;
+          })
+        : customers,
+    [customers, live],
+  );
   const visible = useMemo(
-    () => filterCustomers(customers, filters),
-    [customers, filters],
+    () => filterCustomers(withLive, filters),
+    [withLive, filters],
   );
   const filtered = hasActiveFilters(filters);
   const resetFilters = () => setFilters(defaultFilters);
@@ -319,7 +386,7 @@ export function CustomerTable() {
           role="region"
           aria-label="Daftar status pelanggan"
         >
-          <table className="w-full min-w-[40rem] text-left text-sm">
+          <table className="w-full min-w-[72rem] text-left text-sm">
             <caption className="sr-only">
               Status online, sinyal optik, dan tagihan tiap pelanggan
             </caption>
@@ -333,6 +400,18 @@ export function CustomerTable() {
                 </th>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Status
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  IP
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Uptime
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Wi-Fi
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Perangkat
                 </th>
                 <th scope="col" className="px-4 py-3 font-medium">
                   Sinyal optik
@@ -349,7 +428,7 @@ export function CustomerTable() {
               {visible.length === 0 ? (
                 <tr className="border-t">
                   <td
-                    colSpan={6}
+                    colSpan={10}
                     className="px-4 py-10 text-center text-muted-foreground"
                   >
                     <p>Tidak ada pelanggan yang cocok dengan filter.</p>
@@ -369,6 +448,7 @@ export function CustomerTable() {
                     key={customer.id}
                     customer={customer}
                     routerName={routerNames.get(customer.routerId) ?? "—"}
+                    live={live?.[customer.id]}
                   />
                 ))
               )}

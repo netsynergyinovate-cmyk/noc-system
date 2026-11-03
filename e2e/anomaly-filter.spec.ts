@@ -23,7 +23,7 @@ import { incidentLabels } from "../src/lib/dashboard/incidents";
 const headers = { Origin: "http://localhost:3101" };
 const kinds = anomalyRules.map((rule) => rule.kind);
 const severities = ["critical", "warning", "info"] as const;
-const statuses = ["all", "active", "resolved"] as const;
+const statuses = ["all", "active", "unreviewed", "resolved"] as const;
 
 function allFilterStates() {
   const states: AnomalyFilters[] = [];
@@ -125,7 +125,7 @@ test.describe("logika filter anomali", () => {
         if (got !== counts.severity[severity])
           problems.push(`tingkat ${severity} @ ${JSON.stringify(filters)}`);
       }
-      for (const status of ["active", "resolved"] as const) {
+      for (const status of ["active", "unreviewed", "resolved"] as const) {
         const got = filterAnomalies(list, { ...filters, status }).length;
         if (got !== counts.status[status])
           problems.push(`status ${status} @ ${JSON.stringify(filters)}`);
@@ -175,6 +175,12 @@ async function openAt(page: Page, t: number) {
   await signUp(page, "Petugas Filter");
   await page.clock.install({ time: t * 1000 });
   await page.goto("/app/anomali");
+  // Halaman terbuka di "Hari ini"; daftar 7 hari dipilih lewat tab periodenya.
+  await page.getByTestId("anomaly-range-7d").click();
+  await expect(page.getByTestId("anomaly-range-7d")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.getByTestId("anomaly-row").first()).toBeVisible();
 }
 
@@ -188,7 +194,6 @@ test("filter jenis, tingkat, dan status menyaring daftar, dengan angka yang coco
   const rows = page.getByTestId("anomaly-row");
   const kind = page.getByLabel("Jenis", { exact: true });
   const severity = page.getByLabel("Tingkat", { exact: true });
-  const status = page.getByLabel("Status", { exact: true });
   const reset = page.getByRole("button", { name: "Reset filter" });
   const summary = page.getByText(/anomali dalam 7 hari terakhir/);
 
@@ -243,16 +248,19 @@ test("filter jenis, tingkat, dan status menyaring daftar, dengan angka yang coco
   await expect(severity).toHaveValue("all");
   await expect(reset).toBeDisabled();
 
-  // Status: yang aktif dan yang selesai.
+  // Status: aktif, belum selesai (aktif yang belum ditinjau), dan selesai.
   const active = list.filter(isActive);
-  await status.selectOption("active");
+  await page.getByTestId("anomaly-status-active").click();
   await expect(rows).toHaveCount(active.length);
   for (const flag of await rows.evaluateAll((items) =>
     items.map((i) => i.getAttribute("data-active")),
   )) {
     expect(flag).toBe("true");
   }
-  await status.selectOption("resolved");
+  // Belum ada yang ditinjau, jadi "Belum selesai" sama dengan yang aktif.
+  await page.getByTestId("anomaly-status-unreviewed").click();
+  await expect(rows).toHaveCount(active.length);
+  await page.getByTestId("anomaly-status-resolved").click();
   await expect(rows).toHaveCount(list.length - active.length);
   for (const flag of await rows.evaluateAll((items) =>
     items.map((i) => i.getAttribute("data-active")),
@@ -264,7 +272,10 @@ test("filter jenis, tingkat, dan status menyaring daftar, dengan angka yang coco
   await kind.selectOption("cpu");
   await reset.click();
   await expect(kind).toHaveValue("all");
-  await expect(status).toHaveValue("all");
+  await expect(page.getByTestId("anomaly-status-all")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(rows).toHaveCount(list.length);
   expect(errors).toEqual([]);
 });

@@ -13,6 +13,7 @@ import (
 
 	"noc-isp/backend/internal/auth"
 	"noc-isp/backend/internal/state"
+	"noc-isp/backend/internal/wire"
 )
 
 const (
@@ -498,5 +499,46 @@ func TestRoutersHealthReportsReachabilityWithoutChangingTheRoutersShape(t *testi
 	raw := h.get("/api/v1/routers").Body.String()
 	if strings.Contains(raw, "reachable") || strings.Contains(raw, "lastError") {
 		t.Errorf("kontrak /routers berubah: %s", raw)
+	}
+}
+
+type telemetryStub struct{ t wire.Telemetry }
+
+func (s telemetryStub) Latest() wire.Telemetry { return s.t }
+
+func (s telemetryStub) VlanHistory() []wire.VlanHistory {
+	return []wire.VlanHistory{{Name: "vlan1101", Samples: []wire.VlanSample{{At: 1, DownMbps: 2}}}}
+}
+
+func TestTelemetryEndpointNeedsTicketAndServesLatest(t *testing.T) {
+	tokens, _ := auth.NewTokens(apiSecret)
+	cpu := 7
+	handler := NewHandler(Options{
+		Logger:   slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil)),
+		Data:     state.NewManager(),
+		Verifier: tokens,
+		Telemetry: telemetryStub{wire.Telemetry{
+			Routers: []wire.RouterTelemetry{{CPULoad: &cpu}},
+		}},
+	})
+	serve := func(ticket string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboard/telemetry", nil)
+		if ticket != "" {
+			req.Header.Set("Authorization", "Bearer "+ticket)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+	if rec := serve(""); rec.Code != http.StatusUnauthorized {
+		t.Fatalf("tanpa tiket = %d, want 401", rec.Code)
+	}
+	token, _ := tokens.Issue("user-1", time.Now(), time.Minute)
+	rec := serve(token)
+	body := decode[struct {
+		Data wire.Telemetry `json:"data"`
+	}](t, rec)
+	if rec.Code != http.StatusOK || body.Data.Routers[0].CPULoad == nil || *body.Data.Routers[0].CPULoad != 7 {
+		t.Fatalf("status %d, body %s", rec.Code, rec.Body.String())
 	}
 }

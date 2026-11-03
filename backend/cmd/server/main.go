@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"sync/atomic"
@@ -29,6 +30,7 @@ import (
 	"noc-isp/backend/internal/olt"
 	"noc-isp/backend/internal/ontweb"
 	"noc-isp/backend/internal/state"
+	"noc-isp/backend/internal/telemetry"
 	"noc-isp/backend/internal/wire"
 )
 
@@ -81,6 +83,8 @@ func run() error {
 	notify := func(state.Change) {}
 	// publishEvents mengirim gangguan yang mulai atau selesai ke dashboard.
 	publishEvents := func([]wire.Event) {}
+	// publishTelemetry mengirim resource router, OLT, latensi, optik, dan alert ke dashboard.
+	publishTelemetry := func(wire.Telemetry) {}
 	if cfg.RealtimeSecret == "" {
 		logger.Warn("WebSocket dan REST /api/v1 dimatikan: isi REALTIME_TOKEN_SECRET untuk mengaktifkannya")
 	} else {
@@ -99,26 +103,35 @@ func run() error {
 		go dashboardHub.Run(ctx)
 		notify = dashboardHub.NotifyChange
 		publishEvents = dashboardHub.PublishEvents
+		publishTelemetry = dashboardHub.PublishTelemetry
 		apiOptions.WebSocket = dashboardHub
 		apiOptions.Data = manager
 		apiOptions.Verifier = tokens
 		apiOptions.AllowedOrigins = cfg.AllowedOrigins
 	}
 
+	// Telemetri dashboard (resource router, OLT, VLAN PON, latensi, optik, alert): dihitung
+	// di sini dan didorong ke browser lewat hub; browser tidak melakukan polling. Database
+	// dipasang di bawah bila ada.
+	telemetrySvc := telemetry.New(telemetry.Options{Source: manager, Logger: logger, Publish: publishTelemetry})
+
 	// Arsip traffic (histori). Koneksi dibuat saat dibutuhkan, jadi database yang
 	// belum siap tidak menghalangi backend naik; pemantauan real-time tidak
 	// bergantung padanya.
 	var (
-		billingDB   billing.DB       // nil bila DATABASE_URL kosong
-		billingRead billing.ReadDB   // pool yang sama, untuk endpoint /api/v1/billing
-		thresholdDB engine.Querier   // pool yang sama, untuk ambang alert
-		alertDB     engine.Execer    // pool yang sama, untuk menyimpan alert engine
-		syslogDB    collector.Execer // pool yang sama, untuk menyimpan log router
+		pool        *pgxpool.Pool
+		billingDB   billing.DB              // nil bila DATABASE_URL kosong
+		billingRead billing.ReadDB          // pool yang sama, untuk endpoint /api/v1/billing
+		thresholdDB engine.Querier          // pool yang sama, untuk ambang alert
+		alertDB     engine.Execer           // pool yang sama, untuk menyimpan alert engine
+		syslogDB    collector.Execer        // pool yang sama, untuk menyimpan log router & NetFlow
+		sessions    *collector.SessionIndex // IP sesi -> pelanggan, untuk NetFlow
 	)
 	if cfg.DatabaseURL == "" {
 		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
 	} else {
-		pool, err := openArchivePool(ctx, cfg.DatabaseURL)
+		var err error
+		pool, err = openArchivePool(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return err
 		}
@@ -139,7 +152,9 @@ func run() error {
 			notifyHub(c)
 			onlineWriter.Notify(c)
 		}
-		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger, bindCfg)
+		sessions = collector.NewSessionIndex(manager)
+		telemetrySvc.SetDB(pool)
+		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger, bindCfg, sessions.Update, telemetrySvc.SetVlans)
 		// Endpoint manual "Daftarkan ke GenieACS" (POST .../tr069-bind): sengaja
 		// tetap dipasang walau bindCfg.Mode == off, supaya operator bisa mengikat
 		// satu ONU lewat tombol tanpa menyalakan pengikatan otomatis untuk semua.
@@ -152,10 +167,17 @@ func run() error {
 			apiOptions.OntWeb = httpapi.NewOntWebAPI(pool, cfg.DeviceSecret, ontNets, logger)
 		}
 		apiOptions.History = archive.NewPGStore(pool)
+		apiOptions.NetflowQuery = netflow.NewReader(pool)
+		apiOptions.Torch = netflow.NewTorchRunner(pool, cfg.DeviceSecret, logger)
 		billingDB = pool
 		billingRead = pool
 		thresholdDB = pool
 		alertDB = pool
+	}
+
+	if apiOptions.Data != nil {
+		go telemetrySvc.Run(ctx)
+		apiOptions.Telemetry = telemetrySvc
 	}
 
 	// Sinkron billing per jam memakai pool yang sama. Penjadwalnya dihentikan dan
@@ -254,19 +276,44 @@ func run() error {
 	// NetFlow terisolasi: antrian terbatas + goroutine sendiri. Gagal bind atau
 	// berhenti tidak menjatuhkan monitoring utama.
 	if cfg.NetflowEnabled {
-		// ponytail: sink sementara hanya menghitung flow; ganti dengan agregator/penyimpanan saat ada.
-		var received atomic.Uint64
-		buffered := netflow.NewBufferedSink(netflow.FlowSinkFunc(func(_ context.Context, recs []netflow.Record) error {
-			received.Add(uint64(len(recs)))
-			return nil
-		}), netflow.DefaultBufferSize, logger)
+		// Dengan database: agregat per pelanggan per 5 menit ke netflow_samples
+		// (diagnosa pelanggan). Tanpa database: hanya dihitung.
+		var sink netflow.FlowSink
+		var aggregator *netflow.Aggregator
+		if syslogDB != nil && sessions != nil {
+			aggregator = netflow.NewAggregator(sessions, syslogDB, cfg.NetflowRetention, logger)
+			sink = aggregator
+		} else {
+			var received atomic.Uint64
+			sink = netflow.FlowSinkFunc(func(_ context.Context, recs []netflow.Record) error {
+				received.Add(uint64(len(recs)))
+				return nil
+			})
+		}
+		buffered := netflow.NewBufferedSink(sink, netflow.DefaultBufferSize, logger)
 		netflowServer, err := netflow.NewServer(cfg.NetflowAddr, buffered, logger)
 		if err != nil {
 			logger.Error("kolektor NetFlow tidak bisa dibuka, dilewati", "addr", cfg.NetflowAddr, "error", err)
 		} else {
+			apiOptions.Netflow = netflowServer
+			// Hanya router terdaftar (Host) atau yang dipetakan NETFLOW_SOURCE_MAP.
+			netflowServer.SetResolver(func(addr netip.Addr) (string, bool) {
+				if id, ok := cfg.NetflowSources[addr]; ok {
+					return id, true
+				}
+				for _, r := range manager.Routers() {
+					if a, ok := collector.RouterAddr(r.Host); ok && a == addr {
+						return r.ID, true
+					}
+				}
+				return "", false
+			})
+			if aggregator != nil {
+				go aggregator.Run(ctx)
+			}
 			go buffered.Run(ctx)
 			go func() {
-				logger.Info("kolektor NetFlow aktif", "addr", netflowServer.Addr().String())
+				logger.Info("kolektor NetFlow aktif", "addr", netflowServer.Addr().String(), "simpan", aggregator != nil, "peta_sumber", len(cfg.NetflowSources))
 				if err := netflowServer.ListenAndServe(ctx); err != nil && !errors.Is(err, context.Canceled) {
 					logger.Error("kolektor NetFlow berhenti", "err", err)
 				}

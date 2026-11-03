@@ -11,7 +11,7 @@ export function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         data: summary,
-        message: `Berhasil menyinkronkan ${summary.customersCount} pelanggan, ${summary.invoicesCount} invoice, dan ${summary.paymentsCount} riwayat pembayaran dari RunsNet ke database.`,
+        message: `Berhasil menyinkronkan ${summary.customersCount} pelanggan, ${summary.invoicesCount} invoice, dan ${summary.paymentsCount} riwayat pembayaran dari RunsNet ke database. IP/MAC terbaca ${summary.sessionRead} dari ${summary.sessionTotal} pelanggan.`,
       });
     } catch (err) {
       console.error("[RUNSNET SYNC ERROR]", err);

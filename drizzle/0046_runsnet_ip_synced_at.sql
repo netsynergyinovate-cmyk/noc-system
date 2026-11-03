@@ -1,0 +1,1 @@
+ALTER TABLE "runsnet_customers" ADD COLUMN "ip_synced_at" timestamp with time zone;

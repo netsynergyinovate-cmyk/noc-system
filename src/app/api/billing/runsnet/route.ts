@@ -7,6 +7,7 @@ import {
   getRunsnetPayments,
   getDelinquentCustomers,
   getRunsnetCustomerDetail,
+  getRunsnetCustomerLive,
 } from "@/services/runsnet-billing.service";
 
 export const runtime = "nodejs";
@@ -40,6 +41,13 @@ export function GET(request: Request) {
       if (tab === "delinquent") {
         const items = await getDelinquentCustomers(periode);
         return NextResponse.json({ ok: true, data: items });
+      }
+
+      if (tab === "customer-live") {
+        if (!custId) {
+          return NextResponse.json({ ok: false, error: "Parameter custId diperlukan" }, { status: 400 });
+        }
+        return NextResponse.json({ ok: true, data: await getRunsnetCustomerLive(custId) });
       }
 
       if (tab === "customer-detail") {

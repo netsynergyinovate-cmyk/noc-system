@@ -1,6 +1,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import { customers, olts, oltOnus, routers } from "@/db/schema";
 import { DEFAULT_MAP_CENTER } from "@/config/map";
 
@@ -81,7 +82,7 @@ export async function fetchRealDatabaseMarkers(): Promise<RealMarkersResult> {
       latitude: customers.latitude,
       longitude: customers.longitude,
       odpName: customers.odpName,
-      billingStatus: customers.billingStatus,
+      billingStatus: effectiveBillingStatusSql,
       opticalPower: customers.opticalPower,
       isOnline: customers.isOnline,
       lastUpdatedAt: customers.lastUpdatedAt,

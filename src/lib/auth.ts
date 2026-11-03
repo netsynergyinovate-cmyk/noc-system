@@ -115,7 +115,7 @@ export const auth = betterAuth({
         after: async (account) => {
           if (account.providerId === "logto-github") {
             const [target] = await db
-              .select({ role: schema.user.role })
+              .select({ role: schema.user.role, email: schema.user.email })
               .from(schema.user)
               .where(eq(schema.user.id, account.userId))
               .limit(1);
@@ -126,10 +126,22 @@ export const auth = betterAuth({
                 .where(eq(schema.user.id, account.userId));
             }
           } else if (account.providerId === "logto") {
-            await db
-              .update(schema.user)
-              .set({ role: "superadmin" })
-              .where(eq(schema.user.id, account.userId));
+            const [target] = await db
+              .select({ role: schema.user.role, email: schema.user.email })
+              .from(schema.user)
+              .where(eq(schema.user.id, account.userId))
+              .limit(1);
+            const isAuthorizedSuperadmin =
+              target?.email === "jefriafriansyahm@gmail.com" ||
+              target?.email === "netsynergyinovate@gmail.com" ||
+              target?.email === "admin@noc.local" ||
+              target?.email === "admin-utama@noc.local";
+            if (isAuthorizedSuperadmin) {
+              await db
+                .update(schema.user)
+                .set({ role: "superadmin" })
+                .where(eq(schema.user.id, account.userId));
+            }
           }
         },
       },

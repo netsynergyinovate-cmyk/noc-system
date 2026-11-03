@@ -3,13 +3,42 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"noc-isp/backend/internal/auth"
+	"noc-isp/backend/internal/netflow"
+	"noc-isp/backend/internal/wire"
 )
+
+// NetflowStatusSource adalah status kesehatan penerima NetFlow.
+type NetflowStatusSource interface {
+	Health() netflow.ReceiverHealth
+	Exporters() []netflow.ExporterStatus
+}
+
+// NetflowQuerySource menyediakan agregasi dan data sesi NetFlow dari database.
+type NetflowQuerySource interface {
+	Summary(ctx context.Context, rangeStr string, routerID string) (*netflow.SummaryData, error)
+	TopTalkers(ctx context.Context, rangeStr string, routerID string, limit int) ([]netflow.TopTalkerRecord, error)
+	CustomerUsage(ctx context.Context, rangeStr string, limit int) ([]netflow.CustomerUsageRecord, error)
+	Sessions(ctx context.Context, filter netflow.SessionFilter) ([]netflow.SessionRecord, error)
+}
+
+// TorchSource menjalankan perekaman torch RouterOS secara aman.
+type TorchSource interface {
+	RunCapture(ctx context.Context, in netflow.TorchCaptureInput) (*netflow.TorchCaptureResult, error)
+}
+// TelemetrySource adalah telemetri terakhir yang dihitung backend; *telemetry.Service memenuhinya.
+type TelemetrySource interface {
+	Latest() wire.Telemetry
+	VlanHistory() []wire.VlanHistory
+}
 
 // Options mengatur handler. Logger wajib diisi.
 type Options struct {
@@ -56,6 +85,16 @@ type Options struct {
 	// terdaftar: 404 generik.
 	OntWeb *OntWebAPI
 
+	// Telemetry melayani GET /api/v1/dashboard/telemetry (isi yang sama dengan pesan
+	// WebSocket "telemetry"). Kosong berarti rute itu tidak terdaftar.
+	Telemetry TelemetrySource
+
+	// Netflow melayani GET /api/v1/netflow/status dan /healthz/netflow bila diisi.
+	Netflow NetflowStatusSource
+	// NetflowQuery melayani agregasi dan data sesi NetFlow dari database bila diisi.
+	NetflowQuery NetflowQuerySource
+	// Torch menjalankan perekaman torch langsung bila diisi.
+	Torch TorchSource
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
 	// billing). Bawaannya time.Now; tes mengisinya agar jawabannya tetap. Pemeriksaan
 	// tiket tetap memakai jam sistem.
@@ -91,6 +130,17 @@ func NewHandler(opts Options) http.Handler {
 		})
 	})
 
+	if opts.Netflow != nil {
+		mux.HandleFunc("/healthz/netflow", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				w.Header().Set("Allow", "GET, HEAD")
+				writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method_not_allowed"})
+				return
+			}
+			writeJSON(w, http.StatusOK, opts.Netflow.Health())
+		})
+	}
+
 	if opts.WebSocket != nil {
 		mux.Handle("/ws", opts.WebSocket)
 	}
@@ -114,6 +164,172 @@ func NewHandler(opts Options) http.Handler {
 		}
 		if opts.OntWeb != nil {
 			opts.OntWeb.register(api)
+		}
+		if opts.Telemetry != nil {
+			api.Handle("/api/v1/dashboard/vlans/history", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				if _, err := parseQuery(r); err != nil {
+					badRequest(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[[]wire.VlanHistory]{Data: opts.Telemetry.VlanHistory()})
+			}))
+			api.Handle("/api/v1/dashboard/telemetry", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				if _, err := parseQuery(r); err != nil {
+					badRequest(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[wire.Telemetry]{Data: opts.Telemetry.Latest()})
+			}))
+		}
+		if opts.NetflowQuery != nil {
+			api.Handle("/api/v1/netflow/summary", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				q, err := parseQuery(r, "range", "router_id")
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				rangeStr := q.Get("range")
+				routerID := q.Get("router_id")
+				res, err := opts.NetflowQuery.Summary(r.Context(), rangeStr, routerID)
+				if err != nil {
+					writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[*netflow.SummaryData]{Data: res})
+			}))
+			api.Handle("/api/v1/netflow/top-talkers", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				q, err := parseQuery(r, "range", "router_id", "limit")
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				rangeStr := q.Get("range")
+				routerID := q.Get("router_id")
+				limit, err := intParam(q, "limit", 10, 1, 100)
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				res, err := opts.NetflowQuery.TopTalkers(r.Context(), rangeStr, routerID, limit)
+				if err != nil {
+					writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[[]netflow.TopTalkerRecord]{Data: res})
+			}))
+			api.Handle("/api/v1/netflow/customers/usage", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				q, err := parseQuery(r, "range", "limit")
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				rangeStr := q.Get("range")
+				limit, err := intParam(q, "limit", 50, 1, 500)
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				res, err := opts.NetflowQuery.CustomerUsage(r.Context(), rangeStr, limit)
+				if err != nil {
+					writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[[]netflow.CustomerUsageRecord]{Data: res})
+			}))
+			api.Handle("/api/v1/netflow/sessions", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				q, err := parseQuery(r, "range", "router_id", "customer_id", "pon_port", "protocol", "q", "limit", "offset")
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				limit, err := intParam(q, "limit", 50, 1, 500)
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				offset, err := intParam(q, "offset", 0, 0, 1000000)
+				if err != nil {
+					badRequest(w, err)
+					return
+				}
+				filter := netflow.SessionFilter{
+					RangeStr:   q.Get("range"),
+					RouterID:   q.Get("router_id"),
+					CustomerID: q.Get("customer_id"),
+					PonPort:    q.Get("pon_port"),
+					Protocol:   q.Get("protocol"),
+					Query:      q.Get("q"),
+					Limit:      limit,
+					Offset:     offset,
+				}
+				res, err := opts.NetflowQuery.Sessions(r.Context(), filter)
+				if err != nil {
+					writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[[]netflow.SessionRecord]{Data: res})
+			}))
+		}
+		if opts.Netflow != nil {
+			api.Handle("/api/v1/netflow/status", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				if _, err := parseQuery(r); err != nil {
+					badRequest(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[netflow.ReceiverHealth]{Data: opts.Netflow.Health()})
+			}))
+			api.Handle("/api/v1/netflow/exporters", readOnly(func(w http.ResponseWriter, r *http.Request) {
+				if _, err := parseQuery(r); err != nil {
+					badRequest(w, err)
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[[]netflow.ExporterStatus]{Data: opts.Netflow.Exporters()})
+			}))
+		}
+		if opts.Torch != nil && opts.Verifier != nil {
+			api.Handle("/api/v1/netflow/torch", requirePerm(opts.Verifier, "capture:run", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "method_not_allowed"})
+					return
+				}
+				identity, _ := identityFrom(r.Context())
+				var req struct {
+					CustomerID      string `json:"customerId"`
+					DurationSeconds int    `json:"durationSeconds"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+					badRequest(w, err)
+					return
+				}
+				if req.CustomerID == "" {
+					badRequest(w, errors.New("customerId wajib"))
+					return
+				}
+				if req.DurationSeconds != 15 && req.DurationSeconds != 30 && req.DurationSeconds != 60 {
+					badRequest(w, errors.New("durationSeconds harus 15, 30, atau 60"))
+					return
+				}
+				res, err := opts.Torch.RunCapture(r.Context(), netflow.TorchCaptureInput{
+					CustomerID:      req.CustomerID,
+					DurationSeconds: req.DurationSeconds,
+					UserID:          identity.UserID,
+					RecordedBy:      identity.UserID,
+				})
+				if err != nil {
+					opts.Logger.Error("torch run capture gagal", "error", err)
+					if errors.Is(err, netflow.ErrCustomerOffline) {
+						writeJSON(w, http.StatusConflict, errorResponse{Error: "customer_offline", Message: "Pelanggan sedang offline (sesi PPPoE tidak aktif)"})
+						return
+					}
+					if strings.Contains(err.Error(), "not enough permissions") {
+						writeJSON(w, http.StatusBadGateway, errorResponse{Error: "router_permission_denied", Message: "RouterOS menolak izin (not enough permissions). Pastikan grup user API memiliki izin: read,write,test,sniff,api,rest-api."})
+						return
+					}
+					writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[*netflow.TorchCaptureResult]{Data: res})
+			})))
 		}
 		api.Handle("/", newDashboardMux(opts.Data, newHistoryAPI(opts.History, opts.Logger)))
 		// CORS paling luar agar preflight (yang tidak membawa tiket) bisa lewat.

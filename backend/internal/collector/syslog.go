@@ -238,6 +238,10 @@ func (l *SyslogListener) warnUnknown(from net.Addr) {
 	}
 }
 
+// RouterAddr adalah routerAddr untuk paket lain (NetFlow) yang mencocokkan
+// pengirim dengan Host router.
+func RouterAddr(host string) (netip.Addr, bool) { return routerAddr(host) }
+
 // routerAddr mengambil alamat IP dari Host router, yang boleh berbentuk
 // "10.0.0.1", "10.0.0.1:8728", atau "https://10.0.0.1". Nama host tidak
 // diterjemahkan; pakai alamat IP agar syslog bisa dicocokkan.

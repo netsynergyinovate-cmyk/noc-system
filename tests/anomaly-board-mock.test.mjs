@@ -122,11 +122,9 @@ test("describeAnomaly: teks per jenis", () => {
   for (const a of anomalies) assert.ok(describeAnomaly(a).length > 0);
 });
 
-test("AnomalyBoard: test id dan badge tiruan", () => {
+test("AnomalyBoard: test id utama", () => {
   const src = read("../src/components/dashboard/anomaly-board.tsx");
-  for (const id of ["anomaly-mock-badge", "anomaly-board", "anomaly-row"]) {
+  for (const id of ["anomaly-board", "anomaly-row"]) {
     assert.match(src, new RegExp(`data-testid="${id}"`));
   }
-  assert.match(src, /Data Tiruan Anomali \(Fase 2\)/);
-  assert.match(src, /Rule Engine nyata di\s+Fase\s+5/);
 });

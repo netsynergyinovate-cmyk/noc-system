@@ -14,13 +14,15 @@ import { TrafficChart, type HistoryWindow } from "./traffic-chart";
 import { formatBitrate, formatBytes } from "@/lib/dashboard/routers";
 import type { TrafficRangeId } from "@/lib/dashboard/ranges";
 
-type Range = "live" | "24h" | "7d" | "30d";
+type Range = "live" | "24h" | "3d" | "7d" | "30d" | "90d";
 // chart: rangeId TrafficChart yang format sumbu waktunya cocok.
 const RANGES: { id: Range; label: string; chart: TrafficRangeId; seconds: number }[] = [
   { id: "live", label: "5 menit", chart: "1h", seconds: 300 },
-  { id: "24h", label: "24 jam", chart: "24h", seconds: 86400 },
+  { id: "24h", label: "1 hari", chart: "24h", seconds: 86400 },
+  { id: "3d", label: "3 hari", chart: "7d", seconds: 3 * 86400 },
   { id: "7d", label: "7 hari", chart: "7d", seconds: 7 * 86400 },
-  { id: "30d", label: "30 hari", chart: "7d", seconds: 30 * 86400 },
+  { id: "30d", label: "1 bulan", chart: "7d", seconds: 30 * 86400 },
+  { id: "90d", label: "3 bulan", chart: "7d", seconds: 90 * 86400 },
 ];
 const LIVE_EVERY_MS = 3000;
 

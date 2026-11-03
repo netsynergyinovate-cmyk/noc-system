@@ -142,27 +142,45 @@ test("kartu insiden tampil sesuai hasil pengelompokan, lengkap dengan akar, damp
     await expect(view.getByRole("heading", { level: 3 })).toHaveText(
       card.title,
     );
-    await expect(view).toContainText(causeLabels[card.cause]);
+    if (card.correlationId !== null)
+      await expect(view).toContainText(causeLabels[card.cause]);
     if (card.confidence)
       await expect(view).toContainText(confidenceLabels[card.confidence]);
-    await expect(view.getByTestId("incident-root")).toHaveText(
-      `${rootSourceLabels[card.rootSource.kind]}: ${card.rootSource.name}`,
-    );
+    // Akar, dampak, dan jenis hanya tampil bila belum tersirat di judul/lencana.
+    const root = view.getByTestId("incident-root");
+    if (card.alertCount > 1 || !card.title.includes(card.rootSource.name)) {
+      await expect(root).toHaveText(
+        `${rootSourceLabels[card.rootSource.kind]}: ${card.rootSource.name}`,
+      );
+    } else {
+      await expect(root).toHaveCount(0);
+    }
     const served = formatInteger(card.servedCustomers);
-    await expect(view.getByTestId("incident-impact")).toHaveText(
-      card.affectedCustomers > 0
-        ? `${formatInteger(card.affectedCustomers)} pelanggan terbukti terdampak, dari ${served} yang dilayani`
-        : `Belum ada pelanggan terbukti terdampak; melayani ${served} pelanggan`,
-    );
-    await expect(view.getByTestId("incident-kinds")).toHaveText(
-      card.kinds
-        .map(
-          ({ kind, count }) => `${count} ${incidentLabels[kind].toLowerCase()}`,
-        )
-        .join(", "),
-    );
+    const impact = view.getByTestId("incident-impact");
+    if (card.servedCustomers > 1) {
+      await expect(impact).toHaveText(
+        card.affectedCustomers > 0
+          ? `${formatInteger(card.affectedCustomers)} pelanggan terbukti terdampak, dari ${served} yang dilayani`
+          : `Belum ada pelanggan terbukti terdampak; melayani ${served} pelanggan`,
+      );
+    } else {
+      await expect(impact).toHaveCount(0);
+    }
+    const kinds = view.getByTestId("incident-kinds");
+    if (card.alertCount > 1) {
+      await expect(kinds).toHaveText(
+        card.kinds
+          .map(
+            ({ kind, count }) =>
+              `${count} ${incidentLabels[kind].toLowerCase()}`,
+          )
+          .join(", "),
+      );
+    } else {
+      await expect(kinds).toHaveCount(0);
+    }
     // Waktu mulai sampai detik, dengan penanda sumbernya, dari anggota tertua.
-    const time = view.locator("time").first();
+    const time = view.locator("time:not([data-testid=incident-duration])").first();
     await expect(time).toHaveAttribute(
       "datetime",
       new Date(card.startedAt * 1000).toISOString(),
@@ -224,12 +242,12 @@ test("rincian terbuka dan tertutup lewat tombol, dengan alert anggota dan alasan
       panel.getByRole("region", { name: `Alert dalam insiden ${card.title}` }),
     ).toBeVisible();
 
-    // Alasan pengelompokan, atau penjelasan bahwa tidak ada yang berkaitan.
+    // Alasan pengelompokan; kartu tunggal tidak punya bagian ini.
     if (card.reasons.length > 0) {
       for (const reason of card.reasons)
         await expect(panel).toContainText(reason);
     } else {
-      await expect(panel).toContainText("Tidak ada alert lain yang berkaitan");
+      await expect(panel).not.toContainText("Mengapa dikelompokkan");
     }
 
     await toggle.click();
@@ -304,7 +322,6 @@ test("tombol sorot membawa ke pelanggan pertama yang punya titik; kartu router t
   if (routerOnly) {
     const view = cardLocator(page, routerOnly);
     await expect(view.getByTestId("incident-focus")).toHaveCount(0);
-    await expect(view).toContainText("Tidak ada titik");
   }
   const view = cardLocator(page, pointed);
   const link = view.getByTestId("incident-focus");
@@ -399,13 +416,15 @@ test("kartu dan rinciannya muat di layar sempit", async ({ page }) => {
         document.documentElement.clientWidth,
     ),
   ).toBe(false);
-  // Tabel anggota bergulir di dalam kotaknya sendiri.
+  // Daftar alert anggota muat di lebar layar (barisnya melipat, bukan menggulir).
   const region = view.getByRole("region", {
     name: `Alert dalam insiden ${router.title}`,
   });
-  expect(await region.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+  expect(await region.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
     true,
   );
+  const regionBox = (await region.boundingBox())!;
+  expect(regionBox.x + regionBox.width).toBeLessThanOrEqual(390);
   const box = (await view.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);

@@ -116,7 +116,7 @@ func NewCustomer(c state.Customer) Customer {
 		OdpName:         c.ODPName,
 		Latitude:        Optional(c.Latitude, c.HasLocation),
 		Longitude:       Optional(c.Longitude, c.HasLocation),
-		BillingStatus:   c.BillingStatus,
+		BillingStatus:   c.EffectiveBillingStatus(),
 		OpticalPowerDbm: Optional(c.OpticalPowerDbm, c.HasOptical),
 		IsOnline:        c.IsOnline,
 	}

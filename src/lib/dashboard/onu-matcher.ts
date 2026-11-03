@@ -3,6 +3,7 @@
 //   1. SN / MAC ONU sama persis dengan SN pelanggan  -> exact_sn
 //   2. deskripsi ONU = pppoeUsername pelanggan        -> exact_pppoe
 //   3. deskripsi ONU = nama pelanggan                 -> exact_name
+//      (kode di depan nama ONU diabaikan, kecuali bertentangan dengan nomor PPPoE)
 //   4. nama ONU memuat nomor PPPoE pelanggan utuh     -> name_pppoe
 //      (mis. "1861-PPPoE Cust 17060001861" untuk 17060001861@runsnet.id)
 //   5. kode di awal nama ONU ("1103-ALDI FAREZI", atau kode saja "1103") = ekor nomor PPPoE pelanggan
@@ -46,11 +47,19 @@ const hw = (v: string | null | undefined) => text(v).replace(/[^0-9a-z]/g, "");
 const pppoeLocal = (u: string) => text(u).split("@")[0];
 const MIN_PPPOE_DIGITS = 8; // nomor pendek terlalu mudah kebetulan ada di nama
 const CODE_RE = /^(\d{3,6})\s*(?:-|$)/;
+const NAME_CODE_PREFIX = /^\d{3,6}\s*-\s*/;
 
 /** Kode di awal nama ONU ("1103-ALDI" atau "1103" -> "1103"), atau null. */
 export function onuNameCode(name: string | null | undefined): string | null {
   const m = CODE_RE.exec((name ?? "").trim());
   return m ? m[1] : null;
+}
+
+/** Kode di nama ONU tidak berekor sama dengan nomor PPPoE (semua angka): ONU itu milik orang lain. */
+export function codeContradictsPppoe(description: string | null | undefined, pppoeUsername: string): boolean {
+  const code = onuNameCode(description);
+  const id = pppoeLocal(pppoeUsername);
+  return code !== null && /^\d+$/.test(id) && id.length >= MIN_PPPOE_DIGITS && !id.endsWith(code);
 }
 
 export type MatchContext = {
@@ -68,7 +77,17 @@ export function matchOnuToCustomer(
   const levels = [
     ["exact_sn", (c: CustomerCandidate) => ids.length > 0 && ids.includes(hw(c.serialNumber))],
     ["exact_pppoe", (c: CustomerCandidate) => desc !== "" && text(c.pppoeUsername) === desc],
-    ["exact_name", (c: CustomerCandidate) => desc !== "" && text(c.name) === desc],
+    [
+      "exact_name",
+      // "1121-RATIMIN" -> "RATIMIN": kode di depan bukan bagian nama. Tetapi kode yang
+      // bertentangan dengan nomor PPPoE (semua angka) berarti orang lain yang bernama sama.
+      (c: CustomerCandidate) => {
+        if (desc === "") return false;
+        if (text(c.name) === desc) return true;
+        if (text(c.name) !== desc.replace(NAME_CODE_PREFIX, "")) return false;
+        return !codeContradictsPppoe(onu.description, c.pppoeUsername);
+      },
+    ],
     [
       "name_pppoe",
       (c: CustomerCandidate) => {

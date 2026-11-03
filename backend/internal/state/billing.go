@@ -55,19 +55,92 @@ func (m *Manager) SetBillingStatuses(changes []BillingChange) []BillingChange {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var applied []BillingChange
+	seqIncremented := false
 	for _, change := range changes {
 		customer, ok := m.customers[change.CustomerID]
 		if !ok || !ValidBillingStatus(change.Status) || customer.BillingStatus == change.Status {
 			continue
 		}
-		if len(applied) == 0 {
-			m.billingSeq++
-		}
+		effBefore := customer.EffectiveBillingStatus()
 		m.updateLocked(change.CustomerID, func(c *Customer) { c.BillingStatus = change.Status })
-		m.billingQueued[change.CustomerID] = m.billingSeq
+		effAfter := customer.EffectiveBillingStatus()
+		if effBefore != effAfter {
+			if !seqIncremented {
+				m.billingSeq++
+				seqIncremented = true
+			}
+			m.billingQueued[change.CustomerID] = m.billingSeq
+		}
 		applied = append(applied, change)
 	}
 	return applied
+}
+
+// SetIsolirRouter memperbarui status isolir router pelanggan (true = isolir, false = normal).
+// Bila status efektif (EffectiveBillingStatus) berubah, perubahan dimasukkan ke antrean siaran hub (billingQueued).
+// Mengembalikan jumlah pelanggan yang data isolir routernya berubah.
+func (m *Manager) SetIsolirRouter(updates map[string]bool) int {
+	if len(updates) == 0 {
+		return 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	changed := 0
+	seqIncremented := false
+	for id, isolated := range updates {
+		customer, ok := m.customers[id]
+		if !ok {
+			continue
+		}
+		if customer.IsolirRouter != nil && *customer.IsolirRouter == isolated {
+			continue
+		}
+		effBefore := customer.EffectiveBillingStatus()
+		isoVal := isolated
+		m.updateLocked(id, func(c *Customer) {
+			c.IsolirRouter = &isoVal
+		})
+		effAfter := customer.EffectiveBillingStatus()
+		if effBefore != effAfter {
+			if !seqIncremented {
+				m.billingSeq++
+				seqIncremented = true
+			}
+			m.billingQueued[id] = m.billingSeq
+		}
+		changed++
+	}
+	return changed
+}
+
+// ClearIsolirRouter menghapus bukti router (IsolirRouter = nil) untuk pelanggan router
+// routerID yang TIDAK ada di keep, yaitu yang sesinya sudah hilang: tanpa sesi tidak ada
+// bukti, jadi status kembali ke billing. Perubahan status efektif masuk antrean siaran.
+// Mengembalikan jumlah pelanggan yang dibersihkan.
+func (m *Manager) ClearIsolirRouter(routerID string, keep map[string]bool) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cleared := 0
+	seqIncremented := false
+	for id, customer := range m.customers {
+		if customer.RouterID != routerID || customer.IsolirRouter == nil {
+			continue
+		}
+		if _, kept := keep[id]; kept {
+			continue
+		}
+		effBefore := customer.EffectiveBillingStatus()
+		m.updateLocked(id, func(c *Customer) { c.IsolirRouter = nil })
+		if effBefore != customer.EffectiveBillingStatus() {
+			if !seqIncremented {
+				m.billingSeq++
+				seqIncremented = true
+			}
+			m.billingQueued[id] = m.billingSeq
+		}
+		cleared++
+	}
+	return cleared
 }
 
 // DrainBillingChanges mengambil perubahan status tagihan yang menunggu disiarkan,
@@ -97,7 +170,7 @@ func (m *Manager) DrainBillingChanges(limit int) []QueuedBilling {
 	out := make([]QueuedBilling, 0, len(ids))
 	for _, id := range ids {
 		out = append(out, QueuedBilling{
-			BillingChange: BillingChange{CustomerID: id, Status: m.customers[id].BillingStatus},
+			BillingChange: BillingChange{CustomerID: id, Status: m.customers[id].EffectiveBillingStatus()},
 			Seq:           m.billingQueued[id],
 		})
 		delete(m.billingQueued, id)

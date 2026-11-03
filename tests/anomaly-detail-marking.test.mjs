@@ -78,6 +78,44 @@ test("filterAnomalies: query teks (tanpa huruf besar/kecil) dan routerId", () =>
   );
 });
 
+test("status 'unreviewed': aktif yang belum ditinjau; yang ditinjau tetap 'aktif'", async () => {
+  const { facetCounts } = await import("../src/lib/dashboard/anomaly-filter.ts");
+  const { isActive } = await import("../src/lib/dashboard/anomalies.ts");
+  // Waktu pada data tiruan yang punya sedikitnya dua anomali aktif.
+  let anomalies = [];
+  for (let t = 1_791_400_000; t < 1_791_400_000 + 7 * 86_400; t += 900) {
+    anomalies = await loadAnomalies(t);
+    if (anomalies.filter(isActive).length >= 2) break;
+  }
+  const active = anomalies.filter(isActive);
+  assert.ok(active.length >= 2, "data uji harus punya sedikitnya dua anomali aktif");
+  const reviewed = { [active[0].id]: { by: "Budi" } };
+
+  const ids = (status) =>
+    filterAnomalies(
+      anomalies,
+      { ...defaultAnomalyFilters, status },
+      undefined,
+      reviewed,
+    ).map((a) => a.id);
+  assert.equal(ids("active").length, active.length);
+  assert.deepEqual(
+    ids("unreviewed"),
+    active.slice(1).map((a) => a.id),
+  );
+  // Tanpa peta ditinjau, "belum selesai" sama dengan "aktif".
+  assert.equal(
+    filterAnomalies(anomalies, { ...defaultAnomalyFilters, status: "unreviewed" })
+      .length,
+    active.length,
+  );
+
+  const counts = facetCounts(anomalies, defaultAnomalyFilters, undefined, reviewed);
+  assert.equal(counts.status.active, active.length);
+  assert.equal(counts.status.unreviewed, active.length - 1);
+  assert.equal(counts.status.resolved, anomalies.length - active.length);
+});
+
 test("getAnomalyTroubleshootingSteps: panduan per jenis", () => {
   const cli = {
     queue: "/queue simple print",

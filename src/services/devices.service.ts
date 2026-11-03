@@ -3,10 +3,13 @@ import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql, type 
 import { db } from "@/db";
 import { ApiError } from "@/lib/api";
 import { auditLog, customers, deviceTestResults, oltOnus, oltPonPorts, olts, routers } from "@/db/schema";
-import { matchOnuToCustomer, onuNameCode } from "@/lib/dashboard/onu-matcher";
+import { callerIdLookupAllowed, sessionNameForOnu } from "@/lib/dashboard/onu-caller-id";
+import { codeContradictsPppoe, matchOnuToCustomer, onuNameCode } from "@/lib/dashboard/onu-matcher";
 import { displayNameFromOnu } from "@/lib/dashboard/onu-name";
 import { classifyOnuTrouble, summarizeOnuTroubles, type OnuTroubleEvaluation } from "@/lib/dashboard/onu-trouble-classifier";
 import { env } from "@/lib/env";
+import { MikrotikRestClient } from "@/lib/mikrotik/client";
+import { getRouterDecryptedCredentials } from "@/services/device-credentials.service";
 import { testMikrotikConnection } from "@/services/device-connection.service";
 import {
   getMockPonPortDetail,
@@ -294,17 +297,36 @@ export async function hasConnectedDevice() {
 }
 
 // Pasangkan ONU yang belum punya pelanggan di OLT ini dengan pelanggan yang
-// belum punya ONU. Ambigu/tidak cocok dibiarkan apa adanya.
-export async function autoMatchOnus(oltId: string, userId?: string | null) {
+// belum punya ONU. Ambigu/tidak cocok dibiarkan apa adanya. Urutan bukti: aturan
+// nama/serial (onu-matcher), lalu MAC ONU dengan caller-id sesi PPPoE di router
+// (hanya model yang terukur aman, lihat onu-caller-id).
+// skipOperatorUnmapped (pemicu latar belakang): ONU yang pernah dilepas petugas
+// tidak dipetakan ulang otomatis.
+export async function autoMatchOnus(
+  oltId: string,
+  userId?: string | null,
+  opts: { skipOperatorUnmapped?: boolean; dryRun?: boolean } = {},
+) {
   const [onus, free] = await Promise.all([
     db
       .select({
         id: oltOnus.id,
         description: oltOnus.description,
         serialNumber: oltOnus.serialNumber,
+        rxPower: oltOnus.rxPower,
+        status: oltOnus.status,
+        model: oltOnus.model,
       })
       .from(oltOnus)
-      .where(and(eq(oltOnus.oltId, oltId), isNull(oltOnus.customerId))),
+      .where(
+        and(
+          eq(oltOnus.oltId, oltId),
+          isNull(oltOnus.customerId),
+          opts.skipOperatorUnmapped
+            ? sql`not exists (select 1 from ${auditLog} where ${auditLog.action} = 'onu-unmapped' and ${auditLog.target} = '/api/onus/' || ${oltOnus.id}::text)`
+            : undefined,
+        ),
+      ),
     db
       .select({ id: customers.id, name: customers.name, pppoeUsername: customers.pppoeUsername })
       .from(customers)
@@ -325,23 +347,65 @@ export async function autoMatchOnus(oltId: string, userId?: string | null) {
   }
   const duplicateCodes = new Set([...codeCount].filter(([, n]) => n > 1).map(([code]) => code));
 
+  type Claim = { onuId: string; customerId: string; onuName: string | null; rxPower: number | null; status: string; by: string };
   const result = { matched: 0, ambiguous: 0, unmatched: 0, namesFilled: 0 };
-  const taken = new Set<string>();
-  const pairs: { onuId: string; customerId: string; onuName: string | null }[] = [];
+  const claims: Claim[] = [];
+  const unresolved: typeof onus = [];
   for (const onu of onus) {
-    const m = matchOnuToCustomer(onu, free.filter((c) => !taken.has(c.id)), { duplicateCodes });
+    const m = matchOnuToCustomer(onu, free, { duplicateCodes });
     if (m.status === "ambiguous") result.ambiguous++;
-    else if (m.status === "unmatched") result.unmatched++;
-    else {
-      taken.add(m.customerId);
-      pairs.push({ onuId: onu.id, customerId: m.customerId, onuName: onu.description });
-      result.matched++;
+    else if (m.status === "unmatched") unresolved.push(onu);
+    else claims.push({ onuId: onu.id, customerId: m.customerId, onuName: onu.description, rxPower: onu.rxPower, status: onu.status, by: m.status });
+  }
+
+  // ONU tanpa nama yang bisa dicocokkan: cari lewat sesi PPPoE yang MAC-nya berdekatan.
+  const viaSession = unresolved.filter((o) => o.status === "online" && callerIdLookupAllowed(o.model));
+  const resolved = new Set<string>();
+  const sessions = viaSession.length > 0 ? await loadPppSessions() : null;
+  if (sessions) {
+    const idsByUser = new Map<string, string[]>();
+    for (const c of free) {
+      const k = c.pppoeUsername.trim().toLowerCase();
+      idsByUser.set(k, [...(idsByUser.get(k) ?? []), c.id]);
+    }
+    for (const onu of viaSession) {
+      const user = sessionNameForOnu(onu.serialNumber, sessions);
+      const ids = user ? idsByUser.get(user.trim().toLowerCase()) : undefined;
+      if (ids?.length !== 1) continue;
+      // ONU yang sudah dilabeli kode pelanggan lain dibiarkan: label dan sesi saling bertentangan.
+      const owner = free.find((c) => c.id === ids[0]);
+      if (!owner || codeContradictsPppoe(onu.description, owner.pppoeUsername)) continue;
+      resolved.add(onu.id);
+      claims.push({ onuId: onu.id, customerId: ids[0], onuName: onu.description, rxPower: onu.rxPower, status: onu.status, by: "caller_id" });
     }
   }
+  result.unmatched = unresolved.filter((o) => !resolved.has(o.id)).length;
+
+  // Satu pelanggan diklaim beberapa ONU (nama kembar, ONU lama yang pindah port): hanya bila
+  // tepat satu yang online; selain itu tidak menebak.
+  const byCustomer = new Map<string, Claim[]>();
+  for (const c of claims) byCustomer.set(c.customerId, [...(byCustomer.get(c.customerId) ?? []), c]);
+  const pairs: Claim[] = [];
+  for (const group of byCustomer.values()) {
+    const live = group.length === 1 ? group : group.filter((c) => c.status === "online");
+    if (live.length === 1) {
+      pairs.push(live[0]);
+      result.ambiguous += group.length - 1;
+    } else {
+      result.ambiguous += group.length;
+    }
+  }
+  result.matched = pairs.length;
+  const pairSummary = pairs.map((p) => ({ onuId: p.onuId, customerId: p.customerId, onuName: p.onuName, by: p.by }));
+  if (opts.dryRun) return { ...result, pairs: pairSummary };
 
   await db.transaction(async (tx) => {
     for (const p of pairs) {
       await tx.update(oltOnus).set({ customerId: p.customerId }).where(eq(oltOnus.id, p.onuId));
+      // Redaman langsung terlihat di dasbor; polling OLT berikutnya menimpa dengan nilai terbaru.
+      if (p.rxPower !== null) {
+        await tx.update(customers).set({ opticalPower: p.rxPower, lastUpdatedAt: new Date() }).where(eq(customers.id, p.customerId));
+      }
       // Pelanggan hasil impor router bernama sama dengan username PPPoE-nya (router
       // tidak menyimpan nama). Nama dari OLT menggantikannya, tetapi tidak pernah
       // menimpa nama yang sudah diisi orang.
@@ -355,14 +419,80 @@ export async function autoMatchOnus(oltId: string, userId?: string | null) {
         result.namesFilled += updated.length;
       }
     }
-    await tx.insert(auditLog).values({
-      userId: userId ?? null,
-      action: "onu-auto-matched",
-      target: `/api/olts/${oltId}`,
-      detail: result,
-    });
+    if (userId || result.matched > 0) {
+      await tx.insert(auditLog).values({
+        userId: userId ?? null,
+        action: "onu-auto-matched",
+        target: `/api/olts/${oltId}`,
+        detail: { ...result, pairs: pairSummary },
+      });
+    }
   });
-  return result;
+  return { ...result, pairs: pairSummary };
+}
+
+// Sesi PPPoE aktif semua router aktif, atau null bila ada router yang tidak terbaca: ONU
+// bisa saja ada di router itu, dan tanpa semua sesi satu-satunya kandidat bisa modem tetangga.
+async function loadPppSessions() {
+  const active = await db.select({ id: routers.id }).from(routers).where(eq(routers.status, "aktif"));
+  const sessions: { name: string; callerId: string; address: string }[] = [];
+  for (const { id } of active) {
+    try {
+      const creds = await getRouterDecryptedCredentials(id);
+      if (!creds) throw new Error("kredensial router tidak ditemukan");
+      const client = new MikrotikRestClient({
+        host: creds.host,
+        port: creds.port,
+        username: creds.username,
+        password: creds.password,
+        useSsl: creds.useTls,
+        mode: "real",
+      });
+      sessions.push(...(await client.getPppActive()));
+    } catch (err) {
+      console.error(`Baca sesi PPPoE router ${id} gagal, pencocokan lewat MAC dilewati:`, err);
+      return null;
+    }
+  }
+  return sessions;
+}
+
+const ONU_AUTOMATCH_INTERVAL_MS = 5 * 60_000;
+// Di globalThis: modul dimuat ulang saat hot reload dev, variabel modul akan memulai timer kedua.
+const onuAutoMatchState = globalThis as typeof globalThis & { nocOnuAutoMatch?: { timer: NodeJS.Timeout; busy: boolean } };
+
+// Pelanggan yang modemnya tidak bisa terdaftar di GenieACS tetap punya redaman dari OLT
+// (olt_onus, dibaca poller lewat telnet), asal ONU-nya terpetakan. Pemetaan jangan menunggu
+// petugas menekan tombol: dijalankan berkala untuk semua OLT aktif.
+export async function autoMatchAllOnus() {
+  const active = await db.select({ id: olts.id }).from(olts).where(eq(olts.status, "aktif"));
+  for (const { id } of active) {
+    try {
+      await autoMatchOnus(id, null, { skipOperatorUnmapped: true });
+    } catch (err) {
+      console.error(`Pencocokan ONU otomatis gagal untuk OLT ${id}:`, err);
+    }
+  }
+}
+
+export function startOnuAutoMatch() {
+  if (onuAutoMatchState.nocOnuAutoMatch) return;
+  const tick = async () => {
+    const s = onuAutoMatchState.nocOnuAutoMatch;
+    if (!s || s.busy || env.DASHBOARD_DATA === "demo") return; // demo: tidak mengubah pemetaan
+    s.busy = true;
+    try {
+      await autoMatchAllOnus();
+    } catch (err) {
+      console.error("Pencocokan ONU otomatis gagal:", err);
+    } finally {
+      s.busy = false;
+    }
+  };
+  const timer = setInterval(() => void tick(), ONU_AUTOMATCH_INTERVAL_MS);
+  timer.unref();
+  onuAutoMatchState.nocOnuAutoMatch = { timer, busy: false };
+  setTimeout(() => void tick(), 30_000).unref(); // beri waktu poller mengisi olt_onus dulu
 }
 
 // ---- Daftar & pemetaan ONU ----

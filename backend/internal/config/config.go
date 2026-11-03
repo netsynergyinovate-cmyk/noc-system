@@ -57,6 +57,12 @@ type Config struct {
 	NetflowEnabled bool
 	// NetflowAddr adalah alamat UDP kolektor, bawaan ":2055".
 	NetflowAddr string
+	// NetflowSources memetakan alamat pengirim NetFlow ke id router
+	// (NETFLOW_SOURCE_MAP, format sama dengan SYSLOG_SOURCE_MAP). Kosong =
+	// hanya alamat Host router terdaftar.
+	NetflowSources map[netip.Addr]string
+	// NetflowRetention adalah umur agregat NetFlow (NETFLOW_RETENTION_DAYS, bawaan 7).
+	NetflowRetention time.Duration
 
 	// DeviceSecret adalah kunci yang sama dengan DEVICE_SECRET aplikasi Next.js
 	// (cadangan: ROUTER_SECRET_KEY), untuk membuka kata sandi router di database.
@@ -161,17 +167,21 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	}
 
-	syslogSources, err := parseSyslogSources(getenv("SYSLOG_SOURCE_MAP"))
+	syslogSources, err := parseSourceMap("SYSLOG_SOURCE_MAP", getenv("SYSLOG_SOURCE_MAP"))
 	if err != nil {
 		return Config{}, err
 	}
-	syslogRetention := 14 * 24 * time.Hour
-	if raw := strings.TrimSpace(getenv("SYSLOG_RETENTION_DAYS")); raw != "" {
-		days, convErr := strconv.Atoi(raw)
-		if convErr != nil || days < 1 || days > 365 {
-			return Config{}, fmt.Errorf("SYSLOG_RETENTION_DAYS %q tidak valid (1-365)", raw)
-		}
-		syslogRetention = time.Duration(days) * 24 * time.Hour
+	netflowSources, err := parseSourceMap("NETFLOW_SOURCE_MAP", getenv("NETFLOW_SOURCE_MAP"))
+	if err != nil {
+		return Config{}, err
+	}
+	netflowRetention, err := parseDays("NETFLOW_RETENTION_DAYS", getenv("NETFLOW_RETENTION_DAYS"), 7)
+	if err != nil {
+		return Config{}, err
+	}
+	syslogRetention, err := parseDays("SYSLOG_RETENTION_DAYS", getenv("SYSLOG_RETENTION_DAYS"), 14)
+	if err != nil {
+		return Config{}, err
 	}
 
 	databaseURL, err := parseDatabaseURL(getenv("DATABASE_URL"))
@@ -226,28 +236,43 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	return Config{
-		DeviceSecret:    deviceSecret,
-		DashboardMode:   mode,
-		Mikrotik:        mikrotik,
-		OLT:             olt,
-		NetflowEnabled:  netflowEnabled,
-		NetflowAddr:     netflowAddr,
-		HTTPAddr:        addr,
-		LogLevel:        level,
-		RealtimeSecret:  secret,
-		AllowedOrigins:  origins,
-		PPPWebhookToken: webhookToken,
-		SyslogAddr:      syslogAddr,
-		SyslogSources:   syslogSources,
-		SyslogRetention: syslogRetention,
-		DatabaseURL:     databaseURL,
+		DeviceSecret:     deviceSecret,
+		DashboardMode:    mode,
+		Mikrotik:         mikrotik,
+		OLT:              olt,
+		NetflowEnabled:   netflowEnabled,
+		NetflowAddr:      netflowAddr,
+		NetflowSources:   netflowSources,
+		NetflowRetention: netflowRetention,
+		HTTPAddr:         addr,
+		LogLevel:         level,
+		RealtimeSecret:   secret,
+		AllowedOrigins:   origins,
+		PPPWebhookToken:  webhookToken,
+		SyslogAddr:       syslogAddr,
+		SyslogSources:    syslogSources,
+		SyslogRetention:  syslogRetention,
+		DatabaseURL:      databaseURL,
 	}, nil
 }
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-// parseSyslogSources membaca "alamat=uuid-router" dipisah koma. Kosong = tanpa peta.
-func parseSyslogSources(raw string) (map[netip.Addr]string, error) {
+// parseDays membaca jumlah hari 1-365; kosong = bawaan.
+func parseDays(name, raw string, def int) (time.Duration, error) {
+	days := def
+	if raw = strings.TrimSpace(raw); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > 365 {
+			return 0, fmt.Errorf("%s %q tidak valid (1-365)", name, raw)
+		}
+		days = n
+	}
+	return time.Duration(days) * 24 * time.Hour, nil
+}
+
+// parseSourceMap membaca "alamat=uuid-router" dipisah koma. Kosong = tanpa peta.
+func parseSourceMap(name, raw string) (map[netip.Addr]string, error) {
 	out := map[netip.Addr]string{}
 	for _, item := range strings.Split(raw, ",") {
 		item = strings.TrimSpace(item)
@@ -257,7 +282,7 @@ func parseSyslogSources(raw string) (map[netip.Addr]string, error) {
 		ip, id, ok := strings.Cut(item, "=")
 		addr, err := netip.ParseAddr(strings.TrimSpace(ip))
 		if !ok || err != nil || !uuidPattern.MatchString(strings.TrimSpace(id)) {
-			return nil, fmt.Errorf("SYSLOG_SOURCE_MAP %q tidak valid (contoh: 10.20.30.1=<uuid router>)", item)
+			return nil, fmt.Errorf("%s %q tidak valid (contoh: 10.20.30.1=<uuid router>)", name, item)
 		}
 		out[addr.Unmap()] = strings.ToLower(strings.TrimSpace(id))
 	}

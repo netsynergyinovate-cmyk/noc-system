@@ -94,7 +94,7 @@ export function testHsgqTelnetLogin(opts: {
         fail(
           "TIMEOUT",
           stage === "user"
-            ? `OLT ${target.host}:${target.port} tidak menampilkan prompt login (timeout). Pastikan ini port telnet OLT.`
+            ? `OLT ${target.host}:${target.port} tidak menampilkan prompt login (timeout). Pastikan ini port telnet OLT, bukan port web (HTTP).`
             : "OLT tidak menjawab setelah login dikirim (timeout).",
         ),
       );

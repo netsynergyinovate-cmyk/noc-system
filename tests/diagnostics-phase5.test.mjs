@@ -7,13 +7,14 @@ import {
   evaluatePing,
   evaluateUplinkHistory,
   evaluateUplinkRate,
-  pickVerdict,
+  decideVerdict,
   rosDurationMs,
   rosRateBps,
 } from "../src/lib/diagnostics.ts";
 
 const now = new Date("2026-10-22T15:00:00Z");
 const src = "Router uji";
+const emptyEvidence = { router: null, pon: null, windowMinutes: 15 };
 
 // Baris asli /tool/ping router produksi ke 8.8.8.8.
 const ping = (times, lostAt = []) => {
@@ -242,5 +243,8 @@ test("kesimpulan: hulu bermasalah didahulukan dari perangkat pelanggan", () => {
     sourceRef: null,
     sampledAt: null,
   };
-  assert.equal(pickVerdict([onu, route]).layer, "hulu");
+  assert.equal(
+    decideVerdict([onu, route], emptyEvidence, null, now).layer,
+    "hulu",
+  );
 });

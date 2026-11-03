@@ -204,6 +204,8 @@ test("durasi anomali aktif bertambah tiap detik, dan yang selesai tetap", async 
   // Jam browser dipasang ke waktu yang punya anomali aktif.
   await page.clock.install({ time: t * 1000 });
   await page.goto("/app/anomali");
+  // Halaman terbuka di "Hari ini"; yang selesai kemarin hanya ada di tab 7 hari.
+  await page.getByTestId("anomaly-range-7d").click();
   const row = page.locator(`[data-anomaly-id="${anomaly.id}"]`);
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute("data-active", "true");

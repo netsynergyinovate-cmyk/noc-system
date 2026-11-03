@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Pengikatan profil TR-069 ke ONU. Ini SATU-SATUNYA operasi tulis ke OLT dan
+// Pengikatan profil TR-069 ke ONU. Salah satu dari dua operasi tulis ke OLT (yang lain: reboot ONU, hsgq_reboot.go) dan
 // sengaja dipisah dari Driver (yang baca-saja): polling tidak pernah memanggilnya,
 // hanya AutoBinder yang dinyalakan eksplisit lewat OLT_TR069_AUTOBIND.
 

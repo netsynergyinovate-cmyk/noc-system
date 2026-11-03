@@ -160,14 +160,6 @@ test("kolom lokasi dan tombol sorot sesuai jenis alert di setiap baris", async (
   page.on("pageerror", (error) => errors.push(error.message));
   const { t, alerts } = findRichTime();
   await openAlertsAt(page, t, alerts);
-  // Dua tabel di halaman ini punya kolom bernama sama; yang diperiksa yang aktif.
-  const activeTable = page.getByRole("region", { name: "Daftar alert aktif" });
-  await expect(
-    activeTable.getByRole("columnheader", { name: "Lokasi" }),
-  ).toBeVisible();
-  await expect(
-    activeTable.getByRole("columnheader", { name: "Peta" }),
-  ).toBeVisible();
 
   for (const alert of alerts) {
     const row = rowOf(page, alert);
@@ -261,7 +253,7 @@ test("tautan sorot juga jalan di tab baru, tanpa bergantung pada halaman asalnya
   await expect(page.getByTestId("alert-row")).toHaveCount(alerts.length);
 });
 
-test("di layar sempit tombol sorot terjangkau dengan menggulir tabel, dan halaman tidak melebar", async ({
+test("di layar sempit tombol sorot terjangkau, dan halaman tidak melebar", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -277,9 +269,7 @@ test("di layar sempit tombol sorot terjangkau dengan menggulir tabel, dan halama
 
   const alert = people[0];
   const link = rowOf(page, alert).getByRole("link", { name: /^Sorot / });
-  // Kolom terakhir ada di luar layar sampai tabelnya digulir.
-  const region = page.getByRole("region", { name: "Daftar alert aktif" });
-  await region.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
+  await link.scrollIntoViewIfNeeded();
   await expect(link).toBeInViewport();
   await link.click();
   await expect(page).toHaveURL(new RegExp(`/app\\?focus=${alert.customerId}$`));

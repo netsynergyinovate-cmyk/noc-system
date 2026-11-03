@@ -1,4 +1,6 @@
-import { mockRouters } from "./mock-data.ts";
+import { backendGet } from "./backend-api.ts";
+import { mockRouters, createMockCustomers } from "./mock-data.ts";
+import type { DashboardCustomer } from "./types.ts";
 
 // Kontrak GET /api/v1/netflow/flows?range=1h|6h|24h&router=&protocol=&app= (belum ada).
 // Semua murni dan fungsi waktu saja: `now` yang sama selalu memberi daftar yang sama.
@@ -30,6 +32,10 @@ export interface NetflowRecord {
   id: string;
   routerId: string;
   routerName: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  direction?: "up" | "down" | null;
+  ponPort?: string | null;
   srcIp: string;
   srcPort: number;
   dstIp: string;
@@ -122,6 +128,8 @@ export interface FlowFilter {
   clientIp: string;
   // Port tujuan persis.
   dstPort: string;
+  // Port PON (opsional: PON-1 s/d PON-8).
+  ponPort?: string | null;
 }
 
 export const defaultFlowFilter: FlowFilter = {
@@ -131,7 +139,13 @@ export const defaultFlowFilter: FlowFilter = {
   query: "",
   clientIp: "",
   dstPort: "",
+  ponPort: null,
 };
+export function flowPonPort(_ip: string): string | null {
+  // Kejujuran data: Port PON tidak boleh ditebak dari oktet IP.
+  // Nilai riil hanya diperoleh bila terpetakan dari database OLT/ONU.
+  return null;
+}
 
 export function filterFlows(
   flows: NetflowRecord[],
@@ -142,6 +156,7 @@ export function filterFlows(
   const q = filter.query.trim().toLowerCase();
   const cleanIp = (filter.clientIp ?? "").trim();
   const cleanPort = (filter.dstPort ?? "").trim();
+  const ponPort = (filter.ponPort ?? "").trim().toLowerCase();
   return flows.filter(
     (f) =>
       f.endedAt > from &&
@@ -150,6 +165,7 @@ export function filterFlows(
       (!filter.protocol || f.protocol === filter.protocol) &&
       (!cleanIp || f.srcIp.includes(cleanIp) || f.dstIp.includes(cleanIp)) &&
       (!cleanPort || String(f.dstPort) === cleanPort) &&
+      (!ponPort || (f.ponPort && f.ponPort.toLowerCase() === ponPort)) &&
       (!q ||
         f.app.toLowerCase().includes(q) ||
         String(f.dstPort) === q ||
@@ -344,7 +360,88 @@ export function formatBps(bps: number): string {
   return `${Math.round(bps)} bps`;
 }
 
-export function loadNetflow(now: number): Promise<NetflowRecord[]> {
+export interface GoSummaryData {
+  rxBytes: number;
+  txBytes: number;
+  totalBytes: number;
+  rxBps: number;
+  txBps: number;
+  totalBps: number;
+  packets: number;
+  flows: number;
+  uplinkCapacityBps: number | null;
+  uplinkUsagePercent: number | null;
+  uplinkRemainingBps: number | null;
+  busyInterfaceName: string | null;
+  busyRouterName: string | null;
+  busyThroughputBps: number | null;
+}
+
+export interface GoTopTalkerRecord {
+  ip: string;
+  customerId: string | null;
+  customerName: string | null;
+  pppoeUsername: string | null;
+  planMbps: number | null;
+  odpName: string | null;
+  rxBytes: number;
+  txBytes: number;
+  totalBytes: number;
+  packets: number;
+  flows: number;
+  throughputBps: number;
+  topProtocol: string;
+  isMapped: boolean;
+}
+
+export interface GoCustomerUsageRecord {
+  customerId: string;
+  customerName: string;
+  pppoeUsername: string;
+  planMbps: number;
+  odpName: string | null;
+  rxBytes: number;
+  txBytes: number;
+  totalBytes: number;
+  packets: number;
+  flows: number;
+  peakThroughputBps: number | null;
+  peakTime: number | null;
+  fupLimitBytes: number | null;
+  fupUsagePercent: number | null;
+  status: string;
+}
+
+export async function loadNetflow(now: number, isDemo = false): Promise<NetflowRecord[]> {
+  if (typeof window !== "undefined" && !isDemo) {
+    const rawSessions = await backendGet<any[]>("/api/v1/netflow/sessions", {
+      range: "7d",
+      limit: 200,
+    });
+    if (Array.isArray(rawSessions)) {
+      return rawSessions.map((s) => ({
+        id: s.id,
+        routerId: s.routerId ?? "",
+        routerName: s.routerName ?? "Router tidak dikenal",
+        customerId: s.customerId ?? null,
+        customerName: s.customerName ?? null,
+        direction: s.direction === "up" || s.direction === "down" ? s.direction : null,
+        ponPort: s.ponPort ?? null,
+        srcIp: s.srcIp,
+        srcPort: s.srcPort,
+        dstIp: s.dstIp,
+        dstPort: s.dstPort,
+        protocol: (s.protocol?.toUpperCase() as FlowProtocol) || "TCP",
+        app: appForPort(s.protocol, s.dstPort),
+        bytes: Number(s.bytes) || 0,
+        packets: Number(s.packets) || 1,
+        startedAt: s.capturedAt || now,
+        durationSec: 0,
+        endedAt: s.capturedAt || now,
+      }));
+    }
+    return [];
+  }
   return Promise.resolve(mockNetflow(now, flowRangeSeconds["7d"]));
 }
 
@@ -414,3 +511,449 @@ export function selectTopFlows(
     totalPackets: top.reduce((s, f) => s + f.packets, 0),
   };
 }
+
+export function resolveCustomerForIp(
+  _ip: string,
+  _customers?: readonly DashboardCustomer[],
+): DashboardCustomer | null {
+  return null;
+}
+
+export interface NetflowDirectionalSummary {
+  rxBytes: number;
+  txBytes: number;
+  rxBps: number;
+  txBps: number;
+  totalBytes: number;
+  totalBps: number;
+  uplinkCapacityBps: number | null;
+  uplinkUsagePercent: number | null;
+  uplinkRemainingBps: number | null;
+  busyInterface: {
+    name: string;
+    routerName: string;
+    bps: number;
+  } | null;
+}
+
+export function summarizeDirectionalNetflow(
+  flows: NetflowRecord[],
+  range: FlowRange,
+  uplinkCapacityBps: number | null = null,
+): NetflowDirectionalSummary {
+  const seconds = flowRangeSeconds[range];
+  let rxBytes = 0;
+  let txBytes = 0;
+  const routerBytes = new Map<string, number>();
+
+  for (const f of flows) {
+    if (f.direction === "down") {
+      rxBytes += f.bytes;
+    } else if (f.direction === "up") {
+      txBytes += f.bytes;
+    } else {
+      rxBytes += Math.round(f.bytes / 2);
+      txBytes += f.bytes - Math.round(f.bytes / 2);
+    }
+    routerBytes.set(f.routerName, (routerBytes.get(f.routerName) ?? 0) + f.bytes);
+  }
+
+  const totalBytes = rxBytes + txBytes;
+  const totalBps = (totalBytes * 8) / seconds;
+  const rxBps = (rxBytes * 8) / seconds;
+  const txBps = (txBytes * 8) / seconds;
+
+  let topRouterName: string | null = null;
+  let maxRtrBytes = 0;
+  for (const [rName, b] of routerBytes) {
+    if (b > maxRtrBytes) {
+      maxRtrBytes = b;
+      topRouterName = rName;
+    }
+  }
+
+  const busyInterface = topRouterName
+    ? {
+        name: `${topRouterName}-uplink`,
+        routerName: topRouterName,
+        bps: (maxRtrBytes * 8) / seconds,
+      }
+    : null;
+
+  const uplinkUsagePercent =
+    uplinkCapacityBps && uplinkCapacityBps > 0
+      ? Math.min(100, (totalBps / uplinkCapacityBps) * 100)
+      : null;
+  const uplinkRemainingBps =
+    uplinkCapacityBps && uplinkCapacityBps > 0
+      ? Math.max(0, uplinkCapacityBps - totalBps)
+      : null;
+
+  return {
+    rxBytes,
+    txBytes,
+    rxBps,
+    txBps,
+    totalBytes,
+    totalBps,
+    uplinkCapacityBps,
+    uplinkUsagePercent,
+    uplinkRemainingBps,
+    busyInterface,
+  };
+}
+
+export interface TopTalkerCustomer {
+  id: string;
+  name: string;
+  pppoeUsername: string;
+  planMbps?: number;
+  odpName?: string;
+}
+
+export interface TopTalker {
+  ip: string;
+  customer: TopTalkerCustomer | null;
+  bytes: number;
+  packets: number;
+  throughputBps: number;
+  topApp: string;
+  flowCount: number;
+}
+
+export function getTopTalkers(
+  flows: NetflowRecord[],
+  limit = 10,
+  customers?: readonly DashboardCustomer[],
+): TopTalker[] {
+  const map = new Map<
+    string,
+    { bytes: number; packets: number; duration: number; apps: Map<string, number>; count: number }
+  >();
+
+  for (const f of flows) {
+    const clientIp = f.srcIp.startsWith("10.")
+      ? f.srcIp
+      : f.dstIp.startsWith("10.")
+      ? f.dstIp
+      : f.srcIp;
+    let entry = map.get(clientIp);
+    if (!entry) {
+      entry = { bytes: 0, packets: 0, duration: 0, apps: new Map(), count: 0 };
+      map.set(clientIp, entry);
+    }
+    entry.bytes += f.bytes;
+    entry.packets += f.packets;
+    entry.duration = Math.max(entry.duration, f.durationSec);
+    entry.apps.set(f.app, (entry.apps.get(f.app) ?? 0) + f.bytes);
+    entry.count += 1;
+  }
+
+  const items: TopTalker[] = [];
+  for (const [ip, data] of map) {
+    const customer = resolveCustomerForIp(ip, customers);
+    const topApp = maxByBytes(data.apps) ?? "Lainnya";
+    const throughputBps = (data.bytes * 8) / Math.max(1, data.duration);
+    items.push({
+      ip,
+      customer,
+      bytes: data.bytes,
+      packets: data.packets,
+      throughputBps,
+      topApp,
+      flowCount: data.count,
+    });
+  }
+
+  return items.sort((a, b) => b.bytes - a.bytes).slice(0, limit);
+}
+
+export type FupStatus = "normal" | "warning" | "exceeded" | "untracked";
+
+export interface CustomerFupUsage {
+  customerId: string;
+  customerName: string;
+  pppoeUsername: string;
+  planMbps: number;
+  odpName: string;
+  rxBytes: number;
+  txBytes: number;
+  totalBytes: number;
+  peakThroughputBps: number | null;
+  peakTime: number | null;
+  fupLimitBytes: number | null;
+  fupPercent: number | null;
+  status: FupStatus;
+  flowCount: number;
+}
+
+export function buildCustomerFupUsage(
+  flows: NetflowRecord[],
+  customers?: readonly DashboardCustomer[],
+): CustomerFupUsage[] {
+  const map = new Map<
+    string,
+    { rx: number; tx: number; total: number; peakBps: number; peakTime: number; count: number }
+  >();
+
+  for (const f of flows) {
+    const custId = f.customerId;
+    if (!custId) continue;
+
+    let rec = map.get(custId);
+    if (!rec) {
+      rec = { rx: 0, tx: 0, total: 0, peakBps: 0, peakTime: f.startedAt, count: 0 };
+      map.set(custId, rec);
+    }
+
+    const rx = f.direction === "down" ? f.bytes : f.direction === "up" ? 0 : Math.round(f.bytes / 2);
+    const tx = f.direction === "up" ? f.bytes : f.direction === "down" ? 0 : f.bytes - rx;
+    const flowBps = (f.bytes * 8) / Math.max(1, f.durationSec);
+
+    rec.rx += rx;
+    rec.tx += tx;
+    rec.total += f.bytes;
+    rec.count += 1;
+    if (flowBps > rec.peakBps) {
+      rec.peakBps = flowBps;
+      rec.peakTime = f.startedAt;
+    }
+  }
+
+  const usages: CustomerFupUsage[] = [];
+  if (customers) {
+    for (const cust of customers) {
+      const rec = map.get(cust.id);
+      if (!rec) continue;
+      usages.push({
+        customerId: cust.id,
+        customerName: cust.name,
+        pppoeUsername: cust.pppoeUsername,
+        planMbps: cust.planMbps,
+        odpName: cust.odpName,
+        rxBytes: rec.rx,
+        txBytes: rec.tx,
+        totalBytes: rec.total,
+        peakThroughputBps: rec.peakBps > 0 ? rec.peakBps : null,
+        peakTime: rec.peakTime,
+        fupLimitBytes: null,
+        fupPercent: null,
+        status: "normal",
+        flowCount: rec.count,
+      });
+    }
+  }
+
+  return usages.sort((a, b) => b.totalBytes - a.totalBytes);
+}
+
+export interface ReceiverHealth {
+  active: boolean;
+  addr: string;
+  uptimeSeconds: number;
+  totalPackets: number;
+  totalFlows: number;
+  totalBytes: number;
+  unknownSources: number;
+  unknownTemplates: number;
+  lastReceivedAt?: string;
+  exporters: GoExporterStatus[];
+}
+
+export interface GoExporterStatus {
+  ip: string;
+  routerId: string;
+  version: number;
+  packets: number;
+  flows: number;
+  samplingRate: number;
+  lastSeen: string;
+}
+
+export interface NetflowExporterStatus {
+  routerId: string;
+  routerName: string;
+  host: string;
+  version: "NetFlow v5" | "NetFlow v9" | "IPFIX";
+  samplingRate: string;
+  multiplier: number;
+  totalPackets: number;
+  totalFlows: number;
+  lastSeenText: string;
+  status: "active" | "idle";
+}
+
+export function mapGoExporterToView(
+  exp: GoExporterStatus,
+  routers: readonly { id: string; name: string; host?: string }[] = mockRouters,
+  nowMs = Date.now(),
+): NetflowExporterStatus {
+  const router = routers.find((r) => r.id === exp.routerId);
+  const routerName = router?.name ?? (exp.routerId ? `Router-${exp.routerId.slice(0, 8)}` : "Router tidak terdaftar");
+  const host = exp.ip || router?.host || "-";
+  const version = (
+    exp.version === 9
+      ? "NetFlow v9"
+      : exp.version === 10
+      ? "IPFIX"
+      : "NetFlow v5"
+  ) as "NetFlow v5" | "NetFlow v9" | "IPFIX";
+  const lastSeenDate = new Date(exp.lastSeen);
+  const diffMs = nowMs - (isNaN(lastSeenDate.getTime()) ? nowMs : lastSeenDate.getTime());
+  const isActive = diffMs < 15 * 60 * 1000;
+  const multiplier = exp.samplingRate > 0 ? exp.samplingRate : 1;
+  const samplingRate = multiplier > 1 ? `1:${multiplier}` : "1:1 (Penuh)";
+
+  return {
+    routerId: exp.routerId,
+    routerName,
+    host,
+    version,
+    samplingRate,
+    multiplier,
+    totalPackets: exp.packets,
+    totalFlows: exp.flows,
+    lastSeenText: isActive
+      ? `${Math.max(1, Math.round(diffMs / 60000))} mnt lalu`
+      : isNaN(lastSeenDate.getTime())
+      ? "-"
+      : lastSeenDate.toLocaleDateString("id-ID"),
+    status: isActive ? "active" : "idle",
+  };
+}
+
+export function getMockExporters(flows: NetflowRecord[]): NetflowExporterStatus[] {
+  const routerFlowCount = new Map<string, number>();
+  const routerPacketCount = new Map<string, number>();
+  for (const f of flows) {
+    routerFlowCount.set(f.routerId, (routerFlowCount.get(f.routerId) ?? 0) + 1);
+    routerPacketCount.set(f.routerId, (routerPacketCount.get(f.routerId) ?? 0) + f.packets);
+  }
+
+  return mockRouters.map((r, i) => {
+    const version = (
+      i === 0 ? "NetFlow v9" : i === 1 ? "IPFIX" : "NetFlow v5"
+    ) as "NetFlow v5" | "NetFlow v9" | "IPFIX";
+    const samplingRate = i === 0 ? "1:100" : i === 1 ? "1:500" : "1:1";
+    const multiplier = i === 0 ? 100 : i === 1 ? 500 : 1;
+    const rawFlows = routerFlowCount.get(r.id) ?? 120 + i * 45;
+    const packets = (routerPacketCount.get(r.id) ?? rawFlows * 850) * multiplier;
+    return {
+      routerId: r.id,
+      routerName: r.name,
+      host: `10.10.0.${i + 1}`,
+      version,
+      samplingRate,
+      multiplier,
+      totalPackets: packets,
+      totalFlows: rawFlows * multiplier,
+      lastSeenText: i === 0 ? "Baru saja (3 dtk)" : i === 1 ? "12 dtk lalu" : "45 dtk lalu",
+      status: "active" as const,
+    };
+  });
+}
+
+export function csvCell(v: unknown): string {
+  if (v === null || v === undefined) return '""';
+  let str = String(v).replace(/"/g, '""');
+  if (/^[=+\-@]/.test(str)) {
+    str = "'" + str;
+  }
+  return `"${str}"`;
+}
+
+export function exportFlowsToCsv(
+  flows: NetflowRecord[],
+  customers?: readonly DashboardCustomer[],
+): string {
+  const header = [
+    "No",
+    "Waktu Mulai",
+    "Router",
+    "Pelanggan",
+    "IP Asal",
+    "Port Asal",
+    "IP Tujuan",
+    "Port Tujuan",
+    "Protokol",
+    "Aplikasi",
+    "Bytes",
+    "Paket",
+    "Throughput (bps)",
+  ];
+
+  const lines = [header.join(",")];
+  flows.forEach((f, index) => {
+    const cust = resolveCustomerForIp(f.srcIp, customers);
+    const custName = cust ? cust.name : (f.customerName ?? "Belum terpetakan");
+    const bps = Math.round((f.bytes * 8) / Math.max(1, f.durationSec));
+    const timeStr = new Date(f.startedAt * 1000).toISOString();
+    lines.push(
+      [
+        index + 1,
+        csvCell(timeStr),
+        csvCell(f.routerName),
+        csvCell(custName),
+        f.srcIp,
+        f.srcPort,
+        f.dstIp,
+        f.dstPort,
+        f.protocol,
+        csvCell(f.app),
+        f.bytes,
+        f.packets,
+        bps,
+      ].join(","),
+    );
+  });
+  return lines.join("\n");
+}
+
+export function exportFupToCsv(usages: CustomerFupUsage[]): string {
+  const header = [
+    "No",
+    "ID Pelanggan",
+    "Nama Pelanggan",
+    "Username PPPoE",
+    "Paket (Mbps)",
+    "Lokasi ODP",
+    "Total Unduh (Bytes)",
+    "Total Unggah (Bytes)",
+    "Total Pemakaian (Bytes)",
+    "Puncak Throughput (bps)",
+    "Batas Kuota FUP (Bytes)",
+    "Persentase FUP (%)",
+    "Status FUP",
+  ];
+
+  const lines = [header.join(",")];
+  usages.forEach((u, index) => {
+    lines.push(
+      [
+        index + 1,
+        csvCell(u.customerId),
+        csvCell(u.customerName),
+        csvCell(u.pppoeUsername),
+        u.planMbps,
+        csvCell(u.odpName),
+        u.rxBytes,
+        u.txBytes,
+        u.totalBytes,
+        u.peakThroughputBps !== null ? Math.round(u.peakThroughputBps) : "tidak dapat dibaca",
+        u.fupLimitBytes !== null ? u.fupLimitBytes : "Tidak ditetapkan",
+        u.fupPercent !== null ? u.fupPercent.toFixed(1) : "-",
+        csvCell(
+          u.status === "exceeded"
+            ? "Melewati Batas"
+            : u.status === "warning"
+            ? "Mendekati Batas"
+            : u.status === "untracked"
+            ? "Belum dipantau"
+            : "Normal",
+        ),
+      ].join(","),
+    );
+  });
+  return lines.join("\n");
+}
+

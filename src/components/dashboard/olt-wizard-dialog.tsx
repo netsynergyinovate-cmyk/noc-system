@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,12 +48,40 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
   const [errors, setErrors] = useState<Partial<Record<keyof OltInput, string>>>({});
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scan, setScan] = useState<{ telnet: { port: number; banner: string }[]; otherOpen: number[] } | { error: string } | null>(null);
+
+  async function findPorts() {
+    if (!form.host.trim()) {
+      setScan({ error: "Isi Host IP di langkah 1 dulu." });
+      return;
+    }
+    setScanning(true);
+    setScan(null);
+    try {
+      const res = await fetch("/api/olts/discover-port", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: form.host.trim() }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error?.message ?? `Server menjawab HTTP ${res.status}.`);
+      setScan(json.data);
+      // Satu-satunya kandidat dipakai langsung supaya operator tidak perlu mengetik port.
+      if (json.data.telnet.length === 1) set("port", json.data.telnet[0].port);
+    } catch (e) {
+      setScan({ error: e instanceof Error ? e.message : "Pencarian port gagal." });
+    } finally {
+      setScanning(false);
+    }
+  }
 
   function reset() {
     setStep(0);
     setForm(EMPTY);
     setErrors({});
     setResult(null);
+    setScan(null);
   }
 
   function set<K extends keyof OltInput>(key: K, value: OltInput[K]) {
@@ -225,6 +253,38 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
           {step === 1 && (
             <>
               {field("port", "Port (Telnet 23 / SSH 22)", <Input {...a11y("port")} inputMode="numeric" value={Number.isNaN(form.port) ? "" : form.port} onChange={(e) => set("port", e.target.value === "" ? NaN : Number(e.target.value))} />)}
+              {form.driver === "hsgq-telnet" && (
+                <div className="flex flex-col gap-2 rounded-md border border-dashed p-3 text-sm" data-testid="port-finder">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" disabled={scanning} onClick={() => void findPorts()} data-testid="btn-find-port">
+                      <Search className="size-4" aria-hidden /> {scanning ? "Mencari…" : "Cari port telnet otomatis"}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">Tidak tahu port telnet OLT? Sistem mencoba port yang lazim di {form.host.trim() || "host"}.</span>
+                  </div>
+                  {scan && "error" in scan && <p role="alert" className="text-destructive">{scan.error}</p>}
+                  {scan && "telnet" in scan && (
+                    <div role="status" className="flex flex-col gap-1.5">
+                      {scan.telnet.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          Tidak ada port telnet yang menjawab.
+                          {scan.otherOpen.length > 0 && ` Port ${scan.otherOpen.join(", ")} terbuka tapi bukan telnet (kemungkinan web OLT).`}{" "}
+                          Tanyakan teknisi/ISP port forward telnet (port 23) OLT, atau pastikan OLT dan firewall mengizinkan koneksi dari server NOC.
+                        </p>
+                      ) : (
+                        scan.telnet.map((t) => (
+                          <div key={t.port} className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs">Port {t.port}</span>
+                            {t.banner && <span className="text-xs text-muted-foreground">{t.banner}</span>}
+                            <Button type="button" size="sm" variant={form.port === t.port ? "secondary" : "default"} onClick={() => set("port", t.port)}>
+                              {form.port === t.port ? "Dipakai" : "Pakai port ini"}
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {field("username", "Username", <Input {...a11y("username")} autoComplete="off" value={form.username} onChange={(e) => set("username", e.target.value)} />)}
               {field("password", "Password", <Input {...a11y("password")} type="password" autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} />)}
             </>

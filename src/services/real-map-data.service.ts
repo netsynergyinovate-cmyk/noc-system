@@ -1,6 +1,7 @@
 import "server-only";
 import { asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import {
   customers,
   networkInfrastructure,
@@ -93,7 +94,7 @@ export async function getCompleteRealMapData(
       latitude: customers.latitude,
       longitude: customers.longitude,
       odpName: customers.odpName,
-      billingStatus: customers.billingStatus,
+      billingStatus: effectiveBillingStatusSql,
       opticalPower: customers.opticalPower,
       isOnline: customers.isOnline,
       lastUpdatedAt: customers.lastUpdatedAt,

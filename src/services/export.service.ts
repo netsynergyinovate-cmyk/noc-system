@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import { alerts, customers, networkLogs, routers } from "@/db/schema";
 import {
   escapeCsvCell,
@@ -175,7 +176,7 @@ export async function generateRealExportData(
           latitude: customers.latitude,
           longitude: customers.longitude,
           opticalPower: customers.opticalPower,
-          billingStatus: customers.billingStatus,
+          billingStatus: effectiveBillingStatusSql,
         })
         .from(customers)
         .leftJoin(routers, eq(routers.id, customers.routerId))

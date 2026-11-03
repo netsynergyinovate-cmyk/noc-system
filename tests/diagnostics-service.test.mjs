@@ -16,6 +16,7 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 
 const load = async () => ({
+  ...(await import("../src/lib/diagnostics.ts")),
   ...(await import("../src/services/diagnostics.service.ts")),
   ...(await import("../src/db/index.ts")),
   schema: await import("../src/db/schema/index.ts"),
@@ -105,18 +106,22 @@ test(
     const run = await waitDone(started.run.id);
     assert.equal(run.status, "done");
     assert.equal(run.verdictLayer, "billing");
-    const layers = new Set(run.findings.map((f) => f.layer));
-    for (const l of [
-      "hulu",
-      "mikrotik",
-      "log",
-      "firewall",
-      "optik",
-      "ont",
-      "trafik",
-      "billing",
-    ]) {
-      assert.ok(layers.has(l), `lapisan ${l} tidak tercatat`);
+    assert.equal(typeof run.verdictScope, "string");
+    assert.ok(Array.isArray(run.verdictSecondary));
+    for (const l of m.diagnosticLayers) {
+      const count = run.findings.filter((f) => f.layer === l.id).length;
+      assert.ok(
+        count >= 1,
+        `lapisan ${l.id} harus memiliki minimal 1 temuan, dapat ${count}`,
+      );
+    }
+    for (const f of run.findings) {
+      if (f.status === "unchecked") {
+        assert.ok(
+          f.detail && f.detail.trim().length > 0,
+          `temuan unchecked ${f.layer}/${f.metric} harus memiliki detail non-kosong`,
+        );
+      }
     }
     const ppp = run.findings.find((f) => f.metric === "pppoe_active");
     assert.equal(ppp.status, "unchecked");
@@ -343,9 +348,107 @@ test(
       (r) => r.isSharedFault,
     );
     assert.ok(shared, "catatan gangguan bersama tidak dibuat");
+    assert.equal(shared.verdictScope, "shared");
+    assert.ok(Array.isArray(shared.verdictSecondary));
     assert.ok(shared.mergedCount >= 1);
     const detail = await m.getDiagnosticRun(shared.id);
     assert.equal(detail.findings[0].status, "fail");
+  },
+);
+
+test(
+  "attachDiagnosticToAlert: idempoten, salah pelanggan ditolak 422",
+  { skip },
+  async () => {
+    const { db, schema } = m;
+    const started = await m.startManualDiagnostic(ids.a, {
+      id: "u1",
+      name: "Operator Uji",
+    });
+    const run = await waitDone(started.run.id);
+
+    // Alert milik pelanggan A
+    const [alertA] = await db
+      .insert(schema.alerts)
+      .values({
+        routerId: ids.router,
+        customerId: ids.a,
+        type: "offline",
+        severity: "warning",
+        status: "active",
+        ticketNotes: "Catatan tiket awal",
+      })
+      .returning();
+
+    // Alert milik pelanggan B (beda pelanggan)
+    const [alertB] = await db
+      .insert(schema.alerts)
+      .values({
+        routerId: ids.router,
+        customerId: ids.b,
+        type: "offline",
+        severity: "warning",
+        status: "active",
+      })
+      .returning();
+
+    // 1. Alert beda pelanggan melempar 422
+    await assert.rejects(
+      () => m.attachDiagnosticToAlert(run.id, alertB.id, "Operator"),
+      (err) => err.status === 422 && err.code === "CUSTOMER_MISMATCH",
+    );
+
+    // 2. Alert milik pelanggan sama berhasil dilampirkan
+    const notes1 = await m.attachDiagnosticToAlert(
+      run.id,
+      alertA.id,
+      "Operator",
+    );
+    assert.ok(notes1.includes("Catatan tiket awal"));
+    assert.ok(notes1.includes(`[Diagnosa ${run.id}`));
+    assert.ok(notes1.includes("Operator"));
+
+    // 3. Panggilan kedua idempoten (tidak menambah teks berulang)
+    const notes2 = await m.attachDiagnosticToAlert(
+      run.id,
+      alertA.id,
+      "Operator",
+    );
+    assert.equal(notes2, notes1);
+  },
+);
+
+test(
+  "compareDiagnosticRuns: run beda pelanggan ditolak 422, run sama berhasil dibandingkan",
+  { skip },
+  async () => {
+    const runA1 = await waitDone(
+      (
+        await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })
+      ).run.id,
+    );
+    const runA2 = await waitDone(
+      (
+        await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })
+      ).run.id,
+    );
+    const runB = await waitDone(
+      (
+        await m.startManualDiagnostic(ids.b, { id: "u1", name: "Op" })
+      ).run.id,
+    );
+
+    await assert.rejects(
+      () => m.compareDiagnosticRuns(runA1.id, runB.id),
+      (err) => err.status === 422 && err.code === "CUSTOMER_MISMATCH",
+    );
+
+    const comp = await m.compareDiagnosticRuns(runA1.id, runA2.id);
+    assert.ok(comp);
+    assert.equal(comp.beforeId, runA1.id);
+    assert.equal(comp.afterId, runA2.id);
+    assert.equal(typeof comp.verdictChanged, "boolean");
+    assert.ok(Array.isArray(comp.changes));
   },
 );
 

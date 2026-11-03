@@ -114,8 +114,8 @@ test("alert yang satu penyebab menjadi satu kartu, dan semua halaman sepakat ten
         );
       }
     } else {
-      await expect(view.getByTestId("incident-details")).toContainText(
-        "Tidak ada alert lain yang berkaitan",
+      await expect(view.getByTestId("incident-details")).not.toContainText(
+        "Mengapa dikelompokkan",
       );
     }
   }

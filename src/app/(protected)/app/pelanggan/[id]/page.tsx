@@ -14,8 +14,11 @@ import {
 import { BillingBadge, HealthBadge } from "@/components/dashboard/status-badge";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
 import { CustomerTrafficPanel } from "@/components/dashboard/customer-traffic-panel";
+import { CustomerEvidencePanel } from "@/components/dashboard/customer-evidence-panel";
+import { CustomerLiveCapturePanel } from "@/components/dashboard/customer-live-capture-panel";
 import { CustomerCpeSummary } from "@/components/dashboard/customer-cpe-summary";
 import { DiagnoseButton } from "@/components/dashboard/diagnose-button";
+import { DiagnosticHistory } from "@/components/dashboard/diagnostic-history";
 import { requireSession } from "@/lib/session";
 import { getCustomerHealth } from "@/lib/dashboard/health";
 import { mapFocusHref } from "@/lib/dashboard/map-focus";
@@ -168,7 +171,18 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       </div>
 
       <CustomerTrafficPanel customerId={detail.id} />
+      <CustomerEvidencePanel
+        customerId={detail.id}
+        customerName={detail.name}
+        pppoeUsername={detail.pppoeUsername}
+      />
+      <CustomerLiveCapturePanel
+        customerId={detail.id}
+        customerName={detail.name}
+        pppoeUsername={detail.pppoeUsername}
+      />
 
+      <DiagnosticHistory customerId={detail.id} alerts={alerts} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">

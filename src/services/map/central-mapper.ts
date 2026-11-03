@@ -1,5 +1,6 @@
 // Pemetaan murni dataset /api/v1/data aplikasi pusat (NOC SYSTEM) ke tipe domain peta.
 // Bentuk kolom mengikuti skema pusat: customers, network_infrastructure, network_cables.
+import { effectiveBillingStatus } from "../../lib/effective-billing.ts";
 import { generateSegmentSamples } from "./geo.ts";
 import type {
   CableRoute,
@@ -17,6 +18,8 @@ export interface CentralCustomer {
   longitude: number | null;
   odpName: string | null;
   billingStatus: "lunas" | "isolir";
+  /** Status isolir dari router (poller Go); null = belum ada bukti, pakai billing. */
+  isolirRouter?: boolean | null;
   opticalPower: number | null;
   isOnline: boolean;
 }
@@ -187,7 +190,7 @@ export function mapCentralData(
     region: "", // shortcut: pusat belum punya wilayah pelanggan; isi saat kolomnya ada
     // "loss" butuh status LOS ONU, belum tersedia di dataset customers
     status:
-      c.billingStatus === "isolir"
+      effectiveBillingStatus(c.isolirRouter, c.billingStatus) === "isolir"
         ? "isolir"
         : c.isOnline
           ? "terhubung"

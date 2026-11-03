@@ -9,7 +9,7 @@ import { customerTrafficQuerySchema } from "@/validators/customer-traffic";
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
 
-// GET /api/customers/{id}/traffic?range=live|24h|7d|30d
+// GET /api/customers/{id}/traffic?range=live|24h|3d|7d|30d|90d
 export function GET(request: Request, context: Context) {
   return withApiSession(request, async () => {
     const { id, range } = customerTrafficQuerySchema.parse({

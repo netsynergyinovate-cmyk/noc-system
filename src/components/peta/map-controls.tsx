@@ -221,7 +221,7 @@ export function MapControls({
                   >
                     <option value="">Semua Status</option>
                     <option value="terhubung">Terhubung (Normal)</option>
-                    <option value="isolir">Isolir (Billing)</option>
+                    <option value="isolir">Isolir (Router)</option>
                     <option value="loss">Loss (Gangguan)</option>
                     <option value="offline">Offline</option>
                   </select>

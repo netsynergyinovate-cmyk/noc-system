@@ -30,6 +30,7 @@ export const REALTIME_TICKET_TTL_SECONDS = 60;
 // harus diikuti pemeriksaannya di backend Go (httpapi.requirePerm).
 export const REALTIME_PERMS = {
   "alert:handle": { alert: ["handle"] },
+  "capture:run": { system: ["manage"] },
 } satisfies Record<string, Permissions>;
 
 export type RealtimePerm = keyof typeof REALTIME_PERMS;

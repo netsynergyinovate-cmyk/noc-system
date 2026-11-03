@@ -1,6 +1,7 @@
 import "server-only";
 import { eq, or, ilike } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import {
   auditLog,
   networkInfrastructure,
@@ -758,7 +759,7 @@ export async function getInfrastructureDetail(
           pppoeUsername: customers.pppoeUsername,
           isOnline: customers.isOnline,
           opticalPower: customers.opticalPower,
-          billingStatus: customers.billingStatus,
+          billingStatus: effectiveBillingStatusSql,
           address: customers.address,
           latitude: customers.latitude,
           longitude: customers.longitude,

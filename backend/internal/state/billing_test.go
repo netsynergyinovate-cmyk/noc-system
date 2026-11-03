@@ -388,3 +388,79 @@ func TestSetBillingStatusesUsesTheManagerClockForLastUpdatedAt(t *testing.T) {
 		t.Errorf("LastUpdatedAt = %v, want %v", got, now)
 	}
 }
+func TestRouterOverrideWinsOverBillingInSnapshotAndDrain(t *testing.T) {
+	m := NewManager()
+	_ = m.UpsertRouter(Router{ID: "r1"})
+	_ = m.UpsertCustomer(Customer{ID: "c1", PPPoEUsername: "u1", RouterID: "r1", BillingStatus: BillingLunas})
+
+	// Belum ada bukti router: EffectiveBillingStatus mengikuti billing
+	if got := m.Customers()[0].EffectiveBillingStatus(); got != BillingLunas {
+		t.Fatalf("EffectiveBillingStatus sebelum router = %q, want lunas", got)
+	}
+
+	// Bukti router masuk: isolir = true
+	changed := m.SetIsolirRouter(map[string]bool{"c1": true})
+	if changed != 1 {
+		t.Fatalf("SetIsolirRouter changed = %d, want 1", changed)
+	}
+
+	c := m.Customers()[0]
+	if c.BillingStatus != BillingLunas {
+		t.Errorf("raw BillingStatus harus tetap lunas, got %q", c.BillingStatus)
+	}
+	if c.EffectiveBillingStatus() != BillingIsolir {
+		t.Errorf("EffectiveBillingStatus harus isolir, got %q", c.EffectiveBillingStatus())
+	}
+
+	drained := m.DrainBillingChanges(0)
+	if len(drained) != 1 || drained[0].CustomerID != "c1" || drained[0].Status != BillingIsolir {
+		t.Fatalf("DrainBillingChanges = %+v, want c1 isolir", drained)
+	}
+}
+
+func TestBillingChangeUnderRouterOverrideDoesNotBroadcast(t *testing.T) {
+	m := NewManager()
+	_ = m.UpsertRouter(Router{ID: "r1"})
+	_ = m.UpsertCustomer(Customer{ID: "c1", PPPoEUsername: "u1", RouterID: "r1", BillingStatus: BillingLunas})
+
+	// Router isolir aktif dan sudah didrain
+	m.SetIsolirRouter(map[string]bool{"c1": true})
+	_ = m.DrainBillingChanges(0)
+
+	// Sinkron billing mengubah status tagihan dari lunas ke isolir
+	applied := m.SetBillingStatuses([]BillingChange{{"c1", BillingIsolir}})
+	if len(applied) != 1 {
+		t.Fatalf("SetBillingStatuses applied = %d, want 1", len(applied))
+	}
+	if c := m.Customers()[0]; c.BillingStatus != BillingIsolir {
+		t.Fatalf("raw BillingStatus = %q, want isolir", c.BillingStatus)
+	}
+
+	// Karena effective status sudah isolir sebelumnya (karena router override),
+	// tidak ada perubahan efektif -> antrean siaran tetap kosong!
+	if left := m.DrainBillingChanges(0); len(left) != 0 {
+		t.Errorf("DrainBillingChanges = %+v, want kosong karena effective status tidak berubah", left)
+	}
+}
+
+func TestBillingServiceMismatchUsesRawBillingStatus(t *testing.T) {
+	now := time.Now()
+	m := NewManager(WithClock(func() time.Time { return now }))
+	_ = m.UpsertRouter(Router{ID: "r1"})
+	// c1: billing isolir, online, tapi router override mengatakan false (tidak masuk address-list isolir)
+	isoFalse := false
+	_ = m.UpsertCustomer(Customer{
+		ID:            "c1",
+		PPPoEUsername: "u1",
+		RouterID:      "r1",
+		BillingStatus: BillingIsolir,
+		IsOnline:      true,
+		IsolirRouter:  &isoFalse,
+		StatusSince:   now.Add(-time.Hour),
+	})
+
+	mismatches := m.BillingServiceMismatches()
+	if len(mismatches) != 1 || mismatches[0].CustomerID != "c1" || mismatches[0].Type != "isolir_online" {
+		t.Fatalf("BillingServiceMismatches = %+v, want c1 isolir_online", mismatches)
+	}
+}

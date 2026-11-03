@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, ilike, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { netflowSamples, routers } from "@/db/schema";
 import { env } from "@/lib/env";
@@ -20,7 +20,7 @@ import {
 
 import {
   buildNetflowStatus,
-  NETFLOW_ACTIVE_WINDOW_MS,
+  NETFLOW_FRESH_MS,
   type NetflowStatus,
 } from "@/lib/dashboard/netflow-status";
 
@@ -109,7 +109,7 @@ export async function getNetflowStatus(): Promise<NetflowStatus> {
     .where(
       gte(
         netflowSamples.capturedAt,
-        new Date(nowMs - NETFLOW_ACTIVE_WINDOW_MS),
+        new Date(nowMs - NETFLOW_FRESH_MS),
       ),
     );
   return buildNetflowStatus({
@@ -209,213 +209,5 @@ export async function getTopFlows(
     totalBytes: flows.reduce((s, f) => s + f.bytes, 0),
     totalPackets: flows.reduce((s, f) => s + f.packets, 0),
   };
-}
-
-export interface IngestFlowInput {
-  routerId?: string | null;
-  srcIp: string;
-  dstIp: string;
-  srcPort: number;
-  dstPort: number;
-  protocol: string | number;
-  bytes: number;
-  packets?: number;
-  capturedAt?: Date | string | number;
-}
-
-export interface IngestResult {
-  inserted: number;
-  totalBytes: number;
-  totalPackets: number;
-}
-
-export function normalizeProtocol(proto: string | number): string {
-  if (typeof proto === "number") {
-    switch (proto) {
-      case 1:
-        return "ICMP";
-      case 6:
-        return "TCP";
-      case 17:
-        return "UDP";
-      case 47:
-        return "GRE";
-      case 50:
-        return "ESP";
-      case 89:
-        return "OSPF";
-      default:
-        return `PROTO_${proto}`;
-    }
-  }
-  const s = String(proto).trim().toUpperCase();
-  if (s === "6") return "TCP";
-  if (s === "17") return "UDP";
-  if (s === "1") return "ICMP";
-  return s || "OTHER";
-}
-
-const INGEST_CHUNK = 1000;
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/**
- * Memasukkan kumpulan flow NetFlow ke dalam tabel netflow_samples.
- */
-export async function ingestNetflowFlows(
-  flows: IngestFlowInput[],
-): Promise<IngestResult> {
-  if (!Array.isArray(flows) || flows.length === 0) {
-    return { inserted: 0, totalBytes: 0, totalPackets: 0 };
-  }
-
-  const validRows = [];
-  let totalBytes = 0;
-  let totalPackets = 0;
-
-  for (const f of flows) {
-    const srcIp = String(f.srcIp ?? "").trim();
-    const dstIp = String(f.dstIp ?? "").trim();
-    if (!srcIp || !dstIp) continue;
-
-    const srcPort = Number(f.srcPort);
-    const dstPort = Number(f.dstPort);
-    if (!Number.isInteger(srcPort) || srcPort < 0 || srcPort > 65535) continue;
-    if (!Number.isInteger(dstPort) || dstPort < 0 || dstPort > 65535) continue;
-
-    const bytes = Math.max(0, Math.floor(Number(f.bytes) || 0));
-    const packets = Math.max(1, Math.floor(Number(f.packets) || 1));
-    const protocol = normalizeProtocol(f.protocol);
-
-    let capturedAt: Date;
-    if (f.capturedAt instanceof Date && !Number.isNaN(f.capturedAt.getTime())) {
-      capturedAt = f.capturedAt;
-    } else if (typeof f.capturedAt === "number" && Number.isFinite(f.capturedAt)) {
-      capturedAt = new Date(f.capturedAt > 1e11 ? f.capturedAt : f.capturedAt * 1000);
-    } else if (typeof f.capturedAt === "string" && f.capturedAt) {
-      const d = new Date(f.capturedAt);
-      capturedAt = Number.isNaN(d.getTime()) ? new Date() : d;
-    } else {
-      capturedAt = new Date();
-    }
-
-    const routerId = f.routerId && UUID_REGEX.test(f.routerId) ? f.routerId : null;
-
-    validRows.push({
-      routerId,
-      srcIp,
-      dstIp,
-      srcPort,
-      dstPort,
-      protocol,
-      bytes,
-      packets,
-      capturedAt,
-    });
-
-    totalBytes += bytes;
-    totalPackets += packets;
-  }
-
-  if (validRows.length === 0) {
-    return { inserted: 0, totalBytes: 0, totalPackets: 0 };
-  }
-
-  let insertedCount = 0;
-  for (let i = 0; i < validRows.length; i += INGEST_CHUNK) {
-    const chunk = validRows.slice(i, i + INGEST_CHUNK);
-    await db.insert(netflowSamples).values(chunk);
-    insertedCount += chunk.length;
-  }
-
-  return {
-    inserted: insertedCount,
-    totalBytes,
-    totalPackets,
-  };
-}
-
-/**
- * Mem-parse datagram biner NetFlow v5 (standar MikroTik Traffic Flow UDP).
- */
-export function parseNetflowV5Buffer(
-  buffer: Buffer,
-  routerId?: string,
-): IngestFlowInput[] {
-  if (buffer.length < 24) {
-    throw new RangeError("Panjang paket NetFlow v5 kurang dari 24 byte.");
-  }
-
-  const version = buffer.readUInt16BE(0);
-  if (version !== 5) {
-    throw new RangeError(`Versi paket bukan NetFlow v5 (terbaca ${version}).`);
-  }
-
-  const count = buffer.readUInt16BE(2);
-  if (count < 1 || count > 30) {
-    throw new RangeError(`Jumlah record tidak valid (${count}).`);
-  }
-
-  if (buffer.length < 24 + count * 48) {
-    throw new RangeError("Panjang paket tidak cukup untuk seluruh record NetFlow v5.");
-  }
-
-  const unixSecs = buffer.readUInt32BE(8);
-  const capturedAt = new Date(unixSecs * 1000);
-
-  const flows: IngestFlowInput[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const offset = 24 + i * 48;
-    const srcIp = `${buffer[offset]}.${buffer[offset + 1]}.${buffer[offset + 2]}.${buffer[offset + 3]}`;
-    const dstIp = `${buffer[offset + 4]}.${buffer[offset + 5]}.${buffer[offset + 6]}.${buffer[offset + 7]}`;
-
-    const packets = buffer.readUInt32BE(offset + 16);
-    const bytes = buffer.readUInt32BE(offset + 20);
-
-    const srcPort = buffer.readUInt16BE(offset + 32);
-    const dstPort = buffer.readUInt16BE(offset + 34);
-
-    const protoNum = buffer[offset + 38];
-
-    flows.push({
-      routerId,
-      srcIp,
-      dstIp,
-      srcPort,
-      dstPort,
-      protocol: protoNum,
-      bytes,
-      packets,
-      capturedAt,
-    });
-  }
-
-  return flows;
-}
-
-/**
- * Menerima dan meng-ingest paket biner NetFlow v5 langsung ke basis data.
- */
-export async function ingestRawNetflowV5(
-  buffer: Buffer,
-  routerId?: string,
-): Promise<IngestResult> {
-  const flows = parseNetflowV5Buffer(buffer, routerId);
-  return ingestNetflowFlows(flows);
-}
-
-/**
- * Membersihkan sampel NetFlow lama di luar retensi waktu (standar 7 hari = 168 jam).
- */
-export async function pruneOldNetflowSamples(
-  retentionHours = 168,
-): Promise<number> {
-  const cutoff = new Date(Date.now() - retentionHours * 3600 * 1000);
-  const deleted = await db
-    .delete(netflowSamples)
-    .where(lt(netflowSamples.capturedAt, cutoff))
-    .returning({ id: netflowSamples.id });
-
-  return deleted.length;
 }
 

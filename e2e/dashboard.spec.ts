@@ -35,7 +35,7 @@ async function signUpAndOpenDashboard(page: Page, name: string) {
   ).toBeVisible();
 }
 
-test("the dashboard shows mock data, a live chart, and a filterable customer table", async ({
+test("the dashboard shows a live chart and status panels, with the customer list on its own page", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -99,43 +99,14 @@ test("the dashboard shows mock data, a live chart, and a filterable customer tab
       }),
   );
   expect(sidebarMutations).toBe(0);
+  await expect(page.getByTestId("kpi-online")).toBeVisible();
 
-  const rows = page
-    .getByRole("region", { name: "Daftar status pelanggan" })
-    .locator("tbody tr");
-  await expect(rows).toHaveCount(100);
-
-  const username = (
-    await rows.first().locator(".font-mono").textContent()
-  )?.trim();
-  expect(username).toBeTruthy();
-  await page.getByLabel("Cari pelanggan").fill(username!);
-  await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toContainText(username!);
-
-  await page.getByLabel("Cari pelanggan").fill("tidak-ada-pelanggan-ini");
+  // Daftar pelanggan lengkap ada di halamannya sendiri.
+  await page.getByRole("link", { name: /Daftar pelanggan/ }).click();
+  await expect(page).toHaveURL(/\/app\/pelanggan/);
   await expect(
-    page.getByText("Tidak ada pelanggan yang cocok dengan filter."),
+    page.getByRole("region", { name: "Daftar status pelanggan" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Tampilkan semua pelanggan" }).click();
-  await expect(rows).toHaveCount(100);
-
-  // Status berubah sewaktu-waktu karena simulasi, jadi periksa tiap baris
-  // yang tampil, bukan jumlah pastinya.
-  await page.getByLabel("Status", { exact: true }).selectOption("offline");
-  await expect(rows.filter({ hasText: "Online" })).toHaveCount(0);
-  await expect(rows.filter({ hasText: "Sinyal lemah" })).toHaveCount(0);
-
-  await page.getByLabel("Status", { exact: true }).selectOption("all");
-  await page.getByLabel("Router", { exact: true }).selectOption({ index: 1 });
-  const count = await rows.count();
-  expect(count).toBeGreaterThan(0);
-  expect(count).toBeLessThan(100);
-  await expect(rows.filter({ hasText: "RTR-Barat-02" })).toHaveCount(0);
-  await expect(rows.filter({ hasText: "RTR-Timur-03" })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Reset filter" }).click();
-  await expect(rows).toHaveCount(100);
   expect(errors).toEqual([]);
 });
 

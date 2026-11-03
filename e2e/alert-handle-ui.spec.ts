@@ -185,10 +185,9 @@ test("tiap baris alert aktif punya tombol Tandai ditangani yang namanya menyebut
   expect(new Set(names).size).toBe(names.length);
   for (const alert of alerts) {
     const button = handleButton(page, alert.id);
-    // Di sel Alert (kolom kedua), bukan di kolom ujung kanan yang bisa tersembunyi
-    // di balik gulir mendatar.
+    // Di dalam kartunya sendiri, satu per alert.
     await expect(
-      row(page, alert.id).locator("td").nth(1).getByTestId("handle-alert"),
+      row(page, alert.id).getByTestId("handle-alert"),
     ).toHaveCount(1);
     // Terlihat tanpa menggulir mendatar: seluruh lebar tombol ada di dalam daftar.
     const [frame, box] = await Promise.all([

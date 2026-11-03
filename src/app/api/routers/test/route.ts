@@ -3,6 +3,7 @@ import { withApiPermission, readJson, ApiError } from "@/lib/api";
 import { DeviceConnectionError } from "@/lib/device-connection";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { redactSecrets } from "@/services/device-connection-tester";
+import { groupPolicyFix, missingGroupPolicies } from "@/lib/mikrotik/provision-plan";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
 import { outboundSourceIp, tcpConnectedTimeoutMessage } from "@/services/outbound-source-ip";
@@ -53,6 +54,22 @@ export const POST = (request: Request) =>
       password: parsed.data.password,
       testedBy: session.user.name || session.user.email,
     });
+    // Setelah terhubung: cek izin grup akun REST (baca-saja). Gagal membaca bukan galat uji.
+    let groupCheck: { group: string; policy: string; missing: string[]; fix: string | null } | null = null;
+    if (result.ok && (parsed.data.mode ?? "real") === "real") {
+      try {
+        const users = (await client.read("/rest/user", { name: parsed.data.username })) as Array<{ group?: string }>;
+        const group = users[0]?.group;
+        if (group) {
+          const groups = (await client.read("/rest/user/group", { name: group })) as Array<{ policy?: string }>;
+          const policy = groups[0]?.policy ?? "";
+          const missing = missingGroupPolicies(policy);
+          groupCheck = { group, policy, missing, fix: missing.length ? groupPolicyFix(group, policy) : null };
+        }
+      } catch {
+        groupCheck = null;
+      }
+    }
 
     // Kunci RouterOS (version, cpu-load, ...) tetap ada agar klien lama tidak rusak.
     // Nilainya hanya dari router; bila gagal tidak ada angka karangan.
@@ -72,6 +89,7 @@ export const POST = (request: Request) =>
         uptime: result.resource?.uptime,
         "board-name": result.resource?.boardName,
         sourceIp,
+        groupCheck,
       },
       result,
     });

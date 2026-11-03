@@ -1,29 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Stethoscope } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { History, Settings2, Stethoscope, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCanDo } from "@/components/access";
 import { cn } from "@/lib/utils";
-import type { DiagnosticPolicyDto, DiagnosticRunDto } from "@/lib/diagnostics";
-import { layerLabel } from "@/lib/diagnostics";
+import type { DiagnosticPolicyDto } from "@/lib/diagnostics";
 import { requestDiagnostic } from "./diagnose-button";
 import {
   DiagnosticRunView,
-  RunOrigin,
   errorMessage,
   formatWhen,
-  isRunActive,
 } from "./diagnostic-run-view";
+import { DiagnosticHistory } from "./diagnostic-history";
 
 type CustomerOption = { id: string; name: string; pppoeUsername: string };
 
@@ -44,8 +44,11 @@ function CustomerPicker({
       .then(async (res) => {
         if (!res.ok)
           throw new Error(await errorMessage(res, "Gagal memuat pelanggan"));
-        const { data } = (await res.json()) as { data: CustomerOption[] };
-        if (!stopped) setCustomers(data);
+        const json: unknown = await res.json();
+        if (json && typeof json === "object" && "data" in json) {
+          const parsed = json as { data: CustomerOption[] };
+          if (!stopped) setCustomers(parsed.data);
+        }
       })
       .catch((e) => {
         if (!stopped)
@@ -70,31 +73,34 @@ function CustomerPicker({
   }, [customers, query]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="diagnostic-customer-search">
-        Cari pelanggan (nama, ID, atau username PPPoE)
+    <div className="relative flex flex-col gap-1">
+      <Label htmlFor="diagnostic-customer-search" className="text-[11px] text-muted-foreground">
+        Cari pelanggan
       </Label>
       <Input
         id="diagnostic-customer-search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={
-          customers ? `${customers.length} pelanggan` : "Memuat pelanggan…"
+          customers
+            ? `Nama, ID, atau username PPPoE · ${customers.length} pelanggan`
+            : "Memuat pelanggan…"
         }
         autoComplete="off"
+        className="h-8 text-xs"
       />
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-xs text-destructive" role="alert">
           {error}
         </p>
       )}
       {query.trim() && customers && (
         <ul
-          className="max-h-64 overflow-auto rounded-md border"
+          className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-auto rounded-md border border-border bg-popover shadow-md text-xs"
           aria-label="Hasil pencarian pelanggan"
         >
           {matches.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-muted-foreground">
+            <li className="px-3 py-2 text-xs text-muted-foreground">
               Tidak ada pelanggan yang cocok.
             </li>
           ) : (
@@ -103,8 +109,8 @@ function CustomerPicker({
                 <button
                   type="button"
                   className={cn(
-                    "flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-muted",
-                    selected?.id === c.id && "bg-muted",
+                    "flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted/60",
+                    selected?.id === c.id && "bg-muted font-medium",
                   )}
                   aria-pressed={selected?.id === c.id}
                   onClick={() => {
@@ -112,8 +118,8 @@ function CustomerPicker({
                     setQuery("");
                   }}
                 >
-                  <span className="font-medium">{c.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{c.name}</span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
                     {c.pppoeUsername}
                   </span>
                 </button>
@@ -123,109 +129,6 @@ function CustomerPicker({
         </ul>
       )}
     </div>
-  );
-}
-
-function RunHistory({
-  activeId,
-  onOpen,
-  refreshKey,
-}: {
-  activeId: string | null;
-  onOpen: (id: string) => void;
-  refreshKey: number;
-}) {
-  const [runs, setRuns] = useState<DiagnosticRunDto[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let stopped = false;
-    async function load() {
-      try {
-        const res = await fetch("/api/anomalies/diagnostics?limit=20", {
-          cache: "no-store",
-        });
-        if (!res.ok)
-          throw new Error(
-            await errorMessage(res, "Gagal memuat riwayat diagnosa"),
-          );
-        const { data } = (await res.json()) as { data: DiagnosticRunDto[] };
-        if (!stopped) {
-          setRuns(data);
-          setError(null);
-        }
-      } catch (e) {
-        if (!stopped)
-          setError(
-            e instanceof Error ? e.message : "Gagal memuat riwayat diagnosa.",
-          );
-      }
-    }
-    void load();
-    const timer = setInterval(load, 10_000);
-    return () => {
-      stopped = true;
-      clearInterval(timer);
-    };
-  }, [refreshKey]);
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Riwayat diagnosa</CardTitle>
-        <CardDescription>Manual dan otomatis, terbaru di atas.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {error && (
-          <p className="mb-2 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
-        {!runs ? (
-          <p className="text-sm text-muted-foreground">Memuat…</p>
-        ) : runs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Belum ada diagnosa.</p>
-        ) : (
-          <ul
-            className="flex flex-col divide-y"
-            data-testid="diagnostic-history"
-          >
-            {runs.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  aria-pressed={activeId === r.id}
-                  className={cn(
-                    "flex w-full flex-col items-start gap-1 py-2 text-left text-sm hover:bg-muted/60",
-                    activeId === r.id && "bg-muted",
-                  )}
-                  onClick={() => onOpen(r.id)}
-                >
-                  <span className="font-medium">
-                    {r.isSharedFault
-                      ? "Gangguan bersama"
-                      : (r.customerName ?? "Pelanggan terhapus")}
-                  </span>
-                  <RunOrigin run={r} />
-                  <span className="text-xs text-muted-foreground">
-                    {formatWhen(r.createdAt)} ·{" "}
-                    {isRunActive(r)
-                      ? "sedang berjalan"
-                      : r.status === "failed"
-                        ? "gagal"
-                        : r.verdictLayer
-                          ? `bermasalah: ${layerLabel(r.verdictLayer)}`
-                          : r.isSharedFault
-                            ? "diagnosa per pelanggan ditahan"
-                            : "tidak ada lapisan bermasalah"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -256,7 +159,7 @@ const triggerFields = [
   { key: "triggerBilling", label: "Billing berubah menjadi isolir" },
 ] as const;
 
-function PolicyCard() {
+function PolicyForm() {
   const canManage = useCanDo("manageThresholds");
   const [policy, setPolicy] = useState<DiagnosticPolicyDto | null>(null);
   const [saving, setSaving] = useState(false);
@@ -269,8 +172,11 @@ function PolicyCard() {
       .then(async (res) => {
         if (!res.ok)
           throw new Error(await errorMessage(res, "Gagal memuat kebijakan"));
-        const { data } = (await res.json()) as { data: DiagnosticPolicyDto };
-        if (!stopped) setPolicy(data);
+        const json: unknown = await res.json();
+        if (json && typeof json === "object" && "data" in json) {
+          const parsed = json as { data: DiagnosticPolicyDto };
+          if (!stopped) setPolicy(parsed.data);
+        }
       })
       .catch((e) => {
         if (!stopped)
@@ -310,7 +216,11 @@ function PolicyCard() {
       });
       if (!res.ok)
         throw new Error(await errorMessage(res, "Gagal menyimpan kebijakan"));
-      setPolicy(((await res.json()) as { data: DiagnosticPolicyDto }).data);
+      const json: unknown = await res.json();
+      if (json && typeof json === "object" && "data" in json) {
+        const parsed = json as { data: DiagnosticPolicyDto };
+        setPolicy(parsed.data);
+      }
       setSaved(true);
     } catch (err) {
       setError(
@@ -321,85 +231,68 @@ function PolicyCard() {
     }
   }
 
+  if (!policy) {
+    return <p className="text-xs text-muted-foreground">{error ?? "Memuat…"}</p>;
+  }
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Pemicu otomatis</CardTitle>
-        <CardDescription>
-          Diagnosa otomatis tidak membuat alert atau tiket, dan selalu antre di
-          belakang permintaan manual.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!policy ? (
-          <p className="text-sm text-muted-foreground">{error ?? "Memuat…"}</p>
-        ) : (
-          <form
-            className="flex flex-col gap-3 text-sm"
-            onSubmit={(e) => void save(e)}
-          >
-            <fieldset className="flex flex-col gap-2" disabled={!canManage}>
-              <legend className="mb-1 font-medium">
-                Jalankan otomatis saat
-              </legend>
-              {triggerFields.map((f) => (
-                <label key={f.key} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={policy[f.key]}
-                    onChange={(e) =>
-                      setPolicy({ ...policy, [f.key]: e.target.checked })
-                    }
-                  />
-                  {f.label}
-                </label>
-              ))}
-            </fieldset>
-            {policyFields.map((f) => (
-              <div key={f.key} className="flex flex-col gap-1">
-                <Label htmlFor={`policy-${f.key}`}>{f.label}</Label>
-                <Input
-                  id={`policy-${f.key}`}
-                  type="number"
-                  min={f.min}
-                  max={f.max}
-                  required
-                  disabled={!canManage}
-                  value={policy[f.key]}
-                  onChange={(e) =>
-                    setPolicy({ ...policy, [f.key]: Number(e.target.value) })
-                  }
-                />
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground">
-              Diubah terakhir {formatWhen(policy.updatedAt)} oleh{" "}
-              {policy.updatedBy ?? "bawaan sistem"}.
-            </p>
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
-            {saved && (
-              <p className="text-sm text-success" role="status">
-                Kebijakan tersimpan.
-              </p>
-            )}
-            {canManage ? (
-              <Button type="submit" size="sm" aria-disabled={saving}>
-                {saving ? "Menyimpan…" : "Simpan kebijakan"}
-              </Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Hanya peran dengan izin ambang alert yang dapat mengubah.
-              </p>
-            )}
-          </form>
-        )}
-      </CardContent>
-    </Card>
+    <form className="flex flex-col gap-2.5 text-xs" onSubmit={(e) => void save(e)}>
+      <fieldset className="flex flex-col gap-1.5" disabled={!canManage}>
+        <legend className="mb-0.5 text-[11px] font-medium text-foreground">
+          Jalankan otomatis saat:
+        </legend>
+        {triggerFields.map((f) => (
+          <label key={f.key} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="size-3.5 rounded border-border"
+              checked={policy[f.key]}
+              onChange={(e) => setPolicy({ ...policy, [f.key]: e.target.checked })}
+            />
+            <span className="text-xs text-foreground">{f.label}</span>
+          </label>
+        ))}
+      </fieldset>
+      {policyFields.map((f) => (
+        <div key={f.key} className="flex flex-col gap-0.5">
+          <Label htmlFor={`policy-${f.key}`} className="text-[11px] text-muted-foreground">
+            {f.label}
+          </Label>
+          <Input
+            id={`policy-${f.key}`}
+            type="number"
+            min={f.min}
+            max={f.max}
+            required
+            disabled={!canManage}
+            value={policy[f.key]}
+            onChange={(e) => setPolicy({ ...policy, [f.key]: Number(e.target.value) })}
+            className="h-7 text-xs"
+          />
+        </div>
+      ))}
+      <p className="text-[11px] text-muted-foreground">
+        Diubah {formatWhen(policy.updatedAt)} oleh {policy.updatedBy ?? "bawaan sistem"}.
+      </p>
+      {error && (
+        <p className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p className="text-xs text-success" role="status">
+          Kebijakan tersimpan.
+        </p>
+      )}
+      {canManage ? (
+        <Button type="submit" size="sm" className="h-7 text-xs self-start" aria-disabled={saving}>
+          {saving ? "Menyimpan…" : "Simpan kebijakan"}
+        </Button>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Hanya peran dengan izin ambang alert yang dapat mengubah.
+        </p>
+      )}
+    </form>
   );
 }
 
@@ -409,13 +302,23 @@ export function DiagnosticPanel() {
   const [reused, setReused] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   // datetime-local (jam peramban); kosong = keluhan dianggap sekarang.
   const [complaintAt, setComplaintAt] = useState("");
 
-  const open = useCallback((id: string) => {
-    setRunId(id);
-    setReused(false);
+  useEffect(() => {
+    function handleOpenDiagnostic(e: Event) {
+      if ("detail" in e && typeof e.detail === "object" && e.detail !== null && "runId" in e.detail) {
+        const detail = e.detail as { runId?: string };
+        if (detail.runId) {
+          setRunId(detail.runId);
+          setReused(false);
+        }
+      }
+    }
+    window.addEventListener("noc:open-diagnostic", handleOpenDiagnostic);
+    return () => {
+      window.removeEventListener("noc:open-diagnostic", handleOpenDiagnostic);
+    };
   }, []);
 
   async function start() {
@@ -432,7 +335,6 @@ export function DiagnosticPanel() {
       );
       setRunId(data.id);
       setReused(reused);
-      setRefreshKey((k) => k + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memulai diagnosa.");
     } finally {
@@ -441,91 +343,112 @@ export function DiagnosticPanel() {
   }
 
   return (
-    <section
-      aria-labelledby="diagnostic-heading"
-      className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]"
-    >
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle id="diagnostic-heading" className="text-base">
-            Diagnosa pelanggan
-          </CardTitle>
-          <CardDescription>
-            Pemeriksaan berlapis hulu ke hilir. Setiap temuan menampilkan angka,
-            ambang, dan sumber datanya; lapisan yang belum bisa diperiksa
-            ditandai, bukan dianggap normal.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+    <section aria-label="Diagnosa pelanggan" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-2">
+        <div className="min-w-56 flex-1">
           <CustomerPicker selected={customer} onSelect={setCustomer} />
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="diagnostic-complaint-at">
-              Waktu keluhan (opsional)
-            </Label>
-            <Input
-              id="diagnostic-complaint-at"
-              type="datetime-local"
-              className="w-full sm:w-64"
-              value={complaintAt}
-              onChange={(e) => setComplaintAt(e.target.value)}
-              aria-describedby="diagnostic-complaint-hint"
-            />
-            <p
-              id="diagnostic-complaint-hint"
-              className="text-xs text-muted-foreground"
-            >
-              Acuan garis waktu: kejadian log dan alert ditandai sebelum atau
-              sesudah keluhan. Kosong = sekarang.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="text-sm">
-              {customer ? (
-                <>
-                  Target: <span className="font-medium">{customer.name}</span>{" "}
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {customer.pppoeUsername}
-                  </span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">
-                  Belum ada pelanggan dipilih.
-                </span>
-              )}
+        </div>
+        {customer && (
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 text-xs">
+              <span className="font-medium text-foreground">{customer.name}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {customer.pppoeUsername}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCustomer(null)}
+                className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Hapus pilihan pelanggan"
+              >
+                <X aria-hidden="true" className="size-3" />
+              </button>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              aria-disabled={!customer}
-              aria-busy={starting}
-              data-testid="run-diagnostic"
-              onClick={() => {
-                if (!customer) setError("Pilih pelanggan dulu.");
-                else void start();
-              }}
-            >
-              <Stethoscope aria-hidden="true" className="size-3.5" />
-              {starting ? "Memulai…" : "Jalankan diagnosa"}
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" asChild>
+              <Link href={`/app/pelanggan/${customer.id}#bukti`}>
+                Bukti 3 hari
+              </Link>
             </Button>
           </div>
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
-          {reused && (
-            <p className="text-sm text-muted-foreground">
-              Diagnosa manual pelanggan ini masih berjalan; yang tampil adalah
-              pemeriksaan tersebut.
-            </p>
-          )}
-          {runId && <DiagnosticRunView key={runId} runId={runId} />}
-        </CardContent>
-      </Card>
-      <div className="flex flex-col gap-4">
-        <RunHistory activeId={runId} onOpen={open} refreshKey={refreshKey} />
-        <PolicyCard />
+        )}
+        <div className="flex flex-col gap-1">
+          <Label
+            htmlFor="diagnostic-complaint-at"
+            className="text-[11px] text-muted-foreground"
+          >
+            Waktu keluhan
+          </Label>
+          <Input
+            id="diagnostic-complaint-at"
+            type="datetime-local"
+            className="h-8 w-auto text-xs py-0 px-2"
+            value={complaintAt}
+            onChange={(e) => setComplaintAt(e.target.value)}
+            aria-describedby="diagnostic-complaint-hint"
+          />
+          <span id="diagnostic-complaint-hint" className="sr-only">
+            Acuan garis waktu kejadian log dan alert. Kosong = sekarang.
+          </span>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          aria-disabled={!customer}
+          aria-busy={starting}
+          data-testid="run-diagnostic"
+          className="h-8 gap-1.5 text-xs font-medium"
+          onClick={() => {
+            if (!customer) setError("Pilih pelanggan dulu.");
+            else void start();
+          }}
+        >
+          <Stethoscope aria-hidden="true" className="size-3.5" />
+          {starting ? "Memulai…" : "Diagnosa"}
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" asChild>
+          <Link href="/app/anomali/riwayat">
+            <History aria-hidden="true" className="size-3.5" />
+            Riwayat
+          </Link>
+        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+              <Settings2 aria-hidden="true" className="size-3.5" />
+              Pemicu otomatis
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md p-4">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Pemicu Otomatis</DialogTitle>
+              <DialogDescription className="text-xs">
+                Otomatis berjalan di antrean belakang manual.
+              </DialogDescription>
+            </DialogHeader>
+            <PolicyForm />
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {error && (
+        <p className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+      {reused && (
+        <p className="text-xs text-muted-foreground">
+          Diagnosa manual pelanggan ini masih berjalan; yang tampil adalah
+          pemeriksaan tersebut.
+        </p>
+      )}
+
+      {runId && (
+        <div className="rounded-lg border border-border bg-card p-3">
+          <DiagnosticRunView key={runId} runId={runId} />
+        </div>
+      )}
+
+      {customer && <DiagnosticHistory customerId={customer.id} />}
     </section>
   );
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"noc-isp/backend/internal/archive"
@@ -31,6 +32,70 @@ func (r archivingRecorder) RecordTraffic(routerID string, p state.TrafficPoint) 
 // router yang sedang dipoll (tambah, ubah kredensial, nonaktifkan).
 const fleetEvery = 15 * time.Second
 
+type isolirBatch struct {
+	routerID string
+	isolated map[string]bool
+}
+
+const isolirUpdateSQL = `UPDATE customers c
+SET isolir_router = u.v, isolir_router_at = now()
+FROM unnest($1::text[]::uuid[], $2::bool[]) AS u(id, v)
+WHERE c.id = u.id AND c.isolir_router IS DISTINCT FROM u.v`
+
+// Pelanggan router ini yang sesinya sudah hilang tidak punya bukti lagi: kembali ke billing.
+const isolirClearSQL = `UPDATE customers
+SET isolir_router = NULL, isolir_router_at = now()
+WHERE router_id = $1::uuid AND isolir_router IS NOT NULL AND id <> ALL($2::text[]::uuid[])`
+
+type isolirDB interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+}
+
+func persistIsolirRouter(ctx context.Context, db isolirDB, mgr *state.Manager, routerID string, isolated map[string]bool, logger *slog.Logger) error {
+	if len(isolated) == 0 || mgr == nil {
+		return nil
+	}
+	updates := make(map[string]bool, len(isolated))
+	for username, isIso := range isolated {
+		c, ok := mgr.CustomerByPPPoE(username)
+		if !ok || c.RouterID != routerID {
+			continue
+		}
+		if isIso || !updates[c.ID] {
+			updates[c.ID] = isIso
+		}
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(updates))
+	vals := make([]bool, 0, len(updates))
+	for id, isIso := range updates {
+		ids = append(ids, id)
+		vals = append(vals, isIso)
+	}
+
+	if db != nil {
+		if _, err := db.Exec(ctx, isolirUpdateSQL, ids, vals); err != nil {
+			if logger != nil {
+				logger.Warn("gagal memperbarui isolir_router pelanggan", "router", routerID, "error", err)
+			}
+			return err
+		}
+		if _, err := db.Exec(ctx, isolirClearSQL, routerID, ids); err != nil {
+			if logger != nil {
+				logger.Warn("gagal membersihkan isolir_router pelanggan tanpa sesi", "router", routerID, "error", err)
+			}
+			return err
+		}
+	}
+
+	mgr.SetIsolirRouter(updates)
+	mgr.ClearIsolirRouter(routerID, updates)
+	return nil
+}
+
 // startRouterPolling menyalakan polling semua router aktif di database dan
 // pengimpor pelanggan PPPoE dari /ppp/secret. Tanpa deviceSecret kata sandi
 // router tidak bisa dibuka, jadi keduanya tidak dijalankan (satu baris log).
@@ -43,6 +108,10 @@ func startRouterPolling(
 	notify func(state.Change),
 	logger *slog.Logger,
 	bindCfg olt.AutoBindConfig,
+	// Daftar sesi /ppp/active tiap polling (peta IP pelanggan untuk NetFlow).
+	onSessions func(string, []collector.PPPSession),
+	// Laju VLAN PON tiap detik (dashboard).
+	onVlans func(string, []collector.VlanRate),
 ) {
 	if deviceSecret == "" {
 		logger.Warn("polling router dimatikan: isi DEVICE_SECRET (sama dengan aplikasi Next.js) agar backend bisa membuka kata sandi router")
@@ -55,6 +124,19 @@ func startRouterPolling(
 	// Trafik per pelanggan (rata-rata 5 menit) dari queue dinamis "<pppoe-USERNAME>".
 	customerTraffic := archive.NewCustomerTraffic(archive.NewCustomerPGStore(pool), time.Second, logger)
 	go customerTraffic.Run(ctx)
+	isolirCh := make(chan isolirBatch, 32)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case batch := <-isolirCh:
+				timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				_ = persistIsolirRouter(timeoutCtx, pool, manager, batch.routerID, batch.isolated, logger)
+				cancel()
+			}
+		}
+	}()
 	recorder := archivingRecorder{
 		Manager: manager,
 		archive: archive.Recorder{Next: manager, Writer: writer},
@@ -73,6 +155,15 @@ func startRouterPolling(
 		TrafficInterface:    strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE")),
 		TrafficComment:      strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_COMMENT")),
 		TrafficCustomerSide: strings.EqualFold(strings.TrimSpace(os.Getenv("TRAFFIC_INTERFACE_CUSTOMER_SIDE")), "true"),
+		OnSessions:          onSessions,
+		OnVlans:             onVlans,
+		OnIsolir: func(routerID string, isolated map[string]bool) {
+			select {
+			case isolirCh <- isolirBatch{routerID: routerID, isolated: isolated}:
+			default:
+				logger.Warn("antrean isolir router penuh, lewati putaran ini", "router", routerID)
+			}
+		},
 		OnQueues: func(_ string, at time.Time, samples []collector.QueueSample) {
 			rates := make([]archive.CustomerRate, 0, len(samples))
 			for _, s := range samples {
@@ -95,6 +186,8 @@ func startRouterPolling(
 			Store:    manager,
 			Presence: manager,
 			Notify:   notify,
+			// CPU/RAM router tiap 2 detik (timeout 1,8 dtk): 1 detik terlalu ketat untuk router lewat internet publik.
+			ResourceEvery: 2 * time.Second,
 		},
 	})
 	load := func(ctx context.Context) ([]collector.Target, error) {

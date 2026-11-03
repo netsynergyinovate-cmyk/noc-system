@@ -4,14 +4,10 @@ import { useMemo } from "react";
 import {
   CheckCircle2,
   Flame,
-  FlaskConical,
   History,
   TriangleAlert,
 } from "lucide-react";
-import {
-  generateMockAlertKpi,
-  isAlertBoardMockActive,
-} from "@/lib/dashboard/alert-board-mock";
+import { generateMockAlertKpi } from "@/lib/dashboard/alert-board-mock";
 import { formatInteger } from "@/lib/dashboard/format";
 import { useNowMinute } from "@/lib/dashboard/use-now";
 import { MetricCard } from "./metric-card";
@@ -31,20 +27,8 @@ export function AlertMetricSummary({ active, resolved }: Props) {
   );
 
   return (
-    <section aria-label="Ringkasan alert" className="flex flex-col gap-3">
-      {isAlertBoardMockActive(kpi.sourceStatus) && (
-        <p
-          data-testid="alert-mock-badge"
-          className="inline-flex w-fit flex-wrap items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
-        >
-          <FlaskConical className="size-3.5" aria-hidden="true" />
-          Data Tiruan Alert (Fase 2)
-          <span className="font-normal">
-            · Wajib dialihkan ke Go WebSocket Hub di Fase 5
-          </span>
-        </p>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Ringkasan alert" className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-4 [&>[data-slot=card]]:gap-0 [&>[data-slot=card]]:rounded [&>[data-slot=card]]:px-3 [&>[data-slot=card]]:py-2 [&_p.text-2xl]:mt-0 [&_p.text-2xl]:font-mono [&_p.text-2xl]:text-lg">
         <MetricCard
           label="Alert Kritis Aktif"
           value={formatInteger(kpi.criticalCount)}

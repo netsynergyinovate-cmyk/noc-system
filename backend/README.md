@@ -166,6 +166,7 @@ tambahkan `POST` ke CORS (`cors.go` kini hanya mengizinkan `GET, HEAD, OPTIONS`)
 | server → klien | `snapshot`                      | `time`, `routers`, `customers`, `traffic` `{times, rx, tx}`                                                                                |
 | server → klien | `status`                        | perubahan online/offline pelanggan, dikirim segera (~0,1 detik) tanpa menunggu detik berikutnya; isinya sama dengan `statusChanges`        |
 | server → klien | `delta`                         | tiap detik: `time`, `traffic` (`null` bila tidak ada router melapor), `statusChanges`, dan `billingChanges` (opsional, lihat di bawah)     |
+| server → klien | `telemetry`                     | `data` = `wire.Telemetry`: `routers` (keterjangkauan + CPU/RAM/uptime dari `/system/resource`), `olts`, `latency` (TCP round-trip ke router, OLT, DNS publik), `criticalOptics`, `vlans` (laju vlan1101..1109 dari counter `/interface`), `alerts` (aktif). Tanpa `time`; dikirim segera sesudah snapshot (bila sudah ada) dan tiap isinya berubah. Isi yang sama: `GET /api/v1/dashboard/telemetry`. Dashboard tidak melakukan polling. |
 | server → klien | `events`                        | gangguan mulai atau selesai, **satu pesan berisi daftar** `events`: `id`, `kind`, `severity`, `active`, `time`, `startedAt`, `detail`, ... |
 | server → klien | `incidents` (dirancang)         | daftar **lengkap** kartu insiden aktif: `time`, `cards` (bentuk `IncidentCard`); lihat di bawah                                            |
 | server → klien | `alerts` (dirancang)            | `active` (daftar **lengkap** alert aktif) dan `ended` (yang selesai sejak pesan sebelumnya); lihat di bawah                                |
@@ -1007,6 +1008,15 @@ ini; bila tidak ada baris baru 15 menit, ia memakai buffer memori router (`/log`
 pesan) berdasarkan keluaran RouterOS yang umum, dan yang dikirim `/tool fetch`
 diuji tanpa asumsi Content-Type. Coba pada satu router sebelum diandalkan.
 
+### Riwayat event koneksi pelanggan (`customer_connection_events`)
+
+Setiap transisi status online pelanggan yang diterima backend (dari polling queue MikroTik, webhook PPP, atau syslog) dicatat ke tabel `customer_connection_events` oleh `OnlineWriter` (`internal/collector/online_writer.go`):
+
+- **Yang dicatat:** baris baru dengan `customer_id`, `kind` (`'up'` bila online, `'down'` bila offline), `occurred_at` (waktu UTC saat transisi diproses), dan `source = 'live'`. Kolom `customers.is_online` tetap diperbarui bersamaan tanpa saling memblokir jika salah satu kueri gagal.
+- **Aturan deduplikasi:** untuk mencegah baris duplikat dengan jenis yang sama (misal saat backend restart dan memuat ulang pelanggan yang sedang online, atau saat webhook dan syslog datang berdekatan), penulisan memakai satu kueri SQL dengan klausa `WHERE coalesce((SELECT kind FROM customer_connection_events WHERE customer_id = $1::uuid ORDER BY occurred_at DESC, id DESC LIMIT 1), '') <> $2`. Event baru hanya ditulis jika event terakhir pelanggan berbeda jenisnya atau belum ada riwayat.
+- **Retensi 400 hari:** data event disimpan selama 400 hari (`connectionEventRetention = 400 * 24 * time.Hour`, sama dengan retensi `customer_traffic_samples`) sebagai bukti verifikasi keluhan ("putus/ngelag sejak 3 hari lalu"). Pembersihan data kedaluwarsa (`DELETE FROM customer_connection_events WHERE occurred_at < $1`) dijalankan sekali saat `OnlineWriter.Run` mulai, lalu berulang setiap 24 jam via ticker.
+- **Limitasi jujur:** pencatatan ini bergantung pada backend yang aktif berjalan. Bila backend sempat mati atau router tidak terjangkau dalam jangka waktu tertentu, jeda putusnya koneksi selama rentang downtime tersebut tidak tercatat di `customer_connection_events` (hanya tampak sebagai celah waktu antarevent saat backend menyala kembali).
+
 ## Trafik dashboard: counter interface, bukan rate queue
 
 Diukur di router nyata (24 sampel per detik, jumlah `rate` queue terhadap laju counter interface OLT): `rate`
@@ -1060,7 +1070,8 @@ tidak mengganggu yang lain (traffic tetap masuk walau `/ppp/active` error).
 | ------------ | ----------------------- | -------- | --------------------------------------------------------- |
 | `queue`      | `/rest/queue/simple`    | 1 detik  | traffic (ring buffer)                                     |
 | `ppp-active` | `/rest/ppp/active`      | 30 detik | status online/offline pelanggan                           |
-| `resource`   | `/rest/system/resource` | 5 detik  | `Manager.RouterResource` (CPU, memori, uptime, versi)     |
+| `resource`   | `/rest/system/resource` | 2 detik (server; bawaan paket 5 detik) | `Manager.RouterResource` (CPU, memori, uptime, versi)     |
+| `vlan`       | `/rest/interface?type=vlan` | 1 detik (hanya bila `OnVlans` diisi) | laju VLAN PON (`vlan110N`, Tx = download) ke `telemetry.Service` |
 | `interface`  | `/rest/interface`       | 10 detik | `Manager.RouterInterfaces` (error dan drop per interface) |
 
 ```go
@@ -1082,6 +1093,16 @@ collector.NewPoller(manager, collector.PollerOptions{
   tidak diubah; semua pelanggan menjadi offline hanya bila router sendiri
   menjawab daftar yang kosong. Bila banyak pelanggan berubah sekaligus (20 atau
   lebih dan lebih dari separuh), dicatat sebagai peringatan di log.
+- **Status isolir router (`isolir_router`):** Tiap putaran polling `/ppp/active`,
+  poller juga membaca `/ip/firewall/address-list` router (`list,address,disabled`).
+  Bila router memiliki entri address-list aktif yang namanya memuat kata `isolir`
+  (mis. `POOL-BRAS-RUNSNET-ISOLIR`), IP sesi pelanggan yang berada di dalam entri
+  tersebut (IP tunggal, CIDR, atau rentang `a-b`) ditandai `isolir_router = true`,
+  dan sesi aktif lainnya `false`. Hasil disimpan ke database secara asinkron dan
+  idempotent (`isolir_router` dan `isolir_router_at`). Kolom bernilai `NULL` menandakan
+  belum/tidak ada bukti dari router (mis. router tidak punya address-list isolir aktif,
+  pembacaan gagal, atau pelanggan offline). Status ini menjadi penentu utama status
+  efektif di dashboard, sedangkan `customers.billing_status` tetap murni mencatat data tagihan.
 - Penghitung error interface hanya naik; deteksi "kerusakan port" kelak melihat
   kenaikan antara dua sampel.
 - Nilai interval bisa diubah lewat `BackupOptions`; bagian yang dependensinya nil

@@ -68,6 +68,7 @@ export function DiagnoseButton({
         variant="outline"
         size={size}
         className={className}
+        title={`Diagnosa ${customerName}`}
         aria-busy={starting}
         data-testid="diagnose-button"
         onClick={() => void start()}
@@ -76,10 +77,13 @@ export function DiagnoseButton({
         Diagnosa
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Diagnosa {customerName}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:max-w-3xl sm:p-5 [&>*]:min-w-0">
+          <DialogHeader className="pb-2 border-b border-border/40">
+            <DialogTitle className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Stethoscope aria-hidden="true" className="size-4 text-primary" />
+              Diagnosa pelanggan
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
               Pemeriksaan berlapis hulu ke hilir, hanya membaca perangkat.
             </DialogDescription>
           </DialogHeader>

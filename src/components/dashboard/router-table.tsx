@@ -971,7 +971,7 @@ export function RouterTable() {
 
       {/* 5. System Status Footer Strip */}
       <footer className="w-full bg-background/60 rounded-xl py-2.5 px-4 border border-border font-mono text-[10px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span>SYS_EPOCH: {sysEpoch} • NOC TELEMETRY ENGINE V4.8.1</span>
+        <span suppressHydrationWarning>SYS_EPOCH: {sysEpoch} • NOC TELEMETRY ENGINE V4.8.1</span>
         <div className="flex items-center gap-4">
           <span>INGRESS: 242.8 GB/S</span>
           <span>EGRESS: 239.2 GB/S</span>

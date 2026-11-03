@@ -435,6 +435,12 @@ export function mapGenieAcsToCpe(
     health,
     wifi: parseWifi(r, hosts.filter((h) => h.active).length),
     hosts,
+    acs: {
+      url: str(readAny(r, "ManagementServer.URL")),
+      informEnabled: bool(readAny(r, "ManagementServer.PeriodicInformEnable")),
+      informIntervalSec: num(readAny(r, "ManagementServer.PeriodicInformInterval")),
+      connectionRequestUrl: str(readAny(r, "ManagementServer.ConnectionRequestURL")),
+    },
   };
 }
 

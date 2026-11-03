@@ -9,7 +9,7 @@ export async function benchmarkHandler(
 ) {
   if (!(await isBenchmarkAuthorized(request)))
     return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Sesi atau x-benchmark-key diperlukan." } },
+      { error: { code: "UNAUTHORIZED", message: "Sesi admin atau x-benchmark-key diperlukan." } },
       { status: 401, headers: { "Cache-Control": "private, no-store" } },
     );
   try {

@@ -7,7 +7,11 @@ import {
 import { incidentLabels } from "./incidents.ts";
 import type { IncidentKind, IncidentSeverity } from "./types.ts";
 
-export type AnomalyStatusFilter = "all" | "active" | "resolved";
+// "unreviewed" = masih aktif dan belum ditandai ditinjau operator ("Belum selesai").
+export type AnomalyStatusFilter = "all" | "active" | "unreviewed" | "resolved";
+
+// Id anomali yang sudah ditinjau (kunci peta; nilainya tidak dipakai).
+type Reviewed = Readonly<Record<string, unknown>>;
 
 export interface AnomalyFilters {
   kind: IncidentKind | "all";
@@ -76,6 +80,7 @@ function matches(
   filters: AnomalyFilters,
   skip?: Dimension,
   lookup?: AnomalyNameLookup,
+  reviewed?: Reviewed,
 ) {
   if (
     skip !== "kind" &&
@@ -92,7 +97,14 @@ function matches(
     return false;
   }
   if (skip !== "status" && filters.status !== "all") {
-    if ((filters.status === "active") !== isActive(anomaly)) return false;
+    const active = isActive(anomaly);
+    if (filters.status === "resolved") {
+      if (active) return false;
+    } else if (!active) {
+      return false;
+    } else if (filters.status === "unreviewed" && reviewed?.[anomaly.id]) {
+      return false;
+    }
   }
   const routerId = filters.routerId ?? "all";
   if (
@@ -118,16 +130,17 @@ export function filterAnomalies(
   anomalies: Anomaly[],
   filters: AnomalyFilters,
   lookup?: AnomalyNameLookup,
+  reviewed?: Reviewed,
 ) {
   return anomalies.filter((anomaly) =>
-    matches(anomaly, filters, undefined, lookup),
+    matches(anomaly, filters, undefined, lookup, reviewed),
   );
 }
 
 export interface FacetCounts {
   kind: Record<IncidentKind, number>;
   severity: Record<IncidentSeverity, number>;
-  status: { active: number; resolved: number };
+  status: { active: number; unreviewed: number; resolved: number };
   // Seluruh yang lolos semua saringan.
   total: number;
 }
@@ -139,24 +152,29 @@ export function facetCounts(
   anomalies: Anomaly[],
   filters: AnomalyFilters,
   lookup?: AnomalyNameLookup,
+  reviewed?: Reviewed,
 ): FacetCounts {
   const counts: FacetCounts = {
     kind: Object.fromEntries(
       anomalyRules.map((rule) => [rule.kind, 0]),
     ) as Record<IncidentKind, number>,
     severity: { critical: 0, warning: 0, info: 0 },
-    status: { active: 0, resolved: 0 },
+    status: { active: 0, unreviewed: 0, resolved: 0 },
     total: 0,
   };
   for (const anomaly of anomalies) {
-    if (matches(anomaly, filters, undefined, lookup)) counts.total += 1;
-    if (matches(anomaly, filters, "kind", lookup))
+    if (matches(anomaly, filters, undefined, lookup, reviewed)) counts.total += 1;
+    if (matches(anomaly, filters, "kind", lookup, reviewed))
       counts.kind[anomaly.kind] += 1;
-    if (matches(anomaly, filters, "severity", lookup)) {
+    if (matches(anomaly, filters, "severity", lookup, reviewed)) {
       counts.severity[anomaly.severity] += 1;
     }
-    if (matches(anomaly, filters, "status", lookup)) {
-      counts.status[isActive(anomaly) ? "active" : "resolved"] += 1;
+    if (matches(anomaly, filters, "status", lookup, reviewed)) {
+      if (!isActive(anomaly)) counts.status.resolved += 1;
+      else {
+        counts.status.active += 1;
+        if (!reviewed?.[anomaly.id]) counts.status.unreviewed += 1;
+      }
     }
   }
   return counts;

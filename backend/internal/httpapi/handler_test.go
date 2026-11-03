@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -16,6 +17,7 @@ import (
 
 	"noc-isp/backend/internal/auth"
 	"noc-isp/backend/internal/hub"
+	"noc-isp/backend/internal/netflow"
 	"noc-isp/backend/internal/state"
 )
 
@@ -214,5 +216,130 @@ func TestPPPWebhookIsMountedOnlyWhenProvided(t *testing.T) {
 	}
 	if rec.Header().Get("Cache-Control") != "no-store" {
 		t.Error("webhook juga harus melewati middleware header keamanan")
+	}
+}
+type fakeNetflowQuery struct{}
+
+func (f *fakeNetflowQuery) Summary(_ context.Context, _, _ string) (*netflow.SummaryData, error) {
+	return &netflow.SummaryData{}, nil
+}
+func (f *fakeNetflowQuery) TopTalkers(_ context.Context, _, _ string, _ int) ([]netflow.TopTalkerRecord, error) {
+	return []netflow.TopTalkerRecord{}, nil
+}
+func (f *fakeNetflowQuery) CustomerUsage(_ context.Context, _ string, _ int) ([]netflow.CustomerUsageRecord, error) {
+	return []netflow.CustomerUsageRecord{}, nil
+}
+func (f *fakeNetflowQuery) Sessions(_ context.Context, _ netflow.SessionFilter) ([]netflow.SessionRecord, error) {
+	return []netflow.SessionRecord{}, nil
+}
+
+func TestNetflowQueryEndpointsAcceptAllowedParams(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
+	tokens, err := auth.NewTokens("12345678901234567890123456789012")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := tokens.Issue("user-1", time.Now(), 2*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewHandler(Options{
+		Logger:       logger,
+		Data:         state.NewManager(),
+		Verifier:     tokens,
+		NetflowQuery: &fakeNetflowQuery{},
+	})
+
+	cases := []struct {
+		path string
+		want int
+	}{
+		{"/api/v1/netflow/summary?range=1h", http.StatusOK},
+		{"/api/v1/netflow/summary?range=1h&router_id=r1", http.StatusOK},
+		{"/api/v1/netflow/top-talkers?range=1h&limit=10", http.StatusOK},
+		{"/api/v1/netflow/customers/usage?range=30d&limit=50", http.StatusOK},
+		{"/api/v1/netflow/sessions?range=7d&limit=200", http.StatusOK},
+		{"/api/v1/netflow/sessions?unknown_param=foo", http.StatusBadRequest},
+	}
+
+	for _, tc := range cases {
+		req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != tc.want {
+			t.Errorf("GET %s status = %d, want %d: %s", tc.path, rec.Code, tc.want, rec.Body.String())
+		}
+	}
+}
+
+type fakeTorchRunner struct{}
+
+func (f *fakeTorchRunner) RunCapture(_ context.Context, in netflow.TorchCaptureInput) (*netflow.TorchCaptureResult, error) {
+	return &netflow.TorchCaptureResult{
+		CustomerID:      in.CustomerID,
+		DurationSeconds: in.DurationSeconds,
+		RecordedBy:      in.RecordedBy,
+	}, nil
+}
+
+func TestTorchEndpointRBACAndValidation(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
+	tokens, err := auth.NewTokens("12345678901234567890123456789012")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	readOnlyToken, err := tokens.Issue("user-ro", time.Now(), 2*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	adminToken, err := tokens.IssueWithPerms("admin-1", []string{"capture:run"}, time.Now(), 2*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	handler := NewHandler(Options{
+		Logger:   logger,
+		Data:     state.NewManager(),
+		Verifier: tokens,
+		Torch:    &fakeTorchRunner{},
+	})
+
+	// 1. Tanpa token -> 401
+	rec1 := httptest.NewRecorder()
+	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/netflow/torch", strings.NewReader(`{"customerId":"c1","durationSeconds":15}`))
+	handler.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusUnauthorized {
+		t.Errorf("tanpa token: got %d, want 401", rec1.Code)
+	}
+
+	// 2. Token tanpa izin capture:run -> 403
+	rec2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/netflow/torch", strings.NewReader(`{"customerId":"c1","durationSeconds":15}`))
+	req2.Header.Set("Authorization", "Bearer "+readOnlyToken)
+	handler.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusForbidden {
+		t.Errorf("tanpa izin: got %d, want 403", rec2.Code)
+	}
+
+	// 3. Durasi tidak valid (45s) -> 400
+	rec3 := httptest.NewRecorder()
+	req3 := httptest.NewRequest(http.MethodPost, "/api/v1/netflow/torch", strings.NewReader(`{"customerId":"c1","durationSeconds":45}`))
+	req3.Header.Set("Authorization", "Bearer "+adminToken)
+	handler.ServeHTTP(rec3, req3)
+	if rec3.Code != http.StatusBadRequest {
+		t.Errorf("durasi 45: got %d, want 400", rec3.Code)
+	}
+
+	// 4. Token sah dengan izin capture:run dan durasi 15s -> 200
+	rec4 := httptest.NewRecorder()
+	req4 := httptest.NewRequest(http.MethodPost, "/api/v1/netflow/torch", strings.NewReader(`{"customerId":"c1","durationSeconds":15}`))
+	req4.Header.Set("Authorization", "Bearer "+adminToken)
+	handler.ServeHTTP(rec4, req4)
+	if rec4.Code != http.StatusOK {
+		t.Errorf("durasi 15 dengan izin: got %d, want 200", rec4.Code)
 	}
 }

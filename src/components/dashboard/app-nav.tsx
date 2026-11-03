@@ -22,10 +22,13 @@ import {
   MapPin,
   KeyRound,
   Server,
+  Crosshair,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { AlertCountAnnouncement, AlertCountBadge } from "./alert-count-badge";
+import { useCanDo } from "@/components/access";
+import type { Capability } from "@/lib/access";
 import { isPathExemptFromGate } from "@/lib/dashboard/onboarding-gate";
 
 interface NavItem {
@@ -35,6 +38,8 @@ interface NavItem {
   href?: string;
   // Menunya memuat lencana jumlah alert aktif.
   alerts?: true;
+  capability?: Capability;
+  onClick?: () => void;
 }
 
 interface NavCategory {
@@ -86,7 +91,16 @@ const navCategories: NavCategory[] = [
       { label: "Jejak Aktivitas", href: "/app/jejak-aktivitas", Icon: ScrollText },
       { label: "API Key", href: "/app/api-key", Icon: KeyRound },
       { label: "Uji Stack", href: "/app/uji-stack", Icon: Layers },
-      { label: "Deploy Server", href: "/app/deploy", Icon: Server },
+      { label: "Deploy Server", href: "/app/deploy", Icon: Server, capability: "manageDeploy" },
+      {
+        label: "Tandai Fitur",
+        Icon: Crosshair,
+        onClick: () => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("open-feature-marker-inspector"));
+          }
+        },
+      },
     ],
   },
 ];
@@ -113,6 +127,9 @@ export function AppNav({
   locked?: boolean;
 }) {
   const pathname = usePathname();
+  const canManageDeploy = useCanDo("manageDeploy");
+  const isItemVisible = (item: NavItem) =>
+    !item.capability || (item.capability === "manageDeploy" && canManageDeploy);
   // Satu untuk tiap menu: sidebar dan bilah sempit sama-sama ada di halaman
   // (salah satunya disembunyikan CSS), jadi id-nya tidak boleh sama.
   const alertsId = useId();
@@ -134,7 +151,21 @@ export function AppNav({
     return (
       <nav aria-label="Menu halaman" className="-mx-1 overflow-x-auto">
         <ul className="flex gap-1 px-1">
-          {navItems.map(({ label, href, Icon, alerts }) => {
+          {navItems.filter(isItemVisible).map(({ label, href, Icon, alerts, onClick }) => {
+            if (onClick) {
+              return (
+                <li key={label}>
+                  <button
+                    type="button"
+                    onClick={onClick}
+                    className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 cursor-pointer"
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    {label}
+                  </button>
+                </li>
+              );
+            }
             const isItemLocked = locked && !isPathExemptFromGate(href);
             return href ? (
               isItemLocked ? (
@@ -209,7 +240,9 @@ export function AppNav({
       <div className="space-y-1.5">
         {navCategories.map((category) => {
           const isOpen = openCategories[category.title] ?? true;
-          const hasActiveItem = category.items.some(
+          const visibleItems = category.items.filter(isItemVisible);
+          if (visibleItems.length === 0) return null;
+          const hasActiveItem = visibleItems.some(
             (item) => item.href && isCurrent(pathname, item.href),
           );
           const CategoryIcon = category.Icon;
@@ -251,7 +284,26 @@ export function AppNav({
               {isOpen && (
                 <div className="ml-4 pl-3.5 border-l border-border/50 space-y-0.5 my-1">
                   <ul className="flex flex-col gap-0.5">
-                    {category.items.map(({ label, href, Icon, alerts }) => {
+                    {visibleItems.map(({ label, href, Icon, alerts, onClick }) => {
+                      if (onClick) {
+                        return (
+                          <li key={label}>
+                            <button
+                              type="button"
+                              onClick={onClick}
+                              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-500/15 cursor-pointer transition-colors"
+                            >
+                              <div className="flex items-center gap-2.5 truncate">
+                                <Icon className="size-3.5 shrink-0 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                                <span className="truncate">{label}</span>
+                              </div>
+                              <kbd className="rounded border border-purple-500/30 bg-purple-500/15 px-1 py-0.5 font-mono text-[9px] font-medium text-purple-600 dark:text-purple-300">
+                                Ctrl+~
+                              </kbd>
+                            </button>
+                          </li>
+                        );
+                      }
                       const isItemLocked = locked && !isPathExemptFromGate(href);
                       const isItemActive = href && isCurrent(pathname, href);
                       return (

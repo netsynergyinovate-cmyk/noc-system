@@ -23,7 +23,9 @@ import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { BillingStatusBadge } from "./billing-status-badge";
 import { getCustomerHealth, healthLabels } from "@/lib/dashboard/health";
-import { getOdpCoordinates, getOdpList, type OdpPoint } from "@/lib/dashboard/odp";
+import { getOdpList, type OdpPoint } from "@/lib/dashboard/odp";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import { fetchRoadRoute, type RoadRoute } from "@/lib/dashboard/routing";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import {
@@ -246,6 +248,110 @@ function useFlyToFocus(
   }, [map, seq, customer]);
 }
 
+// ODP yang sama dengan halaman Peta: perangkat tipe `odp` dan tautan pelanggan -> ODP dari
+// /api/peta/data, dibaca sekali (bukan polling). Pelanggan dan koordinatnya sudah sama
+// (satu tabel `customers`); odpName di tabel itu kosong, penautan ODP hanya ada di Peta.
+// Mode demo tetap memakai ODP contoh karena pelanggan contohnya juga tiruan.
+interface PetaOdps {
+  odps: (Omit<OdpPoint, "customerCount"> & { connected?: number })[];
+  odpOfCustomer: Map<string, string>;
+}
+
+function useOdpList(located: DashboardCustomer[]) {
+  const isDemo = useSession(selectPreviewEnabled);
+  const [peta, setPeta] = useState<PetaOdps>({
+    odps: [],
+    odpOfCustomer: new Map(),
+  });
+
+  useEffect(() => {
+    if (isDemo) return;
+    let cancelled = false;
+    fetch("/api/peta/data", { credentials: "same-origin" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          body: {
+            data?: {
+              devices?: {
+                id: string;
+                name: string;
+                type: string;
+                latitude: number;
+                longitude: number;
+                connectedCustomersCount?: number;
+              }[];
+              customers?: { id: string; odpId?: string | null }[];
+            };
+          } | null,
+        ) => {
+          const data = body?.data;
+          if (cancelled || !data?.devices || !data.customers) return;
+          setPeta({
+            odps: data.devices
+              .filter(
+                (d) =>
+                  d.type === "odp" &&
+                  Number.isFinite(d.latitude) &&
+                  Number.isFinite(d.longitude),
+              )
+              .map((d) => ({
+                id: d.id,
+                name: d.name,
+                latitude: d.latitude,
+                longitude: d.longitude,
+                connected: d.connectedCustomersCount,
+              })),
+            odpOfCustomer: new Map(
+              data.customers.flatMap((c) =>
+                c.odpId ? [[c.id, c.odpId] as const] : [],
+              ),
+            ),
+          });
+        },
+      )
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isDemo]);
+
+  const odpList = useMemo(() => {
+    if (isDemo) return getOdpList(located);
+    const counts = new Map<string, number>();
+    for (const c of located) {
+      const odpId = peta.odpOfCustomer.get(c.id);
+      if (odpId) counts.set(odpId, (counts.get(odpId) ?? 0) + 1);
+    }
+    return peta.odps.map(({ connected, ...o }) => ({
+      ...o,
+      customerCount: connected ?? counts.get(o.id) ?? 0,
+    }));
+  }, [isDemo, peta, located]);
+
+  // ODP yang melayani satu pelanggan (untuk rute kabel); undefined bila belum tercatat.
+  const odpOf = (customer: DashboardCustomer) =>
+    isDemo
+      ? odpList.find((o) => o.name === customer.odpName)
+      : odpList.find((o) => o.id === peta.odpOfCustomer.get(customer.id));
+
+  // Pelanggan dengan nama ODP dari Peta (odp_name di tabel pelanggan kosong), untuk label.
+  const labeled = useMemo(
+    () =>
+      isDemo
+        ? located
+        : located.map((c) => {
+            const name = odpList.find(
+              (o) => o.id === peta.odpOfCustomer.get(c.id),
+            )?.name;
+            return name ? { ...c, odpName: name } : c;
+          }),
+    [isDemo, located, odpList, peta],
+  );
+
+  return { odpList, odpOf, labeled };
+}
+
 // Dimuat hanya di browser (dynamic ssr:false), karena Leaflet butuh `window`.
 export function CustomerMap() {
   const customers = useDashboardStore((state) => state.customers);
@@ -278,8 +384,8 @@ export function CustomerMap() {
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Titik ODP terdistribusi
-  const odpList = useMemo(() => getOdpList(located), [located]);
+  // Titik ODP (sama dengan halaman Peta)
+  const { odpList, odpOf, labeled } = useOdpList(located);
 
   const focused = useMemo(
     () =>
@@ -305,22 +411,20 @@ export function CustomerMap() {
 
   // Rute kabel mengikuti jalan (OSRM) dari ODP ke pelanggan yang disorot
   const [activeRoute, setActiveRoute] = useState<RoadRoute | null>(null);
+  const focusedOdp = focused ? odpOf(focused) : undefined;
+  const odpLat = focusedOdp?.latitude;
+  const odpLng = focusedOdp?.longitude;
 
   useEffect(() => {
-    if (!focused || !focused.odpName) {
+    if (!focused || odpLat === undefined || odpLng === undefined) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveRoute(null);
-      return;
-    }
-    const odpCoords = getOdpCoordinates(focused.odpName);
-    if (!odpCoords) {
       setActiveRoute(null);
       return;
     }
 
     let isMounted = true;
     setActiveRoute(null);
-    fetchRoadRoute(odpCoords, [focused.latitude, focused.longitude])
+    fetchRoadRoute([odpLat, odpLng], [focused.latitude, focused.longitude])
       .then((route) => {
         if (isMounted) {
           setActiveRoute(route);
@@ -335,7 +439,7 @@ export function CustomerMap() {
     return () => {
       isMounted = false;
     };
-  }, [focused]);
+  }, [focused, odpLat, odpLng]);
 
   useEffect(() => {
     if (!map) return;
@@ -465,7 +569,7 @@ export function CustomerMap() {
         ))}
 
         {/* Titik pelanggan */}
-        {located.map((customer) => (
+        {labeled.map((customer) => (
           <CustomerMarker
             key={customer.id}
             customer={customer}
@@ -539,7 +643,8 @@ export function CustomerMap() {
                 <strong className="font-semibold">{focused.name}</strong>
                 {activeRoute && focused.odpName && (
                   <span className="text-muted-foreground">
-                    {" "}· Kabel: {activeRoute.distanceMeters} m ({focused.odpName})
+                    {" "}
+                    · Kabel: {activeRoute.distanceMeters} m ({focused.odpName})
                   </span>
                 )}
               </>

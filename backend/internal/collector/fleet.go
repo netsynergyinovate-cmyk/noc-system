@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -154,10 +155,30 @@ func LoadTargets(ctx context.Context, q Querier, deviceSecret string, logger *sl
 	return out, nil
 }
 
+// defaultRouterTransport adalah transport tunggal bersama untuk seluruh klien router,
+// agar koneksi idle dapat di-reuse secara optimal dan tidak membuat transport baru berulang kali.
+var defaultRouterTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	DialContext: (&net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	ForceAttemptHTTP2:     false,
+	MaxIdleConns:          100,
+	MaxIdleConnsPerHost:   20,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   5 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	DisableCompression:    true,
+}
+
 // DefaultHTTPClient dipakai poller dan pengimpor. Verifikasi TLS tetap penuh;
 // timeout total mencegah satu router yang macet menahan putaran selamanya.
 func DefaultHTTPClient() *http.Client {
-	return &http.Client{Timeout: 10 * time.Second}
+	return &http.Client{
+		Transport: defaultRouterTransport,
+		Timeout:   10 * time.Second,
+	}
 }
 
 // PPPSecret adalah satu akun PPP (/ppp/secret) di router.

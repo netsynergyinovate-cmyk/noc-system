@@ -159,7 +159,7 @@ export const METRICS_SQL = `
 SELECT router_id,
        count(*) AS total_customers,
        count(*) FILTER (WHERE is_online) AS online_customers,
-       count(*) FILTER (WHERE billing_status = 'isolir') AS isolir_customers
+       count(*) FILTER (WHERE coalesce(isolir_router, billing_status = 'isolir')) AS isolir_customers
 FROM customers
 WHERE ($1::uuid IS NULL OR router_id = $1::uuid)
 GROUP BY router_id

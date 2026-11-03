@@ -179,7 +179,7 @@ test("daftar alert aktif muat di layar sempit dan menu ponsel menjangkaunya", as
   // cocok dengan tiga elemen dan gagal (strict mode) tepat saat data tiruan
   // kebetulan kosong. Jam asli menentukan data, jadi ini muncul sesekali.
   await expect(
-    rows.first().or(page.getByRole("cell", { name: /^Tidak ada alert aktif/ })),
+    rows.first().or(page.getByTestId("alert-empty")),
   ).toBeVisible();
   // Namanya, bukan seluruh teksnya: di dalam tautan ada lencana jumlah alert aktif.
   await expect(bar.locator("[aria-current=page]")).toHaveAccessibleName(
@@ -228,14 +228,6 @@ test("daftar alert menampilkan lokasi kejadian, dan tombol sorot membawa ke titi
   await page.goto("/app/alert");
   const rows = page.getByTestId("alert-row");
   await expect(rows).toHaveCount(alerts.length);
-  // Dua tabel di halaman ini punya kolom bernama sama; yang diperiksa yang aktif.
-  const activeTable = page.getByRole("region", { name: "Daftar alert aktif" });
-  await expect(
-    activeTable.getByRole("columnheader", { name: "Lokasi" }),
-  ).toBeVisible();
-  await expect(
-    activeTable.getByRole("columnheader", { name: "Peta" }),
-  ).toBeVisible();
 
   // Setiap baris menulis lokasi dari datanya: ODP atau nama router di baris
   // utama, alamat atau penjelasan di bawahnya.

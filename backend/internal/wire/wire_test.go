@@ -42,6 +42,20 @@ func TestCustomerEncodesPresentDataAndFrontendFieldNames(t *testing.T) {
 		}
 	}
 }
+func TestCustomerEncodesRouterOverrideStatus(t *testing.T) {
+	iso := true
+	c := state.Customer{
+		ID:            "c1",
+		PPPoEUsername: "budi",
+		RouterID:      "r1",
+		BillingStatus: "lunas", // raw billing is lunas
+		IsolirRouter:  &iso,    // router override is isolir
+	}
+	wc := NewCustomer(c)
+	if wc.BillingStatus != "isolir" {
+		t.Errorf("BillingStatus = %q, want isolir (router override)", wc.BillingStatus)
+	}
+}
 
 func TestEmptyListsEncodeAsArraysNotNull(t *testing.T) {
 	for name, v := range map[string]any{

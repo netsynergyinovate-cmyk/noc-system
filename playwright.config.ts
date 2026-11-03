@@ -17,6 +17,8 @@ const baseEnv = {
   MIGRATION_DATABASE_URL: testUrl,
   REALTIME_TOKEN_SECRET: process.env.REALTIME_TOKEN_SECRET ?? "",
   BACKEND_URL: process.env.BACKEND_URL ?? "",
+  // Spesifikasi membuat akun sendiri lewat /api/auth/sign-up/email.
+  ALLOW_SIGN_UP: "true",
   // Terisi kosong secara tegas supaya .env.local pengembang tidak ikut terbaca:
   // server utama dan server gate diuji tanpa proxy tepercaya.
   TRUSTED_PROXIES: "",

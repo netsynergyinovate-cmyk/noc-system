@@ -1,6 +1,7 @@
 import "server-only";
 import { desc, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { isolirSql } from "./customer-isolir";
 import { alerts, customers, routers, trafficSamples } from "@/db/schema";
 import { env } from "@/lib/env";
 import {
@@ -81,8 +82,8 @@ async function loadAggregates(now: Date): Promise<DashboardAggregates> {
         online: sql<number>`(count(*) filter (where ${customers.isOnline}))::int`,
         weak: sql<number>`(count(*) filter (where ${customers.isOnline} and ${customers.opticalPower} < ${WEAK_DBM}))::int`,
         critical: sql<number>`(count(*) filter (where ${customers.isOnline} and ${customers.opticalPower} < ${CRITICAL_DBM}))::int`,
-        paid: sql<number>`(count(*) filter (where ${customers.billingStatus} = 'lunas'))::int`,
-        isolated: sql<number>`(count(*) filter (where ${customers.billingStatus} = 'isolir'))::int`,
+        paid: sql<number>`(count(*) filter (where not ${isolirSql}))::int`,
+        isolated: sql<number>`(count(*) filter (where ${isolirSql}))::int`,
       })
       .from(customers),
     db

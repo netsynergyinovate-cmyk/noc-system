@@ -75,8 +75,6 @@ test("AlertMetricSummary diekspor dan dipasang di AlertBoard", () => {
   const src = read("../src/components/dashboard/alert-metric-summary.tsx");
   assert.match(src, /^"use client";/);
   assert.match(src, /export function AlertMetricSummary/);
-  assert.match(src, /data-testid="alert-mock-badge"/);
-  assert.match(src, /Data Tiruan Alert \(Fase 2\)/);
   for (const t of [
     "Alert Kritis Aktif",
     "Peringatan Berjalan",

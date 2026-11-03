@@ -96,7 +96,17 @@ type PollerOptions struct {
 	// OnQueues menerima seluruh simple queue tiap polling queue yang berhasil (mis. arsip
 	// trafik per pelanggan), dari goroutine job; tidak boleh memblokir. Boleh nil.
 	OnQueues func(routerID string, at time.Time, samples []QueueSample)
-	Now      func() time.Time
+	// OnSessions menerima daftar sesi /ppp/active tiap polling yang berhasil
+	// (mis. peta IP pelanggan untuk NetFlow); tidak boleh memblokir. Boleh nil.
+	OnSessions func(routerID string, sessions []PPPSession)
+	// OnIsolir menerima peta status isolir router per username PPPoE
+	// (true bila IP sesi masuk ke address-list isolir router, false bila tidak);
+	// tidak boleh memblokir. Dipanggil bila router memiliki bukti address-list isolir. Boleh nil.
+	OnIsolir func(routerID string, isolated map[string]bool)
+	// OnVlans menerima laju tiap VLAN PON (vlan1101..) tiap detik, dari goroutine job;
+	// tidak boleh memblokir. Nil = job VLAN tidak dijalankan.
+	OnVlans func(routerID string, rates []VlanRate)
+	Now        func() time.Time
 }
 
 // Status adalah kondisi satu job polling pada satu router, untuk rule engine
@@ -135,12 +145,18 @@ type worker struct {
 	ifPrev      *ifSample
 	ifLogged    bool
 	ifFallbackW bool
+
+	isolirErrLogged bool
+
+	// Pembacaan counter VLAN sebelumnya (hanya disentuh goroutine job VLAN).
+	vlanPrev map[string]ifSample
 }
 
 type job struct {
-	name     string
-	interval time.Duration
-	timeout  time.Duration
+	name       string
+	interval   time.Duration
+	timeout    time.Duration
+	maxBackoff time.Duration
 	// run melakukan satu putaran dan mengembalikan jumlah data yang diproses.
 	// started adalah saat putaran dimulai (sebelum permintaan dikirim).
 	run func(ctx context.Context, w *worker, started time.Time) (items int, err error)
@@ -152,7 +168,11 @@ func NewPoller(rec Recorder, opts PollerOptions) *Poller {
 		opts.Interval = defaultInterval
 	}
 	if opts.RequestTimeout <= 0 {
-		opts.RequestTimeout = opts.Interval * 9 / 10
+		if opts.Interval >= time.Second {
+			opts.RequestTimeout = max(2*time.Second, opts.Interval*9/10)
+		} else {
+			opts.RequestTimeout = opts.Interval * 9 / 10
+		}
 	}
 	if opts.Now == nil {
 		opts.Now = time.Now
@@ -210,11 +230,21 @@ func (p *Poller) Start(ctx context.Context, t Target) error {
 // jobs menyusun daftar polling untuk satu router.
 func (p *Poller) jobs() []job {
 	jobs := []job{{
-		name:     JobQueue,
-		interval: p.opts.Interval,
-		timeout:  p.opts.RequestTimeout,
-		run:      p.runQueues,
+		name:       JobQueue,
+		interval:   p.opts.Interval,
+		timeout:    p.opts.RequestTimeout,
+		maxBackoff: 2 * time.Second,
+		run:        p.runQueues,
 	}}
+	if p.opts.OnVlans != nil {
+		jobs = append(jobs, job{
+			name:       JobVLAN,
+			interval:   p.opts.Interval,
+			timeout:    p.opts.RequestTimeout,
+			maxBackoff: 2 * time.Second,
+			run:        p.runVlans,
+		})
+	}
 	b := p.opts.Backup
 	if b == nil {
 		return jobs
@@ -308,20 +338,31 @@ func (p *Poller) runJob(ctx context.Context, w *worker, j job) {
 		if failures == 1 || failures%logEvery == 0 {
 			log.Warn("polling router gagal", "error", err.Error(), "gagal_berturut", failures)
 		}
-		// Router yang mati tidak perlu ditanyai sesering biasa.
+		// Router yang mati tidak perlu ditanyai sesering biasa; job real-time dibatasi maxBackoff kecil.
 		if failures >= failuresBeforeBackoff {
-			ticker.Reset(backoff(j.interval, failures-failuresBeforeBackoff))
+			capDelay := j.maxBackoff
+			if capDelay <= 0 {
+				capDelay = maxBackoff
+			}
+			ticker.Reset(backoffWithCap(j.interval, failures-failuresBeforeBackoff, capDelay))
 		}
 	}
 }
 
 // backoff menggandakan jarak polling tiap kegagalan tambahan, sampai maxBackoff.
 func backoff(interval time.Duration, extraFailures int) time.Duration {
+	return backoffWithCap(interval, extraFailures, maxBackoff)
+}
+
+func backoffWithCap(interval time.Duration, extraFailures int, capDelay time.Duration) time.Duration {
+	if capDelay <= 0 {
+		capDelay = maxBackoff
+	}
 	delay := interval
-	for i := 0; i <= extraFailures && delay < maxBackoff; i++ {
+	for i := 0; i <= extraFailures && delay < capDelay; i++ {
 		delay *= 2
 	}
-	return min(delay, maxBackoff)
+	return min(delay, capDelay)
 }
 
 // execute menjalankan satu putaran job dan mencatat hasilnya di Status.
@@ -450,7 +491,9 @@ func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upM
 	cur, err := w.client.InterfaceCounters(ctx, w.ifName)
 	t1 := p.opts.Now()
 	if err != nil {
-		w.ifPrev = nil
+		if w.ifPrev != nil && t0.Sub(w.ifPrev.At) > maxIfGap {
+			w.ifPrev = nil
+		}
 		return 0, 0, false
 	}
 	if !w.ifLogged {
@@ -479,6 +522,28 @@ func (p *Poller) runPPPActive(ctx context.Context, w *worker, started time.Time)
 	sessions, err := w.client.PPPActive(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if p.opts.OnSessions != nil {
+		p.opts.OnSessions(w.routerID, sessions)
+	}
+	if p.opts.OnIsolir != nil {
+		entries, err := w.client.AddressList(ctx)
+		if err != nil {
+			if p.opts.Logger != nil {
+				if !w.isolirErrLogged {
+					w.isolirErrLogged = true
+					p.opts.Logger.Warn("baca address-list isolir router gagal", "router", w.routerID, "error", err)
+				} else {
+					p.opts.Logger.Debug("baca address-list isolir router gagal", "router", w.routerID, "error", err)
+				}
+			}
+		} else {
+			w.isolirErrLogged = false
+			isolated := MatchIsolirSessions(sessions, entries)
+			if len(isolated) > 0 {
+				p.opts.OnIsolir(w.routerID, isolated)
+			}
+		}
 	}
 	b := p.opts.Backup
 	result := reconcilePresence(b.Presence, b.Notify, w.routerID, sessions, started)

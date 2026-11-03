@@ -1,6 +1,5 @@
 ﻿import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 
 const {
   generateMockPonPortOverview,
@@ -10,7 +9,6 @@ const {
   EMPTY_PON_FILTER,
 } = await import("../src/lib/dashboard/pon-port-table-data.ts");
 const { SETUP_DATA_SOURCE_REGISTRY } = await import("../src/lib/dashboard/setup-extended.ts");
-const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 const ports = generateMockPonPortOverview();
 
@@ -69,17 +67,4 @@ test("PON_ONU_DATA_MOCK_ENTRY terdaftar di registry", () => {
   assert.equal(PON_ONU_DATA_MOCK_ENTRY.status, "dummy");
   assert.ok(SETUP_DATA_SOURCE_REGISTRY.length >= 9);
   assert.ok(SETUP_DATA_SOURCE_REGISTRY.includes(PON_ONU_DATA_MOCK_ENTRY));
-});
-
-test("komponen PonPortsTable diekspor, bertanda, dan dipasang di halaman CPE", () => {
-  const src = read("../src/components/dashboard/pon-ports-table.tsx");
-  assert.match(src, /^"use client"/);
-  assert.match(src, /export function PonPortsTable/);
-  assert.match(src, /data-testid="pon-ports-table"/);
-  assert.match(src, /data-testid="pon-port-row"/);
-  assert.match(src, /data-testid="pon-onu-mock-badge"/);
-  assert.match(src, /Data Tiruan PON \(Fase 2\) · Wajib beralih ke OLT nyata di Fase 5/);
-  assert.match(src, /\/app\/cpe\/pon\//);
-  const page = read("../src/app/(protected)/app/cpe/page.tsx");
-  assert.match(page, /<PonPortsTable \/>/);
 });

@@ -388,3 +388,7 @@ export function summarizeSimpleQueues(queues: readonly MockSimpleQueue[]): Simpl
   }
   return s;
 }
+
+// Dikirim ke window setelah router ditambah/diubah, supaya store dashboard memuat ulang daftarnya dari database
+// (snapshot WebSocket hanya dikirim saat tersambung, jadi router baru tidak muncul sendiri).
+export const ROUTERS_CHANGED_EVENT = "noc:routers-changed";

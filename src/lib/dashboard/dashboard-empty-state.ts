@@ -81,15 +81,3 @@ export function resolveDashboardEmptyState(params: {
   }
   return null;
 }
-
-// Interval cadangan bila WebSocket mati.
-export const DASHBOARD_AUTO_REFRESH_INTERVAL_MS = 5000;
-
-export function shouldTriggerAutoRefresh(
-  lastUpdateSec: number | null,
-  nowSec: number,
-  maxStaleSec: number = 10,
-): boolean {
-  if (lastUpdateSec === null) return true;
-  return nowSec - lastUpdateSec >= maxStaleSec;
-}

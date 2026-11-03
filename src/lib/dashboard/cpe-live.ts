@@ -88,3 +88,18 @@ export async function rebootCpeLive(customerId: string): Promise<RebootResult> {
   }
   return { ok: false, message: `Server gagal mengirim perintah reboot (HTTP ${res.status}).` };
 }
+
+// Reboot ONU lewat OLT (CLI onu-reboot): jalan keluar saat modem tidak bisa dijangkau GenieACS. Server memeriksa izin
+// cpe:manage dan mencatat audit; backend hanya menerima nomor PON/ONU bilangan bulat.
+export async function rebootOnuViaOlt(onu: { oltId: string; ponIndex: number; onuIndex: number }): Promise<RebootResult> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/olts/${encodeURIComponent(onu.oltId)}/onus/${onu.ponIndex}/${onu.onuIndex}/reboot`, { method: "POST" });
+  } catch {
+    return { ok: false, message: "Server aplikasi tidak terjangkau. Perintah reboot tidak dikirim." };
+  }
+  const body: { ok?: boolean; message?: string; error?: { message?: string } } | null = await res.json().catch(() => null);
+  if (res.status === 403) return { ok: false, message: "Akun Anda tidak punya izin me-reboot perangkat (butuh peran admin)." };
+  if (res.ok && body?.ok) return { ok: true, message: body.message ?? "Perintah reboot diterima OLT." };
+  return { ok: false, message: body?.error?.message ?? `Perintah reboot gagal (HTTP ${res.status}).` };
+}

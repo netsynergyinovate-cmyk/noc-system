@@ -17,6 +17,8 @@ import (
 //	{"type":"delta", ...}     satu per detik
 //	{"type":"status", ...}    perubahan status pelanggan, segera (tanpa menunggu detik berikutnya)
 //	{"type":"events", ...}    saat ada gangguan mulai atau selesai (satu pesan berisi daftar)
+//	{"type":"telemetry","data":{...}} resource router, OLT, latensi, optik kritis, alert aktif
+//	                          (wire.Telemetry); sesudah snapshot bila sudah ada, lalu tiap isinya berubah
 //
 // Status tagihan (lunas/isolir) pelanggan ikut di snapshot (billingStatus tiap
 // pelanggan). Sinkron billing yang berhasil mengubahnya menambahkan
@@ -29,11 +31,12 @@ import (
 // Nama field mengikuti tipe di frontend (src/lib/dashboard/types.ts).
 
 const (
-	typeAuth     = "auth"
-	typeSnapshot = "snapshot"
-	typeDelta    = "delta"
-	typeStatus   = "status"
-	typeEvents   = "events"
+	typeAuth      = "auth"
+	typeSnapshot  = "snapshot"
+	typeDelta     = "delta"
+	typeStatus    = "status"
+	typeEvents    = "events"
+	typeTelemetry = "telemetry"
 )
 
 type authMessage struct {
@@ -50,6 +53,13 @@ type snapshotMessage struct {
 	Routers   []wire.Router      `json:"routers"`
 	Customers []wire.Customer    `json:"customers"`
 	Traffic   wire.TrafficSeries `json:"traffic"`
+}
+
+// telemetryMessage membungkus wire.Telemetry; tidak membawa `time` karena isinya
+// hanya dikirim saat berubah.
+type telemetryMessage struct {
+	Type string         `json:"type"`
+	Data wire.Telemetry `json:"data"`
 }
 
 type trafficPoint struct {

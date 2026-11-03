@@ -1,6 +1,7 @@
 import "server-only";
 import { asc, count, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { isolirSql } from "./customer-isolir";
 import { customers, trafficSamples } from "@/db/schema";
 
 // Akses arsip traffic_samples dan agregat pelanggan lewat Drizzle, dipakai uji
@@ -201,7 +202,7 @@ export async function queryCustomerMetricsPerRouterDrizzle(
       routerId: customers.routerId,
       totalCustomers: count(),
       onlineCustomers: sql<number>`count(*) filter (where ${customers.isOnline})`,
-      isolirCustomers: sql<number>`count(*) filter (where ${customers.billingStatus} = 'isolir')`,
+      isolirCustomers: sql<number>`count(*) filter (where ${isolirSql})`,
     })
     .from(customers)
     .where(routerId ? eq(customers.routerId, routerId) : undefined)

@@ -23,6 +23,10 @@ export const runsnetCustomers = pgTable(
     connectivity: text("connectivity"), // Terhubung / Tidak Terhubung
     status: text("status").notNull(), // Active, Pending, Isolir, Terminate
     rawJson: text("raw_json"),
+    // Sesi PPPoE terakhir dari halaman detail RunsNet (diisi saat sinkron; pelanggan offline memakai sesi terakhirnya).
+    ipAddress: text("ip_address"),
+    macAddress: text("mac_address"),
+    ipSyncedAt: timestamp("ip_synced_at", { withTimezone: true }),
     syncedAt: timestamp("synced_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

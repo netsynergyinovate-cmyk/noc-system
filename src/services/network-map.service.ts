@@ -1,6 +1,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { effectiveBillingStatusSql } from "./customer-isolir";
 import { customers, olts, oltOnus, routers, networkInfrastructure } from "@/db/schema";
 import { getLocalMockMapData } from "./network-map-mock";
 
@@ -100,7 +101,7 @@ export async function getNetworkMapData(options?: {
       latitude: customers.latitude,
       longitude: customers.longitude,
       odpName: customers.odpName,
-      billingStatus: customers.billingStatus,
+      billingStatus: effectiveBillingStatusSql,
       opticalPower: customers.opticalPower,
       isOnline: customers.isOnline,
       lastUpdatedAt: customers.lastUpdatedAt,

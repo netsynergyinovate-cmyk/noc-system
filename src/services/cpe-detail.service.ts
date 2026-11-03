@@ -113,6 +113,13 @@ export async function refreshCpeRealtime(
         paramNames.push(`InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`);
       }
     }
+    // Port Ethernet LAN: link naik/turun dan kecepatan ikut dibaca langsung (bukan hanya Wi-Fi).
+    for (const i of [1, 2, 3, 4]) {
+      for (const leaf of ["Status", "MaxBitRate"]) {
+        const path = `InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.${i}.${leaf}`;
+        if (readParam(raw, path) !== undefined) paramNames.push(path);
+      }
+    }
     if (readParam(raw, "InternetGatewayDevice.DeviceInfo.UpTime") !== undefined) {
       paramNames.push("InternetGatewayDevice.DeviceInfo.UpTime");
     }

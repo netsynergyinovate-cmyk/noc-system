@@ -81,6 +81,8 @@ export interface CpeDevice {
   health: CpeHealth;
   wifi: CpeWifi;
   hosts: CpeHostClient[];
+  /** ACS yang dituju modem (dari ManagementServer); hanya ada untuk modem nyata dari GenieACS. */
+  acs?: { url: string; informEnabled: boolean; informIntervalSec: number | null; connectionRequestUrl: string };
 }
 
 export interface CpeMetrics {

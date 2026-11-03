@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/session";
 import { RouterTable } from "@/components/dashboard/router-table";
+import { InactiveRouterList } from "@/components/dashboard/inactive-router-list";
 import { NetworkOverviewPanel } from "@/components/dashboard/network-overview-panel";
 import { DeviceStatusCardGrid } from "@/components/dashboard/device-status-card-grid";
 import { UnreachableDeviceBanner } from "@/components/dashboard/unreachable-device-banner";
@@ -56,6 +57,8 @@ export default async function RouterPage() {
 
       {/* Main Telemetry & Dashboard Board */}
       <RouterTable />
+
+      <InactiveRouterList />
 
       {/* Grid Status Ringkasan Perangkat Jaringan */}
       <DeviceStatusCardGrid />

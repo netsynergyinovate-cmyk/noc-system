@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -98,6 +99,30 @@ func (m *Manager) UpsertRouter(r Router) error {
 	return nil
 }
 
+// RemoveRouter membuang router beserta pelanggannya dari memori (router dihapus atau tidak lagi aktif di
+// database). Mengembalikan false bila router tidak dikenal.
+func (m *Manager) RemoveRouter(routerID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.routers[routerID]; !ok {
+		return false
+	}
+	delete(m.routers, routerID)
+	m.routerOrder = slices.DeleteFunc(m.routerOrder, func(id string) bool { return id == routerID })
+	m.customerOrder = slices.DeleteFunc(m.customerOrder, func(id string) bool {
+		c := m.customers[id]
+		if c.RouterID != routerID {
+			return false
+		}
+		delete(m.byPPPoE, c.PPPoEUsername)
+		delete(m.byPPPoE, strings.ToLower(strings.TrimSpace(c.PPPoEUsername)))
+		delete(m.billingQueued, id)
+		delete(m.customers, id)
+		return true
+	})
+	return true
+}
+
 // UpsertCustomer menambah pelanggan, atau menggantikan datanya. Routernya harus
 // sudah terdaftar dan username PPPoE-nya tidak boleh dipakai pelanggan lain.
 func (m *Manager) UpsertCustomer(c Customer) error {
@@ -118,6 +143,7 @@ func (m *Manager) UpsertCustomer(c Customer) error {
 	if existing, ok := m.customers[c.ID]; ok {
 		if existing.PPPoEUsername != c.PPPoEUsername {
 			delete(m.byPPPoE, existing.PPPoEUsername)
+			delete(m.byPPPoE, strings.ToLower(strings.TrimSpace(existing.PPPoEUsername)))
 		}
 		if c.StatusSince.IsZero() {
 			// Mengganti data tanpa mengubah status tidak mengulang hitungan.
@@ -137,6 +163,7 @@ func (m *Manager) UpsertCustomer(c Customer) error {
 		m.customerOrder = append(m.customerOrder, c.ID)
 	}
 	m.byPPPoE[c.PPPoEUsername] = c.ID
+	m.byPPPoE[strings.ToLower(strings.TrimSpace(c.PPPoEUsername))] = c.ID
 	return nil
 }
 
@@ -146,6 +173,9 @@ func (m *Manager) CustomerByPPPoE(pppoeUsername string) (Customer, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	id, ok := m.byPPPoE[pppoeUsername]
+	if !ok {
+		id, ok = m.byPPPoE[strings.ToLower(strings.TrimSpace(pppoeUsername))]
+	}
 	if !ok {
 		return Customer{}, false
 	}
@@ -159,6 +189,9 @@ func (m *Manager) SetOnline(pppoeUsername string, online bool) (Change, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	id, ok := m.byPPPoE[pppoeUsername]
+	if !ok {
+		id, ok = m.byPPPoE[strings.ToLower(strings.TrimSpace(pppoeUsername))]
+	}
 	if !ok {
 		return Change{}, fmt.Errorf("%w: %q", ErrUnknownCustomer, pppoeUsername)
 	}

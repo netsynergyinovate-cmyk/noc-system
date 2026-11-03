@@ -25,7 +25,7 @@ export function RouterConfigDialog({
 }: RouterConfigDialogProps) {
   const [name, setName] = useState(router?.name ?? "");
   const [host, setHost] = useState(router?.host ?? "");
-  const [username, setUsername] = useState("Monitor");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"aktif" | "nonaktif">(router?.active ? "aktif" : "nonaktif");
   const [role, setRole] = useState(router?.role ?? "Gateway Utama + BRAS");
@@ -208,7 +208,7 @@ export function RouterConfigDialog({
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Monitor"
+                placeholder="Kosongkan jika tidak berubah"
                 className="bg-muted border-border text-foreground font-mono text-xs focus-visible:ring-emerald-500/40"
               />
             </div>

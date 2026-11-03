@@ -36,6 +36,7 @@ export function RouterConfigDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Hapus: percobaan pertama tanpa force; bila router masih dipakai server menjawab 409 berisi jumlah datanya,
   // lalu operator harus mengetik nama router sebelum penghapusan paksa.
   const [deleting, setDeleting] = useState(false);
@@ -129,7 +130,7 @@ export function RouterConfigDialog({
   async function handleDelete(force: boolean) {
     if (!router) return;
     setDeleting(true);
-    setErrorMessage(null);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/routers/${router.id}${force ? "?force=true" : ""}`, { method: "DELETE" });
       const json = await res.json().catch(() => null);
@@ -141,7 +142,7 @@ export function RouterConfigDialog({
       onDeleted?.();
       onOpenChange(false);
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus router.");
+      setDeleteError(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus router.");
     } finally {
       setDeleting(false);
     }
@@ -311,12 +312,14 @@ export function RouterConfigDialog({
             <p className="text-[11px] text-muted-foreground">
               Hanya menghapus data di aplikasi ini. Pengaturan di MikroTik tidak diubah.
             </p>
-            {errorMessage && <p className="text-[11px] text-rose-300">{errorMessage}</p>}
+            {deleteError && <p className="text-[11px] text-rose-300">{deleteError}</p>}
             {deleteBlocked && (
               <div className="space-y-2 text-[11px]">
                 <p className="text-rose-300">{deleteBlocked}</p>
                 <p className="text-muted-foreground">
-                  Menghapus paksa akan <b>menghapus permanen</b> semua pelanggan, alert, dan log jaringan milik router ini.
+                  Menghapus paksa akan <b>menghapus permanen</b> semua pelanggan router ini beserta status tagihan, riwayat
+                  koneksi dan trafik pelanggan, tugas CPE, serta alert, log jaringan, riwayat trafik dan syslog router. Tidak
+                  bisa dibatalkan. Bila hanya ingin berhenti memantau, ubah Status Operasional menjadi Nonaktif lalu simpan.
                   Ketik nama router (<code>{router.name}</code>) untuk melanjutkan.
                 </p>
                 <input

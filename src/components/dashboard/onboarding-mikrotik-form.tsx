@@ -23,6 +23,7 @@ import {
   type OnboardingMikrotikTestResult,
 } from "@/lib/dashboard/onboarding-mikrotik";
 import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
+import { RouterSetupGuide } from "@/components/dashboard/router-setup-guide";
 
 interface OnboardingMikrotikFormProps {
   onSuccess?: () => void;
@@ -212,6 +213,14 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
           <span>{savedNotice}</span>
         </div>
       )}
+      <RouterSetupGuide
+        host={form.host}
+        port={form.port > 0 ? String(form.port) : ""}
+        onUseRouter={(address, restPort) => {
+          handleFieldChange("host", address);
+          if (restPort) handleFieldChange("port", restPort);
+        }}
+      />
 
       {/* Field Isian Form */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -435,31 +444,6 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
             </div>
           )}
 
-          {!testResult.ok && (
-            <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50/70 p-3 text-[11px] text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-              <p className="font-semibold mb-1">Panduan Pengaturan REST MikroTik:</p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>
-                  Aplikasi memakai <strong>REST API RouterOS v7</strong>. Port API biner (8728/8729) dan Winbox (8291) tidak melayani REST.
-                </li>
-                <li>
-                  <strong>HTTP (www)</strong>, hilangkan centang TLS:
-                  <br />
-                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service print where name~&quot;www&quot;</code>
-                  <br />
-                  Jika bertanda X: <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service enable www</code>. Jangan mengubah portnya; isi port yang tertera ke kolom Port.
-                </li>
-                <li>
-                  <strong>HTTPS (www-ssl)</strong>, centang TLS. Sertifikat self-signed bawaan ditolak, jadi pasang sertifikat valid:
-                  <br />
-                  <code className="bg-amber-100/80 dark:bg-amber-900/40 px-1 py-0.5 rounded font-mono text-[10px]">/ip service set www-ssl disabled=no certificate=&lt;nama-sertifikat&gt;</code>
-                </li>
-                <li>
-                  Firewall router harus mengizinkan alamat server aplikasi ke port itu (cek <code>/ip service print</code> kolom <code>address</code>).
-                </li>
-              </ul>
-            </div>
-          )}
 
           {testResult.ok && (
             <div className="mt-2 flex items-center justify-end border-t pt-3">

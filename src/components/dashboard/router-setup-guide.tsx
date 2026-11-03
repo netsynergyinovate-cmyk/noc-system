@@ -60,7 +60,7 @@ const PROBLEMS: Array<[string, string]> = [
   ["Router menutup koneksi", "IP server NOC belum ada di kolom ADDRESS layanan www. Ulangi langkah 4 (tambahkan, jangan mengganti)."],
   ["Koneksi ditolak", "Layanan www mati atau port-nya salah (mis. kolom Port kosong = 80, padahal router memakai 8081). Ulangi langkah 3, lalu isi Port REST yang benar."],
   ["Timeout / Router tidak terjangkau", "Tidak ada rute ke alamat itu, alamatnya salah, atau firewall router (chain input) menjatuhkan paket. Periksa langkah 2 (alamat); dari server coba `ping <alamat-router>` dan `/ip firewall filter print where chain=input` di router."],
-  ["Login ditolak (401)", "Username atau kata sandi salah, atau grup akun tidak memiliki izin REST. Lihat langkah 5 dan `/user group print`."],
+  ["Login ditolak (401)", "Username atau kata sandi salah, atau grup akun belum punya izin `api` dan `rest-api`. Lihat langkah 5."],
   ["Endpoint tidak ditemukan (404)", "RouterOS di bawah v7.1, atau port yang diisi bukan layanan www/www-ssl."],
   ["Sertifikat HTTPS tidak dipercaya", "www-ssl memakai sertifikat self-signed. Pasang sertifikat valid, atau pakai www (HTTP) lewat jaringan privat."],
   ["Port 8728 / 8729 / 8291 / 2024", "Itu API biner dan Winbox, bukan REST. Pakai port layanan www atau www-ssl dari langkah 3."],
@@ -253,12 +253,28 @@ export function RouterSetupGuide({ host, port, onUseRouter }: GuideProps) {
         </li>
 
         <li>
-          <b>Cek layanan REST dan port-nya.</b>
+          <b>Aktifkan layanan REST (www).</b> REST RouterOS berjalan di atas layanan web router. Lihat statusnya:
           <Cmd>{'/ip service print where name~"www"'}</Cmd>
-          Isi kolom <b>Port REST</b> sesuai kolom PORT (bawaan 80 untuk <code>www</code>, 443 untuk{" "}
-          <code>www-ssl</code>; bisa juga port lain, mis. 8081). <b>Jangan mengubah port</b> yang sudah berjalan, cukup
-          isi port itu di form. Jika layanan bertanda <code>X</code> (nonaktif):
-          <Cmd>{"/ip service enable www"}</Cmd>
+          Baris yang diawali <code>X</code> berarti <b>nonaktif</b>; kolom <code>PORT</code> adalah port yang diisi di
+          form. Pilih salah satu:
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            <li>
+              <b>HTTP (www), paling sederhana. Pakai di jaringan privat/VPN, jangan dibuka ke internet.</b> Di form,
+              jangan centang HTTPS.
+              <Cmd>{"/ip service set www disabled=no"}</Cmd>
+              Port bawaan 80. Bila sudah dipakai layanan lain (mis. 8081), <b>jangan diubah</b>; cukup isi port itu di
+              form.
+            </li>
+            <li>
+              <b>HTTPS (www-ssl)</b>, di form centang HTTPS. Aplikasi <b>menolak sertifikat self-signed</b>, jadi
+              butuh sertifikat yang dipercaya (mis. Let&apos;s Encrypt untuk nama domain publik yang menunjuk ke router;
+              perintah <code>/certificate enable-ssl-certificate</code> ada di RouterOS terbaru). Setelah sertifikat
+              ada di <code>/certificate print</code>:
+              <Cmd>{"/ip service set www-ssl certificate=<NAMA-SERTIFIKAT> disabled=no"}</Cmd>
+              Bila belum punya sertifikat tepercaya, pakai HTTP di atas.
+            </li>
+          </ul>
+          Pastikan hasilnya: baris <code>www</code> tidak lagi berawalan <code>X</code> saat dicek ulang.
         </li>
 
         <li>
@@ -272,13 +288,15 @@ export function RouterSetupGuide({ host, port, onUseRouter }: GuideProps) {
         </li>
 
         <li>
-          <b>Siapkan akun router.</b> Pakai akun khusus (bukan <code>admin</code>) dengan izin baca; tambah izin tulis
-          hanya bila memakai kontrol isolir. Lihat grup yang ada dan izinnya:
+          <b>Buat akun REST khusus.</b> Grup harus punya <b>kedua</b> izin <code>api</code> dan <code>rest-api</code>
+          (tanpa keduanya, hasilnya 401 walau kata sandi benar), ditambah <code>read</code> dan <code>test</code>.
+          Tambahkan <code>write</code> hanya bila memakai kontrol isolir.
+          <Cmd>{"/user group add name=noc-rest policy=read,api,rest-api,test"}</Cmd>
+          <Cmd>{"/user add name=noc-api group=noc-rest password=<KATA-SANDI>"}</Cmd>
+          Periksa hasilnya; kolom <code>POLICY</code> grup <code>noc-rest</code> harus memuat <code>rest-api</code>:
           <Cmd>{"/user group print"}</Cmd>
-          Buat akun pada grup bawaan <code>read</code> (atau <code>write</code> bila perlu isolir):
-          <Cmd>{"/user add name=noc-api group=read password=<KATA-SANDI>"}</Cmd>
-          Jika uji koneksi nanti menjawab 401 padahal kata sandi benar, grup itu belum punya izin REST: sesuaikan izin
-          grup di <code>/user group</code>.
+          Bila router Anda menolak nama izin <code>rest-api</code> (RouterOS di bawah 7.1), perbarui RouterOS terlebih
+          dahulu.
         </li>
 
         <li>

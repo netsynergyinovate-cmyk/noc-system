@@ -29,7 +29,9 @@ export function RouterDeleteDialog({ router, onClose, onDeleted }: RouterDeleteD
         setBlocked(json.error.message);
         return;
       }
-      if (!res.ok) throw new Error(json?.error?.message ?? `Gagal menghapus router (HTTP ${res.status}).`);
+      // 404: router sudah tidak ada di database (mis. baris basi di layar); anggap selesai dan bersihkan tampilan.
+      const alreadyGone = res.status === 404 && json?.error?.code === "ROUTER_NOT_FOUND";
+      if (!res.ok && !alreadyGone) throw new Error(json?.error?.message ?? `Gagal menghapus router (HTTP ${res.status}).`);
       onDeleted();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus router.");

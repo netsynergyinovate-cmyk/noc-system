@@ -1,6 +1,7 @@
 import dgram from "node:dgram";
 import fs from "node:fs";
 import http from "node:http";
+import https from "node:https";
 import net from "node:net";
 
 // Membantu operator MENDAPATKAN alamat yang dibutuhkan saat menambah router, bukan menebaknya:
@@ -94,30 +95,36 @@ export function expandCidr(cidr: string): string[] {
 
 // "reset": TCP tersambung lalu langsung diputus tanpa jawaban HTTP, ciri khas allow-list /ip service MikroTik yang
 // belum memuat alamat server ini (router ada di sana tetapi belum mengizinkan kita).
-export type RestProbe = { port: number; status: 200 | 401 | "reset" };
+export type RestProbe = { port: number; tls: boolean; status: 200 | 401 | "reset" };
 
-// Layanan REST MikroTik menjawab 401 (atau 200 JSON) pada /rest/system/resource tanpa kredensial.
-export function probeRest(host: string, port: number, timeoutMs = 1200): Promise<RestProbe | null> {
+// Layanan REST MikroTik menjawab 401 (atau 200 JSON) pada /rest/system/resource tanpa kredensial. Untuk www-ssl
+// sertifikat tidak diperiksa (hanya mengetahui layanan itu aktif; tidak ada kredensial yang dikirim).
+export function probeRest(host: string, port: number, tls = false, timeoutMs = 1200): Promise<RestProbe | null> {
   const { promise, resolve } = Promise.withResolvers<RestProbe | null>();
-  const req = http.request({ host, port, path: "/rest/system/resource", method: "GET", timeout: timeoutMs }, (res) => {
+  const req = (tls ? https : http).request({ host, port, path: "/rest/system/resource", method: "GET", timeout: timeoutMs, ...(tls && { rejectUnauthorized: false }) }, (res) => {
     res.resume();
     const code = res.statusCode;
     const auth = String(res.headers["www-authenticate"] ?? "");
     const isJson = /json/i.test(String(res.headers["content-type"] ?? ""));
-    resolve((code === 200 && isJson) || (code === 401 && /basic/i.test(auth)) ? { port, status: code as 200 | 401 } : null);
+    resolve((code === 200 && isJson) || (code === 401 && /basic/i.test(auth)) ? { port, tls, status: code as 200 | 401 } : null);
   });
   req.once("timeout", () => {
     req.destroy();
     resolve(null);
   });
   req.once("error", (err: NodeJS.ErrnoException) => {
-    resolve(err.code === "ECONNRESET" || /socket hang up|other side closed/i.test(err.message) ? { port, status: "reset" } : null);
+    resolve(err.code === "ECONNRESET" || /socket hang up|other side closed/i.test(err.message) ? { port, tls, status: "reset" } : null);
   });
   req.end();
   return promise;
 }
 
-export const REST_PORTS = [80, 8081, 8080] as const;
+export const REST_TARGETS = [
+  { port: 80, tls: false },
+  { port: 8081, tls: false },
+  { port: 8080, tls: false },
+  { port: 443, tls: true },
+] as const;
 
 export type RouterCandidate = { address: string; via: Array<"gateway" | "tetangga" | "pindai">; rest: RestProbe[] };
 
@@ -150,7 +157,7 @@ export async function discoverRouters(cidr?: string): Promise<{ candidates: Rout
   for (const ip of range) add(ip, "pindai");
   const all = [...via.keys()];
   const probed = await pool(all, 48, async (ip) => {
-    const rest = (await Promise.all(REST_PORTS.map((p) => probeRest(ip, p)))).filter((r): r is RestProbe => r !== null);
+    const rest = (await Promise.all(REST_TARGETS.map((t) => probeRest(ip, t.port, t.tls)))).filter((r): r is RestProbe => r !== null);
     return { address: ip, via: [...(via.get(ip) ?? [])], rest } satisfies RouterCandidate;
   });
   // Gateway/tetangga selalu ditampilkan (petunjuk); hasil pindaian hanya bila REST-nya hidup.

@@ -153,9 +153,10 @@ export default function NewRouterPage() {
           <RouterSetupGuide
             host={host}
             port={port}
-            onUseRouter={(address, restPort) => {
+            onUseRouter={(address, restPort, tls) => {
               form.setValue("host", address, { shouldValidate: true });
               form.setValue("port", restPort ? String(restPort) : "", { shouldValidate: true });
+              form.setValue("useSsl", tls === true, { shouldValidate: true });
             }}
           />
           <Form {...form}>

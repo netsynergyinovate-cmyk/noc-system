@@ -60,7 +60,7 @@ test("probeRest: 401 Basic = REST MikroTik hidup; layanan web lain dan port tert
     res.end();
   });
   try {
-    assert.deepEqual(await probeRest("127.0.0.1", mikrotik.address().port), { port: mikrotik.address().port, status: 401 });
+    assert.deepEqual(await probeRest("127.0.0.1", mikrotik.address().port), { port: mikrotik.address().port, tls: false, status: 401 });
     // Server web biasa yang menjawab 200 teks untuk semua path bukan REST MikroTik (REST menjawab JSON).
     assert.equal(await probeRest("127.0.0.1", other.address().port), null);
     const json = await listen((_req, res) => {
@@ -68,7 +68,7 @@ test("probeRest: 401 Basic = REST MikroTik hidup; layanan web lain dan port tert
       res.end("{}");
     });
     try {
-      assert.deepEqual(await probeRest("127.0.0.1", json.address().port), { port: json.address().port, status: 200 });
+      assert.deepEqual(await probeRest("127.0.0.1", json.address().port), { port: json.address().port, tls: false, status: 200 });
     } finally {
       json.close();
     }
@@ -90,7 +90,7 @@ test("probeRest: TCP tersambung lalu diputus dilaporkan 'reset' (ciri allow-list
   server.listen(0, "127.0.0.1", () => resolve());
   await promise;
   try {
-    assert.deepEqual(await probeRest("127.0.0.1", server.address().port), { port: server.address().port, status: "reset" });
+    assert.deepEqual(await probeRest("127.0.0.1", server.address().port), { port: server.address().port, tls: false, status: "reset" });
   } finally {
     server.close();
   }

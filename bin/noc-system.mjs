@@ -635,6 +635,8 @@ async function cmdDeploy(args = [], options = {}) {
       ...process.env,
       ...sharedEnv,
       NEXT_TELEMETRY_DISABLED: "1",
+      // tsc di type check Next.js kena batas heap V8 bawaan (~1,8 GB) di server RAM kecil.
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --max-old-space-size=3072`.trim(),
     },
   });
   } finally {

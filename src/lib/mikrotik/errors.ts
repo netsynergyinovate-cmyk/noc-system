@@ -176,7 +176,7 @@ export function mapMikrotikError(err: unknown, context?: Context): MikrotikMappe
     const label = `router${where(context)}`;
     if (e.name === "AbortError" || /ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/.test(text))
       return build("TIMEOUT", `Koneksi ke ${label} lambat atau terputus (timeout).`);
-    if (/ECONNRESET|UND_ERR_SOCKET|other side closed|socket hang up|EPIPE/i.test(text))
+    if (/ECONNRESET|UND_ERR_SOCKET|other side closed|socket hang up|EPIPE|forcibly closed|wsarecv|wsasend|WSAECONNRESET/i.test(text))
       return build("CONNECTION_CLOSED", `Router${where(context)} menutup koneksi setelah tersambung: kemungkinan IP server ini tidak diizinkan di address= layanan www.`);
     if (text.includes("ECONNREFUSED"))
       return build("CONNECTION_REFUSED", `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`);

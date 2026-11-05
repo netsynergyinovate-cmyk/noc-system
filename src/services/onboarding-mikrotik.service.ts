@@ -2,6 +2,7 @@ import { getRawPool } from "@/db";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { DeviceConnectionError } from "@/lib/device-connection";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
+import { probeRouterApi } from "@/services/router-api-test.service";
 import { mapMikrotikError } from "@/lib/mikrotik/errors";
 import {
   splitHostInput,
@@ -133,22 +134,51 @@ export async function executeOnboardingMikrotikTest(
     errors: [mapMikrotikError(new DeviceConnectionError(code, message)).hint],
   });
 
-  let client: MikrotikRestClient;
-  try {
-    client = new MikrotikRestClient({
+  let result: {
+    ok: boolean;
+    code?: string;
+    message: string;
+    latencyMs?: number;
+    resource?: { version: string; cpuLoad: number; freeMemory: number; totalMemory: number; uptime: string; boardName: string };
+  };
+  if ((input.mode ?? "real") === "simulator") {
+    // Mode demo: tidak ada jaringan, memakai simulator deterministik.
+    const client = new MikrotikRestClient({
       host: parsed.host,
       port: parsed.port ?? input.port,
       useSsl: parsed.useTls ?? input.useTls,
       username: input.username.trim(),
       password: input.password ?? "",
-      mode: input.mode,
+      mode: "simulator",
     });
-  } catch (err) {
-    if (err instanceof DeviceConnectionError) return fail(err.code, err.message);
-    throw err;
+    result = await client.testConnection();
+  } else {
+    // Produksi: uji koneksi fisik dijalankan backend Go (satu gateway).
+    const probe = await probeRouterApi({
+      host: parsed.host,
+      port: parsed.port ?? input.port,
+      protocol: "rest",
+      useSsl: parsed.useTls ?? input.useTls,
+      username: input.username.trim(),
+      password: input.password ?? "",
+    });
+    result = {
+      ok: probe.ok,
+      code: probe.code,
+      message: probe.message,
+      latencyMs: probe.latencyMs,
+      resource: probe.resource
+        ? {
+            version: probe.resource.version,
+            cpuLoad: probe.resource.cpuLoad,
+            freeMemory: probe.resource.freeMemory,
+            totalMemory: probe.resource.totalMemory,
+            uptime: probe.resource.uptime,
+            boardName: probe.resource.boardName,
+          }
+        : undefined,
+    };
   }
-
-  const result = await client.testConnection();
   if (!result.ok || !result.resource) {
     return fail(result.code ?? "CONNECTION_FAILED", result.message, result.latencyMs);
   }
@@ -156,7 +186,7 @@ export async function executeOnboardingMikrotikTest(
   const mb = (bytes: number) => Math.round(bytes / (1024 * 1024));
   return {
     ok: true,
-    latencyMs: result.latencyMs,
+    latencyMs: result.latencyMs ?? 0,
     testedAt: new Date().toISOString(),
     message: result.message,
     details: {

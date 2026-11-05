@@ -40,6 +40,8 @@ export type MikrotikResource = {
   cpuLoad?: number;
   uptime?: string;
   boardName?: string;
+  freeMemory?: number;
+  totalMemory?: number;
 };
 
 const DEVICE_LABEL: Record<DeviceType, string> = {
@@ -176,11 +178,15 @@ export function parseMikrotikResource(data: unknown): MikrotikResource {
   const d = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
   if (!d || typeof d !== "object") return {};
   const cpu = Number(d["cpu-load"]);
+  const free = Number(d["free-memory"]);
+  const total = Number(d["total-memory"]);
   return {
     version: typeof d["version"] === "string" ? d["version"] : undefined,
     cpuLoad: d["cpu-load"] !== undefined && Number.isFinite(cpu) ? cpu : undefined,
     uptime: typeof d["uptime"] === "string" ? d["uptime"] : undefined,
     boardName: typeof d["board-name"] === "string" ? d["board-name"] : undefined,
+    freeMemory: Number.isFinite(free) && free >= 0 ? free : undefined,
+    totalMemory: Number.isFinite(total) && total > 0 ? total : undefined,
   };
 }
 

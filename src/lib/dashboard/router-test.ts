@@ -20,10 +20,11 @@ export type RouterTestForm = {
 
 export const DEFAULT_ROUTER_TEST_FORM: RouterTestForm = {
   host: "",
-  port: "443",
-  username: "noc-monitor",
-  https: true,
-  mode: "simulator",
+  port: "80",
+  username: "",
+  https: false,
+  // Uji IP selalu nyata. Tidak ada mode simulator/contoh di halaman ini.
+  mode: "real",
   forceLocal: false,
 };
 
@@ -41,9 +42,10 @@ export type RouterResource = {
   board: string;
   version: string;
   cpuLoad: string;
-  cpuPct: number;
-  memoryPct: number;
-  temperature: number;
+  /** null = router tidak mengirim angka; jangan tampilkan 0 palsu. */
+  cpuPct: number | null;
+  memoryPct: number | null;
+  temperature: number | null;
   uptime: string;
   latency: string;
   endpoint: string;
@@ -77,30 +79,64 @@ export function buildRouterTestDevice(
   };
 }
 
-/** Jalankan uji; hasil nyata/simulasi memakai runDeviceTest (POST /api/devices/test atau mock). */
-export function runRouterTest(form: RouterTestForm, fetchImpl?: typeof fetch) {
+/** Jalankan uji nyata; hasil simulasi hanya bila forceLocal diminta eksplisit. */
+export function runRouterTest(
+  form: RouterTestForm,
+  opts: { password?: string; fetchImpl?: typeof fetch } = {},
+) {
   const built = buildRouterTestDevice(form);
   if (!built.ok) return Promise.resolve({ ok: false as const, errors: built.errors });
-  return runDeviceTest(built.device, { forceLocal: form.forceLocal, fetchImpl }).then((outcome) => ({
+  return runDeviceTest(built.device, {
+    forceLocal: form.forceLocal,
+    fetchImpl: opts.fetchImpl,
+    password: opts.password,
+    useTls: form.https,
+  }).then((outcome) => ({
     ok: true as const,
     device: built.device,
     outcome,
   }));
 }
 
-// ponytail: REST /system/resource belum dikembalikan API; nilai sumber daya ini tiruan
-// deterministik untuk simulator. Ganti dengan field respons nyata saat endpoint menyediakannya.
+// Semua angka berasal dari jawaban router (resource REST/API). Tidak ada nilai
+// contoh: field yang tidak dikirim router menjadi null dan tampil "—".
 export function routerResourceFromOutcome(outcome: TestOutcome, device: DeviceConfig): RouterResource | null {
   if (!outcome.ok) return null;
+  const raw = (outcome.data ?? {}) as Record<string, unknown>;
+  const res = (
+    raw.resource && typeof raw.resource === "object" ? raw.resource : raw
+  ) as Record<string, unknown>;
+  const num = (v: unknown): number | null => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const cpu = num(res.cpuLoad ?? res["cpu-load"]);
+  const freeBytes = num(res.freeMemory ?? res["free-memory"]);
+  const totalBytes = num(res.totalMemory ?? res["total-memory"]);
+  const freeMb = num(res.freeMemoryMb);
+  const totalMb = num(res.totalMemoryMb);
+  let memoryPct: number | null = null;
+  if (totalBytes !== null && totalBytes > 0 && freeBytes !== null) {
+    memoryPct = Math.round(100 * (1 - freeBytes / totalBytes));
+  } else if (totalMb !== null && totalMb > 0 && freeMb !== null) {
+    memoryPct = Math.round(100 * (1 - freeMb / totalMb));
+  }
+  const temp = num(res.temperature ?? res["temperature"]);
+  const version = typeof res.version === "string" ? res.version : "";
+  const board = typeof res.boardName === "string" ? res.boardName : "";
+  const uptime = typeof res.uptime === "string" ? res.uptime : "";
+  // Tidak ada satu pun data resource: jangan tampilkan kartu contoh.
+  if (cpu === null && memoryPct === null && !version && !board && !uptime) return null;
   return {
-    board: "CCR2004-16G-2S+",
-    version: String(template.metadata.firmware ?? "RouterOS v7"),
-    cpuLoad: "7%",
-    cpuPct: 7,
-    memoryPct: 38,
-    temperature: 42,
-    uptime: "12h 34m",
-    latency: outcome.latencyMs != null ? `${outcome.latencyMs} ms` : "-",
+    board: board || "—",
+    version: version || "—",
+    cpuLoad: cpu !== null ? `${cpu}%` : "—",
+    cpuPct: cpu,
+    memoryPct,
+    temperature: temp !== null && temp > 0 ? temp : null,
+    uptime,
+    latency: outcome.latencyMs != null ? `${outcome.latencyMs} ms` : "—",
     endpoint: outcome.endpointTested ?? `${device.host}:${device.port}`,
   };
 }

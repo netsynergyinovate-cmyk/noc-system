@@ -4,7 +4,11 @@
 package wire
 
 import (
+	"net"
+	"strings"
+
 	"noc-isp/backend/internal/engine"
+	"noc-isp/backend/internal/netsource"
 	"noc-isp/backend/internal/state"
 )
 
@@ -31,6 +35,16 @@ type RouterHealth struct {
 	LastErrorAt *int64 `json:"lastErrorAt"`
 	// LastOkAt: pembacaan terakhir yang berhasil; null bila belum pernah sejak backend menyala.
 	LastOkAt *int64 `json:"lastOkAt"`
+	// Protocol transport yang dipakai ("rest" atau "api"), supaya pesan
+	// perbaikan menunjuk layanan RouterOS yang benar (www vs api).
+	Protocol string `json:"protocol"`
+	// SourceIP adalah alamat publik backend yang dipakai menuju router. Dipakai
+	// untuk menyusun perintah allow-list yang siap tempel. Kosong bila host
+	// berupa nama domain (tidak di-resolve tiap tick) atau router terjangkau.
+	SourceIP string `json:"sourceIp"`
+	// LocalSourceIP adalah alamat LAN backend menuju router. Router di jaringan
+	// yang sama bisa melihat alamat ini (bukan IP publik hasil NAT).
+	LocalSourceIP string `json:"localSourceIp"`
 }
 
 func unixOrNil(sec int64) *int64 {
@@ -42,11 +56,36 @@ func unixOrNil(sec int64) *int64 {
 
 // NewRouterHealth mengubah router state menjadi bentuk JSON.
 func NewRouterHealth(r state.Router) RouterHealth {
+	protocol := r.Protocol
+	if protocol == "" {
+		protocol = protocolFromHost(r.Host)
+	}
+	sourceIP, localSourceIP := "", ""
+	if !r.Reachable {
+		sourceIP = netsource.SourceIP(r.Host)
+		localSourceIP = netsource.LocalSourceIP(r.Host)
+	}
 	return RouterHealth{
 		RouterID: r.ID, Name: r.Name, Host: r.Host, Active: r.Active,
 		Reachable: r.Reachable, Failures: r.ConsecutiveFailures,
 		LastError: r.LastError, LastErrorAt: unixOrNil(r.LastErrorAt), LastOkAt: unixOrNil(r.LastOKAt),
+		Protocol: protocol, SourceIP: sourceIP, LocalSourceIP: localSourceIP,
 	}
+}
+
+// protocolFromHost menyimpulkan transport dari bentuk host yang disimpan:
+// port 8728/8729 berarti API biner, selain itu REST. Sama dengan aturan
+// BaseURLFromHost di collector.
+func protocolFromHost(host string) string {
+	h := strings.TrimSpace(host)
+	if i := strings.Index(h, "://"); i >= 0 {
+		h = h[i+3:]
+	}
+	h = strings.TrimSuffix(h, "/")
+	if _, port, err := net.SplitHostPort(h); err == nil && (port == "8728" || port == "8729") {
+		return "api"
+	}
+	return "rest"
 }
 
 // NewRoutersHealth: hasilnya tidak pernah nil.

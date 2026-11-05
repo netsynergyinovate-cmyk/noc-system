@@ -3,17 +3,18 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { routers } from "@/db/schema";
 import { ApiError, withApiPermission } from "@/lib/api";
-import { DeviceConnectionError } from "@/lib/device-connection";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
-import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { recordAudit } from "@/services/audit.service";
 import { recordClientTestResult } from "@/services/device-test-results.service";
+import { probeRouterApi } from "@/services/router-api-test.service";
 import { oltIdSchema as uuidSchema } from "@/validators/devices";
 
 export const runtime = "nodejs";
 
-// Server menghubungi host router tersimpan: butuh router:manage.
+// Server menghubungi host router tersimpan (lewat backend Go): butuh
+// router:manage. Kredensial dibaca dari database, jadi operator tidak perlu
+// mengetik ulang; semua angka berasal dari router nyata.
 export const POST = (request: Request, { params }: { params: Promise<{ id: string }> }) =>
   withApiPermission(request, { router: ["manage"] }, async (session) => {
     const { id } = await params;
@@ -23,46 +24,51 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     const [router] = await db.select().from(routers).where(eq(routers.id, id)).limit(1);
     if (!router) throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
 
-    let password: string | undefined;
+    let password: string;
     try {
       password = decryptAES256GCM(router.passwordEnc);
     } catch {
-      password = env.MIKROTIK_REST_PASSWORD; // fallback kredensial env
+      password = env.MIKROTIK_REST_PASSWORD ?? "";
     }
     if (!password) {
       throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi router tidak tersedia.");
     }
 
-    let client: MikrotikRestClient;
-    try {
-      // TLS dan port dibaca klien dari host tersimpan ("https://h:p", "h:443", dst).
-      client = new MikrotikRestClient({
-        host: router.host,
-        username: router.username,
-        password,
-        mode: "real",
-      });
-    } catch (err) {
-      if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
-        throw new ApiError(422, "INVALID_HOST", err.message);
-      }
-      throw err;
-    }
+    // Pre-flight 5 detik di backend Go; mendukung REST maupun API biner.
+    const probe = await probeRouterApi({
+      host: router.host,
+      protocol: router.protocol,
+      username: router.username,
+      password,
+      timeoutMs: 5000,
+    });
 
-    // Gagal koneksi = HTTP 200 dengan ok=false; hasil tetap disimpan.
-    const raw = await client.testConnection();
-    const { host, port, tls } = client.target;
-    const testedBy = session.user.name || session.user.email;
     const result = await recordClientTestResult({
       type: "mikrotik",
       mode: "real",
-      raw,
-      host,
-      port,
-      tls,
+      raw: {
+        ok: probe.ok,
+        message: probe.message,
+        code: probe.code,
+        latencyMs: probe.latencyMs,
+        endpointTested: probe.endpointTested,
+        ...(probe.resource && {
+          data: {
+            version: probe.resource.version,
+            cpuLoad: probe.resource.cpuLoad,
+            uptime: probe.resource.uptime,
+            boardName: probe.resource.boardName,
+            freeMemory: probe.resource.freeMemory,
+            totalMemory: probe.resource.totalMemory,
+          },
+        }),
+      },
+      host: router.host,
+      port: probe.port,
+      tls: probe.tls,
       username: router.username,
       password,
-      testedBy,
+      testedBy: session.user.name || session.user.email,
       deviceId: router.id,
     });
 

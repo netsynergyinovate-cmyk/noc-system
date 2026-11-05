@@ -1,5 +1,5 @@
 import "server-only";
-import { MikrotikRestClient } from "@/lib/mikrotik/client";
+import { probeRouterApi } from "@/services/router-api-test.service";
 import { withRouterOsApi, type RouterOsConn } from "@/lib/mikrotik/api-client";
 import {
   buildProvisionPlan,
@@ -119,16 +119,15 @@ export async function applyProvision(conn: RouterOsConn, opts: ProvisionOptions)
 
   const useSsl = opts.enableWwwSsl && !opts.enableWww;
   const port = useSsl ? wwwPorts["www-ssl"] : wwwPorts.www;
-  const client = new MikrotikRestClient({
+  const client = await probeRouterApi({
     host: conn.host,
     port,
+    protocol: "rest",
     useSsl,
     username: opts.restUser,
     password: opts.restPassword,
-    mode: "real",
   });
-  const r = await client.testConnection();
-  return { steps, rest: { host: conn.host, port, useSsl }, verify: { ok: r.ok, code: r.code, message: scrub(r.message) }, groupCheck };
+  return { steps, rest: { host: conn.host, port, useSsl }, verify: { ok: client.ok, code: client.code, message: scrub(client.message) }, groupCheck };
 }
 
 export async function previewProvision(conn: RouterOsConn, opts: ProvisionOptions) {

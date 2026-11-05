@@ -5,6 +5,8 @@ export interface MockRouterDetail {
   id: string;
   name: string;
   host: string;
+  // Transport yang tersimpan di routers.protocol; dipakai kartu Metode Koneksi.
+  protocol?: "rest" | "api";
   boardModel: string;
   rosVersion: string;
   role: string;
@@ -12,9 +14,11 @@ export interface MockRouterDetail {
   memoryUsage: number; // 0-100 (%)
   uptime: string;
   active: boolean;
-  queueCount: number; // >= 0
-  temperature: number; // derajat Celsius, 0 = tidak ada sensor / offline
-  pppoeCount: number; // >= 0
+  // Opsional: 0 adalah nilai nyata (router bisa punya 0 queue/PPPoE), jadi
+  // "belum diukur" memakai undefined dan UI menampilkan "—".
+  queueCount?: number;
+  temperature?: number;
+  pppoeCount?: number;
   latencyMs?: number;
   currentDownloadMbps?: number;
   currentUploadMbps?: number;
@@ -185,9 +189,6 @@ export function buildLiveRouterDetails(
           memoryUsage: 0,
           uptime: "-",
           active: router.active,
-          queueCount: 0,
-          temperature: 0,
-          pppoeCount: 0,
         };
     detail.name = router.name;
     detail.host = router.host;
@@ -196,7 +197,7 @@ export function buildLiveRouterDetails(
     if (!detail.active) {
       detail.cpuLoad = 0;
       detail.memoryUsage = 0;
-      detail.temperature = 0;
+      detail.temperature = undefined;
       detail.uptime = "Offline";
     }
     return detail;
@@ -241,8 +242,8 @@ export function summarizeRouterResources(
     avgCpuLoad: n ? Math.round(cpu / n) : 0,
     peakCpuLoad: peak,
     avgMemoryUsage: n ? Math.round(mem / n) : 0,
-    totalQueues: routers.reduce((s, r) => s + r.queueCount, 0),
-    totalPppoe: routers.reduce((s, r) => s + r.pppoeCount, 0),
+    totalQueues: routers.reduce((s, r) => s + (r.queueCount ?? 0), 0),
+    totalPppoe: routers.reduce((s, r) => s + (r.pppoeCount ?? 0), 0),
   };
 }
 

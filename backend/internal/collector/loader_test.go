@@ -100,7 +100,7 @@ func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)
 
 func sampleQuerier() *fakeQuerier {
 	return &fakeQuerier{
-		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}},
+		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif", "rest"}},
 		customers: [][]any{
 			// lengkap
 			{"c1", "Budi", "budi", "r1", "Jl. A", "ODP-1", "lunas", -20.5, true, -6.2, 106.8, true},
@@ -186,7 +186,7 @@ func TestSyncDatabaseStateFillsManager(t *testing.T) {
 func TestSyncDatabaseStateRemovesRoutersGoneFromDatabase(t *testing.T) {
 	mgr := state.NewManager()
 	two := &fakeQuerier{
-		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}, {"r2", "RTR-2", "10.0.0.2", "aktif"}},
+		routers: [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif", "rest"}, {"r2", "RTR-2", "10.0.0.2", "aktif", "rest"}},
 		customers: [][]any{
 			{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil, nil},
 			{"c2", "Dewi", "dewi", "r2", nil, nil, "lunas", nil, true, nil, nil, nil},
@@ -196,7 +196,7 @@ func TestSyncDatabaseStateRemovesRoutersGoneFromDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	one := &fakeQuerier{
-		routers:   [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif"}},
+		routers:   [][]any{{"r1", "RTR-1", "10.0.0.1", "aktif", "rest"}},
 		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, true, nil, nil, nil}},
 	}
 	if _, _, err := SyncDatabaseState(context.Background(), one, mgr, quiet()); err != nil {

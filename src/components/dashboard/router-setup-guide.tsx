@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { allowListCommand } from "@/lib/dashboard/router-health";
+
 // Panduan langkah demi langkah menambah router MikroTik. Dipakai di halaman Tambah Router.
 // Semua perintah RouterOS di sini adalah perintah baca/aktifkan layanan yang umum; nilai
 // dalam <...> harus diganti. Alamat IP pada contoh (mis. 192.168.88.1) HANYA contoh: alamat
@@ -195,10 +197,10 @@ function ServerIpHelper({ host, port }: { host?: string; port?: string }) {
         <>
           <p className="mt-2">
             Server NOC menyambung ke <code>{info.host}</code> dengan alamat <code className="font-mono">{info.sourceIp}</code>.
-            Tulis alamat itu ke daftar. Ganti <code>&lt;DAFTAR-LAMA&gt;</code> dengan isi kolom ADDRESS dari langkah 3
-            (dipisah koma, mis. <code>10.20.30.0/24,192.168.101.0/24</code>); jika kolomnya kosong, tidak perlu perintah ini.
+            Perintah di bawah menambahkan alamat itu ke kolom ADDRESS layanan www yang sudah ada — tidak menimpa daftar
+            lama, jadi tinggal tempel di terminal MikroTik.
           </p>
-          <Cmd>{`/ip service set www address=<DAFTAR-LAMA>,${info.sourceIp}/32`}</Cmd>
+          <Cmd>{allowListCommand("www", info.sourceIp) ?? `/ip service print where name~"www"`}</Cmd>
         </>
       )}
       {info && !info.sourceIp && <p className="mt-2 text-destructive">Server tidak menemukan rute ke {info.host}.</p>}

@@ -141,6 +141,7 @@ export async function sampleRouterTraffic(
     host: router.host,
     username: router.username,
     password: decryptAES256GCM(router.passwordEnc),
+    routerId: router.id,
     mode,
   });
 

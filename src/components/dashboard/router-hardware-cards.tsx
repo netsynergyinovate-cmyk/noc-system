@@ -14,10 +14,11 @@ import {
 } from "@/lib/dashboard/router-resources";
 
 export interface RouterHardwareCardsProps {
-  cpuLoad: number;
-  memoryUsage: number;
+  // null = router tidak mengirim angka; tampilkan "—" (jangan 0 palsu).
+  cpuLoad: number | null;
+  memoryUsage: number | null;
   uptime: string;
-  temperature?: number;
+  temperature?: number | null;
   boardModel?: string;
   rosVersion?: string;
   active?: boolean;
@@ -84,7 +85,7 @@ function Bar({ label, pct, tone, active }: { label: string; pct: number; tone: R
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={v}
-      aria-valuetext={active ? `${v}%` : "Offline"}
+      aria-valuetext={active ? `${v}%` : "Tidak tersedia"}
       className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
     >
       <div className={cn("h-full rounded-full", TONE_BAR[tone])} style={{ width: `${v}%` }} />
@@ -102,22 +103,24 @@ export function RouterHardwareCards({
   active = true,
   className,
 }: RouterHardwareCardsProps) {
-  const cpu = getCpuStatus(cpuLoad, active);
-  const mem = getMemoryStatus(memoryUsage, active);
+  const cpuAvailable = active && cpuLoad !== null;
+  const memAvailable = active && memoryUsage !== null;
+  const cpu = getCpuStatus(cpuLoad ?? 0, cpuAvailable);
+  const mem = getMemoryStatus(memoryUsage ?? 0, memAvailable);
   const up = getUptimeStatus(uptime, active);
-  const thermal = getThermalStatus(temperature, active);
+  const thermal = getThermalStatus(temperature ?? undefined, active);
 
   return (
     <section aria-label="Resource hardware router" className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", className)}>
-      <Card title="Penggunaan CPU" Icon={Cpu} value={active ? `${cpuLoad}%` : "—"} testId="hw-card-cpu">
+      <Card title="Penggunaan CPU" Icon={Cpu} value={cpuAvailable ? `${cpuLoad}%` : "—"} testId="hw-card-cpu">
         <StatusBadge tone={cpu.tone} label={cpu.label} />
-        <Bar label="Utilitas CPU" pct={cpuLoad} tone={cpu.tone} active={active} />
+        <Bar label="Utilitas CPU" pct={cpuLoad ?? 0} tone={cpu.tone} active={cpuAvailable} />
       </Card>
-      <Card title="Penggunaan RAM" Icon={HardDrive} value={active ? `${memoryUsage}%` : "—"} testId="hw-card-ram">
+      <Card title="Penggunaan RAM" Icon={HardDrive} value={memAvailable ? `${memoryUsage}%` : "—"} testId="hw-card-ram">
         <StatusBadge tone={mem.tone} label={mem.label} />
-        <Bar label="Utilitas RAM" pct={memoryUsage} tone={mem.tone} active={active} />
+        <Bar label="Utilitas RAM" pct={memoryUsage ?? 0} tone={mem.tone} active={memAvailable} />
       </Card>
-      <Card title="Uptime Sistem" Icon={Clock} value={active ? uptime : "Offline"} testId="hw-card-uptime">
+      <Card title="Uptime Sistem" Icon={Clock} value={active && uptime ? uptime : "—"} testId="hw-card-uptime">
         <StatusBadge tone={up.tone} label={up.label} />
         <p className="text-[11px] text-muted-foreground">Sejak boot/reboot terakhir</p>
       </Card>

@@ -106,7 +106,7 @@ type PollerOptions struct {
 	// OnVlans menerima laju tiap VLAN PON (vlan1101..) tiap detik, dari goroutine job;
 	// tidak boleh memblokir. Nil = job VLAN tidak dijalankan.
 	OnVlans func(routerID string, rates []VlanRate)
-	Now        func() time.Time
+	Now     func() time.Time
 }
 
 // Status adalah kondisi satu job polling pada satu router, untuk rule engine
@@ -150,6 +150,15 @@ type worker struct {
 
 	// Pembacaan counter VLAN sebelumnya (hanya disentuh goroutine job VLAN).
 	vlanPrev map[string]ifSample
+
+	// Aliran monitor-traffic (hanya protokol API biner). Menyimpan laju terakhir
+	// yang dikirim router, dalam Mbps, beserta waktunya.
+	streamMu     sync.Mutex
+	streamRxMbps float64
+	streamTxMbps float64
+	streamAt     time.Time
+	streamIface  string
+	streamLogged bool
 }
 
 type job struct {
@@ -224,7 +233,95 @@ func (p *Poller) Start(ctx context.Context, t Target) error {
 			p.runJob(workerCtx, w, j)
 		}()
 	}
+	// Hot-path: API biner bisa mengalirkan laju interface lewat
+	// /interface/monitor-traffic tanpa membaca counter dua kali tiap detik.
+	if client.usesBinaryAPI() && !p.opts.TrafficFromQueues {
+		p.wg.Add(1)
+		go func() {
+			defer p.wg.Done()
+			p.streamTraffic(workerCtx, w)
+		}()
+	}
 	return nil
+}
+
+// streamTraffic menjaga satu aliran monitor-traffic tetap hidup. Bila koneksi
+// putus, aliran dibuka ulang dengan jeda pendek; laju terakhir yang basi tidak
+// dipakai (interfaceTraffic kembali ke counter).
+func (p *Poller) streamTraffic(ctx context.Context, w *worker) {
+	log := p.opts.Logger.With("router", w.routerID, "job", "monitor-traffic")
+	name := p.opts.TrafficInterface
+	if name == "" {
+		if n, err := w.client.FindInterfaceByComment(ctx, p.opts.TrafficComment); err == nil {
+			name = n
+		}
+	}
+	if name == "" {
+		log.Warn("monitor-traffic dilewati: interface berkomentar tidak ditemukan atau ambigu; memakai counter interface", "komentar", p.opts.TrafficComment)
+	}
+	failures := 0
+	for ctx.Err() == nil {
+		if name == "" {
+			// Cari ulang tiap 5 menit: interface bisa muncul setelah boot.
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(ifLookupEvery):
+			}
+			if n, err := w.client.FindInterfaceByComment(ctx, p.opts.TrafficComment); err == nil && n != "" {
+				name = n
+			}
+			continue
+		}
+		err := w.client.MonitorTraffic(ctx, name, func(rx, tx float64) {
+			now := p.opts.Now()
+			w.streamMu.Lock()
+			w.streamRxMbps, w.streamTxMbps, w.streamAt, w.streamIface = rx, tx, now, name
+			first := !w.streamLogged
+			w.streamLogged = true
+			w.streamMu.Unlock()
+			if first && !p.opts.TrafficCustomerSide {
+				log.Info("trafik dashboard mengalir dari monitor-traffic", "interface", name)
+			}
+			// Hot path: sampel langsung dicatat tanpa menunggu putaran queue.
+			down, up := rx, tx
+			if p.opts.TrafficCustomerSide {
+				down, up = tx, rx
+			}
+			if _, err := p.rec.RecordTraffic(w.routerID, state.TrafficPoint{Time: now.Unix(), RxMbps: down, TxMbps: up}); err != nil {
+				log.Debug("simpan sampel monitor-traffic gagal", "error", err)
+			}
+		})
+		if ctx.Err() != nil {
+			return
+		}
+		failures++
+		if err != nil && (failures == 1 || failures%10 == 0) {
+			log.Warn("aliran monitor-traffic terputus, mencoba lagi", "error", err, "gagal_berturut", failures)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+		if p.opts.TrafficInterface == "" {
+			if n, lookupErr := w.client.FindInterfaceByComment(ctx, p.opts.TrafficComment); lookupErr == nil && n != "" {
+				name = n
+			}
+		}
+	}
+}
+
+// streamRate mengembalikan laju aliran terakhir bila masih segar. Sampel yang
+// lebih tua dari satu interval polling dilewati supaya grafik tidak menampilkan
+// angka lama sebagai laju saat ini.
+func (w *worker) streamRate(now time.Time) (rx, tx float64, ok bool) {
+	w.streamMu.Lock()
+	defer w.streamMu.Unlock()
+	if w.streamAt.IsZero() || now.Sub(w.streamAt) > 2*time.Second {
+		return 0, 0, false
+	}
+	return w.streamRxMbps, w.streamTxMbps, true
 }
 
 // jobs menyusun daftar polling untuk satu router.
@@ -421,10 +518,13 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 	if rx, tx, ok := p.interfaceTraffic(ctx, w); ok {
 		down, up = rx, tx
 	}
-	// Sampel dicap detik saat permintaan dikirim, bukan saat jawaban tiba.
-	point := state.TrafficPoint{Time: started.Unix(), RxMbps: down, TxMbps: up}
-	if _, err := p.rec.RecordTraffic(w.routerID, point); err != nil {
-		return 0, fmt.Errorf("simpan sampel traffic: %w", err)
+	// Hot path API biner sudah mencatat sampelnya sendiri. Putaran queue hanya
+	// mencatat saat aliran sedang tidak segar (putus/ belum mulai).
+	if _, _, streaming := w.streamRate(started); !streaming {
+		point := state.TrafficPoint{Time: started.Unix(), RxMbps: down, TxMbps: up}
+		if _, err := p.rec.RecordTraffic(w.routerID, point); err != nil {
+			return 0, fmt.Errorf("simpan sampel traffic: %w", err)
+		}
 	}
 
 	var ratios []state.QueueRatio
@@ -469,6 +569,13 @@ func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upM
 		return 0, 0, false
 	}
 	now := p.opts.Now()
+	// Jalur API biner: laju sudah dikirim router lewat monitor-traffic.
+	if rx, tx, ok := w.streamRate(now); ok {
+		if p.opts.TrafficCustomerSide {
+			return tx, rx, true
+		}
+		return rx, tx, true
+	}
 	if w.ifName == "" {
 		if p.opts.TrafficInterface != "" {
 			w.ifName = p.opts.TrafficInterface

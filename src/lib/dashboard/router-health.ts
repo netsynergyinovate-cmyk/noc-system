@@ -13,6 +13,10 @@ export interface RouterHealth {
   lastErrorAt: number | null;
   // null = belum pernah berhasil dibaca sejak backend menyala.
   lastOkAt: number | null;
+  // Transport router dan alamat lokal backend menuju router (dari telemetri Go).
+  protocol?: "rest" | "api" | null;
+  sourceIp?: string | null;
+  localSourceIp?: string | null;
 }
 
 export type UnreachableCause =
@@ -32,40 +36,85 @@ export interface UnreachableDiagnosis {
   command?: string;
 }
 
+export interface UnreachableContext {
+  // Alamat publik backend yang menuju router (wire.RouterHealth.sourceIp).
+  sourceIp?: string | null;
+  // Alamat LAN backend; router di jaringan yang sama bisa melihat ini.
+  localSourceIp?: string | null;
+  // Isi address= layanan saat ini (dibaca backend). Bila ada, perintah
+  // MENAMBAHKAN IP baru tanpa menghapus entri lama.
+  existingAddress?: string | null;
+  protocol?: "rest" | "api" | null;
+}
+
+/**
+ * Perintah satu baris untuk layanan RouterOS. Bila `existingAddress` diketahui,
+ * entri lama dipertahankan dan IP baru ditambahkan. Bila tidak, daftar diganti
+ * dengan IP server (akses Winbox/SSH tidak terpengaruh).
+ */
+export function allowListCommand(
+  service: "www" | "api",
+  sourceIp?: string | null,
+  localSourceIp?: string | null,
+  existingAddress?: string | null,
+): string | undefined {
+  const newEntries = [...new Set([sourceIp, localSourceIp].map((v) => (v ?? "").trim()).filter(Boolean))].map(
+    (ip) => `${ip}${ip.includes(":") ? "/128" : "/32"}`,
+  );
+  const existing = (existingAddress ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  const entries = [...new Set([...existing, ...newEntries])];
+  if (entries.length === 0) return undefined;
+  return `/ip service set ${service} address=${entries.join(",")}`;
+}
+
 // Urutan penting: yang paling spesifik lebih dulu.
-export function diagnoseUnreachable(lastError: string): UnreachableDiagnosis {
+export function diagnoseUnreachable(lastError: string, ctx: UnreachableContext = {}): UnreachableDiagnosis {
   const e = (lastError ?? "").toLowerCase();
+  const service: "www" | "api" = ctx.protocol === "api" ? "api" : "www";
+  const label = service === "api" ? "api/api-ssl" : "www/www-ssl";
+  const sourceIp = (ctx.sourceIp ?? "").trim();
+  const localSourceIp = (ctx.localSourceIp ?? "").trim();
+  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(" / ");
   if (/menolak login|http 40[13]|unauthorized/.test(e)) {
     return {
       cause: "auth",
       title: "Login ke router ditolak",
-      hint: "Username atau kata sandi akun router berubah, atau akun itu kehilangan izin REST. Perbarui kredensial di halaman Router.",
+      hint: `Username atau kata sandi akun router berubah, atau akun itu kehilangan izin ${service === "api" ? "API" : "REST"}. Perbarui kredensial di halaman Router.`,
     };
   }
-  if (/no such host|tidak ditemukan|lookup/.test(e)) {
+  if (/no such host|tidak ditemukan|lookup|getaddrinfo|wsahostnotfound/.test(e)) {
     return {
       cause: "dns",
       title: "Alamat router tidak ditemukan",
       hint: "Nama host tidak bisa di-resolve. Periksa alamat router atau gunakan alamat IP.",
     };
   }
-  if (/refused|ditolak oleh|actively refused/.test(e)) {
+  if (/refused|ditolak oleh|actively refused|wsaeconnrefused|target machine actively refused/.test(e)) {
     return {
       cause: "refused",
-      title: "Layanan REST router mati",
-      hint: "Router terjangkau tetapi layanan www tidak aktif atau portnya berubah. Aktifkan lagi di router.",
-      command: "/ip service set www disabled=no",
+      title: service === "api" ? "Layanan API router mati" : "Layanan REST router mati",
+      hint:
+        service === "api"
+          ? "Router terjangkau tetapi layanan api/api-ssl tidak aktif atau portnya berubah. Aktifkan lagi di router."
+          : "Router terjangkau tetapi layanan www tidak aktif atau portnya berubah. Aktifkan lagi di router.",
+      command: `/ip service set ${service} disabled=no`,
     };
   }
-  if (/eof|reset by peer|connection reset|broken pipe|ditutup/.test(e)) {
+  if (/eof|reset by peer|connection reset|broken pipe|ditutup|forcibly closed|closed by the remote host|wsarecv|wsasend|connection closed|aborted by the software|wsaeconnaborted|wsaeconnreset|connection aborted/.test(e)) {
+    const command = allowListCommand(service, sourceIp, localSourceIp, ctx.existingAddress);
     return {
       cause: "closed",
       title: "Router menutup koneksi",
-      hint: "Router menerima sambungan lalu langsung menutupnya. Biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan www (/ip service, kolom address). TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti), atau pakai rentang jaringan. Jika jalur ke router melewati NAT, alamat yang dilihat router bisa berbeda: cek dengan `/ip firewall connection print where dst-port=<port-www>` lalu daftarkan alamat di kolom src-address.",
-      command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
+      hint: command
+        ? `Router menerima sambungan lalu langsung menutupnya. IP server ini (${ipLabel}) belum ada di kolom address= layanan ${label}. Perintah di bawah ${ctx.existingAddress ? "MENAMBAHKAN IP itu ke daftar yang sudah ada (entri lama dipertahankan)" : "MENGGANTI daftar address= dengan IP itu"}; akses Winbox/SSH tidak terpengaruh. Tempel apa adanya.`
+        : `Router menerima sambungan lalu langsung menutupnya. Biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan ${label}. Jalankan perintah di bawah untuk melihat daftar, lalu tambahkan IP server yang tampil di backend.`,
+      command: command ?? `/ip service print where name~"${service}"`,
     };
   }
-  if (/timeout|timed out|deadline|tidak menjawab|i\/o timeout|unreachable/.test(e)) {
+  if (/timeout|timed out|deadline|tidak menjawab|i\/o timeout|unreachable|did not properly respond|semaphore timeout|wsatimedout/.test(e)) {
     return {
       cause: "timeout",
       title: "Router tidak menjawab",
@@ -76,7 +125,8 @@ export function diagnoseUnreachable(lastError: string): UnreachableDiagnosis {
     return {
       cause: "wrong-port",
       title: "Port bukan layanan REST",
-      hint: "Gunakan port layanan www (80) atau www-ssl (443), bukan port API biner.",
+      hint: "Gunakan port layanan www (80) atau www-ssl (443), bukan port API biner (8728/8729). Atau ubah protokol router menjadi Binary API.",
+      command: `/ip service print where name~"www"`,
     };
   }
   return {

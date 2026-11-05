@@ -40,7 +40,6 @@ import {
   ArrowUp,
   Network,
   Gauge,
-  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -317,15 +316,55 @@ export function RouterTable() {
   const olt = telemetry?.olts[0] ?? null;
   const activeCount = details.filter((r) => r.active).length;
   const totalPppoe = customers.filter((c) => c.isOnline).length;
-  const currentDl = primaryRouter?.currentDownloadMbps ?? (isDemo ? 46.8 : 55.0);
-  const currentUl = primaryRouter?.currentUploadMbps ?? (isDemo ? 9.2 : 8.5);
-  const aggregateMbps = Math.round((currentDl + currentUl) * 10) / 10;
-  const peakVal = primaryRouter?.peakMbps ?? Math.max(68.4, Math.round(currentDl * 1.35 * 10) / 10);
-  const latencyVal = primaryRouter?.latencyMs ?? 1.4;
+  // Semua angka di bawah hanya dari pembacaan nyata; tidak ada nilai contoh.
+  const currentDl = primaryRouter?.currentDownloadMbps;
+  const currentUl = primaryRouter?.currentUploadMbps;
+  const aggregateMbps =
+    currentDl === undefined && currentUl === undefined
+      ? undefined
+      : Math.round(((currentDl ?? 0) + (currentUl ?? 0)) * 10) / 10;
+  const peakVal = primaryRouter?.peakMbps;
+  const latencyVal = primaryRouter?.latencyMs;
+  const fmtMbps = (v?: number) => (v === undefined ? "—" : `${v} Mbps`);
   const selectedRouter = useMemo(() => {
     if (!selectedRouterId) return null;
     return details.find((r) => r.id === selectedRouterId) ?? null;
   }, [details, selectedRouterId]);
+
+  // Statistik awal tab trafik hanya dari pembacaan nyata. Tidak ada total byte
+  // atau peak contoh; bila interface/counter belum terbaca, biarkan kartu
+  // mengambil riwayatnya sendiri.
+  const selectedInitialStats = useMemo(() => {
+    if (!selectedRouter?.active || selectedRouter.currentDownloadMbps === undefined) return undefined;
+    const up = selectedRouter.interfaces?.find(
+      (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
+    );
+    if (!up || up.rxByte === undefined) return undefined;
+    const rx = selectedRouter.currentDownloadMbps;
+    const tx = selectedRouter.currentUploadMbps ?? 0;
+    const peak = selectedRouter.peakMbps ?? Math.max(rx, tx);
+    return {
+      hasData: true,
+      rxBps: Math.round(rx * 1_000_000),
+      txBps: Math.round(tx * 1_000_000),
+      peakRxBps: Math.round(peak * 1_000_000),
+      peakTxBps: Math.round(tx * 1_000_000),
+      avgRxBps: Math.round(rx * 1_000_000),
+      avgTxBps: Math.round(tx * 1_000_000),
+      rxTotalBytes: up.rxByte,
+      txTotalBytes: up.txByte,
+      updatedAt: sysEpoch * 1000,
+    };
+  }, [selectedRouter, sysEpoch]);
+
+  const selectedHealth = useMemo(
+    () => telemetry?.routers.find((h) => h.routerId === selectedRouter?.id) ?? null,
+    [telemetry, selectedRouter],
+  );
+  const selectedMethod =
+    selectedRouter?.protocol === "api" || /:(8728|8729)$/.test(selectedRouter?.host ?? "")
+      ? "API Biner"
+      : "REST";
 
   function handleOpenDetail(router: MockRouterDetail) {
     setSelectedRouterId(router.id);
@@ -406,7 +445,7 @@ export function RouterTable() {
           <div className="flex items-center gap-2">
             <Gauge className="size-3.5 text-cyan-400" />
             <span className="text-muted-foreground uppercase">AGGREGATE:</span>
-            <span className="text-foreground font-semibold">{aggregateMbps} Mbps</span>
+            <span className="text-foreground font-semibold">{aggregateMbps === undefined ? "—" : `${aggregateMbps} Mbps`}</span>
           </div>
         </div>
 
@@ -486,21 +525,31 @@ export function RouterTable() {
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-cyan-400" />
                       <span className="text-muted-foreground">RX (Download):</span>
-                      <span className="text-foreground font-semibold">{currentDl} Mbps</span>
+                      <span className="text-foreground font-semibold">{fmtMbps(currentDl)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-purple-400" />
                       <span className="text-muted-foreground">TX (Upload):</span>
-                      <span className="text-foreground font-semibold">{currentUl} Mbps</span>
+                      <span className="text-foreground font-semibold">{fmtMbps(currentUl)}</span>
                     </div>
                     <div className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-foreground/90 font-mono text-[10px]">
-                      Peak: <span className="font-semibold text-cyan-400">{peakVal} Mbps</span>
+                      Peak: <span className="font-semibold text-cyan-400">{fmtMbps(peakVal)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Animated Spline Canvas */}
-                <RealtimeThroughputCanvas rxMbps={currentDl} txMbps={currentUl} peakMbps={peakVal} />
+                {currentDl !== undefined && currentUl !== undefined ? (
+                  <RealtimeThroughputCanvas
+                    rxMbps={currentDl}
+                    txMbps={currentUl}
+                    peakMbps={peakVal ?? Math.max(currentDl, currentUl)}
+                  />
+                ) : (
+                  <p className="py-6 text-center font-mono text-[11px] text-muted-foreground">
+                    Belum ada sampel trafik dari router.
+                  </p>
+                )}
               </div>
 
               {/* Active Interfaces Bandwidth Breakdown */}
@@ -692,12 +741,14 @@ export function RouterTable() {
             </div>
             <div className="my-2">
               <div className="font-mono text-base font-bold text-emerald-400 tracking-tight truncate">
-                103.167.70.0%ether2
+                {primaryRouter?.host ?? "—"}
               </div>
             </div>
             <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
-              <span>0.0.0.0/0 STATIC</span>
-              <span className="text-emerald-400 font-medium">Active Reachable</span>
+              <span>Alamat manajemen router</span>
+              <span className={primaryRouter?.active ? "text-emerald-400 font-medium" : "text-muted-foreground"}>
+                {primaryRouter?.active ? "Terbaca" : "Offline"}
+              </span>
             </div>
           </div>
 
@@ -708,7 +759,9 @@ export function RouterTable() {
               <Zap className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
-              <div className="font-mono text-2xl font-bold text-emerald-400 tracking-tight">{latencyVal} ms</div>
+              <div className="font-mono text-2xl font-bold text-emerald-400 tracking-tight">
+                {latencyVal === undefined ? "—" : `${latencyVal} ms`}
+              </div>
             </div>
             <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>Zero jitter</span>
@@ -832,9 +885,9 @@ export function RouterTable() {
                 </tr>
               ) : (
                 visible.map((router) => {
-                  const pppoeCount = router.pppoeCount || 69;
-                  const dlMbps = router.currentDownloadMbps ?? (isDemo ? 46.8 : currentDl);
-                  const ulMbps = router.currentUploadMbps ?? (isDemo ? 9.2 : currentUl);
+                  const pppoeCount = router.pppoeCount;
+                  const dlMbps = router.currentDownloadMbps;
+                  const ulMbps = router.currentUploadMbps;
 
                   return (
                     <tr key={router.id} className="hover:bg-muted/30 transition-colors group">
@@ -853,7 +906,8 @@ export function RouterTable() {
                             {router.name}
                           </span>
                           <span className="text-[11px] text-muted-foreground">
-                            {router.host} • {router.asn || "ASN 139542"}
+                            {router.host}
+                            {router.asn ? ` • ${router.asn}` : ""}
                           </span>
                         </div>
                       </td>
@@ -885,21 +939,25 @@ export function RouterTable() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1 text-[11px]">
-                          <span className="text-cyan-400 font-semibold">↓ {dlMbps}M</span>
+                          <span className="text-cyan-400 font-semibold">
+                            {dlMbps === undefined ? "↓ —" : `↓ ${dlMbps}M`}
+                          </span>
                           <span className="text-zinc-600">/</span>
-                          <span className="text-purple-400 font-semibold">↑ {ulMbps}M</span>
+                          <span className="text-purple-400 font-semibold">
+                            {ulMbps === undefined ? "↑ —" : `↑ ${ulMbps}M`}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground text-[11px]">
                           <span className="size-1.5 rounded-full bg-cyan-400" />
-                          <span>{pppoeCount} sesi</span>
+                          <span>{pppoeCount === undefined ? "—" : `${pppoeCount} sesi`}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
                           <Zap className="size-3" />
-                          <span>{router.latencyMs ?? 1.4} ms avg</span>
+                          <span>{router.latencyMs === undefined ? "—" : `${router.latencyMs} ms avg`}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
@@ -1034,11 +1092,30 @@ export function RouterTable() {
                   rosVersion={selectedRouter.rosVersion}
                   active={selectedRouter.active}
                 />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+                  <div className="rounded-xl border border-border bg-muted/50 p-3.5">
+                    <span className="text-muted-foreground block mb-1">Metode Koneksi</span>
+                    <strong className="text-lg font-semibold text-foreground">{selectedMethod}</strong>
+                    <p className="text-[11px] text-muted-foreground mt-1 break-words">{selectedRouter.host}</p>
+                    <p
+                      className={`text-[11px] mt-0.5 ${
+                        selectedHealth?.reachable === false ? "text-destructive" : "text-emerald-400"
+                      }`}
+                    >
+                      {selectedHealth
+                        ? selectedHealth.reachable
+                          ? "Terhubung"
+                          : "Tidak terjangkau"
+                        : "Belum ada status"}
+                      {selectedHealth?.sourceIp || selectedHealth?.localSourceIp
+                        ? ` · ${selectedHealth.sourceIp || selectedHealth.localSourceIp}`
+                        : ""}
+                    </p>
+                  </div>
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
                     <span className="text-muted-foreground block mb-1">Simple Queue Terdaftar</span>
                     <strong className="text-lg font-semibold text-foreground">
-                      {selectedRouter.active ? selectedRouter.queueCount : "—"}
+                      {selectedRouter.active ? (selectedRouter.queueCount ?? "—") : "—"}
                     </strong>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Limitasi antrian bandwidth aktif di router ini
@@ -1047,7 +1124,7 @@ export function RouterTable() {
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
                     <span className="text-muted-foreground block mb-1">Sesi PPPoE Terlayani</span>
                     <strong className="text-lg font-semibold text-cyan-400">
-                      {selectedRouter.active ? (selectedRouter.pppoeCount || 67) : "—"}
+                      {selectedRouter.active ? (selectedRouter.pppoeCount ?? "—") : "—"}
                     </strong>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Klien PPPoE terautentikasi dan aktif
@@ -1108,32 +1185,7 @@ export function RouterTable() {
                   routerId={selectedRouter.id}
                   routerName={selectedRouter.name}
                   active={selectedRouter.active}
-                  initialStats={
-                    selectedRouter.active && selectedRouter.currentDownloadMbps !== undefined
-                      ? {
-                          hasData: true,
-                          rxBps: Math.round(selectedRouter.currentDownloadMbps * 1_000_000),
-                          txBps: Math.round((selectedRouter.currentUploadMbps ?? 0) * 1_000_000),
-                          peakRxBps: Math.round(
-                            (selectedRouter.peakMbps ?? selectedRouter.currentDownloadMbps * 1.35) * 1_000_000,
-                          ),
-                          peakTxBps: Math.round(
-                            (selectedRouter.peakMbps ?? selectedRouter.currentDownloadMbps * 1.35) * 0.3 * 1_000_000,
-                          ),
-                          avgRxBps: Math.round(selectedRouter.currentDownloadMbps * 0.85 * 1_000_000),
-                          avgTxBps: Math.round((selectedRouter.currentUploadMbps ?? 0) * 0.85 * 1_000_000),
-                          rxTotalBytes:
-                            selectedRouter.interfaces?.find(
-                              (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
-                            )?.rxByte ?? 12_840_000_000,
-                          txTotalBytes:
-                            selectedRouter.interfaces?.find(
-                              (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
-                            )?.txByte ?? 1_920_000_000,
-                          updatedAt: sysEpoch * 1000,
-                        }
-                      : undefined
-                  }
+                  initialStats={selectedInitialStats}
                 />
               </TabsContent>
 

@@ -244,6 +244,7 @@ async function readRouter(c: CustomerTarget): Promise<RouterSnapshot> {
     username: creds.username,
     password: creds.password,
     useSsl: creds.useTls,
+    routerId: c.routerId,
     mode: "real",
   });
   snapshot.client = client;

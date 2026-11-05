@@ -27,14 +27,14 @@ test("router yang belum terbaca tidak diisi angka karangan", () => {
   const [a] = buildLiveRouterDetails(store.slice(0, 1), null, {});
   assert.deepEqual(
     [a.boardModel, a.rosVersion, a.cpuLoad, a.memoryUsage, a.uptime, a.queueCount, a.temperature, a.active],
-    ["-", "-", 0, 0, "-", 0, 0, true],
+    ["-", "-", 0, 0, "-", undefined, undefined, true],
   );
 });
 
 test("router nonaktif di store atau tak menjawab ditampilkan Offline tanpa beban", () => {
   const out = buildLiveRouterDetails(store, [item({}), item({ id: "r2", active: true })], {});
   assert.equal(out[1].active, false); // store bilang nonaktif
-  assert.deepEqual([out[1].cpuLoad, out[1].memoryUsage, out[1].temperature, out[1].uptime], [0, 0, 0, "Offline"]);
+  assert.deepEqual([out[1].cpuLoad, out[1].memoryUsage, out[1].temperature, out[1].uptime], [0, 0, undefined, "Offline"]);
   const down = buildLiveRouterDetails(store.slice(0, 1), [item({ active: false })], {});
   assert.equal(down[0].active, false); // server gagal membaca router itu
   assert.equal(down[0].uptime, "Offline");

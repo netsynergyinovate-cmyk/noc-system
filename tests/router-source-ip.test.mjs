@@ -30,11 +30,22 @@ test("outboundSourceIp null bila port tertutup (tidak ada alamat sumber untuk di
   assert.equal(await outboundSourceIp("127.0.0.1", port), null);
 });
 
-test("CONNECTION_CLOSED mikrotik: judul, saran menambah (bukan mengganti) allow-list, command address=", () => {
-  const r = d("CONNECTION_CLOSED", "mikrotik");
+test("CONNECTION_CLOSED mikrotik: judul, peringatan mengganti allow-list, command siap tempel", () => {
+  const r = d("CONNECTION_CLOSED", "mikrotik", { sourceIp: "203.0.113.5", protocol: "rest" });
   assert.match(r.title, /menutup koneksi/i);
-  assert.match(r.hint, /jangan mengganti/i);
-  assert.match(r.command, /address=<DAFTAR-LAMA>/);
+  assert.match(r.hint, /MENGGANTI|mempertahankan entri lama/i);
+  assert.match(r.command, /203\.0\.113\.5\/32/);
+  assert.match(r.command, /\/ip service set www address=203\.0\.113\.5\/32/);
+  assert.doesNotMatch(r.command, /DAFTAR-LAMA|<IP-SERVER>/);
+});
+
+test("CONNECTION_CLOSED menyertakan IP publik DAN IP LAN server", () => {
+  const r = d("CONNECTION_CLOSED", "mikrotik", {
+    sourceIp: "203.0.113.5",
+    localSourceIp: "192.168.0.182",
+    protocol: "rest",
+  });
+  assert.equal(r.command, "/ip service set www address=203.0.113.5/32,192.168.0.182/32");
 });
 
 test("CONNECTION_REFUSED mikrotik: arahkan cek port (router bisa memakai port lain), jangan menyuruh mengaktifkan www-ssl", () => {

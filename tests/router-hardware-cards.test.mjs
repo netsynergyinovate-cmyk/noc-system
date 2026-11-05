@@ -60,8 +60,9 @@ test("komponen RouterHardwareCards: 4 kartu, progressbar, a11y", () => {
   assert.match(cardsSrc, /aria-valuemax=\{100\}/);
   assert.match(cardsSrc, /aria-hidden="true"/);
   assert.match(cardsSrc, /Sejak boot\/reboot terakhir/);
-  assert.match(cardsSrc, /active \? `\$\{cpuLoad\}%` : "—"/);
-  assert.match(cardsSrc, /active \? uptime : "Offline"/);
+  assert.ok(cardsSrc.includes('cpuAvailable ? `${cpuLoad}%` : "—"'), "CPU null harus tampil —");
+  assert.ok(cardsSrc.includes('active && uptime ? uptime : "—"'), "uptime kosong harus tampil —");
+  assert.doesNotMatch(cardsSrc, /cpuLoad: number;/); // harus number | null
 });
 
 test("router-table dan router-test-board memakai RouterHardwareCards", () => {

@@ -446,6 +446,7 @@ async function loadPppSessions() {
         username: creds.username,
         password: creds.password,
         useSsl: creds.useTls,
+        routerId: id,
         mode: "real",
       });
       sessions.push(...(await client.getPppActive()));

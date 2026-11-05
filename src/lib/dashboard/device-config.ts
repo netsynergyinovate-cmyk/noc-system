@@ -149,6 +149,8 @@ export type TestOutcome = {
   endpointTested?: string;
   /** Epoch detik (sama dengan `lastTestedAt`). */
   timestamp?: number;
+  /** Data nyata dari perangkat (mis. resource RouterOS); tidak ada bila gagal. */
+  data?: Record<string, unknown>;
 };
 
 export type MockTestResult = TestOutcome & {
@@ -259,7 +261,6 @@ const HOST_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
 /** Buang karakter kontrol & spasi tepi; batasi panjang. */
 export function sanitizeText(value: string, max = 120): string {
-  // eslint-disable-next-line no-control-regex
   return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
 }
 
@@ -306,6 +307,10 @@ export type RunDeviceTestOptions = {
   /** Paksa simulasi lokal tanpa memanggil endpoint backend (berlaku untuk semua mode). */
   forceLocal?: boolean;
   fetchImpl?: typeof fetch;
+  /** Kata sandi nyata untuk autentikasi perangkat; hanya dikirim ke endpoint uji. */
+  password?: string;
+  /** Paksa HTTPS/TLS pada port yang diuji. */
+  useTls?: boolean;
 };
 
 export async function runDeviceTest(
@@ -330,7 +335,15 @@ export async function runDeviceTest(
     const res = await fetchImpl("/api/devices/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: d.type, mode: d.mode, host: d.host, port: d.port, username: d.username || undefined }),
+      body: JSON.stringify({
+        type: d.type,
+        mode: d.mode,
+        host: d.host,
+        port: d.port,
+        username: d.username || undefined,
+        password: opts.password || undefined,
+        useTls: opts.useTls,
+      }),
       signal: AbortSignal.timeout(DEVICE_TEST_TIMEOUT_MS),
     });
     const json = await res.json().catch(() => null);
@@ -345,6 +358,7 @@ export async function runDeviceTest(
         ...(d.statusCode && { statusCode: d.statusCode }),
         ...(d.endpointTested && { endpointTested: d.endpointTested }),
         ...(d.timestamp && { timestamp: d.timestamp }),
+        ...(d.data && typeof d.data === "object" && { data: d.data as Record<string, unknown> }),
       };
     }
     if (res.status === 401) return { ok: false, message: "Sesi berakhir, silakan masuk lagi.", latencyMs: null };

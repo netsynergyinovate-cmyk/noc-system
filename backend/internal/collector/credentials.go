@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 )
 
@@ -91,4 +92,46 @@ func isAPIProtocolPort(baseURL string) bool {
 	hostPort := baseURL[strings.Index(baseURL, "://")+3:]
 	_, port, err := net.SplitHostPort(hostPort)
 	return err == nil && (port == "8728" || port == "8729")
+}
+
+// normalizeProtocol: kolom routers.protocol kosong (data lama) berarti REST.
+func normalizeProtocol(protocol string) string {
+	if strings.EqualFold(strings.TrimSpace(protocol), "api") {
+		return "api"
+	}
+	return "rest"
+}
+
+// APIBaseURL menormalkan BaseURL menjadi host:port API biner. Port 8729 atau
+// skema https memakai TLS; tanpa port dipakai 8728 (bukan 80/443 yang milik
+// layanan REST).
+func APIBaseURL(baseURL string) (string, error) {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Hostname() == "" {
+		return "", errors.New("alamat API tidak valid")
+	}
+	port := u.Port()
+	useTLS := u.Scheme == "https"
+	if port == "" {
+		port = "8728"
+		if useTLS {
+			port = "8729"
+		}
+	} else if port != "8728" && port != "8729" {
+		// Router lama menyimpan alamat www (80/443) bersama protokol api:
+		// alihkan ke port API yang setara, jangan hubungi port REST.
+		if port == "443" || port == "8443" {
+			port = "8729"
+		} else {
+			port = "8728"
+		}
+	}
+	if port == "8729" {
+		useTLS = true
+	}
+	scheme := "http"
+	if useTLS {
+		scheme = "https"
+	}
+	return scheme + "://" + net.JoinHostPort(u.Hostname(), port), nil
 }

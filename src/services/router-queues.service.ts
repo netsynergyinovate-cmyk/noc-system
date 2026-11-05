@@ -69,6 +69,7 @@ export async function getRouterQueues(
     host: r.host,
     username: r.username,
     password: decryptAES256GCM(r.passwordEnc),
+    routerId,
     mode: "real",
   }).getQueues();
   return filterSimpleQueues(

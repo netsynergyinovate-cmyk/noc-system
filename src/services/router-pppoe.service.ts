@@ -61,6 +61,7 @@ export async function getRouterPppoeSessions(
     host: r.host,
     username: r.username,
     password: decryptAES256GCM(r.passwordEnc),
+    routerId,
     mode: "real",
   });
 

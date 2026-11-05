@@ -12,6 +12,8 @@ import type { DeviceConnectionTestResult } from "@/lib/device-connection";
 type Props = {
   host: string;
   port?: number;
+  // "rest" (bawaan) atau "api" (API biner 8728/8729).
+  protocol?: "rest" | "api";
   // Tidak diisi = server menyimpulkan dari skema host / port (443, 8443).
   useSsl?: boolean;
   username?: string;
@@ -23,6 +25,7 @@ type Props = {
 export function RouterTestPanel({
   host,
   port,
+  protocol = "rest",
   useSsl,
   username,
   password,
@@ -46,6 +49,7 @@ export function RouterTestPanel({
         body: JSON.stringify({
           host,
           port,
+          protocol,
           username,
           password,
           useSsl,
@@ -69,6 +73,7 @@ export function RouterTestPanel({
             cpuLoad: testData?.["cpu-load"],
             uptime: testData?.uptime,
             sourceIp: testData?.sourceIp ?? undefined,
+            localSourceIp: testData?.localSourceIp ?? undefined,
           },
         };
         setGroupCheck(testData?.groupCheck ?? null);
@@ -162,8 +167,10 @@ export function RouterTestPanel({
           code={result.code}
           message={result.message}
           deviceType="mikrotik"
+          protocol={protocol}
           target={host}
           sourceIp={typeof result.data?.sourceIp === "string" ? result.data.sourceIp : undefined}
+          localSourceIp={typeof result.data?.localSourceIp === "string" ? result.data.localSourceIp : undefined}
           onRetry={runTest}
           isRetrying={testing}
           compact={compact}

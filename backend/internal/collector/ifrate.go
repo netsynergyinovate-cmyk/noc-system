@@ -110,6 +110,18 @@ type ifSample struct {
 // selama lubang bukan laju "saat ini").
 const maxIfGap = 15 * time.Second
 
+// CalculateRateSafe menghitung laju bit per detik dari dua counter byte dan
+// menolak counter yang turun. Router yang reboot atau interface yang dibuat
+// ulang mengulang counter dari nol; tanpa pemeriksaan ini selisihnya menjadi
+// angka negatif raksasa (uint64) atau lonjakan ratusan Gbps di grafik.
+func CalculateRateSafe(currentBytes, previousBytes uint64, intervalSec float64) uint64 {
+	if intervalSec <= 0 || currentBytes < previousBytes {
+		return 0
+	}
+	deltaBytes := currentBytes - previousBytes
+	return uint64(float64(deltaBytes*8) / intervalSec)
+}
+
 // ifRate menghitung laju dalam Mbps dari dua pembacaan. ok=false bila selangnya tidak masuk akal
 // atau counter turun (router restart / interface dibuat ulang).
 func ifRate(prev, cur ifSample) (rxMbps, txMbps float64, ok bool) {
@@ -118,5 +130,7 @@ func ifRate(prev, cur ifSample) (rxMbps, txMbps float64, ok bool) {
 		return 0, 0, false
 	}
 	sec := dt.Seconds()
-	return float64(cur.Rx-prev.Rx) * 8 / sec / 1e6, float64(cur.Tx-prev.Tx) * 8 / sec / 1e6, true
+	// Aturan anti-rollover yang sama dipakai di sini dalam bentuk bit/detik.
+	return float64(CalculateRateSafe(cur.Rx, prev.Rx, sec)) / 1e6,
+		float64(CalculateRateSafe(cur.Tx, prev.Tx, sec)) / 1e6, true
 }

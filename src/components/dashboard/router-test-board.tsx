@@ -13,15 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MOCK_DEVICE_CONFIGS, type DeviceConfig, type TestOutcome } from "@/lib/dashboard/device-config";
-import {
-  DEFAULT_ROUTER_TEST_FORM,
-  routerResourceFromOutcome,
-  runRouterTest,
-  toTestEntry,
-  type RouterTestEntry,
-  type RouterTestForm,
-} from "@/lib/dashboard/router-test";
+import type { DeviceConfig, TestOutcome } from "@/lib/dashboard/device-config";
+import { DEFAULT_ROUTER_TEST_FORM, buildRouterTestDevice, routerResourceFromOutcome, runRouterTest, toTestEntry, type RouterTestEntry, type RouterTestForm } from "@/lib/dashboard/router-test";
 import { useDashboardStore } from "@/lib/dashboard/store";
 
 const SELECT_CLS =
@@ -40,12 +33,65 @@ export function RouterTestBoard() {
 
   const set = <K extends keyof RouterTestForm>(k: K, v: RouterTestForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Perangkat tampilan untuk router tersimpan. Kredensial tetap di server;
+  // objek ini hanya dipakai untuk nama/host/port di riwayat dan kartu hasil.
+  function deviceFromSaved(name: string, host: string): DeviceConfig {
+    const isHttps = /^https:/.test(host);
+    const bare = host.replace(/^https?:\/\//, "");
+    const [hostname, port] = bare.split(":");
+    const built = buildRouterTestDevice({
+      host: hostname,
+      port: port || (isHttps ? "443" : "80"),
+      username: "saved",
+      https: isHttps,
+      mode: "real",
+      forceLocal: false,
+    });
+    if (built.ok) {
+      built.device.name = name;
+      return built.device;
+    }
+    return {
+      id: "saved",
+      type: "mikrotik",
+      name,
+      description: "",
+      host: hostname,
+      port: Number(port) || 80,
+      protocol: "",
+      username: "",
+      mode: "real",
+      status: "untested",
+      envHostKey: "",
+      envUserKey: "",
+      envPassKey: "",
+      lastTestedAt: null,
+      latencyMs: null,
+      metadata: {},
+    };
+  }
+
   function pickSaved(id: string) {
     setSavedId(id);
     const r = routers.find((x) => x.id === id);
     if (r) {
-      setForm((f) => ({ ...f, host: r.host, port: "443", username: MOCK_DEVICE_CONFIGS[0].username }));
+      // Ambil host/port nyata dari router tersimpan. Kredensial tidak disimpan
+      // di klien, jadi username/password harus diisi operator untuk uji nyata.
+      const isHttps = /^https:/.test(r.host);
+      const withoutScheme = r.host.replace(/^https?:\/\//, "");
+      const [hostname, port] = withoutScheme.split(":");
+      setForm((f) => ({
+        ...f,
+        host: hostname,
+        port: port || (isHttps ? "443" : "80"),
+        username: "",
+        https: isHttps,
+        mode: "real",
+        forceLocal: false,
+      }));
+      setPassword("");
       setErrors({});
+      setResult(null);
     }
   }
 
@@ -53,7 +99,62 @@ export function RouterTestBoard() {
     setTesting(true);
     setErrors({});
     try {
-      const r = await runRouterTest(form);
+      // Router tersimpan: backend memakai kredensial di database (tanpa
+      // mengetik ulang) dan membaca perangkat nyata lewat Go.
+      if (source === "saved") {
+        const saved = routers.find((x) => x.id === savedId);
+        if (!saved) {
+          setErrors({ host: "Pilih router tersimpan terlebih dahulu." });
+          return;
+        }
+        const device = deviceFromSaved(saved.name, saved.host);
+        let res: Response;
+        try {
+          res = await fetch(`/api/routers/${savedId}/test`, { method: "POST" });
+        } catch {
+          setResult({
+            device,
+            outcome: {
+              ok: false,
+              message: "Server aplikasi tidak menjawab permintaan uji.",
+              latencyMs: null,
+              code: "HTTP_ERROR",
+            },
+          });
+          return;
+        }
+        const json = (await res.json().catch(() => null)) as
+          | { data?: { ok?: boolean; message?: string; latencyMs?: number | null; code?: string; status?: TestOutcome["status"]; endpointTested?: string; timestamp?: number; data?: Record<string, unknown> }; error?: { message?: string } }
+          | null;
+        if (!res.ok || !json?.data) {
+          setResult({
+            device,
+            outcome: {
+              ok: false,
+              message: json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
+              latencyMs: null,
+              code: res.status === 403 ? "AUTH_FAILED" : "HTTP_ERROR",
+            },
+          });
+          return;
+        }
+        const d = json.data;
+        const outcome: TestOutcome = {
+          ok: Boolean(d.ok),
+          message: d.message ?? (d.ok ? "Terhubung." : "Gagal terhubung."),
+          latencyMs: d.latencyMs ?? null,
+          ...(d.status && { status: d.status }),
+          ...(d.code && { code: d.code as TestOutcome["code"] }),
+          ...(d.endpointTested && { endpointTested: d.endpointTested }),
+          ...(d.timestamp && { timestamp: d.timestamp }),
+          ...(d.data && typeof d.data === "object" && { data: d.data }),
+        };
+        setResult({ device, outcome });
+        setHistory((h) => [toTestEntry(h.length + 1, device, outcome), ...h]);
+        return;
+      }
+
+      const r = await runRouterTest(form, { password });
       if (!r.ok) {
         setErrors(r.errors);
         return;
@@ -83,8 +184,9 @@ export function RouterTestBoard() {
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Uji Koneksi Router MikroTik</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Periksa jangkauan, kredensial, dan endpoint REST RouterOS sebelum router disimpan. Kata sandi hanya dipakai
-            untuk pengujian ini dan tidak ditampilkan di riwayat.
+            Periksa jangkauan, kredensial, dan endpoint RouterOS secara langsung. Semua angka (CPU, RAM, uptime, board)
+            dibaca real-time dari router; tidak ada data contoh. Kata sandi hanya dipakai untuk pengujian ini dan tidak
+            ditampilkan di riwayat.
           </p>
         </div>
       </div>
@@ -136,7 +238,7 @@ export function RouterTestBoard() {
                   id="rt-host"
                   value={form.host}
                   onChange={(e) => set("host", e.target.value)}
-                  placeholder="10.10.0.1"
+                  placeholder="Alamat IP atau host router"
                   aria-invalid={errors.host ? true : undefined}
                 />
                 {errors.host && (
@@ -184,18 +286,6 @@ export function RouterTestBoard() {
                   placeholder="Masukkan kata sandi"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="rt-mode">Mode</Label>
-                <select
-                  id="rt-mode"
-                  className={SELECT_CLS}
-                  value={form.mode}
-                  onChange={(e) => set("mode", e.target.value as RouterTestForm["mode"])}
-                >
-                  <option value="real">Real (REST Endpoint)</option>
-                  <option value="simulator">Simulator</option>
-                </select>
-              </div>
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -203,15 +293,11 @@ export function RouterTestBoard() {
                 <input type="checkbox" checked={form.https} onChange={(e) => set("https", e.target.checked)} />
                 Gunakan HTTPS / TLS
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.forceLocal}
-                  onChange={(e) => set("forceLocal", e.target.checked)}
-                />
-                Paksa Simulasi Lokal (Offline Safe)
-              </label>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Pengujian selalu membaca perangkat nyata (REST atau API biner). Tidak ada mode simulator atau data contoh.
+            </p>
 
             <Button type="submit" aria-disabled={testing} className="gap-2">
               {testing ? <Loader2 className="size-4 animate-spin" /> : <Activity className="size-4" />}

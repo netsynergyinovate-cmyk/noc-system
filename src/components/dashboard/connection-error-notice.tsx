@@ -4,6 +4,7 @@ import { AlertCircle, AlertTriangle, Loader2, RefreshCw, XCircle } from "lucide-
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { allowListCommand } from "@/lib/dashboard/router-health";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -12,6 +13,10 @@ type Props = {
   deviceType?: "mikrotik" | "olt" | "genieacs" | "billing";
   // Alamat sumber server ke perangkat (dari uji koneksi gagal); ditampilkan agar bisa diizinkan di router.
   sourceIp?: string;
+  // Alamat LAN server; router di jaringan yang sama bisa melihat ini.
+  localSourceIp?: string;
+  // Transport router: menentukan layanan yang disebut (www vs api).
+  protocol?: "rest" | "api";
   target?: string;
   onRetry?: () => void;
   isRetrying?: boolean;
@@ -27,10 +32,15 @@ const RESTORE_REST = "/ip service set www-ssl disabled=no\n/ip service set www d
 export function describeConnectionTroubleshoot(
   code?: string,
   deviceType?: string,
+  opts: { sourceIp?: string; localSourceIp?: string; protocol?: "rest" | "api" } = {},
 ): ConnectionTroubleshoot {
   const mikrotik = deviceType === "mikrotik";
   const olt = deviceType === "olt";
   const genieacs = deviceType === "genieacs";
+  const service: "www" | "api" = opts.protocol === "api" ? "api" : "www";
+  const sourceIp = opts.sourceIp?.trim();
+  const localSourceIp = opts.localSourceIp?.trim();
+  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(" / ");
   switch (code) {
     case "TIMEOUT":
       return {
@@ -60,21 +70,25 @@ export function describeConnectionTroubleshoot(
           : "Alamat layanan tidak ditemukan. Periksa host, port, dan path.",
         command: mikrotik ? RESTORE_REST : undefined,
       };
-    case "CONNECTION_CLOSED":
+    case "CONNECTION_CLOSED": {
+      const command = allowListCommand(service, sourceIp, localSourceIp);
       return {
         title: "Router menutup koneksi",
-        hint: "Router menerima sambungan lalu langsung memutusnya: IP server ini biasanya belum ada di kolom address= layanan www. TAMBAHKAN IP server ke daftar yang sudah ada (jangan mengganti). Jika HTTPS dicentang padahal port ini layanan HTTP (www), hilangkan centang HTTPS.",
-        command: "/ip service set www address=<DAFTAR-LAMA>,<IP-SERVER>/32",
+        hint: command
+          ? `Router menerima sambungan lalu langsung memutusnya: IP server ini (${ipLabel}) belum ada di kolom address= layanan ${service}. Perintah di bawah MENGGANTI daftar address= dengan IP itu; akses Winbox/SSH tidak terpengaruh. Tempel apa adanya. Jika perlu mempertahankan entri lama, jalankan /ip service print detail where name~"${service}" lalu tambahkan entri itu setelah koma.`
+          : `Router menerima sambungan lalu langsung memutusnya: IP server ini biasanya belum ada di kolom address= layanan ${service}. Jalankan perintah di bawah untuk melihat daftar, lalu tambahkan IP server (jangan mengganti daftar lama). Jika HTTPS dicentang padahal port ini layanan HTTP, hilangkan centang HTTPS.`,
+        command: command ?? `/ip service print where name~"${service}"`,
       };
+    }
     case "CONNECTION_REFUSED":
       return {
         title: "Koneksi ditolak",
         hint: genieacs
           ? "Port 7557 NBI mati atau layanan GenieACS NBI tidak berjalan. Periksa status layanan di server:"
           : mikrotik
-            ? "Port yang diuji tertutup: layanan www mati, atau router memakai port lain (mis. 8081) sedangkan kolom Port kosong dan dianggap 80. Cek port yang berlaku di router, lalu isi di kolom Port atau tulis IP:port di Host:"
+            ? `Port yang diuji tertutup: layanan ${service} mati, atau router memakai port lain (mis. 8081) sedangkan kolom Port kosong. Cek port yang berlaku di router, lalu isi di kolom Port atau tulis IP:port di Host:`
             : "Port tertutup atau layanan tidak berjalan. Periksa port dan firewall.",
-        command: genieacs ? "systemctl status genieacs-nbi" : mikrotik ? '/ip service print where name~"www"' : undefined,
+        command: genieacs ? "systemctl status genieacs-nbi" : mikrotik ? `/ip service print where name~"${service}"` : undefined,
       };
     case "NETWORK_ERROR":
       return {
@@ -120,12 +134,14 @@ export function ConnectionErrorNotice({
   deviceType,
   target,
   sourceIp,
+  localSourceIp,
+  protocol,
   onRetry,
   isRetrying = false,
   compact = false,
   className,
 }: Props) {
-  const help = describeConnectionTroubleshoot(code, deviceType);
+  const help = describeConnectionTroubleshoot(code, deviceType, { sourceIp, localSourceIp, protocol });
   const Icon = iconFor(code);
 
   return (
@@ -154,9 +170,14 @@ export function ConnectionErrorNotice({
           )}
           {sourceIp && (
             <p className="text-muted-foreground">
-              IP server NOC yang dipakai ke router ini: <code className="font-mono">{sourceIp}</code>. Izinkan alamat itu di
-              router (jika ada NAT di jalur, router melihat alamat lain; cek dengan{" "}
-              <code className="font-mono">/ip firewall connection print</code>).
+              IP server NOC yang dipakai ke router ini: <code className="font-mono">{sourceIp}</code>
+              {localSourceIp && localSourceIp !== sourceIp ? (
+                <>
+                  {" "}(LAN: <code className="font-mono">{localSourceIp}</code>)
+                </>
+              ) : null}
+              . Perintah di atas sudah memakai alamat itu. Jika router melihat alamat lain karena NAT, cek{" "}
+              <code className="font-mono">/ip firewall connection print</code>.
             </p>
           )}
         </>

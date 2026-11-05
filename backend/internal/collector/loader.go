@@ -18,7 +18,7 @@ type Querier interface {
 
 // Tabel routers tidak punya kolom port dan driver (driver hanya ada di olts),
 // jadi hanya kolom yang benar-benar ada yang dibaca.
-const routersSQL = `SELECT id::text, name, host, status FROM routers WHERE status = 'aktif'`
+const routersSQL = `SELECT id::text, name, host, status, protocol FROM routers WHERE status = 'aktif'`
 
 const customersSQL = `SELECT id::text, name, pppoe_username, router_id::text, address, odp_name,
 	billing_status, optical_power::float8, is_online, latitude::float8, longitude::float8, isolir_router
@@ -35,10 +35,11 @@ func LoadRouters(ctx context.Context, q Querier) ([]state.Router, error) {
 	var out []state.Router
 	for rows.Next() {
 		var r state.Router
-		var status string
-		if err := rows.Scan(&r.ID, &r.Name, &r.Host, &status); err != nil {
+		var status, protocol string
+		if err := rows.Scan(&r.ID, &r.Name, &r.Host, &status, &protocol); err != nil {
 			return nil, fmt.Errorf("baca baris router: %w", err)
 		}
+		r.Protocol = normalizeProtocol(protocol)
 		r.Active = status == "aktif"
 		out = append(out, r)
 	}

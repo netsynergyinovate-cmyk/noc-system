@@ -7,6 +7,7 @@ import {
   sanitizeHost,
 } from "@/lib/device-connection";
 import { MikrotikError, mapMikrotikError } from "./errors";
+import { issueRealtimeTicket } from "@/lib/realtime-ticket";
 
 export { MikrotikError, mapMikrotikError } from "./errors";
 export type { MikrotikErrorCode, MikrotikMappedError } from "./errors";
@@ -19,6 +20,10 @@ export interface MikrotikClientOptions {
   useSsl?: boolean;
   timeoutMs?: number;
   mode: "real" | "simulator";
+  // Bila diisi, semua pembacaan diteruskan ke backend Go (satu gateway:
+  // Next.js tidak membuka koneksi ke router). Tanpa ini (mis. uji koneksi
+  // sebelum router disimpan) klien menghubungi router langsung.
+  routerId?: string;
 }
 
 export interface MikrotikResource {
@@ -186,6 +191,82 @@ export class MikrotikRestClient {
     return this.opts.mode === "simulator";
   }
 
+  // ---- gerbang backend Go (satu gateway) ----------------------------------
+  //
+  // Next.js tidak lagi membuka koneksi ke router untuk pembacaan monitoring.
+  // Permintaan diteruskan ke /api/v1/routers/{id}/read atau /measure dengan
+  // tiket internal bertanda tangan. Backend Go memilih REST atau API biner.
+
+  private get proxyBase(): string {
+    return process.env.BACKEND_INTERNAL_URL ?? process.env.BACKEND_URL ?? "";
+  }
+
+  private proxyHeaders(): Record<string, string> {
+    const base = this.proxyBase;
+    const secret = process.env.REALTIME_TOKEN_SECRET;
+    if (!base || !secret) {
+      throw new MikrotikError(
+        mapMikrotikError(
+          new DeviceConnectionError(
+            "CONNECTION_FAILED",
+            "Backend Go belum dikonfigurasi (BACKEND_INTERNAL_URL dan REALTIME_TOKEN_SECRET). Pembacaan router hanya lewat backend Go.",
+          ),
+          this.ctx,
+        ),
+      );
+    }
+    const { token } = issueRealtimeTicket({ userId: "noc-server", secret });
+    return { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  }
+
+  private async proxyFetch(url: URL, init: RequestInit): Promise<unknown> {
+    const headers = { ...this.proxyHeaders(), ...(init.headers as Record<string, string> | undefined) };
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...init,
+        headers,
+        signal: AbortSignal.timeout(this.timeoutMs),
+        redirect: "manual",
+      });
+    } catch (e) {
+      throw new MikrotikError(mapMikrotikError(e, this.ctx), e);
+    }
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+      throw new MikrotikError(
+        mapMikrotikError(
+          new DeviceConnectionError(
+            "CONNECTION_FAILED",
+            json?.message ?? json?.error ?? `Backend Go menjawab HTTP ${res.status} untuk router.`,
+          ),
+          this.ctx,
+        ),
+      );
+    }
+    return res.json();
+  }
+
+  private async proxyGet(path: string, filter: Record<string, string> = {}): Promise<unknown> {
+    const base = this.proxyBase;
+    const url = new URL(`/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/read`, base || "http://127.0.0.1");
+    url.searchParams.set("path", path);
+    for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
+    return this.proxyFetch(url, { method: "GET" });
+  }
+
+  private async proxyMeasure(path: string, body: Record<string, unknown>): Promise<unknown> {
+    const base = this.proxyBase;
+    const url = new URL(`/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/measure`, base || "http://127.0.0.1");
+    const normalized: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(body)) if (v !== undefined && v !== null) normalized[k] = v;
+    return this.proxyFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, body: normalized }),
+    });
+  }
+
   // Simulator: .0 = timeout, .255 = login ditolak, selain itu sukses (sama seperti runSimulatorDeviceTest).
   private simulatorFailure() {
     const r = runSimulatorDeviceTest({
@@ -198,6 +279,11 @@ export class MikrotikRestClient {
   }
 
   private async request(path: string, method = "GET", body?: unknown): Promise<unknown> {
+    // Satu gateway: bila router sudah tersimpan, semua pembacaan lewat backend Go.
+    if (this.opts.routerId) {
+      if (method === "GET") return this.proxyGet(path);
+      return this.proxyMeasure(path, (body ?? {}) as Record<string, unknown>);
+    }
     // 8728/8729 (API biner) dan 8291 (Winbox) bukan REST: fetch ke sana hanya macet atau ditolak.
     if (API_PROTOCOL_PORTS.has(this.target.port)) {
       throw new MikrotikError(
@@ -367,6 +453,7 @@ export class MikrotikRestClient {
   async read(path: string, filter: Record<string, string> = {}): Promise<unknown> {
     if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
     if (!path.startsWith("/rest/")) throw new Error(`Path REST tidak sah: ${path}`);
+    if (this.opts.routerId) return this.proxyGet(path, filter);
     const query = new URLSearchParams(filter).toString();
     return this.request(query ? `${path}?${query}` : path);
   }
@@ -383,6 +470,7 @@ export class MikrotikRestClient {
     body: Record<string, string>,
   ): Promise<unknown> {
     if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
+    if (this.opts.routerId) return this.proxyMeasure(path, body);
     return this.request(path, "POST", body);
   }
 

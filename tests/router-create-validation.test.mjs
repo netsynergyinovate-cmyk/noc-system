@@ -84,6 +84,27 @@ test("simulator normal: pre-flight lulus dan host ternormalisasi disimpan", asyn
   assert.equal(inserted.length, 1);
 });
 
+test("skema: protokol hanya rest atau api", () => {
+  assert.ok(ok({ protocol: "api" }));
+  assert.ok(ok({ protocol: "rest" }));
+  assert.ok(!ok({ protocol: "ssh" }));
+});
+
+test("protokol API memakai port 8728/8729, bukan port layanan www", async () => {
+  const r = await createRouter({ ...valid, protocol: "api", port: 80, mode: "simulator" });
+  assert.equal(r.protocol, "api");
+  assert.equal(r.host, "10.0.0.5:8728");
+  const tls = await createRouter({ ...valid, host: "10.0.0.6", protocol: "api", port: 8729, useSsl: true, mode: "simulator" });
+  assert.equal(tls.protocol, "api");
+  assert.equal(tls.host, "https://10.0.0.6:8729");
+});
+
+test("protokol REST tidak disimpan dengan port API 8728/8729", async () => {
+  const r = await createRouter({ ...valid, protocol: "rest", port: 8728, mode: "simulator" });
+  assert.equal(r.protocol, "rest");
+  assert.equal(r.host, "10.0.0.5");
+});
+
 test("host duplikat -> 409 DUPLICATE_HOST", async () => {
   existing = [{ id: "x" }];
   const e = await fail({});

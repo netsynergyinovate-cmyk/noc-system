@@ -6,13 +6,29 @@ register();
 const h = await import("../src/lib/dashboard/router-health.ts");
 const { alertKindLabel } = await import("../src/lib/dashboard/incidents.ts");
 
-test("galat 'EOF' (router menutup koneksi) dikenali sebagai IP server tidak diizinkan, dengan perintah perbaikan", () => {
-  for (const e of ["hubungi router: EOF", "read tcp: connection reset by peer", "write: broken pipe"]) {
-    const d = h.diagnoseUnreachable(e);
+test("galat 'EOF' (router menutup koneksi) dikenali sebagai IP server tidak diizinkan, dengan perintah siap tempel", () => {
+  for (const e of [
+    "hubungi router: EOF",
+    "read tcp: connection reset by peer",
+    "write: broken pipe",
+    // Windows: backend Go di PC/server Windows.
+    "hubungi router: read tcp 192.168.0.182:54991->103.167.70.136:80: wsarecv: An existing connection was forcibly closed by the remote host.",
+  ]) {
+    const d = h.diagnoseUnreachable(e, { sourceIp: "203.0.113.5", protocol: "rest" });
     assert.equal(d.cause, "closed", e);
-    assert.match(d.hint, /IP/);
-    assert.match(d.command, /\/ip service set www address=/);
+    assert.match(d.hint, /203\.0\.113\.5/);
+    assert.ok(d.command.includes("/ip service set www address=203.0.113.5/32"), d.command);
+    assert.doesNotMatch(d.command, /DAFTAR-LAMA|<IP-SERVER>|:foreach|:local/);
   }
+});
+
+test("perintah allow-list menambah ke daftar lama (tidak menimpa) dan memakai layanan api bila perlu", () => {
+  const d = h.diagnoseUnreachable("hubungi router: EOF", { sourceIp: "203.0.113.5", protocol: "api" });
+  assert.ok(d.command.includes("/ip service set api address=203.0.113.5/32"), d.command);
+  // Tanpa IP sumber: jangan mengarang placeholder, arahkan membaca daftar.
+  const noIp = h.diagnoseUnreachable("hubungi router: EOF");
+  assert.equal(noIp.command, '/ip service print where name~"www"');
+  assert.doesNotMatch(noIp.command, /DAFTAR-LAMA|<IP-SERVER>/);
 });
 
 test("penyebab lain dipetakan ke sebab yang tepat", () => {
@@ -27,6 +43,10 @@ test("penyebab lain dipetakan ke sebab yang tepat", () => {
   assert.equal(c(""), "unknown");
   // Login ditolak tidak boleh salah dibaca sebagai "koneksi ditutup".
   assert.equal(c("hubungi router: EOF"), "closed");
+  assert.equal(
+    c("hubungi router: read tcp 192.168.0.182:54991->103.167.70.136:80: wsarecv: An existing connection was forcibly closed by the remote host."),
+    "closed",
+  );
 });
 
 test("hanya router aktif yang tidak terjangkau yang ditandai", () => {

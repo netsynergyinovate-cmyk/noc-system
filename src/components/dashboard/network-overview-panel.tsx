@@ -39,7 +39,7 @@ export function NetworkOverviewPanel() {
           activeRouters: activeCount,
           offlineRouters: routers.length - activeCount,
           totalInterfaces: 0,
-          totalQueues: (resources.items ?? []).reduce((n, item) => n + item.queueCount, 0),
+          totalQueues: (resources.items ?? []).reduce((n, item) => n + (item.queueCount ?? 0), 0),
           totalActivePppoe: customers.filter((c) => c.isOnline).length,
           networkHealthScore: routers.length > 0 ? Math.round((activeCount / routers.length) * 100) : 0,
           sourceStatus: "nyata" as const,

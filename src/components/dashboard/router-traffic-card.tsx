@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Activity, ArrowDown, ArrowUp, RadioOff } from "lucide-react";
 
@@ -9,11 +8,22 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatBitrate, formatBytes } from "@/lib/dashboard/routers";
-import {
-  getMockRouterTraffic,
-  isTrafficEmpty,
-  type RouterTrafficStats,
-} from "@/lib/dashboard/router-traffic";
+import { isTrafficEmpty, type RouterTrafficStats } from "@/lib/dashboard/router-traffic";
+
+// Tidak ada data contoh: bila belum ada sampel dari backend, tampilkan kosong.
+const EMPTY_STATS: RouterTrafficStats = {
+  hasData: false,
+  rxBps: 0,
+  txBps: 0,
+  rxTotalBytes: 0,
+  txTotalBytes: 0,
+  peakRxBps: 0,
+  peakTxBps: 0,
+  avgRxBps: 0,
+  avgTxBps: 0,
+  updatedAt: 0,
+  reason: "Belum ada sampel dari backend",
+};
 
 export interface RouterTrafficCardProps {
   routerId: string;
@@ -70,14 +80,13 @@ export function RouterTrafficCard({
   initialStats,
   className,
 }: RouterTrafficCardProps) {
-  const [fallback] = useState(() => getMockRouterTraffic(routerId, active));
-  const stats = initialStats ?? fallback;
+  const stats = initialStats ?? EMPTY_STATS;
   const empty = isTrafficEmpty(stats);
   const sum = stats.rxBps + stats.txBps;
   const rxPct = sum > 0 ? Math.round((stats.rxBps / sum) * 100) : 0;
 
   return (
-    <Card className={className} aria-label={`Trafik ${routerName}`}>
+    <Card className={className} aria-label={`Trafik ${routerName}`} data-router-id={routerId}>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Activity className="size-4" aria-hidden="true" />
@@ -89,7 +98,7 @@ export function RouterTrafficCard({
           </Badge>
         ) : (
           <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
-            {initialStats ? "REST Live Telemetri" : "REST Live (Mock)"}
+            Live Telemetri
           </Badge>
         )}
       </CardHeader>
@@ -102,7 +111,9 @@ export function RouterTrafficCard({
             <RadioOff className="size-8 text-muted-foreground" aria-hidden="true" />
             <p className="text-sm font-semibold">Belum Ada Sampel Trafik</p>
             <p className="max-w-sm text-xs text-muted-foreground">
-              Router tidak aktif atau belum ada sampel trafik yang terekam via REST API RouterOS.
+              {active
+                ? "Belum ada sampel trafik dari backend. Tidak ada data contoh yang ditampilkan."
+                : "Router nonaktif, jadi tidak ada pembacaan trafik."}
             </p>
             <p className="font-mono text-xs text-muted-foreground">
               Masuk 0 bps · Keluar 0 bps

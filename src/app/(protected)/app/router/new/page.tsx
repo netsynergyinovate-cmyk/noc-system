@@ -33,13 +33,15 @@ import {
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Nama router minimal 2 karakter.",
+  name: z.string().min(3, {
+    message: "Nama router minimal 3 karakter.",
   }),
   host: z.string().min(1, {
     message: "IP atau Host wajib diisi.",
   }),
-  // Kosong = bawaan (80, atau 443 bila HTTPS). Boleh juga ditulis di host: "10.0.0.1:8080".
+  // "api" = API biner 8728/8729 (realtime), "rest" = layanan www/www-ssl.
+  protocol: z.enum(["api", "rest"]),
+  // Kosong = bawaan protokol (8728/8729 untuk API, 80/443 untuk REST). Boleh juga ditulis di host: "10.0.0.1:8080".
   port: z.string().trim().refine(
     (v) => v === "" || (/^\d{1,5}$/.test(v) && Number(v) >= 1 && Number(v) <= 65535),
     { message: "Port harus angka 1-65535." },
@@ -68,16 +70,18 @@ export default function NewRouterPage() {
     defaultValues: {
       name: "",
       host: "",
-      port: "",
+      protocol: "api",
+      port: "8728",
       useSsl: false,
       username: "",
       password: "",
     },
   });
 
-  const [host, port, useSsl, username, password] = form.watch([
+  const [host, port, protocol, useSsl, username, password] = form.watch([
     "host",
     "port",
+    "protocol",
     "useSsl",
     "username",
     "password",
@@ -85,8 +89,35 @@ export default function NewRouterPage() {
   const portNumber = /^\d{1,5}$/.test(port.trim()) ? Number(port.trim()) : undefined;
   // Tidak dicentang = biarkan server menyimpulkan dari skema host / port 443, 8443.
   const sslOption = useSsl ? true : undefined;
-  const formKey = `${host}|${port}|${useSsl}|${username}|${password}`;
+  const formKey = `${host}|${protocol}|${port}|${useSsl}|${username}|${password}`;
   const verified = tested?.key === formKey && tested.result.ok;
+
+  // Port bawaan mengikuti protokol (FR-01): 8728/8729 untuk API biner,
+  // 80/443 untuk REST. Hanya port bawaan lama yang diganti, agar port kustom
+  // yang sudah diketik operator tidak hilang.
+  function changeProtocol(next: "rest" | "api") {
+    form.setValue("protocol", next, { shouldValidate: true });
+    const p = port.trim();
+    if (next === "api") {
+      if (p === "" || p === "80" || p === "443" || p === "8443") {
+        form.setValue("port", useSsl ? "8729" : "8728", { shouldValidate: true });
+      }
+    } else if (p === "" || p === "8728" || p === "8729") {
+      form.setValue("port", useSsl ? "443" : "80", { shouldValidate: true });
+    }
+  }
+
+  function changeSsl(checked: boolean) {
+    form.setValue("useSsl", checked, { shouldValidate: true });
+    const p = port.trim();
+    if (protocol === "api") {
+      if (p === "" || p === "8728" || p === "8729") {
+        form.setValue("port", checked ? "8729" : "8728", { shouldValidate: true });
+      }
+    } else if (p === "" || p === "80" || p === "443") {
+      form.setValue("port", checked ? "443" : "80", { shouldValidate: true });
+    }
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
@@ -98,6 +129,7 @@ export default function NewRouterPage() {
         body: JSON.stringify({
           name: values.name.trim(),
           host: values.host.trim(),
+          protocol: values.protocol,
           ...(portNumber !== undefined && { port: portNumber }),
           ...(sslOption && { useSsl: true }),
           username: values.username.trim(),
@@ -152,15 +184,16 @@ export default function NewRouterPage() {
         <CardHeader>
           <CardTitle>Detail Router MikroTik</CardTitle>
           <CardDescription>
-            Kredensial disimpan dengan enkripsi AES-256-GCM. Aplikasi memakai REST API RouterOS v7
-            lewat layanan <code>www</code> (80) atau <code>www-ssl</code> (443), bukan port API 8728 atau Winbox 8291.
-            Atau biarkan aplikasi menyiapkan REST otomatis lewat panel di atas.
+            Kredensial disimpan dengan enkripsi AES-256-GCM. Pilih <strong>API Biner</strong> (port 8728, atau 8729
+            TLS) untuk membaca trafik dan sesi pelanggan secara realtime lewat backend Go, atau <strong>REST API</strong>
+            (layanan <code>www</code> 80 / <code>www-ssl</code> 443). Panel di atas menyiapkan REST otomatis.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <RouterBootstrapPanel
             onProvisioned={(c) => {
               form.setValue("host", c.host, { shouldValidate: true });
+              form.setValue("protocol", "rest", { shouldValidate: true });
               form.setValue("port", c.port ? String(c.port) : "", { shouldValidate: true });
               form.setValue("useSsl", c.useSsl, { shouldValidate: true });
               form.setValue("username", c.username, { shouldValidate: true });
@@ -176,6 +209,7 @@ export default function NewRouterPage() {
               port={port}
               onUseRouter={(address, restPort, tls) => {
                 form.setValue("host", address, { shouldValidate: true });
+                form.setValue("protocol", "rest", { shouldValidate: true });
                 form.setValue("port", restPort ? String(restPort) : "", { shouldValidate: true });
                 form.setValue("useSsl", tls === true, { shouldValidate: true });
               }}
@@ -217,6 +251,33 @@ export default function NewRouterPage() {
                 </div>
               ) : (
                 <>
+                  <FormField
+                    control={form.control}
+                    name="protocol"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Protokol &amp; Port</FormLabel>
+                        <FormControl>
+                          <select
+                            value={field.value}
+                            onChange={(e) => changeProtocol(e.target.value as "rest" | "api")}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          >
+                            <option value="api">API Biner RouterOS (8728, atau 8729 TLS) — disarankan</option>
+                            <option value="rest">REST API (80, atau 443 HTTPS)</option>
+                          </select>
+                        </FormControl>
+                        <FormDescription>
+                          API Biner memakai satu soket TCP yang dipertahankan backend Go: trafik interface mengalir
+                          lewat <code>/interface/monitor-traffic</code> tanpa polling berulang. REST memakai layanan
+                          <code>www</code>/<code>www-ssl</code>.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid gap-6 sm:grid-cols-2">
                     <FormField
                       control={form.control}
@@ -240,13 +301,26 @@ export default function NewRouterPage() {
                       name="port"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Port REST (opsional)</FormLabel>
+                          <FormLabel>Port (opsional)</FormLabel>
                           <FormControl>
-                            <Input inputMode="numeric" placeholder="80 atau 443" {...field} />
+                            <Input
+                              inputMode="numeric"
+                              placeholder={protocol === "api" ? (useSsl ? "8729" : "8728") : useSsl ? "443" : "80"}
+                              {...field}
+                            />
                           </FormControl>
                           <FormDescription>
-                            Port layanan www / www-ssl di router. Kosong = 80 (HTTP) atau 443 (HTTPS). Wajib diisi bila router
-                            memakai port lain (mis. 8081): lihat <code>/ip service print where name~&quot;www&quot;</code>.
+                            {protocol === "api" ? (
+                              <>
+                                Port layanan API: 8728 (polos) atau 8729 (TLS). Aktifkan dengan{" "}
+                                <code>/ip service print where name~&quot;api&quot;</code>.
+                              </>
+                            ) : (
+                              <>
+                                Port layanan www / www-ssl di router. Kosong = 80 (HTTP) atau 443 (HTTPS). Wajib diisi bila router
+                                memakai port lain (mis. 8081).
+                              </>
+                            )}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -262,17 +336,18 @@ export default function NewRouterPage() {
                           <input
                             type="checkbox"
                             checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
+                            onChange={(e) => changeSsl(e.target.checked)}
                             onBlur={field.onBlur}
                             ref={field.ref}
                             className="mt-1 size-4"
                           />
                         </FormControl>
                         <div className="space-y-1">
-                          <FormLabel>Gunakan HTTPS (www-ssl)</FormLabel>
+                          <FormLabel>{protocol === "api" ? "Gunakan TLS (api-ssl, port 8729)" : "Gunakan HTTPS (www-ssl)"}</FormLabel>
                           <FormDescription>
-                            Port 443 dan 8443 otomatis HTTPS. Sertifikat self-signed bawaan RouterOS
-                            akan ditolak; pasang sertifikat valid atau pakai www (HTTP) lewat jaringan privat.
+                            {protocol === "api"
+                              ? "API biner TLS memakai port 8729. Tanpa centang, aplikasi memakai API polos port 8728 lewat jaringan manajemen tepercaya."
+                              : "Port 443 dan 8443 otomatis HTTPS. Sertifikat self-signed bawaan RouterOS akan ditolak; pasang sertifikat valid atau pakai www (HTTP) lewat jaringan privat."}
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -284,13 +359,13 @@ export default function NewRouterPage() {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username REST</FormLabel>
+                          <FormLabel>{protocol === "api" ? "Username API" : "Username REST"}</FormLabel>
                           <FormControl>
                             <Input placeholder="mis. noc-api" {...field} />
                           </FormControl>
                           <FormDescription>
-                            Akun MikroTik yang disimpan aplikasi untuk memantau router lewat REST. Terisi otomatis setelah panel di atas
-                            berhasil; berbeda dari akun login di panel itu.
+                            Akun MikroTik yang disimpan aplikasi untuk memantau router (butuh policy <code>read</code> dan{" "}
+                            <code>api</code>). Terisi otomatis setelah panel di atas berhasil; berbeda dari akun login di panel itu.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -302,11 +377,11 @@ export default function NewRouterPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password REST</FormLabel>
+                        <FormLabel>Password {protocol === "api" ? "API" : "REST"}</FormLabel>
                         <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
-                        <FormDescription>Password akun REST di atas (disimpan terenkripsi).</FormDescription>
+                        <FormDescription>Password akun di atas (disimpan terenkripsi AES-256-GCM).</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -320,6 +395,7 @@ export default function NewRouterPage() {
                   key={formKey}
                   host={host}
                   port={portNumber}
+                  protocol={protocol}
                   useSsl={sslOption}
                   username={username}
                   password={password}

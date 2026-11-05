@@ -208,6 +208,24 @@ func TestWebhookSupportsQueryAndJSON(t *testing.T) {
 	}
 }
 
+func TestWebhookAcceptsPRDPPPProfilePayload(t *testing.T) {
+	h := newEventHarness(t, "10.0.0.1")
+	handler := h.webhook()
+	headers := map[string]string{"X-Webhook-Token": webhookToken, "Content-Type": "application/json"}
+
+	// Persis bentuk http-data pada PRD (script On Up / On Down).
+	up := `{"event":"up","user":"budi","interface":"<pppoe-budi>","address":"10.20.0.55"}`
+	rec := h.send(handler, hookRequest{target: "/hooks/ppp", body: up, headers: headers})
+	if rec.Code != http.StatusOK || !h.online("budi") {
+		t.Fatalf("payload PRD up: status=%d body=%s online=%v", rec.Code, rec.Body.String(), h.online("budi"))
+	}
+	down := `{"event":"down","user":"budi","interface":"<pppoe-budi>","address":"10.20.0.55"}`
+	rec = h.send(handler, hookRequest{target: "/hooks/ppp", body: down, headers: headers})
+	if rec.Code != http.StatusOK || h.online("budi") {
+		t.Fatalf("payload PRD down: status=%d body=%s online=%v", rec.Code, rec.Body.String(), h.online("budi"))
+	}
+}
+
 func TestWebhookRejectsMalformedRequests(t *testing.T) {
 	h := newEventHarness(t, "10.0.0.1")
 	handler := h.webhook()

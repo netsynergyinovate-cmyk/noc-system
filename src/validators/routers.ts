@@ -1,10 +1,15 @@
 import { z } from "zod";
 
+// "rest" = layanan www/www-ssl (80/443); "api" = API biner RouterOS
+// (8728/8729) yang dipakai backend Go untuk streaming monitor-traffic.
+export const routerProtocolSchema = z.enum(["rest", "api"]);
+
 export const createRouterSchema = z
   .object({
-    name: z.string().trim().min(2).max(100),
+    name: z.string().trim().min(3).max(100),
     host: z.string().trim().min(1).max(255),
     port: z.number().int().min(1).max(65535).optional(),
+    protocol: routerProtocolSchema.optional(),
     username: z.string().trim().min(1).max(100),
     password: z.string().min(1).max(100),
     useSsl: z.boolean().optional(),
@@ -16,6 +21,7 @@ export const createRouterSchema = z
 export const testRouterSchema = z.object({
   host: z.string().min(1, "Host wajib diisi").max(255).trim(),
   port: z.number().int().min(1).max(65535).optional(),
+  protocol: routerProtocolSchema.optional(),
   username: z.string().min(1, "Username wajib diisi").max(100).trim(),
   password: z.string().max(100),
   useSsl: z.boolean().optional(),
@@ -26,9 +32,10 @@ export type CreateRouterInput = z.infer<typeof createRouterSchema>;
 
 export const updateRouterSchema = z
   .object({
-    name: z.string().trim().min(2).max(100).optional(),
+    name: z.string().trim().min(3).max(100).optional(),
     host: z.string().trim().min(1).max(255).optional(),
     port: z.number().int().min(1).max(65535).optional(),
+    protocol: routerProtocolSchema.optional(),
     username: z.string().trim().min(1).max(100).optional(),
     password: z.string().min(1).max(100).optional(),
     useSsl: z.boolean().optional(),
@@ -39,4 +46,3 @@ export const updateRouterSchema = z
   .strict();
 
 export type UpdateRouterInput = z.infer<typeof updateRouterSchema>;
-

@@ -8,11 +8,13 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"noc-isp/backend/internal/auth"
 	"noc-isp/backend/internal/netflow"
+	"noc-isp/backend/internal/routerproxy"
 	"noc-isp/backend/internal/wire"
 )
 
@@ -34,6 +36,20 @@ type NetflowQuerySource interface {
 type TorchSource interface {
 	RunCapture(ctx context.Context, in netflow.TorchCaptureInput) (*netflow.TorchCaptureResult, error)
 }
+
+// RouterReader adalah gerbang baca-saja Next.js ke router MikroTik. Semua
+// pembacaan monitoring lewat sini; Next.js tidak membuka koneksi sendiri.
+type RouterReader interface {
+	Read(ctx context.Context, routerID, restPath string, query url.Values) ([]byte, error)
+	Measure(ctx context.Context, routerID, restPath string, body map[string]any) ([]byte, error)
+	ServiceAddress(ctx context.Context, routerID, service string) (string, error)
+}
+
+// RouterPreflight menguji koneksi fisik router sebelum disimpan.
+type RouterPreflight interface {
+	Preflight(ctx context.Context, in routerproxy.PreflightInput) routerproxy.PreflightResult
+}
+
 // TelemetrySource adalah telemetri terakhir yang dihitung backend; *telemetry.Service memenuhinya.
 type TelemetrySource interface {
 	Latest() wire.Telemetry
@@ -95,6 +111,11 @@ type Options struct {
 	NetflowQuery NetflowQuerySource
 	// Torch menjalankan perekaman torch langsung bila diisi.
 	Torch TorchSource
+	// Routers melayani baca-saja ke MikroTik untuk Next.js (satu gateway).
+	// Kosong berarti rute /api/v1/routers/{id}/... tidak terdaftar.
+	Routers RouterReader
+	// RouterPreflight menguji koneksi router sebelum disimpan.
+	RouterPreflight RouterPreflight
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
 	// billing). Bawaannya time.Now; tes mengisinya agar jawabannya tetap. Pemeriksaan
 	// tiket tetap memakai jam sistem.
@@ -330,6 +351,76 @@ func NewHandler(opts Options) http.Handler {
 				}
 				writeJSON(w, http.StatusOK, dataResponse[*netflow.TorchCaptureResult]{Data: res})
 			})))
+		}
+		if opts.RouterPreflight != nil {
+			api.Handle("POST /api/v1/routers/preflight", requirePerm(opts.Verifier, "router:manage", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var in routerproxy.PreflightInput
+				dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
+				dec.DisallowUnknownFields()
+				if err := dec.Decode(&in); err != nil || strings.TrimSpace(in.Host) == "" || strings.TrimSpace(in.Username) == "" {
+					writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_request", Message: "host dan username wajib"})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[routerproxy.PreflightResult]{Data: opts.RouterPreflight.Preflight(r.Context(), in)})
+			})))
+		}
+		if opts.Routers != nil {
+			// Gerbang baca-saja: Next.js mengirim path /rest/... dan filter query.
+			api.HandleFunc("GET /api/v1/routers/{id}/service", func(w http.ResponseWriter, r *http.Request) {
+				routerID := r.PathValue("id")
+				service := r.URL.Query().Get("name")
+				if routerID == "" || (service != "www" && service != "api") {
+					writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_request", Message: "id router dan name (www/api) wajib"})
+					return
+				}
+				address, err := opts.Routers.ServiceAddress(r.Context(), routerID, service)
+				if err != nil {
+					writeJSON(w, http.StatusBadGateway, errorResponse{Error: "router_service_failed", Message: err.Error()})
+					return
+				}
+				writeJSON(w, http.StatusOK, dataResponse[struct {
+					Address string `json:"address"`
+				}]{Data: struct {
+					Address string `json:"address"`
+				}{Address: address}})
+			})
+			api.HandleFunc("GET /api/v1/routers/{id}/read", func(w http.ResponseWriter, r *http.Request) {
+				routerID := r.PathValue("id")
+				restPath := r.URL.Query().Get("path")
+				if routerID == "" || !strings.HasPrefix("/"+strings.TrimPrefix(restPath, "/"), "/rest/") {
+					writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_request", Message: "id router dan path /rest/ wajib"})
+					return
+				}
+				data, err := opts.Routers.Read(r.Context(), routerID, restPath, r.URL.Query())
+				if err != nil {
+					writeJSON(w, http.StatusBadGateway, errorResponse{Error: "router_read_failed", Message: err.Error()})
+					return
+				}
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.Header().Set("Cache-Control", "no-store")
+				_, _ = w.Write(data)
+			})
+			api.HandleFunc("POST /api/v1/routers/{id}/measure", func(w http.ResponseWriter, r *http.Request) {
+				routerID := r.PathValue("id")
+				var req struct {
+					Path string         `json:"path"`
+					Body map[string]any `json:"body"`
+				}
+				dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
+				dec.DisallowUnknownFields()
+				if err := dec.Decode(&req); err != nil || routerID == "" || req.Path == "" {
+					writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_request", Message: "id router dan path wajib"})
+					return
+				}
+				data, err := opts.Routers.Measure(r.Context(), routerID, req.Path, req.Body)
+				if err != nil {
+					writeJSON(w, http.StatusBadGateway, errorResponse{Error: "router_measure_failed", Message: err.Error()})
+					return
+				}
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.Header().Set("Cache-Control", "no-store")
+				_, _ = w.Write(data)
+			})
 		}
 		api.Handle("/", newDashboardMux(opts.Data, newHistoryAPI(opts.History, opts.Logger)))
 		// CORS paling luar agar preflight (yang tidak membawa tiket) bisa lewat.

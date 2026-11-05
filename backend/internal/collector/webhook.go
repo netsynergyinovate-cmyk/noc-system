@@ -71,6 +71,14 @@ type webhookRequest struct {
 	Event  string `json:"event"`
 	User   string `json:"user"`
 	Router string `json:"router"`
+	// Field tambahan dari script PPP profile di PRD (mis.
+	// http-data="{\"event\":\"up\",\"user\":\"$user\",\"interface\":\"$interface\",\"address\":\"$remote-address\"}").
+	// Diterima dan dicatat sebagai konteks, bukan dasar keputusan status.
+	Interface string `json:"interface"`
+	Address   string `json:"address"`
+	Service   string `json:"service"`
+	CallerID  string `json:"caller-id"`
+	Uptime    string `json:"uptime"`
 }
 
 func (h *webhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -149,14 +157,25 @@ func parseWebhook(w http.ResponseWriter, r *http.Request) (webhookRequest, error
 			values[key] = append(values[key], list...)
 		}
 		for key, list := range values {
-			if key != "event" && key != "user" && key != "router" {
+			switch key {
+			case "event", "user", "router", "interface", "address", "service", "caller-id", "uptime":
+			default:
 				return req, fmt.Errorf("parameter %q tidak dikenal", key)
 			}
 			if len(list) > 1 {
 				return req, fmt.Errorf("parameter %q diulang", key)
 			}
 		}
-		req = webhookRequest{Event: values.Get("event"), User: values.Get("user"), Router: values.Get("router")}
+		req = webhookRequest{
+			Event:     values.Get("event"),
+			User:      values.Get("user"),
+			Router:    values.Get("router"),
+			Interface: values.Get("interface"),
+			Address:   values.Get("address"),
+			Service:   values.Get("service"),
+			CallerID:  values.Get("caller-id"),
+			Uptime:    values.Get("uptime"),
+		}
 	}
 
 	if req.Event != "up" && req.Event != "down" {
@@ -167,6 +186,18 @@ func parseWebhook(w http.ResponseWriter, r *http.Request) (webhookRequest, error
 	}
 	if req.Router != "" && !validUser(req.Router) {
 		return req, errors.New("router memuat karakter yang tidak diizinkan")
+	}
+	// Field konteks hanya dibatasi panjangnya; isinya tidak memengaruhi status.
+	for name, value := range map[string]string{
+		"interface": req.Interface,
+		"address":   req.Address,
+		"service":   req.Service,
+		"caller-id": req.CallerID,
+		"uptime":    req.Uptime,
+	} {
+		if len(value) > 255 {
+			return req, fmt.Errorf("parameter %q terlalu panjang", name)
+		}
 	}
 	return req, nil
 }

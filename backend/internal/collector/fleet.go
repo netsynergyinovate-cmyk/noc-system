@@ -42,7 +42,7 @@ func NewFleet(poller Starter, load TargetLoader, logger *slog.Logger) *Fleet {
 // fingerprint berubah bila alamat, username, atau kata sandi berubah. Hanya
 // disimpan di memori, tidak pernah dicatat.
 func fingerprint(t Target) string {
-	sum := sha256.Sum256([]byte(t.BaseURL + "\x00" + t.Username + "\x00" + t.Password))
+	sum := sha256.Sum256([]byte(t.BaseURL + "\x00" + t.Protocol + "\x00" + t.Username + "\x00" + t.Password))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -115,7 +115,7 @@ func (f *Fleet) Run(ctx context.Context, interval time.Duration) {
 
 // targetsSQL: hanya router aktif. Kata sandi terenkripsi dibaca di sini dan
 // dibuka di memori; tidak pernah dicatat.
-const targetsSQL = `SELECT id::text, name, host, username, password_enc FROM routers WHERE status = 'aktif'`
+const targetsSQL = `SELECT id::text, name, host, username, password_enc, protocol FROM routers WHERE status = 'aktif'`
 
 // LoadTargets membaca router aktif dan menyiapkan Target-nya. Router yang
 // alamatnya salah, memakai port API biner, atau kata sandinya tidak bisa dibuka
@@ -129,8 +129,8 @@ func LoadTargets(ctx context.Context, q Querier, deviceSecret string, logger *sl
 
 	var out []Target
 	for rows.Next() {
-		var id, name, host, username, passwordEnc string
-		if err := rows.Scan(&id, &name, &host, &username, &passwordEnc); err != nil {
+		var id, name, host, username, passwordEnc, protocol string
+		if err := rows.Scan(&id, &name, &host, &username, &passwordEnc, &protocol); err != nil {
 			return nil, fmt.Errorf("baca baris router: %w", err)
 		}
 		base, err := BaseURLFromHost(host)
@@ -138,8 +138,15 @@ func LoadTargets(ctx context.Context, q Querier, deviceSecret string, logger *sl
 			logger.Warn("router dilewati", "router", name, "error", err)
 			continue
 		}
-		if isAPIProtocolPort(base) {
-			logger.Warn("router dilewati: port 8728/8729 adalah API biner, bukan REST; pakai layanan www (80) atau www-ssl (443)", "router", name)
+		proto := normalizeProtocol(protocol)
+		if proto == "api" {
+			base, err = APIBaseURL(base)
+			if err != nil {
+				logger.Warn("router dilewati: alamat API tidak valid", "router", name, "error", err)
+				continue
+			}
+		} else if isAPIProtocolPort(base) {
+			logger.Warn("router dilewati: port 8728/8729 adalah API biner; pilih protokol Binary API untuk router ini", "router", name)
 			continue
 		}
 		password, err := DecryptCredential(passwordEnc, deviceSecret)
@@ -147,7 +154,7 @@ func LoadTargets(ctx context.Context, q Querier, deviceSecret string, logger *sl
 			logger.Warn("router dilewati: kata sandi tidak bisa dibuka", "router", name, "error", err)
 			continue
 		}
-		out = append(out, Target{RouterID: id, BaseURL: base, Username: username, Password: password})
+		out = append(out, Target{RouterID: id, BaseURL: base, Protocol: proto, Username: username, Password: password})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("baca router untuk dipoll: %w", err)

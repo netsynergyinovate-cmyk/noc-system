@@ -25,6 +25,9 @@ type Router struct {
 	Name   string
 	Host   string
 	Active bool
+	// Protocol "rest" atau "api" dari database. Dipakai untuk label dan
+	// pemilihan layanan pada notifikasi; poller memakai nilai yang sama.
+	Protocol string
 
 	// Reachable salah bila sumber data router gagal berturut-turut sampai
 	// melewati ambang anti-flapping. Diisi true oleh UpsertRouter untuk router baru.
@@ -75,6 +78,7 @@ type Customer struct {
 	StatusSince   time.Time
 	LastUpdatedAt time.Time
 }
+
 // EffectiveBillingStatus mengembalikan status isolir/lunas efektif pelanggan:
 // status dari router (IsolirRouter) bila ada bukti, atau status tagihan (BillingStatus)
 // sebagai cadangan.
@@ -87,7 +91,6 @@ func (c Customer) EffectiveBillingStatus() string {
 	}
 	return c.BillingStatus
 }
-
 
 // Health menurunkan warna titik dari status dan sinyal optik. Aturannya sama
 // dengan getCustomerHealth di frontend.

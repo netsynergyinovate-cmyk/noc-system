@@ -13,7 +13,7 @@ const (
 	connectionEventRetention  = 400 * 24 * time.Hour
 	connectionEventPurgeEvery = 24 * time.Hour
 
-	onlineUpdateSQL = `UPDATE customers SET is_online = $2, last_updated_at = now() WHERE id = $1::uuid`
+	onlineUpdateSQL          = `UPDATE customers SET is_online = $2, last_updated_at = now() WHERE id = $1::uuid`
 	connectionEventInsertSQL = `INSERT INTO customer_connection_events (customer_id, kind, occurred_at, source) ` +
 		`SELECT $1::uuid, $2, $3, 'live' ` +
 		`WHERE coalesce((SELECT kind FROM customer_connection_events WHERE customer_id = $1::uuid ORDER BY occurred_at DESC, id DESC LIMIT 1), '') <> $2`

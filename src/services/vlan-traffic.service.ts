@@ -388,6 +388,7 @@ export async function getVlanPonTraffic(
         host: activeRouter.host,
         username: activeRouter.username,
         password: decryptAES256GCM(activeRouter.passwordEnc),
+        routerId: activeRouter.id,
         mode: "real",
       });
       rawInterfaces = await client.getInterfaces();

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { withApiPermission, readJson, ApiError } from "@/lib/api";
-import { DeviceConnectionError } from "@/lib/device-connection";
-import { MikrotikRestClient } from "@/lib/mikrotik/client";
+import { runSimulatorDeviceTest } from "@/lib/device-connection";
 import { redactSecrets } from "@/services/device-connection-tester";
-import { groupPolicyFix, missingGroupPolicies } from "@/lib/mikrotik/provision-plan";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
-import { outboundSourceIp, tcpConnectedTimeoutMessage } from "@/services/outbound-source-ip";
+import { probeRouterApi } from "@/services/router-api-test.service";
 
-// Endpoint ini membuat SERVER menghubungi host yang disebut pemanggil, jadi
-// hanya peran dengan router:manage. Izin diperiksa lebih dulu: akun hanya-lihat
-// mendapat 403 sebelum isi dibaca dan sebelum ada koneksi keluar.
+// Endpoint ini memeriksa router yang disebut pemanggil. Izin diperiksa lebih
+// dulu: akun hanya-lihat mendapat 403 sebelum ada koneksi keluar.
+//
+// Pre-flight produksi dijalankan backend Go (FR-02): REST maupun API biner,
+// maksimal 5 detik, tanpa fallback sukses palsu. Mode simulator hanya dipakai
+// bila diminta eksplisit (lingkungan demo).
 export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async (session) => {
     const body = await readJson(request);
@@ -18,79 +19,89 @@ export const POST = (request: Request) =>
     if (!parsed.success) {
       throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     }
+    const { host, port, username, password } = parsed.data;
+    const protocol = parsed.data.protocol ?? "rest";
+    const mode = parsed.data.mode ?? "real";
+    const secrets = { username, password: password ?? "" };
 
-    let client: MikrotikRestClient;
-    try {
-      client = new MikrotikRestClient({ ...parsed.data, mode: parsed.data.mode ?? "real" });
-    } catch (err) {
-      // Host gagal sanitasi anti-SSRF (path, kredensial, skema selain http/https, dst).
-      if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
-        throw new ApiError(422, "INVALID_HOST", err.message);
-      }
-      throw err;
+    let probe: Awaited<ReturnType<typeof probeRouterApi>> | null = null;
+    if (mode === "simulator") {
+      const sim = runSimulatorDeviceTest({ type: "mikrotik", mode: "simulator", host, port });
+      probe = {
+        ok: sim.ok,
+        code: sim.ok ? "OK" : sim.code ?? "CONNECTION_FAILED",
+        message: sim.message,
+        latencyMs: sim.latencyMs ?? 0,
+        port: port ?? (protocol === "api" ? 8728 : 80),
+        tls: parsed.data.useSsl ?? false,
+        endpointTested: `${protocol === "api" ? "API" : "GET"} ${host}`,
+        groupCheck: null,
+        resource: sim.ok
+          ? {
+              version: String(sim.data?.version ?? ""),
+              cpuLoad: Number(sim.data?.cpuLoad ?? 0),
+              uptime: String(sim.data?.uptime ?? ""),
+              boardName: String(sim.data?.boardName ?? ""),
+              freeMemory: 0,
+              totalMemory: 0,
+              architecture: "",
+            }
+          : undefined,
+      };
+    } else {
+      probe = await probeRouterApi({
+        host,
+        port,
+        protocol,
+        useSsl: parsed.data.useSsl,
+        username,
+        password: password ?? "",
+        timeoutMs: 5000,
+      });
     }
 
-    // Kegagalan koneksi bukan galat permintaan: HTTP 200 dengan ok=false,
-    // bentuk sama seperti /api/devices/test.
-    const raw = await client.testConnection();
-    const secrets = { username: parsed.data.username, password: parsed.data.password };
-    const result = { ...raw, message: redactSecrets(raw.message, secrets) };
-    // Tujuan akhir yang benar-benar dihubungi (skema/port sudah disimpulkan klien).
-    const { host, port, tls, endpoint } = client.target;
-    // Alamat sumber server ke router: hanya berguna saat gagal (allow-list router). Mode simulator tidak punya jaringan.
-    const sourceIp = !result.ok && (parsed.data.mode ?? "real") === "real" ? await outboundSourceIp(host, port) : null;
-    // TCP tersambung tetapi tidak ada jawaban HTTP sampai timeout: hampir pasti bukan layanan REST (Winbox/API/lainnya).
-    const message = result.code === "TIMEOUT" && sourceIp ? tcpConnectedTimeoutMessage(host, port) : result.message;
+    const message = redactSecrets(probe.message, secrets);
+    // Alamat publik backend (dihitung Go). Tidak ada koneksi tambahan dari Next.js.
+    const sourceIp = probe.ok ? null : (probe.sourceIp ?? null);
 
-    // Riwayat uji disimpan walau gagal; password sudah disaring (recordClientTestResult).
+    // Riwayat uji disimpan walau gagal; password sudah disaring.
     await recordClientTestResult({
       type: "mikrotik",
-      mode: parsed.data.mode ?? "real",
-      raw: result,
+      mode,
+      raw: {
+        ok: probe.ok,
+        message,
+        code: probe.code,
+        latencyMs: probe.latencyMs,
+        endpointTested: probe.endpointTested,
+      },
       host,
-      port,
-      tls,
-      username: parsed.data.username,
-      password: parsed.data.password,
+      port: probe.port,
+      tls: probe.tls,
+      username,
+      password,
       testedBy: session.user.name || session.user.email,
     });
-    // Setelah terhubung: cek izin grup akun REST (baca-saja). Gagal membaca bukan galat uji.
-    let groupCheck: { group: string; policy: string; missing: string[]; fix: string | null } | null = null;
-    if (result.ok && (parsed.data.mode ?? "real") === "real") {
-      try {
-        const users = (await client.read("/rest/user", { name: parsed.data.username })) as Array<{ group?: string }>;
-        const group = users[0]?.group;
-        if (group) {
-          const groups = (await client.read("/rest/user/group", { name: group })) as Array<{ policy?: string }>;
-          const policy = groups[0]?.policy ?? "";
-          const missing = missingGroupPolicies(policy);
-          groupCheck = { group, policy, missing, fix: missing.length ? groupPolicyFix(group, policy) : null };
-        }
-      } catch {
-        groupCheck = null;
-      }
-    }
 
-    // Kunci RouterOS (version, cpu-load, ...) tetap ada agar klien lama tidak rusak.
-    // Nilainya hanya dari router; bila gagal tidak ada angka karangan.
+    const resource = probe.resource;
     return NextResponse.json({
       success: true,
       data: {
-        ok: result.ok,
-        status: result.status ?? (result.ok ? "connected" : "error"),
-        code: result.code ?? (result.ok ? "OK" : "HTTP_ERROR"),
-        statusCode: result.statusCode,
+        ok: probe.ok,
+        status: probe.ok ? "connected" : "error",
+        code: probe.code,
         message,
-        latencyMs: result.latencyMs,
-        endpointTested: result.endpointTested ?? endpoint,
-        timestamp: result.timestamp ?? Math.floor(Date.now() / 1000),
-        version: result.resource?.version,
-        "cpu-load": result.resource?.cpuLoad,
-        uptime: result.resource?.uptime,
-        "board-name": result.resource?.boardName,
+        latencyMs: probe.latencyMs,
+        endpointTested: probe.endpointTested,
+        timestamp: Math.floor(Date.now() / 1000),
+        version: resource?.version,
+        "cpu-load": resource?.cpuLoad,
+        uptime: resource?.uptime,
+        "board-name": resource?.boardName,
         sourceIp,
-        groupCheck,
+        localSourceIp: probe.localSourceIp ?? null,
+        groupCheck: probe.groupCheck ?? null,
       },
-      result,
+      result: probe,
     });
   });

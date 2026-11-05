@@ -82,7 +82,7 @@ func TestBaseURLFromHost(t *testing.T) {
 	}
 }
 
-// targetQuerier mengembalikan baris routers (id, name, host, username, password_enc).
+// targetQuerier mengembalikan baris routers (id, name, host, username, password_enc, protocol).
 type targetQuerier struct{ rows [][]any }
 
 func (q targetQuerier) Query(context.Context, string, ...any) (pgx.Rows, error) {
@@ -91,24 +91,31 @@ func (q targetQuerier) Query(context.Context, string, ...any) (pgx.Rows, error) 
 
 func TestLoadTargetsSkipsBadRoutersButKeepsTheRest(t *testing.T) {
 	q := targetQuerier{rows: [][]any{
-		{"r1", "Core", "10.0.0.1:2024", "Monitor", nodeCipher32},
-		{"r2", "API", "10.0.0.2:8728", "u", nodeCipher32},   // port API biner
-		{"r3", "Rusak", "10.0.0.3", "u", "bukan-format"},    // kata sandi tidak terbuka
-		{"r4", "Host", "ftp://10.0.0.4", "u", nodeCipher32}, // host tidak valid
-		{"r5", "TLS", "10.0.0.5:443", "noc", nodeCipher32},
+		{"r1", "Core", "10.0.0.1:2024", "Monitor", nodeCipher32, "rest"},
+		{"r2", "API", "10.0.0.2:8728", "u", nodeCipher32, "api"},    // API biner
+		{"r3", "Rusak", "10.0.0.3", "u", "bukan-format", "rest"},    // kata sandi tidak terbuka
+		{"r4", "Host", "ftp://10.0.0.4", "u", nodeCipher32, "rest"}, // host tidak valid
+		{"r5", "TLS", "10.0.0.5:443", "noc", nodeCipher32, "rest"},
+		{"r6", "API tanpa port", "10.0.0.6", "u", nodeCipher32, "api"},
 	}}
 	got, err := LoadTargets(context.Background(), q, nodeKey32, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("harus 2 target, got %+v", got)
+	if len(got) != 4 {
+		t.Fatalf("harus 4 target, got %+v", got)
 	}
-	if got[0].RouterID != "r1" || got[0].BaseURL != "http://10.0.0.1:2024" || got[0].Username != "Monitor" || got[0].Password != "sandi-Monitor-123!" {
+	if got[0].RouterID != "r1" || got[0].BaseURL != "http://10.0.0.1:2024" || got[0].Protocol != "rest" || got[0].Username != "Monitor" || got[0].Password != "sandi-Monitor-123!" {
 		t.Errorf("target r1 salah: %+v", got[0])
 	}
-	if got[1].RouterID != "r5" || got[1].BaseURL != "https://10.0.0.5:443" {
-		t.Errorf("target r5 salah: %+v", got[1])
+	if got[1].RouterID != "r2" || got[1].BaseURL != "http://10.0.0.2:8728" || got[1].Protocol != "api" {
+		t.Errorf("target r2 (API biner) salah: %+v", got[1])
+	}
+	if got[2].RouterID != "r5" || got[2].BaseURL != "https://10.0.0.5:443" {
+		t.Errorf("target r5 salah: %+v", got[2])
+	}
+	if got[3].RouterID != "r6" || got[3].BaseURL != "http://10.0.0.6:8728" {
+		t.Errorf("target r6 (API tanpa port) salah: %+v", got[3])
 	}
 }
 
@@ -291,7 +298,7 @@ func TestImporterIsolatesRouterFailures(t *testing.T) {
 func TestSyncKeepsOnlineStatusFromPolling(t *testing.T) {
 	mgr := state.NewManager()
 	q := &fakeQuerier{
-		routers:   [][]any{{"r1", "Core", "10.0.0.1", "aktif"}},
+		routers:   [][]any{{"r1", "Core", "10.0.0.1", "aktif", "rest"}},
 		customers: [][]any{{"c1", "Budi", "budi", "r1", nil, nil, "lunas", nil, false, nil, nil, nil}},
 	}
 	if _, _, err := SyncDatabaseState(context.Background(), q, mgr, discard); err != nil {

@@ -218,6 +218,7 @@ func TestPPPWebhookIsMountedOnlyWhenProvided(t *testing.T) {
 		t.Error("webhook juga harus melewati middleware header keamanan")
 	}
 }
+
 type fakeNetflowQuery struct{}
 
 func (f *fakeNetflowQuery) Summary(_ context.Context, _, _ string) (*netflow.SummaryData, error) {

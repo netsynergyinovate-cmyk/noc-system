@@ -29,6 +29,7 @@ import (
 	"noc-isp/backend/internal/netflow"
 	"noc-isp/backend/internal/olt"
 	"noc-isp/backend/internal/ontweb"
+	"noc-isp/backend/internal/routerproxy"
 	"noc-isp/backend/internal/state"
 	"noc-isp/backend/internal/telemetry"
 	"noc-isp/backend/internal/wire"
@@ -108,6 +109,7 @@ func run() error {
 		apiOptions.Data = manager
 		apiOptions.Verifier = tokens
 		apiOptions.AllowedOrigins = cfg.AllowedOrigins
+		apiOptions.RouterPreflight = routerproxy.NewPreflighter(logger)
 	}
 
 	// Telemetri dashboard (resource router, OLT, VLAN PON, latensi, optik, alert): dihitung
@@ -169,6 +171,11 @@ func run() error {
 		apiOptions.History = archive.NewPGStore(pool)
 		apiOptions.NetflowQuery = netflow.NewReader(pool)
 		apiOptions.Torch = netflow.NewTorchRunner(pool, cfg.DeviceSecret, logger)
+		// Satu gateway: Next.js membaca router lewat backend Go, bukan koneksi
+		// REST/API sendiri.
+		if proxy := routerproxy.New(pool, cfg.DeviceSecret, logger); proxy != nil {
+			apiOptions.Routers = proxy
+		}
 		billingDB = pool
 		billingRead = pool
 		thresholdDB = pool

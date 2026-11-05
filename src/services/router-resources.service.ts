@@ -41,6 +41,7 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       host: routersTable.host,
       username: routersTable.username,
       passwordEnc: routersTable.passwordEnc,
+      protocol: routersTable.protocol,
       status: routersTable.status,
     })
     .from(routersTable);
@@ -55,9 +56,9 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       queueCount: number;
       temperature: number;
       latencyMs: number;
-      currentDownloadMbps: number;
-      currentUploadMbps: number;
-      peakMbps: number;
+      currentDownloadMbps?: number;
+      currentUploadMbps?: number;
+      peakMbps?: number;
       interfaces: MockRouterDetail["interfaces"];
     }
   >();
@@ -69,6 +70,7 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
         host: r.host,
         username: r.username,
         password: decryptAES256GCM(r.passwordEnc),
+        routerId: r.id,
         mode: "real",
       });
       const t0 = performance.now();
@@ -136,11 +138,11 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
         (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
       );
 
-      let currentDl = uplinkIface?.rxMbps ?? 0;
-      let currentUl = uplinkIface?.txMbps ?? 0;
-      let peakDl = Math.round(currentDl * 1.35 * 10) / 10;
+      let currentDl = uplinkIface?.rxMbps;
+      let currentUl = uplinkIface?.txMbps;
 
-      // Ambil sampel trafik riil terakhir dari database jika ada & jika uplink rate masih 0
+      // Ambil sampel trafik riil terakhir dari database jika ada. Tidak ada
+      // angka contoh: field yang belum terbaca dibiarkan undefined.
       try {
         const [latestSample] = await db
           .select({
@@ -155,12 +157,11 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
         if (latestSample) {
           const dbDl = Math.round(Number(latestSample.rxMbps) * 10) / 10;
           const dbUl = Math.round(Number(latestSample.txMbps) * 10) / 10;
-          if (currentDl === 0) currentDl = dbDl;
-          if (currentUl === 0) currentUl = dbUl;
-          peakDl = Math.max(peakDl, Math.round(dbDl * 1.35 * 10) / 10);
+          if (currentDl === undefined || currentDl === 0) currentDl = dbDl;
+          if (currentUl === undefined || currentUl === 0) currentUl = dbUl;
         }
       } catch {
-        // fallback jika belum ada sampel di DB
+        // Belum ada sampel di DB: biarkan undefined.
       }
 
       extras.set(r.id, {
@@ -169,7 +170,6 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
         latencyMs,
         currentDownloadMbps: currentDl,
         currentUploadMbps: currentUl,
-        peakMbps: peakDl,
         interfaces: ifaces,
       });
       return resource;
@@ -181,11 +181,8 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       id: r.id,
       name: r.name,
       host: r.host,
+      protocol: r.protocol,
       role: "Gateway Utama + BRAS",
-      queueCount: 0,
-      temperature: 0,
-      pppoeCount: 0,
-      asn: "AS139542",
     };
     const res = results[i];
     if (res.status === "rejected") {
@@ -203,12 +200,14 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
     const extra = extras.get(r.id);
     return {
       ...base,
-      queueCount: extra?.queueCount ?? 0,
-      temperature: extra?.temperature ?? 0,
-      latencyMs: extra?.latencyMs ?? 1.4,
-      currentDownloadMbps: extra?.currentDownloadMbps ?? 0,
-      currentUploadMbps: extra?.currentUploadMbps ?? 0,
-      peakMbps: extra?.peakMbps ?? 0,
+      // Hanya nilai yang benar-benar dibaca. Tidak ada 1.4 ms, ASN, atau trafik
+      // contoh: field yang belum terukur dibiarkan undefined ("—").
+      queueCount: extra?.queueCount,
+      temperature: extra?.temperature,
+      latencyMs: extra?.latencyMs,
+      currentDownloadMbps: extra?.currentDownloadMbps,
+      currentUploadMbps: extra?.currentUploadMbps,
+      peakMbps: extra?.peakMbps,
       interfaces: extra?.interfaces,
       boardModel: m.boardName,
       rosVersion: m.version,

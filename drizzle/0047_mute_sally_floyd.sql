@@ -1,0 +1,2 @@
+ALTER TABLE "routers" ADD COLUMN "protocol" text DEFAULT 'rest' NOT NULL;--> statement-breakpoint
+ALTER TABLE "routers" ADD CONSTRAINT "routers_protocol_check" CHECK ("routers"."protocol" in ('rest', 'api'));

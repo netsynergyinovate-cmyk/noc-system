@@ -27,15 +27,20 @@ test("halaman Kelola Router menaut ke /app/router/test", () => {
   assert.match(readFileSync(list, "utf8"), /href="\/app\/router\/test"/);
 });
 
-test("runRouterTest simulator: sukses", async () => {
-  const r = await runRouterTest({ ...DEFAULT_ROUTER_TEST_FORM, host: "10.10.0.1", forceLocal: true });
+test("runRouterTest forceLocal: sukses (khusus pengujian offline)", async () => {
+  const r = await runRouterTest({
+    ...DEFAULT_ROUTER_TEST_FORM,
+    host: "10.10.0.1",
+    username: "admin",
+    forceLocal: true,
+  });
   assert.equal(r.ok, true);
   assert.equal(r.outcome.ok, true);
   assert.equal(r.outcome.code, "OK");
 });
 
-test("runRouterTest simulator: galat timeout, ditolak, auth, validasi", async () => {
-  const base = { ...DEFAULT_ROUTER_TEST_FORM, forceLocal: true };
+test("runRouterTest forceLocal: galat timeout, ditolak, auth, validasi", async () => {
+  const base = { ...DEFAULT_ROUTER_TEST_FORM, username: "admin", forceLocal: true };
   assert.equal((await runRouterTest({ ...base, host: "10.10.0.0" })).outcome.code, "TIMEOUT");
   assert.equal((await runRouterTest({ ...base, host: "10.10.0.1", port: "9999" })).outcome.code, "CONNECTION_REFUSED");
   assert.equal((await runRouterTest({ ...base, host: "10.10.0.1", username: "bad-user" })).outcome.code, "AUTH_FAILED");

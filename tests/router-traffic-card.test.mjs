@@ -46,15 +46,16 @@ test("RouterTrafficCard: struktur konten dan empty state", () => {
   assert.ok(cardSrc.includes('data-testid="traffic-empty-state"'));
   for (const t of [
     "Trafik Interface &amp; Bandwidth",
-    "REST Live (Mock)",
+    "Live Telemetri",
     "Data Kosong",
     "Belum Ada Sampel Trafik",
-    "Router tidak aktif atau belum ada sampel trafik yang terekam via REST API RouterOS.",
+    "Tidak ada data contoh yang ditampilkan.",
     "Uji Koneksi Router",
     "/app/router/test",
   ]) {
     assert.ok(cardSrc.includes(t), t);
   }
+  assert.doesNotMatch(cardSrc, /getMockRouterTraffic/);
   assert.match(cardSrc, /formatBitrate/);
   assert.match(cardSrc, /formatBytes/);
   assert.match(cardSrc, /isTrafficEmpty\(stats\)/);

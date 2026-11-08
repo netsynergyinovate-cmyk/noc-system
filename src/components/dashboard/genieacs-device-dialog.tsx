@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDbm } from "@/lib/dashboard/format";
 import type { CpeDetail, DetailWlan, DeviceSecrets } from "@/lib/genieacs/device-detail";
 import { changeDeviceWifiSchema } from "@/validators/cpe";
+import { formatMikrotikConnReqRule } from "@/lib/genieacs/mikrotik-firewall";
 
 // Sandi disembunyikan lagi setelah ini, dan dibuang dari memori halaman.
 const SECRET_VISIBLE_MS = 60_000;
@@ -302,6 +303,8 @@ function Body({ deviceId }: { deviceId: string }) {
   const [secrets, setSecrets] = useState<SecretState>({ kind: "hidden" });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingWlan, setEditingWlan] = useState<number | null>(null);
 
@@ -323,6 +326,7 @@ function Body({ deviceId }: { deviceId: string }) {
         if (res.ok && json?.data) {
           setState({ kind: "ready", data: json.data });
           if (forceRefresh) {
+            setRefreshFailed(!json.refreshed);
             setRefreshNote(
               json.refreshed
                 ? "Data segar berhasil dibaca langsung dari modem via TR-069."
@@ -460,6 +464,43 @@ function Body({ deviceId }: { deviceId: string }) {
           {isRefreshing ? "Membaca modem…" : "Segarkan Realtime"}
         </Button>
       </div>
+      {refreshFailed && (() => {
+        const ontIpMatch = /^https?:\/\/([^:/]+)(?::(\d+))?/i.exec(d.acs.connectionRequestUrl || "");
+        const ontHost = ontIpMatch ? ontIpMatch[1] : d.wanIp;
+        const ontPort = ontIpMatch && ontIpMatch[2] ? Number(ontIpMatch[2]) : 7547;
+        const mikrotikCmd = formatMikrotikConnReqRule({
+          serverIp: "192.168.0.220",
+          ontIp: ontHost,
+          port: ontPort,
+        });
+
+        return (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+            <div className="flex items-center justify-between font-medium">
+              <span>ONT tidak merespons Connection Request Port {ontPort}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-[10px] bg-background text-foreground"
+                onClick={() => {
+                  void navigator.clipboard.writeText(mikrotikCmd);
+                  setCopiedCmd(true);
+                  setTimeout(() => setCopiedCmd(false), 2000);
+                }}
+              >
+                {copiedCmd ? "Tersalin!" : "Salin Perintah MikroTik"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Paket wake-up HTTP port {ontPort} dari server NOC tertahan di router. Jalankan perintah aman ini di Terminal MikroTik (hanya membuka akses dari Server NOC ke ONT):
+            </p>
+            <code className="block select-all rounded bg-background p-2 font-mono text-[10px] text-foreground border border-border">
+              {mikrotikCmd}
+            </code>
+          </div>
+        );
+      })()}
       <div className="grid gap-3 md:grid-cols-2">
         <Section title="Identitas">
           <dl>

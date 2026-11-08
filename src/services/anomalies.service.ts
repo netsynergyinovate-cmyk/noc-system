@@ -1,5 +1,14 @@
 import "server-only";
-import { and, desc, eq, gte, isNotNull, isNull, lte, type SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  isNotNull,
+  isNull,
+  lte,
+  type SQL,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   alerts,
@@ -81,7 +90,9 @@ function mapLogToAnomaly(row: {
     },
   );
 
-  const rootSource = (detail.rootSource as typeof defaultImpact.rootSource) ?? defaultImpact.rootSource;
+  const rootSource =
+    (detail.rootSource as typeof defaultImpact.rootSource) ??
+    defaultImpact.rootSource;
   const affectedCustomers =
     typeof detail.affectedCustomers === "number"
       ? detail.affectedCustomers
@@ -90,7 +101,8 @@ function mapLogToAnomaly(row: {
     typeof detail.servedCustomers === "number"
       ? detail.servedCustomers
       : defaultImpact.servedCustomers;
-  const correlationId = (detail.correlationId as string | null) ?? defaultImpact.correlationId;
+  const correlationId =
+    (detail.correlationId as string | null) ?? defaultImpact.correlationId;
 
   return {
     id: row.id,
@@ -121,13 +133,19 @@ export async function getAnomaliesList(
 
   if (env.DASHBOARD_DATA === "demo") {
     let mockList = await loadAnomalies();
-    if (query.status === "active") mockList = mockList.filter((a) => a.endedAt === null);
-    if (query.status === "resolved") mockList = mockList.filter((a) => a.endedAt !== null);
+    if (query.status === "active")
+      mockList = mockList.filter((a) => a.endedAt === null);
+    if (query.status === "resolved")
+      mockList = mockList.filter((a) => a.endedAt !== null);
     if (kind) mockList = mockList.filter((a) => a.kind === kind);
-    if (query.severity) mockList = mockList.filter((a) => a.severity === query.severity);
-    if (query.routerId) mockList = mockList.filter((a) => a.routerId === query.routerId);
-    if (query.customerId) mockList = mockList.filter((a) => a.customerId === query.customerId);
-    if (query.from) mockList = mockList.filter((a) => a.startedAt >= query.from!);
+    if (query.severity)
+      mockList = mockList.filter((a) => a.severity === query.severity);
+    if (query.routerId)
+      mockList = mockList.filter((a) => a.routerId === query.routerId);
+    if (query.customerId)
+      mockList = mockList.filter((a) => a.customerId === query.customerId);
+    if (query.from)
+      mockList = mockList.filter((a) => a.startedAt >= query.from!);
     if (query.to) mockList = mockList.filter((a) => a.startedAt <= query.to!);
 
     const total = mockList.length;
@@ -245,7 +263,11 @@ export async function createAnomaly(
     .returning();
 
   if (!created) {
-    throw new ApiError(500, "CREATE_ANOMALY_FAILED", "Gagal menyimpan anomali.");
+    throw new ApiError(
+      500,
+      "CREATE_ANOMALY_FAILED",
+      "Gagal menyimpan anomali.",
+    );
   }
 
   return mapLogToAnomaly(created);
@@ -288,10 +310,12 @@ export async function getActiveAnomaliesFromDB(
  * Mengambil anomali aktif (read-only) tanpa evaluasi atau penulisan mandiri.
  * Evaluasi diserahkan sepenuhnya ke engine Go.
  */
-export async function detectAnomalies(options: {
-  routerId?: string;
-  persist?: boolean;
-} = {}): Promise<DetectAnomaliesResult> {
+export async function detectAnomalies(
+  options: {
+    routerId?: string;
+    persist?: boolean;
+  } = {},
+): Promise<DetectAnomaliesResult> {
   if (env.DASHBOARD_DATA === "demo") {
     const list = await loadAnomalies();
     const active = list.filter((a) => a.endedAt === null);
@@ -411,7 +435,10 @@ export async function updateAnomalyStatus(
         .limit(1);
 
       if (existing) {
-        const currentDetail = (existing.detail ?? {}) as Record<string, unknown>;
+        const currentDetail = (existing.detail ?? {}) as Record<
+          string,
+          unknown
+        >;
         const newDetail = { ...currentDetail };
 
         if (update.note !== undefined) {
@@ -491,4 +518,3 @@ export async function updateAnomalyStatus(
     sourceStatus: "dummy",
   };
 }
-

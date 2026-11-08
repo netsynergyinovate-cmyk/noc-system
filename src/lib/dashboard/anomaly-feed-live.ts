@@ -1,6 +1,14 @@
 import { sortAnomalies, type Anomaly } from "./anomalies.ts";
-import { anomalyRangeStart, defaultAnomalyRange, type AnomalyRange } from "./anomaly-range.ts";
-import { buildLiveDirectory, toLiveAnomalies, type LiveAlertItem } from "./alerts-live.ts";
+import {
+  anomalyRangeStart,
+  defaultAnomalyRange,
+  type AnomalyRange,
+} from "./anomaly-range.ts";
+import {
+  buildLiveDirectory,
+  toLiveAnomalies,
+  type LiveAlertItem,
+} from "./alerts-live.ts";
 import { useDashboardStore } from "./store.ts";
 import { ALERT_EVENTS_SIGNAL } from "./realtime-ws.ts";
 
@@ -12,7 +20,9 @@ const PAGE = 200;
 const MAX_PAGES = 25;
 export const LIVE_RESOLVED_CAP = PAGE * MAX_PAGES;
 
-async function get(query: string): Promise<{ items: LiveAlertItem[]; total: number }> {
+async function get(
+  query: string,
+): Promise<{ items: LiveAlertItem[]; total: number }> {
   const res = await fetch(`/api/alerts?${query}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = (await res.json()) as {
@@ -52,7 +62,8 @@ export async function loadLiveAnomalies(
   range: AnomalyRange = defaultAnomalyRange,
 ): Promise<LiveAnomalySet> {
   const rangeFrom = anomalyRangeStart(range, nowSec);
-  const fetchFrom = rangeFrom === null ? null : Math.min(rangeFrom, nowSec - 86_400);
+  const fetchFrom =
+    rangeFrom === null ? null : Math.min(rangeFrom, nowSec - 86_400);
   const [active, resolved] = await Promise.all([
     getAll("status=active"),
     getAll(`status=resolved${fetchFrom === null ? "" : `&from=${fetchFrom}`}`),
@@ -68,7 +79,9 @@ export async function loadLiveAnomalies(
   // Total dari database hanya dipakai bila pemuatan terpotong batas; selain itu
   // yang dihitung persis yang tampil. Jenis alert yang tidak dikenal halaman ini
   // (mis. billing_mismatch) tidak masuk daftar, jadi tidak boleh ikut dihitung.
-  const capped = resolved.items.length >= LIVE_RESOLVED_CAP && resolved.total > resolved.items.length;
+  const capped =
+    resolved.items.length >= LIVE_RESOLVED_CAP &&
+    resolved.total > resolved.items.length;
   const anomalies = sortAnomalies(
     toLiveAnomalies(items, buildLiveDirectory(routers, customers, items)),
   );
@@ -76,7 +89,11 @@ export async function loadLiveAnomalies(
   return {
     anomalies,
     resolvedTotal:
-      fetchFrom === rangeFrom ? (capped ? resolved.total : shownResolved) : null,
+      fetchFrom === rangeFrom
+        ? capped
+          ? resolved.total
+          : shownResolved
+        : null,
   };
 }
 
@@ -102,7 +119,11 @@ export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(String(event.data));
-        if (data.type === "anomaly_event" || data.event === "anomaly" || data.type === "events") {
+        if (
+          data.type === "anomaly_event" ||
+          data.event === "anomaly" ||
+          data.type === "events"
+        ) {
           trigger(data.payload ?? data);
         }
       } catch {}

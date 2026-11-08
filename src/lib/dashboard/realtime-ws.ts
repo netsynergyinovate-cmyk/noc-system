@@ -48,7 +48,9 @@ export function handleRealtimeMessage(
   if (
     msg &&
     typeof msg === "object" &&
-    (msg.type === "events" || msg.type === "anomaly_event" || msg.event === "anomaly")
+    (msg.type === "events" ||
+      msg.type === "anomaly_event" ||
+      msg.event === "anomaly")
   ) {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
@@ -65,7 +67,8 @@ export function handleRealtimeMessage(
   if (msg.type === "snapshot") {
     opts.onSnapshot(msg, msg.time);
     // Tiap (re)connect: event gangguan yang terlewat saat putus dibaca ulang dari database.
-    if (typeof window !== "undefined") window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
     return true;
   }
   if (msg.type === "delta") {

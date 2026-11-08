@@ -50,7 +50,10 @@ import {
 } from "@/lib/dashboard/anomaly-detail-logic";
 import { useSession, useSessionUser } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
-import { loadLiveAnomalies, subscribeAnomalyWs } from "@/lib/dashboard/anomaly-feed-live";
+import {
+  loadLiveAnomalies,
+  subscribeAnomalyWs,
+} from "@/lib/dashboard/anomaly-feed-live";
 import {
   anomalyRangeInfo,
   anomalyRangeStart,
@@ -104,7 +107,6 @@ interface Loaded {
   resolvedTotal: number | null;
   now: number;
 }
-
 
 // Memuat daftar anomali dan menyegarkannya berkala, supaya anomali yang baru
 // muncul dan lamanya yang masih berjalan ikut bertambah.
@@ -264,7 +266,10 @@ function KindCards({
   return (
     <section aria-labelledby="kind-heading" className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <h2 id="kind-heading" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+        <h2
+          id="kind-heading"
+          className="text-xs font-semibold uppercase tracking-wider text-foreground"
+        >
           Per jenis gangguan
         </h2>
         <span className="text-[11px] text-muted-foreground font-mono">
@@ -281,14 +286,19 @@ function KindCards({
             (a) => a.kind === summary.kind && isActive(a),
           );
           // Cari anomali aktif dengan nilai terburuk untuk ditampilkan di mini visual
-          const worstActiveAnomaly = activeOfKind.length > 0
-            ? activeOfKind.reduce((prev, curr) => {
-                if (summary.kind === "optical") {
-                  return (curr.measured ?? 0) < (prev.measured ?? 0) ? curr : prev;
-                }
-                return (curr.measured ?? 0) > (prev.measured ?? 0) ? curr : prev;
-              }, activeOfKind[0])
-            : summary.latest;
+          const worstActiveAnomaly =
+            activeOfKind.length > 0
+              ? activeOfKind.reduce((prev, curr) => {
+                  if (summary.kind === "optical") {
+                    return (curr.measured ?? 0) < (prev.measured ?? 0)
+                      ? curr
+                      : prev;
+                  }
+                  return (curr.measured ?? 0) > (prev.measured ?? 0)
+                    ? curr
+                    : prev;
+                }, activeOfKind[0])
+              : summary.latest;
 
           return (
             <div
@@ -301,7 +311,8 @@ function KindCards({
               data-selected={selected === summary.kind}
               className={cn(
                 "rounded-lg border bg-card p-3 flex flex-col justify-between shadow-2xs hover:border-border/80 transition-all gap-2",
-                selected === summary.kind && "ring-2 ring-ring border-primary/50",
+                selected === summary.kind &&
+                  "ring-2 ring-ring border-primary/50",
               )}
             >
               <div>
@@ -317,7 +328,9 @@ function KindCards({
                       {summary.worstActive ? (
                         <SeverityBadge severity={summary.worstActive} />
                       ) : (
-                        <span className="text-[11px] text-success font-medium">normal</span>
+                        <span className="text-[11px] text-success font-medium">
+                          normal
+                        </span>
                       )}
                     </div>
                   </div>
@@ -331,16 +344,23 @@ function KindCards({
                   </div>
                 </div>
 
-                <KindMiniVisual kind={summary.kind} worstAnomaly={worstActiveAnomaly} />
+                <KindMiniVisual
+                  kind={summary.kind}
+                  worstAnomaly={worstActiveAnomaly}
+                />
 
                 <div className="mt-1.5 pt-1.5 border-t border-border/60 space-y-0.5 text-[11px] text-muted-foreground font-mono">
                   <div className="flex justify-between items-center">
                     <span>24 jam</span>
-                    <span className="text-foreground font-medium">{formatInteger(summary.last24h)}</span>
+                    <span className="text-foreground font-medium">
+                      {formatInteger(summary.last24h)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>{range.short}</span>
-                    <span className="text-foreground font-medium">{formatInteger(summary.total)}</span>
+                    <span className="text-foreground font-medium">
+                      {formatInteger(summary.total)}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-1.5 flex flex-col gap-1">
@@ -374,7 +394,10 @@ function StatusCell({ anomaly }: { anomaly: Anomaly }) {
     return (
       <div>
         <span className="inline-flex items-center gap-1.5 font-medium text-destructive text-[11px]">
-          <CircleDot className="size-3 animate-ping motion-reduce:animate-none" aria-hidden="true" />
+          <CircleDot
+            className="size-3 animate-ping motion-reduce:animate-none"
+            aria-hidden="true"
+          />
           Aktif
         </span>
         <div className="text-[11px] text-muted-foreground">
@@ -417,7 +440,6 @@ function AnomalyTable({
   reviewed: Record<string, ReviewedEntry>;
   onDetail: (anomaly: Anomaly) => void;
 }) {
-
   return (
     <div className="space-y-1.5">
       <div
@@ -496,7 +518,10 @@ function AnomalyTable({
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 font-medium text-foreground text-[12px]">
-                        <KindIcon kind={anomaly.kind} className={cn("size-3.5", meta.accent)} />
+                        <KindIcon
+                          kind={anomaly.kind}
+                          className={cn("size-3.5", meta.accent)}
+                        />
                         <span>{incidentLabels[anomaly.kind]}</span>
                       </div>
                       <div className="mt-0.5">
@@ -507,7 +532,9 @@ function AnomalyTable({
                       <AnomalySubject anomaly={anomaly} lookup={lookup} />
                     </td>
                     <td className="px-3 py-2 text-muted-foreground text-[11px]">
-                      <div className="text-foreground/90">{describeAnomaly(anomaly)}</div>
+                      <div className="text-foreground/90">
+                        {describeAnomaly(anomaly)}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <StatusCell anomaly={anomaly} />
@@ -554,8 +581,15 @@ function AnomalyTable({
       {/* Pager strip matching reference */}
       <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground px-1 pt-0.5 gap-1.5">
         <div className="text-[11px]">
-          Menampilkan <span className="font-mono text-foreground font-medium">1 - {formatInteger(anomalies.length)}</span> dari{" "}
-          <span className="font-mono text-foreground font-semibold">{formatInteger(total)}</span> anomali
+          Menampilkan{" "}
+          <span className="font-mono text-foreground font-medium">
+            1 - {formatInteger(anomalies.length)}
+          </span>{" "}
+          dari{" "}
+          <span className="font-mono text-foreground font-semibold">
+            {formatInteger(total)}
+          </span>{" "}
+          anomali
         </div>
         <div className="flex items-center gap-2 text-[11px]">
           <span>Halaman 1 / 1</span>
@@ -608,8 +642,12 @@ function RulesCard() {
               className="bg-muted/40 p-2.5 rounded border border-border flex flex-col min-w-0 gap-1"
             >
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">{rule.title}:</span>
-                <span className="text-muted-foreground font-mono text-[11px]">{rule.limit}</span>
+                <span className="font-medium text-foreground">
+                  {rule.title}:
+                </span>
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  {rule.limit}
+                </span>
               </div>
               <p className="text-[11px] text-muted-foreground/90 leading-tight">
                 {rule.description}
@@ -726,7 +764,8 @@ export function AnomalyBoard({
               <MockDataNotice real />
             </div>
             <p className="text-[12px] text-muted-foreground leading-tight">
-              Gangguan terdeteksi: jalur penuh, router terbebani, error port, sinyal optik lemah, dan pelanggan offline.
+              Gangguan terdeteksi: jalur penuh, router terbebani, error port,
+              sinyal optik lemah, dan pelanggan offline.
             </p>
           </div>
 
@@ -822,7 +861,10 @@ export function AnomalyBoard({
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-foreground">
                 Daftar anomali
               </CardTitle>
-              <CardDescription role="status" className="text-[11px] text-muted-foreground mt-0.5">
+              <CardDescription
+                role="status"
+                className="text-[11px] text-muted-foreground mt-0.5"
+              >
                 {loaded
                   ? `${
                       filtered
@@ -849,7 +891,12 @@ export function AnomalyBoard({
                   ? "Pembaruan terakhir gagal; yang tampil adalah data sebelumnya."
                   : "Anomali belum bisa dimuat."}
               </span>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={retry}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={retry}
+              >
                 Coba lagi
               </Button>
             </div>

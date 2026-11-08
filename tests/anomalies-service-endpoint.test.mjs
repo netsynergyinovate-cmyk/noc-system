@@ -21,9 +21,12 @@ const {
 
 const {
   getAnomaliesList,
+  getAnomalyById,
+  createAnomaly,
+  resolveAnomaly,
+  updateAnomalyStatus,
   detectAnomalies,
 } = await import("../src/services/anomalies.service.ts");
-
 const routeAnomalies = await import("../src/app/api/anomalies/route.ts");
 const routeDetect = await import("../src/app/api/anomalies/detect/route.ts");
 
@@ -48,8 +51,12 @@ test("validator: parseAnomalyQuery default dan filter", () => {
   assert.equal(filtered.limit, 10);
   assert.equal(filtered.offset, 5);
 
-  assert.throws(() => parseAnomalyQuery(new URLSearchParams({ status: "invalid" })));
-  assert.throws(() => parseAnomalyQuery(new URLSearchParams({ kind: "invalid" })));
+  assert.throws(() =>
+    parseAnomalyQuery(new URLSearchParams({ status: "invalid" })),
+  );
+  assert.throws(() =>
+    parseAnomalyQuery(new URLSearchParams({ kind: "invalid" })),
+  );
 });
 
 test("validator: createAnomalyInputSchema validasi field", () => {
@@ -108,3 +115,88 @@ test("route exports handler methods", () => {
   assert.equal(typeof routeDetect.GET, "function");
   assert.equal(typeof routeDetect.POST, "function");
 });
+
+const withDb = process.env.STARTER_TEST_RUN?.startsWith("starter-pg-test-");
+
+test(
+  "Postgres: createAnomaly -> active list -> resolveAnomaly -> status resolved dan endedAt",
+  { skip: !withDb && "jalankan lewat npm test" },
+  async () => {
+    const prev = process.env.DASHBOARD_DATA;
+    process.env.DASHBOARD_DATA = "live";
+    try {
+      const { db } = await import("../src/db/index.ts");
+      const { routers } = await import("../src/db/schema/index.ts");
+      const { randomBytes } = await import("node:crypto");
+
+      const suffix = randomBytes(4).toString("hex");
+      const [router] = await db
+        .insert(routers)
+        .values({
+          name: `r-test-${suffix}`,
+          host: `10.99.1.${Number.parseInt(suffix.slice(0, 2), 16)}`,
+          username: "api",
+          passwordEnc: "iv:tag:rahasia",
+        })
+        .returning();
+
+      // 1. Cek filter kosong mengembalikan array kosong dan sourceStatus nyata
+      const emptyList = await getAnomaliesList({
+        status: "active",
+        routerId: router.id,
+        limit: 10,
+        offset: 0,
+      });
+      assert.deepEqual(emptyList.anomalies, []);
+      assert.equal(emptyList.total, 0);
+      assert.equal(emptyList.sourceStatus, "nyata");
+
+      // 2. createAnomaly menulis ke alerts
+      const created = await createAnomaly({
+        routerId: router.id,
+        type: "cpu",
+        severity: "warning",
+        measured: 85,
+      });
+      assert.ok(created.id);
+      assert.equal(created.routerId, router.id);
+      assert.equal(created.kind, "cpu");
+      assert.equal(created.endedAt, null);
+
+      // 3. getAnomaliesList harus memuat item ini
+      const list = await getAnomaliesList({
+        status: "active",
+        routerId: router.id,
+        limit: 10,
+        offset: 0,
+      });
+      assert.equal(list.total, 1);
+      assert.equal(list.activeCount, 1);
+      assert.equal(list.sourceStatus, "nyata");
+      assert.equal(list.anomalies[0].id, created.id);
+
+      // 4. resolveAnomaly
+      const resolved = await resolveAnomaly(created.id);
+      assert.ok(resolved);
+      assert.ok(resolved.endedAt);
+
+      // 5. Cek detail anomali dari DB
+      const detail = await getAnomalyById(created.id);
+      assert.equal(detail.anomaly.id, created.id);
+      assert.ok(detail.anomaly.endedAt);
+      assert.equal(detail.sourceStatus, "nyata");
+
+      // 6. Cek list active sekarang kosong untuk router ini
+      const afterResolve = await getAnomaliesList({
+        status: "active",
+        routerId: router.id,
+        limit: 10,
+        offset: 0,
+      });
+      assert.equal(afterResolve.activeCount, 0);
+      assert.equal(afterResolve.anomalies.length, 0);
+    } finally {
+      process.env.DASHBOARD_DATA = prev;
+    }
+  },
+);

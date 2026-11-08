@@ -1,12 +1,14 @@
 import "server-only";
 import {
   and,
+  count,
   desc,
   eq,
   gte,
   isNotNull,
   isNull,
   lte,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { db } from "@/db";
@@ -83,13 +85,18 @@ function mapLogToAnomaly(row: {
   const defaultImpact = loneImpact(
     { routerId: row.routerId ?? "", customerId: row.customerId },
     {
-      customerName: (id) => row.customerName ?? mockDirectory.customerName(id),
-      routerName: (id) => row.routerName ?? mockDirectory.routerName(id),
-      customersOnRouter: (id) => mockDirectory.customersOnRouter(id),
-      customersOnOdp: (r, o) => mockDirectory.customersOnOdp(r, o),
+      customerName: (id) =>
+        row.customerName ??
+        (env.DASHBOARD_DATA === "demo" ? mockDirectory.customerName(id) : id),
+      routerName: (id) =>
+        row.routerName ??
+        (env.DASHBOARD_DATA === "demo" ? mockDirectory.routerName(id) : id),
+      customersOnRouter: (id) =>
+        env.DASHBOARD_DATA === "demo" ? mockDirectory.customersOnRouter(id) : 0,
+      customersOnOdp: (r, o) =>
+        env.DASHBOARD_DATA === "demo" ? mockDirectory.customersOnOdp(r, o) : 0,
     },
   );
-
   const rootSource =
     (detail.rootSource as typeof defaultImpact.rootSource) ??
     defaultImpact.rootSource;
@@ -189,6 +196,27 @@ export async function getAnomaliesList(
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+  const [totals] = await db
+    .select({
+      total: count(),
+      activeCount: sql<number>`count(*) filter (where ${alerts.endedAt} is null)::int`,
+      resolvedCount: sql<number>`count(*) filter (where ${alerts.endedAt} is not null)::int`,
+    })
+    .from(alerts)
+    .where(whereClause);
+
+  const total = Number(totals?.total ?? 0);
+  if (total === 0) {
+    return {
+      anomalies: [],
+      total: 0,
+      activeCount: 0,
+      resolvedCount: 0,
+      rules: anomalyRules,
+      sourceStatus: "nyata",
+    };
+  }
+
   const rows = await db
     .select({
       id: alerts.id,
@@ -209,16 +237,6 @@ export async function getAnomaliesList(
     .orderBy(desc(alerts.startedAt))
     .limit(query.limit)
     .offset(query.offset);
-  if (rows.length === 0) {
-    return {
-      anomalies: [],
-      total: 0,
-      activeCount: 0,
-      resolvedCount: 0,
-      rules: anomalyRules,
-      sourceStatus: "nyata",
-    };
-  }
 
   const items = rows.map((r) =>
     mapLogToAnomaly({
@@ -229,9 +247,9 @@ export async function getAnomaliesList(
 
   return {
     anomalies: items,
-    total: items.length,
-    activeCount: items.filter((a) => a.endedAt === null).length,
-    resolvedCount: items.filter((a) => a.endedAt !== null).length,
+    total,
+    activeCount: Number(totals?.activeCount ?? 0),
+    resolvedCount: Number(totals?.resolvedCount ?? 0),
     rules: anomalyRules,
     sourceStatus: "nyata",
   };
@@ -359,48 +377,48 @@ export interface AnomalyDetailResult {
  */
 export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
   if (env.DASHBOARD_DATA !== "demo") {
-    try {
-      const [row] = await db
-        .select({
-          id: alerts.id,
-          routerId: alerts.routerId,
-          customerId: alerts.customerId,
-          type: alerts.type,
-          severity: alerts.severity,
-          startedAt: alerts.startedAt,
-          endedAt: alerts.endedAt,
-          detail: alerts.detail,
-          routerName: routersTable.name,
-          customerName: customersTable.name,
-        })
-        .from(alerts)
-        .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
-        .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
-        .where(eq(alerts.id, id))
-        .limit(1);
-      if (row) {
-        const item = mapLogToAnomaly({
-          ...row,
-          detail: (row.detail ?? {}) as Record<string, unknown>,
-        });
-        const detail = (row.detail ?? {}) as Record<string, unknown>;
-        const reviewed = Boolean(detail.reviewed) || isAnomalyReviewed(id);
-        const reviewedBy = (detail.reviewedBy as string | null) ?? null;
-        const reviewedAt = (detail.reviewedAt as string | null) ?? null;
-        const note = (detail.note as string | null) ?? null;
+    const [row] = await db
+      .select({
+        id: alerts.id,
+        routerId: alerts.routerId,
+        customerId: alerts.customerId,
+        type: alerts.type,
+        severity: alerts.severity,
+        startedAt: alerts.startedAt,
+        endedAt: alerts.endedAt,
+        detail: alerts.detail,
+        routerName: routersTable.name,
+        customerName: customersTable.name,
+      })
+      .from(alerts)
+      .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
+      .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
+      .where(eq(alerts.id, id))
+      .limit(1);
 
-        return {
-          anomaly: item,
-          troubleshooting: getAnomalyTroubleshootingSteps(item),
-          reviewed,
-          reviewedBy,
-          reviewedAt,
-          note,
-          sourceStatus: "nyata",
-        };
-      }
-    } catch {}
-    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+    if (!row) {
+      throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+    }
+
+    const item = mapLogToAnomaly({
+      ...row,
+      detail: (row.detail ?? {}) as Record<string, unknown>,
+    });
+    const detail = (row.detail ?? {}) as Record<string, unknown>;
+    const reviewed = Boolean(detail.reviewed) || isAnomalyReviewed(id);
+    const reviewedBy = (detail.reviewedBy as string | null) ?? null;
+    const reviewedAt = (detail.reviewedAt as string | null) ?? null;
+    const note = (detail.note as string | null) ?? null;
+
+    return {
+      anomaly: item,
+      troubleshooting: getAnomalyTroubleshootingSteps(item),
+      reviewed,
+      reviewedBy,
+      reviewedAt,
+      note,
+      sourceStatus: "nyata",
+    };
   }
   // Fallback ke mock data
   const mockList = await loadAnomalies();
@@ -429,66 +447,60 @@ export async function updateAnomalyStatus(
   update: UpdateAnomalyStatusInput,
 ): Promise<AnomalyDetailResult> {
   if (env.DASHBOARD_DATA !== "demo") {
-    try {
-      const [existing] = await db
-        .select()
-        .from(alerts)
-        .where(eq(alerts.id, id))
-        .limit(1);
+    const [existing] = await db
+      .select()
+      .from(alerts)
+      .where(eq(alerts.id, id))
+      .limit(1);
 
-      if (existing) {
-        const currentDetail = (existing.detail ?? {}) as Record<
-          string,
-          unknown
-        >;
-        const newDetail = { ...currentDetail };
+    if (!existing) {
+      throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+    }
 
-        if (update.note !== undefined) {
-          newDetail.note = update.note;
-        }
+    const currentDetail = (existing.detail ?? {}) as Record<string, unknown>;
+    const newDetail = { ...currentDetail };
 
-        if (update.reviewed === true || update.status === "reviewed") {
-          newDetail.reviewed = true;
-          newDetail.reviewedBy = update.operator ?? "Operator NOC";
-          newDetail.reviewedAt = new Date().toISOString();
-          markAnomalyReviewed(id, update.operator ?? "Operator NOC");
-        } else if (update.reviewed === false) {
-          newDetail.reviewed = false;
-          newDetail.reviewedBy = null;
-          newDetail.reviewedAt = null;
-        }
+    if (update.note !== undefined) {
+      newDetail.note = update.note;
+    }
 
-        const setValues: {
-          endedAt?: Date | null;
-          status?: AlertStatus;
-          severity?: AlertSeverity;
-          detail?: Record<string, unknown>;
-          updatedAt: Date;
-        } = { detail: newDetail, updatedAt: new Date() };
+    if (update.reviewed === true || update.status === "reviewed") {
+      newDetail.reviewed = true;
+      newDetail.reviewedBy = update.operator ?? "Operator NOC";
+      newDetail.reviewedAt = new Date().toISOString();
+      markAnomalyReviewed(id, update.operator ?? "Operator NOC");
+    } else if (update.reviewed === false) {
+      newDetail.reviewed = false;
+      newDetail.reviewedBy = null;
+      newDetail.reviewedAt = null;
+    }
 
-        if (update.status === "resolved") {
-          setValues.endedAt = update.endedAt ?? new Date();
-          setValues.status = "resolved";
-        } else if (update.status === "active") {
-          setValues.endedAt = null;
-          setValues.status = "active";
-        } else if (update.endedAt !== undefined) {
-          setValues.endedAt = update.endedAt;
-          if (update.endedAt !== null) {
-            setValues.status = "resolved";
-          }
-        }
+    const setValues: {
+      endedAt?: Date | null;
+      status?: AlertStatus;
+      severity?: AlertSeverity;
+      detail?: Record<string, unknown>;
+      updatedAt: Date;
+    } = { detail: newDetail, updatedAt: new Date() };
 
-        if (update.severity) {
-          setValues.severity = update.severity;
-        }
+    if (update.status === "resolved") {
+      setValues.endedAt = update.endedAt ?? new Date();
+      setValues.status = "resolved";
+    } else if (update.status === "active") {
+      setValues.endedAt = null;
+      setValues.status = "active";
+    } else if (update.endedAt !== undefined) {
+      setValues.endedAt = update.endedAt;
+      setValues.status = update.endedAt !== null ? "resolved" : "active";
+    }
 
-        await db.update(alerts).set(setValues).where(eq(alerts.id, id));
+    if (update.severity) {
+      setValues.severity = update.severity;
+    }
 
-        return getAnomalyById(id);
-      }
-    } catch {}
-    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+    await db.update(alerts).set(setValues).where(eq(alerts.id, id));
+
+    return getAnomalyById(id);
   }
 
   // Fallback mode mock

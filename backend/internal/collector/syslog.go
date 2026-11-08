@@ -51,6 +51,8 @@ var (
 	// Pola status ONU pemulihan vs offline
 	statusRecoverPattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(online|registered?)\b`)
 	statusOfflinePattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(offline|deregistered?)\b`)
+	// Pola alarm selesai / pulih (cleared, recovered, restored, normal)
+	alarmClearedPattern = regexp.MustCompile(`(?i)\b(?:clear(?:ed)?|restor(?:e|ed)?|recover(?:ed|y)?|disappear(?:ed)?|normal|resume[d]?)\b`)
 )
 
 // OLTAlarmEvent mewakili alarm perangkat keras atau perubahan status ONU dari OLT.
@@ -85,10 +87,17 @@ func ParseOLTLog(msg string, remoteIP string) (*OLTAlarmEvent, bool) {
 		return nil, false
 	}
 
-	if statusRecoverPattern.MatchString(msg) {
+	// 1. Cek alarm yang telah selesai atau pulih (cleared, recovered, online, registered)
+	if alarmClearedPattern.MatchString(msg) || statusRecoverPattern.MatchString(msg) {
+		alarmType := "recovery"
+		if oltLosPattern.MatchString(msg) {
+			alarmType = "fiber_cut"
+		} else if oltDyingGaspPattern.MatchString(msg) {
+			alarmType = "power_outage"
+		}
 		return &OLTAlarmEvent{
 			OLTIP:    remoteIP,
-			Type:     "recovery",
+			Type:     alarmType,
 			Severity: "info",
 			Status:   "resolved",
 			PonPort:  pon,

@@ -26,10 +26,9 @@ const STEPS = ["Identitas & Model", "Kredensial", "Konfirmasi & Uji"] as const;
 const EMPTY: OltInput = {
   name: "",
   brand: "HSGQ",
-  driver: "hsgq",
+  driver: "hsgq-telnet",
   host: "",
-  // Port bawaan: web API HTTP 80, telnet 23.
-  port: 80,
+  port: 23,
   username: "",
   password: "",
   totalPonPorts: 8,
@@ -282,13 +281,11 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
                       set("port", next === "hsgq-telnet" ? 23 : 80);
                   }}
                 >
-                  {/* Hanya driver yang benar-benar ada di backend. Merek lain butuh driver baru. */}
-                  {/* Web API HTTP/JSON direkomendasikan; CLI telnet untuk seri lawas */}
-                  <option value="hsgq">
-                    hsgq (Web API HTTP/JSON - Direkomendasikan)
-                  </option>
                   <option value="hsgq-telnet">
-                    hsgq-telnet (CLI telnet legacy, seri XE EPON)
+                    hsgq-telnet (CLI telnet, seri XE EPON)
+                  </option>
+                  <option value="hsgq">
+                    hsgq (Web API HTTP/JSON, firmware baru)
                   </option>
                 </select>,
               )}

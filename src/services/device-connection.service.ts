@@ -1,7 +1,7 @@
 import "server-only";
 
 import { ApiError } from "@/lib/api";
-import { HSGQ_TELNET_DRIVER, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
+import { HSGQ_TELNET_DRIVER, parseTelnetHost, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
 import type { DeviceTarget } from "@/lib/mode-switch";
 import { getDeviceMode } from "@/services/mode-switch.service";
 import { saveDeviceTestResult } from "@/services/device-test-results.service";
@@ -97,10 +97,14 @@ export async function testOltConnection(params: {
     if (!r.ok) throw new ApiError(400, r.code, r.message);
     return { ok: true, info: r.message };
   }
+  const target = parseTelnetHost(params.host);
+  const host = target?.host ?? params.host.trim();
+  const port = params.host.includes(":") ? (target?.port ?? 80) : 80;
   await testOrThrow({
     type: "olt",
     mode: "real",
-    host: params.host,
+    host,
+    port,
     username: params.username,
     password: params.password,
   });

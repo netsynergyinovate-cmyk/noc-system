@@ -162,9 +162,11 @@ function simulate(req: DeviceTestRequest, host: string, port: number, tls: boole
 // --- Mode real --------------------------------------------------------------
 
 function mapError(error: unknown, host: string, port: number, timeoutMs: number, elapsed: number): Fail {
-  const err = error as { name?: string; message?: string; code?: string; cause?: { code?: string } } | null;
-  const code = err?.code ?? err?.cause?.code ?? "";
-  const text = `${err?.message ?? ""} ${code}`;
+  const err = error as { name?: string; message?: string; code?: string; cause?: { code?: string; message?: string } } | null;
+  const causeCode = err?.cause?.code ?? "";
+  const causeMsg = err?.cause?.message ?? "";
+  const code = err?.code ?? causeCode;
+  const text = `${err?.message ?? ""} ${code} ${causeCode} ${causeMsg}`;
   if (err?.name === "AbortError" || err?.name === "TimeoutError" || code === "ETIMEDOUT" || /timed? ?out/i.test(text)) {
     return timeoutFail(host, port, timeoutMs);
   }
@@ -181,7 +183,7 @@ function mapError(error: unknown, host: string, port: number, timeoutMs: number,
     status: "error",
     code: "HTTP_ERROR",
     latencyMs: elapsed,
-    message: `Gagal menghubungi ${host}:${port}: ${(err?.message ?? "kesalahan tidak dikenal").slice(0, 200)}`,
+    message: `Gagal menghubungi ${host}:${port}: ${(causeMsg || err?.message || "kesalahan tidak dikenal").slice(0, 200)}`,
   };
 }
 

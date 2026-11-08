@@ -26,10 +26,10 @@ const STEPS = ["Identitas & Model", "Kredensial", "Konfirmasi & Uji"] as const;
 const EMPTY: OltInput = {
   name: "",
   brand: "HSGQ",
-  driver: "hsgq-telnet",
+  driver: "hsgq",
   host: "",
-  // Port bawaan mengikuti driver: telnet 23, web API HTTP 80.
-  port: 23,
+  // Port bawaan: web API HTTP 80, telnet 23.
+  port: 80,
   username: "",
   password: "",
   totalPonPorts: 8,
@@ -45,11 +45,19 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<OltInput>(EMPTY);
-  const [errors, setErrors] = useState<Partial<Record<keyof OltInput, string>>>({});
-  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof OltInput, string>>>(
+    {},
+  );
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [scan, setScan] = useState<{ telnet: { port: number; banner: string }[]; otherOpen: number[] } | { error: string } | null>(null);
+  const [scan, setScan] = useState<
+    | { telnet: { port: number; banner: string }[]; otherOpen: number[] }
+    | { error: string }
+    | null
+  >(null);
 
   async function findPorts() {
     if (!form.host.trim()) {
@@ -65,12 +73,17 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         body: JSON.stringify({ host: form.host.trim() }),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error?.message ?? `Server menjawab HTTP ${res.status}.`);
+      if (!res.ok)
+        throw new Error(
+          json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
+        );
       setScan(json.data);
       // Satu-satunya kandidat dipakai langsung supaya operator tidak perlu mengetik port.
       if (json.data.telnet.length === 1) set("port", json.data.telnet[0].port);
     } catch (e) {
-      setScan({ error: e instanceof Error ? e.message : "Pencarian port gagal." });
+      setScan({
+        error: e instanceof Error ? e.message : "Pencarian port gagal.",
+      });
     } finally {
       setScanning(false);
     }
@@ -91,7 +104,9 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
 
   function next() {
     const all = validateOltInput(form);
-    const own = Object.fromEntries(STEP_FIELDS[step].filter((k) => all[k]).map((k) => [k, all[k]]));
+    const own = Object.fromEntries(
+      STEP_FIELDS[step].filter((k) => all[k]).map((k) => [k, all[k]]),
+    );
     setErrors(own);
     if (Object.keys(own).length === 0) setStep(step + 1);
   }
@@ -113,7 +128,10 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         body: JSON.stringify({
           name: form.name.trim(),
           // Port disimpan bersama host ("10.0.0.9:2323"); port bawaan driver tidak perlu ditulis.
-          host: form.port === (form.driver === "hsgq-telnet" ? 23 : 80) ? form.host.trim() : `${form.host.trim()}:${form.port}`,
+          host:
+            form.port === (form.driver === "hsgq-telnet" ? 23 : 80)
+              ? form.host.trim()
+              : `${form.host.trim()}:${form.port}`,
           brand: form.brand,
           driver: form.driver.trim(),
           username: form.username.trim(),
@@ -123,16 +141,21 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
       if (!res.ok) {
         const json = await res.json().catch(() => null);
         const reason =
-          res.status === 401 ? "Sesi berakhir, silakan masuk lagi."
-          : res.status === 403 ? "Akun ini tidak berhak menambah OLT (butuh izin router:manage)."
-          : json?.error?.message ?? `Server menjawab HTTP ${res.status}.`;
+          res.status === 401
+            ? "Sesi berakhir, silakan masuk lagi."
+            : res.status === 403
+              ? "Akun ini tidak berhak menambah OLT (butuh izin router:manage)."
+              : (json?.error?.message ?? `Server menjawab HTTP ${res.status}.`);
         setResult({ ok: false, text: reason });
         return;
       }
       setResult({ ok: true, text: "Terhubung. OLT disimpan." });
       onSaved();
     } catch {
-      setResult({ ok: false, text: "Tidak dapat menghubungi server NOC. Periksa koneksi lalu coba lagi." });
+      setResult({
+        ok: false,
+        text: "Tidak dapat menghubungi server NOC. Periksa koneksi lalu coba lagi.",
+      });
     } finally {
       setSaving(false);
     }
@@ -144,7 +167,11 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         <Label htmlFor={`olt-${key}`}>{label}</Label>
         {input}
         {err ? (
-          <p id={`olt-${key}-error`} role="alert" className="text-xs text-destructive">
+          <p
+            id={`olt-${key}-error`}
+            role="alert"
+            className="text-xs text-destructive"
+          >
             {err}
           </p>
         ) : null}
@@ -194,7 +221,9 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
               key={s}
               aria-current={i === step ? "step" : undefined}
               className={`flex-1 rounded border px-2 py-1 text-center ${
-                i === step ? "border-primary font-medium text-foreground" : "text-muted-foreground"
+                i === step
+                  ? "border-primary font-medium text-foreground"
+                  : "text-muted-foreground"
               }`}
             >
               {i + 1}. {s}
@@ -213,37 +242,80 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
         >
           {step === 0 && (
             <>
-              {field("name", "Nama", <Input {...a11y("name")} value={form.name} onChange={(e) => set("name", e.target.value)} />)}
+              {field(
+                "name",
+                "Nama",
+                <Input
+                  {...a11y("name")}
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                />,
+              )}
               {field(
                 "brand",
                 "Brand",
-                <select {...a11y("brand")} className={selectClassName} value={form.brand} onChange={(e) => set("brand", e.target.value)}>
+                <select
+                  {...a11y("brand")}
+                  className={selectClassName}
+                  value={form.brand}
+                  onChange={(e) => set("brand", e.target.value)}
+                >
                   {OLT_BRANDS.map((b) => (
-                    <option key={b} value={b}>{b}</option>
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
                   ))}
                 </select>,
               )}
               {field(
                 "driver",
                 "Driver",
-                <select {...a11y("driver")} className={selectClassName} value={form.driver} onChange={(e) => {
+                <select
+                  {...a11y("driver")}
+                  className={selectClassName}
+                  value={form.driver}
+                  onChange={(e) => {
                     const next = e.target.value;
                     set("driver", next);
                     // Ganti port bawaan hanya bila masih memakai bawaan driver sebelumnya.
-                    if (form.port === 23 || form.port === 80) set("port", next === "hsgq-telnet" ? 23 : 80);
-                  }}>
+                    if (form.port === 23 || form.port === 80)
+                      set("port", next === "hsgq-telnet" ? 23 : 80);
+                  }}
+                >
                   {/* Hanya driver yang benar-benar ada di backend. Merek lain butuh driver baru. */}
-                  <option value="hsgq-telnet">hsgq-telnet (CLI telnet, seri XE EPON)</option>
-                  <option value="hsgq">hsgq (web API HTTP/JSON)</option>
+                  {/* Web API HTTP/JSON direkomendasikan; CLI telnet untuk seri lawas */}
+                  <option value="hsgq">
+                    hsgq (Web API HTTP/JSON - Direkomendasikan)
+                  </option>
+                  <option value="hsgq-telnet">
+                    hsgq-telnet (CLI telnet legacy, seri XE EPON)
+                  </option>
                 </select>,
               )}
-              {field("host", "Host IP", <Input {...a11y("host")} inputMode="decimal" placeholder="10.10.0.10" value={form.host} onChange={(e) => set("host", e.target.value)} />)}
+              {field(
+                "host",
+                "Host IP",
+                <Input
+                  {...a11y("host")}
+                  inputMode="decimal"
+                  placeholder="10.10.0.10"
+                  value={form.host}
+                  onChange={(e) => set("host", e.target.value)}
+                />,
+              )}
               {field(
                 "totalPonPorts",
                 "Total Port PON",
-                <select {...a11y("totalPonPorts")} className={selectClassName} value={form.totalPonPorts} onChange={(e) => set("totalPonPorts", Number(e.target.value))}>
+                <select
+                  {...a11y("totalPonPorts")}
+                  className={selectClassName}
+                  value={form.totalPonPorts}
+                  onChange={(e) => set("totalPonPorts", Number(e.target.value))}
+                >
                   {OLT_PON_OPTIONS.map((n) => (
-                    <option key={n} value={n}>{n}</option>
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
                   ))}
                 </select>,
               )}
@@ -252,31 +324,87 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
 
           {step === 1 && (
             <>
-              {field("port", "Port (Telnet 23 / SSH 22)", <Input {...a11y("port")} inputMode="numeric" value={Number.isNaN(form.port) ? "" : form.port} onChange={(e) => set("port", e.target.value === "" ? NaN : Number(e.target.value))} />)}
+              {field(
+                "port",
+                form.driver === "hsgq"
+                  ? "Port HTTP Web API (bawaan 80 / 8080)"
+                  : "Port Telnet (bawaan 23)",
+                <Input
+                  {...a11y("port")}
+                  inputMode="numeric"
+                  placeholder={form.driver === "hsgq" ? "80" : "23"}
+                  value={Number.isNaN(form.port) ? "" : form.port}
+                  onChange={(e) =>
+                    set(
+                      "port",
+                      e.target.value === "" ? NaN : Number(e.target.value),
+                    )
+                  }
+                />,
+              )}
               {form.driver === "hsgq-telnet" && (
-                <div className="flex flex-col gap-2 rounded-md border border-dashed p-3 text-sm" data-testid="port-finder">
+                <div
+                  className="flex flex-col gap-2 rounded-md border border-dashed p-3 text-sm"
+                  data-testid="port-finder"
+                >
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button type="button" variant="outline" size="sm" disabled={scanning} onClick={() => void findPorts()} data-testid="btn-find-port">
-                      <Search className="size-4" aria-hidden /> {scanning ? "Mencari…" : "Cari port telnet otomatis"}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={scanning}
+                      onClick={() => void findPorts()}
+                      data-testid="btn-find-port"
+                    >
+                      <Search className="size-4" aria-hidden />{" "}
+                      {scanning ? "Mencari…" : "Cari port telnet otomatis"}
                     </Button>
-                    <span className="text-xs text-muted-foreground">Tidak tahu port telnet OLT? Sistem mencoba port yang lazim di {form.host.trim() || "host"}.</span>
+                    <span className="text-xs text-muted-foreground">
+                      Tidak tahu port telnet OLT? Sistem mencoba port yang lazim
+                      di {form.host.trim() || "host"}.
+                    </span>
                   </div>
-                  {scan && "error" in scan && <p role="alert" className="text-destructive">{scan.error}</p>}
+                  {scan && "error" in scan && (
+                    <p role="alert" className="text-destructive">
+                      {scan.error}
+                    </p>
+                  )}
                   {scan && "telnet" in scan && (
                     <div role="status" className="flex flex-col gap-1.5">
                       {scan.telnet.length === 0 ? (
                         <p className="text-muted-foreground">
                           Tidak ada port telnet yang menjawab.
-                          {scan.otherOpen.length > 0 && ` Port ${scan.otherOpen.join(", ")} terbuka tapi bukan telnet (kemungkinan web OLT).`}{" "}
-                          Tanyakan teknisi/ISP port forward telnet (port 23) OLT, atau pastikan OLT dan firewall mengizinkan koneksi dari server NOC.
+                          {scan.otherOpen.length > 0 &&
+                            ` Port ${scan.otherOpen.join(", ")} terbuka tapi bukan telnet (kemungkinan web OLT).`}{" "}
+                          Tanyakan teknisi/ISP port forward telnet (port 23)
+                          OLT, atau pastikan OLT dan firewall mengizinkan
+                          koneksi dari server NOC.
                         </p>
                       ) : (
                         scan.telnet.map((t) => (
-                          <div key={t.port} className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs">Port {t.port}</span>
-                            {t.banner && <span className="text-xs text-muted-foreground">{t.banner}</span>}
-                            <Button type="button" size="sm" variant={form.port === t.port ? "secondary" : "default"} onClick={() => set("port", t.port)}>
-                              {form.port === t.port ? "Dipakai" : "Pakai port ini"}
+                          <div
+                            key={t.port}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <span className="font-mono text-xs">
+                              Port {t.port}
+                            </span>
+                            {t.banner && (
+                              <span className="text-xs text-muted-foreground">
+                                {t.banner}
+                              </span>
+                            )}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                form.port === t.port ? "secondary" : "default"
+                              }
+                              onClick={() => set("port", t.port)}
+                            >
+                              {form.port === t.port
+                                ? "Dipakai"
+                                : "Pakai port ini"}
                             </Button>
                           </div>
                         ))
@@ -285,8 +413,27 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
                   )}
                 </div>
               )}
-              {field("username", "Username", <Input {...a11y("username")} autoComplete="off" value={form.username} onChange={(e) => set("username", e.target.value)} />)}
-              {field("password", "Password", <Input {...a11y("password")} type="password" autoComplete="new-password" value={form.password} onChange={(e) => set("password", e.target.value)} />)}
+              {field(
+                "username",
+                "Username",
+                <Input
+                  {...a11y("username")}
+                  autoComplete="off"
+                  value={form.username}
+                  onChange={(e) => set("username", e.target.value)}
+                />,
+              )}
+              {field(
+                "password",
+                "Password",
+                <Input
+                  {...a11y("password")}
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={(e) => set("password", e.target.value)}
+                />,
+              )}
             </>
           )}
 
@@ -300,22 +447,46 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
                   </div>
                 ))}
               </dl>
-              <div data-testid="olt-test-result" role="status" aria-live="polite" className={`min-h-5 text-sm ${result?.ok ? "text-success" : "text-destructive"}`}>
+              <div
+                data-testid="olt-test-result"
+                role="status"
+                aria-live="polite"
+                className={`min-h-5 text-sm ${result?.ok ? "text-success" : "text-destructive"}`}
+              >
                 {result ? result.text : ""}
               </div>
             </>
           )}
 
           <div className="flex justify-between gap-2">
-            <Button type="button" variant="outline" disabled={step === 0} onClick={() => { setErrors({}); setResult(null); setStep(step - 1); }}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={step === 0}
+              onClick={() => {
+                setErrors({});
+                setResult(null);
+                setStep(step - 1);
+              }}
+            >
               Kembali
             </Button>
             {step < 2 ? (
               <Button type="submit">Lanjut</Button>
             ) : result?.ok ? (
-              <Button type="button" onClick={() => { setOpen(false); reset(); }}>Selesai</Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  reset();
+                }}
+              >
+                Selesai
+              </Button>
             ) : (
-              <Button type="submit" aria-disabled={saving}>{saving ? "Menyimpan�" : "Uji Koneksi &amp; Simpan"}</Button>
+              <Button type="submit" aria-disabled={saving}>
+                {saving ? "Menyimpan�" : "Uji Koneksi &amp; Simpan"}
+              </Button>
             )}
           </div>
         </form>

@@ -8,8 +8,8 @@ export function formatMikrotikConnReqRule(options: {
   ontIp?: string;
   port?: number;
 } = {}): string {
-  const srv = options.serverIp?.trim() || "192.168.0.220";
-  const dst = options.ontIp?.trim() ? ` dst-address=${options.ontIp.trim()}` : "";
+  const srv = options.serverIp?.trim() || "<IP_SERVER_GENIEACS>";
+  const dst = options.ontIp?.trim() ? options.ontIp.trim() : "<IP_ONT>";
   const p = options.port && options.port > 0 ? options.port : 7547;
-  return `/ip firewall filter add chain=forward action=accept protocol=tcp src-address=${srv}${dst} dst-port=${p} comment="Izin TR-069 Connection Request (Hanya Server NOC)" place-before=0`;
+  return `/ip firewall filter add chain=forward action=accept protocol=tcp src-address=${srv} dst-address=${dst} dst-port=${p} comment="Izin TR-069 Connection Request (Hanya Server NOC)" place-before=0`;
 }

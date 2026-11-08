@@ -468,8 +468,10 @@ function Body({ deviceId }: { deviceId: string }) {
         const ontIpMatch = /^https?:\/\/([^:/]+)(?::(\d+))?/i.exec(d.acs.connectionRequestUrl || "");
         const ontHost = ontIpMatch ? ontIpMatch[1] : d.wanIp;
         const ontPort = ontIpMatch && ontIpMatch[2] ? Number(ontIpMatch[2]) : 7547;
+        const srvMatch = /^https?:\/\/([^:/]+)/i.exec(d.acs.url || "");
+        const srvHost = srvMatch ? srvMatch[1] : "";
         const mikrotikCmd = formatMikrotikConnReqRule({
-          serverIp: "192.168.0.220",
+          serverIp: srvHost,
           ontIp: ontHost,
           port: ontPort,
         });

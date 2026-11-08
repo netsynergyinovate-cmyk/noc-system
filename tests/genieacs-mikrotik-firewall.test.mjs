@@ -19,7 +19,8 @@ test("formatMikrotikConnReqRule menyertakan src-address, dst-address, place-befo
 
 test("formatMikrotikConnReqRule dengan default aman bila argumen kosong", () => {
   const rule = formatMikrotikConnReqRule();
-  assert.ok(rule.includes("src-address=192.168.0.220"));
+  assert.ok(rule.includes("src-address=<IP_SERVER_GENIEACS>"));
+  assert.ok(rule.includes("dst-address=<IP_ONT>"));
   assert.ok(rule.includes("dst-port=7547"));
   assert.ok(rule.includes("place-before=0"));
 });

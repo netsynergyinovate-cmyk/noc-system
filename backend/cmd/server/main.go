@@ -22,6 +22,7 @@ import (
 	"noc-isp/backend/internal/auth"
 	"noc-isp/backend/internal/billing"
 	"noc-isp/backend/internal/collector"
+	"noc-isp/backend/internal/cpe"
 	"noc-isp/backend/internal/config"
 	"noc-isp/backend/internal/diagnostics"
 	"noc-isp/backend/internal/engine"
@@ -172,6 +173,16 @@ func run() error {
 			fmt.Fprintln(os.Stderr, "peringatan: ONT_WEB_ALLOWED_CIDRS tidak valid, pasang TR-069 lewat web ONT dimatikan:", err)
 		} else {
 			apiOptions.OntWeb = httpapi.NewOntWebAPI(pool, cfg.DeviceSecret, ontNets, logger)
+		}
+		genieURL := os.Getenv("GENIEACS_NBI_URL")
+		if genieURL != "" {
+			cpeClient := cpe.NewClient(cpe.Config{
+				BaseURL:  genieURL,
+				Username: os.Getenv("GENIEACS_NBI_USER"),
+				Password: os.Getenv("GENIEACS_NBI_PASSWORD"),
+			})
+			apiOptions.Cpe = httpapi.NewCpeAPI(cpe.NewService(cpeClient, logger), logger)
+			logger.Info("cpe genieacs API Go aktif", "nbi_url", genieURL)
 		}
 		apiOptions.History = archive.NewPGStore(pool)
 		apiOptions.NetflowQuery = netflow.NewReader(pool)

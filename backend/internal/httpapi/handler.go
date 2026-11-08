@@ -112,6 +112,8 @@ type Options struct {
 	// web admin modem). Kosong (ONT_ACS_URL tidak diisi) berarti rute tidak
 	// terdaftar: 404 generik.
 	OntWeb *OntWebAPI
+	// Cpe melayani operasi CPE TR-069 via GenieACS. Kosong berarti rute tidak terdaftar.
+	Cpe *CpeAPI
 
 	// Telemetry melayani GET /api/v1/dashboard/telemetry (isi yang sama dengan pesan
 	// WebSocket "telemetry"). Kosong berarti rute itu tidak terdaftar.
@@ -201,6 +203,9 @@ func NewHandler(opts Options) http.Handler {
 		}
 		if opts.OntWeb != nil {
 			opts.OntWeb.register(api)
+		}
+		if opts.Cpe != nil {
+			opts.Cpe.register(api)
 		}
 		if opts.Telemetry != nil {
 			api.Handle("/api/v1/dashboard/vlans/history", readOnly(func(w http.ResponseWriter, r *http.Request) {

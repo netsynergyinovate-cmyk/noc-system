@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -614,4 +615,32 @@ func TestListenSyslogRejectsBadOrBusyAddresses(t *testing.T) {
 	if _, err := ListenSyslog("127.0.0.1:0", nil, nil, discardLogger()); err == nil {
 		t.Error("tanpa Presence seharusnya ditolak")
 	}
+}
+
+func TestSyslogSharedIPBetweenRouterAndOLT(t *testing.T) {
+	rig := startSyslog(t, "127.0.0.1")
+	oltIP := netip.MustParseAddr("127.0.0.1")
+	rig.listener.SetOLTSources(map[netip.Addr]string{oltIP: "olt-shared-1"})
+
+	var capturedAlarm OLTAlarmEvent
+	var alarmMu sync.Mutex
+	rig.listener.SetOLTAlarm(func(a OLTAlarmEvent) {
+		alarmMu.Lock()
+		defer alarmMu.Unlock()
+		capturedAlarm = a
+	})
+
+	// 1. Kirim paket alarm OLT dari 127.0.0.1
+	rig.send(t, "<189>HSGQ-OLT: ONU 0/1:3 LOS alarm occurred")
+	waitUntil(t, "alarm OLT diterima", func() bool {
+		alarmMu.Lock()
+		defer alarmMu.Unlock()
+		return capturedAlarm.Type == "fiber_cut" && capturedAlarm.PonPort == "0/1" && capturedAlarm.OnuID == "3"
+	})
+
+	// 2. Kirim paket PPP login MikroTik dari IP yang sama (127.0.0.1)
+	rig.send(t, "ppp,info,account budi logged out, 169")
+	waitUntil(t, "PPP logout diterapkan ke pelanggan dari IP yang sama", func() bool {
+		return !rig.h.online("budi")
+	})
 }

@@ -307,7 +307,9 @@ func (l *SyslogListener) Serve(ctx context.Context) error {
 func (l *SyslogListener) handle(from net.Addr, message string) {
 	l.received.Add(1)
 
+	isOLT := false
 	if oltID, source, ok := l.oltFor(from); ok {
+		isOLT = true
 		if alarm, ok := ParseOLTLog(message, source.String()); ok {
 			alarm.OLTID = oltID
 			select {
@@ -318,14 +320,16 @@ func (l *SyslogListener) handle(from net.Addr, message string) {
 			}
 			return
 		}
-		// Pesan OLT non-alarm tidak dikirim ke store (karena syslog_events.router_id
-		// merujuk ke tabel routers dan akan melanggar FK batch unnest).
-		l.oltNonAlarm.Add(1)
-		return
 	}
 
 	routerID, ok := l.routerFor(from)
 	if !ok {
+		if isOLT {
+			// Pesan OLT non-alarm dari OLT yang bukan router (atau bukan log PPP)
+			// tidak dikirim ke store router agar tidak melanggar foreign key batch unnest.
+			l.oltNonAlarm.Add(1)
+			return
+		}
 		l.unknownSource.Add(1)
 		l.warnUnknown(from)
 		return

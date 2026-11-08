@@ -173,10 +173,9 @@ export function CpeBoard() {
           <CardContent>
             {oltTerputus && (
               <ConnectionErrorNotice
-                code="TIMEOUT"
                 deviceType="olt"
                 target={oltTerputus.host}
-                message={`${oltTerputus.name} nonaktif atau terputus.`}
+                message={`${oltTerputus.name} belum dapat dihubungi oleh backend.`}
                 className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 p-3"
               />
             )}

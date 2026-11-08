@@ -111,7 +111,7 @@ export const MOCK_ONBOARDING_STEPS: readonly OnboardingStep[] = [
     estimatedMinutes: 8,
     category: "perangkat",
     instruction:
-      "Buka menu OLT & Optik > Tambah OLT. Isi host SNMP/Telnet OLT HSGQ dan pastikan redaman ONU terbaca.",
+      "Buka menu OLT & Optik > Tambah OLT. Masukkan host Web API (port 80) atau Telnet CLI OLT HSGQ dan pastikan redaman ONU terbaca.",
   },
   {
     id: "step-genieacs-cpe",

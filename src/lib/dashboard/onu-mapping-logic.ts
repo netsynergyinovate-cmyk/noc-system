@@ -5,8 +5,11 @@ export interface OnuMappingCandidate {
   onuId: string;
   serialNumber: string;
   macAddress?: string;
+  oltId?: string;
   oltName: string;
   ponPort: string;
+  ponIndex?: number | null;
+  onuIndex?: number | null;
   rxPowerDbm: number | null;
   currentCustomerId: string | null;
   currentCustomerName?: string | null;

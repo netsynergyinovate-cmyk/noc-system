@@ -2,11 +2,13 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -75,6 +77,7 @@ func (a *OltBindAPI) releaseReboot(key string) {
 func (a *OltBindAPI) register(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/tr069-bind", http.HandlerFunc(a.bind))
 	mux.Handle("POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/reboot", http.HandlerFunc(a.reboot))
+	mux.Handle("POST /api/v1/olts/{oltId}/onus/{pon}/{onu}/description", http.HandlerFunc(a.description))
 }
 
 // bind: tiket diperiksa requireTicket di mux luar (NewHandler); di sini izin
@@ -216,6 +219,74 @@ func (a *OltBindAPI) reboot(w http.ResponseWriter, r *http.Request) {
 		}
 		a.logger.Error("reboot ONU gagal", "olt", oltID, "pon", pon, "onu", onu, "error", err.Error())
 		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "reboot_failed"})
+	}
+}
+
+type descRequest struct {
+	Description string `json:"description"`
+}
+
+func (a *OltBindAPI) description(w http.ResponseWriter, r *http.Request) {
+	identity, ok := identityFrom(r.Context())
+	if !ok {
+		unauthorized(w)
+		return
+	}
+	if !identity.Can(cpeManagePerm) {
+		forbidden(w)
+		return
+	}
+
+	oltID := r.PathValue("oltId")
+	pon, errP := strconv.Atoi(r.PathValue("pon"))
+	onu, errO := strconv.Atoi(r.PathValue("onu"))
+	if oltID == "" || errP != nil || errO != nil || pon < 1 || onu < 1 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "bad_request", Message: "oltId/pon/onu tidak sah"})
+		return
+	}
+
+	var req descRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Description) == "" {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "bad_request", Message: "deskripsi/nama tidak boleh kosong"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), oltBindTimeout)
+	defer cancel()
+
+	host, driverName, username, password, err := a.lookupOlt(ctx, oltID)
+	if errors.Is(err, errOltNotFound) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "olt_not_found", Message: "OLT tidak ditemukan atau nonaktif"})
+		return
+	}
+	if err != nil {
+		a.logger.Error("deskripsi ONU: baca kredensial OLT gagal", "olt", oltID, "error", err.Error())
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal"})
+		return
+	}
+
+	drv, err := olt.Get(driverName, olt.Config{Host: host, Username: username, Password: password, Timeout: oltBindTimeout})
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "driver_unsupported", Message: err.Error()})
+		return
+	}
+	defer drv.Close()
+
+	err = olt.DescribeOne(ctx, drv, olt.OnuRef{Pon: pon, Onu: onu}, req.Description)
+	switch {
+	case err == nil:
+		a.logger.Info("deskripsi ONU diubah di OLT", "olt", oltID, "pon", pon, "onu", onu, "desc", req.Description, "oleh", identity.UserID)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": true, "message": fmt.Sprintf("Deskripsi ONU %d/%d berhasil diubah di OLT", pon, onu), "description": req.Description,
+		})
+	case errors.Is(err, olt.ErrDescriptionRejected):
+		a.logger.Warn("deskripsi ONU ditolak OLT", "olt", oltID, "pon", pon, "onu", onu, "error", err.Error())
+		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "description_rejected", Message: "OLT menolak perintah deskripsi"})
+	case errors.Is(err, olt.ErrNotSupported):
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "driver_unsupported", Message: err.Error()})
+	default:
+		a.logger.Warn("gagal mengubah deskripsi ONU", "olt", oltID, "pon", pon, "onu", onu, "error", err.Error())
+		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "description_failed", Message: err.Error()})
 	}
 }
 

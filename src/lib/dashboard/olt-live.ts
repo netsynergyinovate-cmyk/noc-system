@@ -121,3 +121,64 @@ export async function autoMatchAllLive(): Promise<AutoMatchResult> {
   }
   return { ok: true, summary: total };
 }
+
+export async function renameOnuLive(
+  oltId: string,
+  pon: number,
+  onu: number,
+  description: string,
+): Promise<{ ok: boolean; message: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/olts/${encodeURIComponent(oltId)}/onus/${pon}/${onu}/description`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description }),
+    });
+  } catch {
+    return { ok: false, message: "Server aplikasi tidak terjangkau." };
+  }
+  const json = (await res.json().catch(() => null)) as { message?: string; error?: { message?: string } } | null;
+  if (res.ok) {
+    return { ok: true, message: json?.message ?? `ONU ${pon}/${onu} dinamai "${description}".` };
+  }
+  return { ok: false, message: json?.error?.message ?? `Gagal menamai ONU di OLT (HTTP ${res.status}).` };
+}
+
+export async function syncAllOnuNamesLive(): Promise<{
+  ok: boolean;
+  message: string;
+  summary?: { total: number; updated: number; skipped: number; failed: number };
+}> {
+  let olts: Awaited<ReturnType<typeof fetchLiveOlts>>;
+  try {
+    olts = await fetchLiveOlts();
+  } catch {
+    return { ok: false, message: "Daftar OLT belum bisa dimuat dari server." };
+  }
+  if (olts.length === 0) return { ok: false, message: "Belum ada OLT terdaftar." };
+
+  const total = { total: 0, updated: 0, skipped: 0, failed: 0 };
+  for (const olt of olts) {
+    let res: Response;
+    try {
+      res = await fetch(`/api/olts/${encodeURIComponent(olt.id)}/sync-names`, { method: "POST" });
+    } catch {
+      return { ok: false, message: "Server aplikasi tidak terjangkau." };
+    }
+    if (res.status === 403) return { ok: false, message: "Akun Anda tidak punya izin menamai ONU (butuh cpe:manage)." };
+    if (!res.ok) return { ok: false, message: `Server gagal menamai ONU di ${olt.name} (HTTP ${res.status}).` };
+    const json = (await res.json().catch(() => null)) as { summary?: typeof total } | null;
+    if (json?.summary) {
+      total.total += json.summary.total;
+      total.updated += json.summary.updated;
+      total.skipped += json.summary.skipped;
+      total.failed += json.summary.failed;
+    }
+  }
+  return {
+    ok: true,
+    summary: total,
+    message: `${total.updated} ONU dinamai di OLT, ${total.skipped} sudah sesuai, ${total.failed} gagal.`,
+  };
+}

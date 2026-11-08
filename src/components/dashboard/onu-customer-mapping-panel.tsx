@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Link2, Link2Off, Radio, Search, Sparkles, Users } from "lucide-react";
+import { Link2, Link2Off, Radio, Search, Sparkles, Tag, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { mockOnus } from "@/lib/dashboard/onus";
-import { autoMatchAllLive, mapOnuLive } from "@/lib/dashboard/olt-live";
+import { autoMatchAllLive, mapOnuLive, renameOnuLive, syncAllOnuNamesLive } from "@/lib/dashboard/olt-live";
 import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
@@ -38,6 +38,8 @@ export function OnuCustomerMappingPanel() {
   const [overrides, setOverrides] = useState<Record<string, string | null>>({});
   const [suggestions, setSuggestions] = useState<MappingSuggestion[] | null>(null);
   const [message, setMessage] = useState("");
+  const [namingId, setNamingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   useEffect(() => {
     if (isDemo) setOverrides(getOnuMappings());
@@ -52,8 +54,11 @@ export function OnuCustomerMappingPanel() {
         return {
           onuId: o.id,
           serialNumber: o.serialNumber,
+          oltId: o.oltId,
           oltName: o.oltName,
           ponPort: o.ponPort,
+          ponIndex: o.ponIndex,
+          onuIndex: o.onuIndex,
           rxPowerDbm: o.rxPowerDbm,
           currentCustomerId: cid,
           currentCustomerName: cid ? (customerById.get(cid)?.name ?? o.customerName) : null,
@@ -138,6 +143,30 @@ export function OnuCustomerMappingPanel() {
     setSuggestions(result);
     setMessage(result.length ? `${result.length} saran ditemukan.` : "Tidak ada saran pencocokan.");
   }
+  async function handleRenameOnu(o: OnuMappingCandidate) {
+    if (!o.currentCustomerId || !o.oltId || o.ponIndex == null || o.onuIndex == null) {
+      setMessage("ONU ini belum memiliki informasi nomor PON/ONU untuk dinamai di OLT.");
+      return;
+    }
+    const cust = customerById.get(o.currentCustomerId);
+    if (!cust) return;
+    const targetDesc = cust.name.slice(0, 32);
+    setNamingId(o.onuId);
+    setMessage(`Menamai ONU ${o.ponIndex}/${o.onuIndex} di OLT menjadi "${targetDesc}"…`);
+    const res = await renameOnuLive(o.oltId, o.ponIndex, o.onuIndex, targetDesc);
+    setNamingId(null);
+    setMessage(res.message);
+    if (res.ok) await live.reload();
+  }
+
+  async function handleSyncAllNames() {
+    setSyncingAll(true);
+    setMessage("Menamai semua ONU di OLT sesuai nama pelanggan…");
+    const res = await syncAllOnuNamesLive();
+    setSyncingAll(false);
+    setMessage(res.message);
+    if (res.ok) await live.reload();
+  }
 
   return (
     <div data-testid="onu-mapping-panel" className="flex flex-col gap-6">
@@ -173,10 +202,22 @@ export function OnuCustomerMappingPanel() {
                   : "Pemetaan tersimpan di database; ONU dari OLT"}
             </Badge>
           </div>
-          <Button type="button" variant="outline" onClick={suggest} data-testid="auto-suggest-btn">
-            <Sparkles aria-hidden="true" className="size-4" />
-            {isDemo ? "Saran Pencocokan Otomatis" : "Cocokkan Otomatis dari Nama ONU"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={syncingAll}
+              onClick={handleSyncAllNames}
+              title="Sinkronkan nama pelanggan ke deskripsi OLT untuk semua ONU yang sudah terpetakan"
+            >
+              <Tag aria-hidden="true" className="size-4" />
+              {syncingAll ? "Menamai di OLT…" : "Namai Semua ke OLT"}
+            </Button>
+            <Button type="button" variant="outline" onClick={suggest} data-testid="auto-suggest-btn">
+              <Sparkles aria-hidden="true" className="size-4" />
+              {isDemo ? "Saran Pencocokan Otomatis" : "Cocokkan Otomatis dari Nama ONU"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p role="status" aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
@@ -260,10 +301,26 @@ export function OnuCustomerMappingPanel() {
                       </TableCell>
                       <TableCell>
                         {o.currentCustomerId ? (
-                          <Button type="button" size="sm" variant="outline" onClick={() => apply(o.onuId, null)}>
-                            <Link2Off aria-hidden="true" className="size-4" />
-                            Lepas Pemetaan
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {o.oltId && o.ponIndex != null && o.onuIndex != null && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={namingId === o.onuId}
+                                onClick={() => handleRenameOnu(o)}
+                                title="Ubah nama/deskripsi ONU di OLT sesuai nama pelanggan"
+                                className="text-xs text-primary hover:text-primary"
+                              >
+                                <Tag aria-hidden="true" className="size-3.5" />
+                                {namingId === o.onuId ? "Menamai…" : "Namai di OLT"}
+                              </Button>
+                            )}
+                            <Button type="button" size="sm" variant="outline" onClick={() => apply(o.onuId, null)}>
+                              <Link2Off aria-hidden="true" className="size-4" />
+                              Lepas Pemetaan
+                            </Button>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">Gunakan saran otomatis</span>
                         )}

@@ -170,6 +170,14 @@ function mapError(error: unknown, host: string, port: number, timeoutMs: number,
   if (err?.name === "AbortError" || err?.name === "TimeoutError" || code === "ETIMEDOUT" || /timed? ?out/i.test(text)) {
     return timeoutFail(host, port, timeoutMs);
   }
+  if (text.includes("ECONNRESET")) {
+    return {
+      status: "error",
+      code: "CONNECTION_REFUSED",
+      latencyMs: elapsed,
+      message: `Koneksi di-reset oleh ${host}:${port}. Port ini kemungkinan adalah layanan router MikroTik yang membatasi IP (address allowlist), bukan OLT.`,
+    };
+  }
   if (text.includes("ECONNREFUSED")) return refusedFail(port, elapsed);
   if (text.includes("ENOTFOUND") || text.includes("EAI_AGAIN")) {
     return {
@@ -552,6 +560,12 @@ export async function testDeviceConnection(
         if (res.status === 404) {
           return httpFail(
             "Web API OLT tidak ditemukan (HTTP 404). Bila OLT hanya punya CLI telnet, pilih driver hsgq-telnet; bila bukan, periksa alamat dan port.",
+          );
+        }
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("text/html")) {
+          return httpFail(
+            "Perangkat mengembalikan halaman HTML biasa (bukan REST API JSON). OLT seri XE ini hanya menyediakan antarmuka Web GUI biasa atau CLI telnet, tanpa REST API JSON. Gunakan driver hsgq-telnet.",
           );
         }
         return success("Sukses: Web API OLT menjawab.", { info: "OLT terhubung" });

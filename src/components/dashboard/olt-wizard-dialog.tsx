@@ -26,9 +26,9 @@ const STEPS = ["Identitas & Model", "Kredensial", "Konfirmasi & Uji"] as const;
 const EMPTY: OltInput = {
   name: "",
   brand: "HSGQ",
-  driver: "hsgq",
+  driver: "hsgq-telnet",
   host: "",
-  port: 80,
+  port: 23,
   username: "",
   password: "",
   totalPonPorts: 8,
@@ -281,11 +281,11 @@ export function OltWizardDialog({ onSaved }: { onSaved: () => void }) {
                       set("port", next === "hsgq-telnet" ? 23 : 80);
                   }}
                 >
-                  <option value="hsgq">
-                    hsgq (Web API HTTP/JSON - Direkomendasikan)
-                  </option>
                   <option value="hsgq-telnet">
-                    hsgq-telnet (CLI telnet, seri XE EPON)
+                    hsgq-telnet (CLI telnet, seri XE EPON - Teruji)
+                  </option>
+                  <option value="hsgq">
+                    hsgq (Web API HTTP/JSON, jika firmware mendukung)
                   </option>
                 </select>,
               )}

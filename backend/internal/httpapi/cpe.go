@@ -190,27 +190,26 @@ type ConnReqGuideResponse struct {
 func (a *CpeAPI) guide(w http.ResponseWriter, r *http.Request) {
 	resp := ConnReqGuideResponse{
 		AcsServerIP:            "<IP_SERVER_GENIEACS>",
-		OntSubnet:              "172.16.15.0/24",
+		OntSubnet:              "<SUBNET_ONT_PPPOE>",
 		Port:                   7547,
 		IsForwardRuleInstalled: false,
 		PacketsForwarded:       "0",
 		DiagnosticStatus:       "Konfigurasi router belum dibaca",
 	}
 
-	if a.routers == nil || a.db == nil {
-		resp.RecommendedCommand = fmt.Sprintf(
-			"/ip firewall filter add chain=forward action=accept protocol=tcp src-address=%s dst-address=%s dst-port=%d comment=\"GenieACS Server ke ONT\" place-before=0",
-			resp.AcsServerIP, resp.OntSubnet, resp.Port,
-		)
-		writeJSON(w, http.StatusOK, dataResponse[ConnReqGuideResponse]{Data: resp})
-		return
+	routerID := r.URL.Query().Get("router_id")
+	if routerID == "" && a.db != nil {
+		rows, err := a.db.Query(r.Context(), "SELECT id::text FROM routers WHERE status = 'aktif' LIMIT 1")
+		if err == nil {
+			defer rows.Close()
+			if rows.Next() {
+				_ = rows.Scan(&routerID)
+			}
+		}
 	}
 
-	// Cari router aktif pertama
-	var routerID string
-	rows, err := a.db.Query(r.Context(), "SELECT id::text FROM routers WHERE status = 'aktif' LIMIT 1")
-	if err != nil {
-		resp.DiagnosticStatus = "Gagal membaca database router"
+	if a.routers == nil || routerID == "" {
+		resp.DiagnosticStatus = "Router tidak ditemukan atau routerproxy belum siap"
 		resp.RecommendedCommand = fmt.Sprintf(
 			"/ip firewall filter add chain=forward action=accept protocol=tcp src-address=%s dst-address=%s dst-port=%d comment=\"GenieACS Server ke ONT\" place-before=0",
 			resp.AcsServerIP, resp.OntSubnet, resp.Port,
@@ -218,20 +217,6 @@ func (a *CpeAPI) guide(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, dataResponse[ConnReqGuideResponse]{Data: resp})
 		return
 	}
-	defer rows.Close()
-	if rows.Next() {
-		_ = rows.Scan(&routerID)
-	}
-	if routerID == "" {
-		resp.DiagnosticStatus = "Tidak ada router aktif di database"
-		resp.RecommendedCommand = fmt.Sprintf(
-			"/ip firewall filter add chain=forward action=accept protocol=tcp src-address=%s dst-address=%s dst-port=%d comment=\"GenieACS Server ke ONT\" place-before=0",
-			resp.AcsServerIP, resp.OntSubnet, resp.Port,
-		)
-		writeJSON(w, http.StatusOK, dataResponse[ConnReqGuideResponse]{Data: resp})
-		return
-	}
-
 	// 1. Baca NAT router untuk mendeteksi to-addresses noc-acs (IP server ACS sebenarnya)
 	natData, err := a.routers.Read(r.Context(), routerID, "/rest/ip/firewall/nat", url.Values{})
 	if err == nil {
@@ -243,6 +228,38 @@ func (a *CpeAPI) guide(w http.ResponseWriter, r *http.Request) {
 			if (strings.Contains(strings.ToLower(comment), "acs") || strings.Contains(strings.ToLower(comment), "tr069")) && toAddr != "" {
 				resp.AcsServerIP = toAddr
 				break
+			}
+		}
+	}
+	// 2. Baca IP pool dari router untuk mendeteksi subnet ONT pelanggan
+	poolData, err := a.routers.Read(r.Context(), routerID, "/rest/ip/pool", url.Values{})
+	if err == nil {
+		var pools []map[string]any
+		_ = json.Unmarshal(poolData, &pools)
+		for _, p := range pools {
+			name, _ := p["name"].(string)
+			ranges, _ := p["ranges"].(string)
+			if (strings.Contains(strings.ToLower(name), "pppoe") || strings.Contains(strings.ToLower(name), "bras") || strings.Contains(strings.ToLower(name), "cpe")) && ranges != "" {
+				resp.OntSubnet = ranges
+				break
+			}
+		}
+	}
+	if resp.OntSubnet == "<SUBNET_ONT_PPPOE>" {
+		addrData, err := a.routers.Read(r.Context(), routerID, "/rest/ip/address", url.Values{})
+		if err == nil {
+			var addrs []map[string]any
+			_ = json.Unmarshal(addrData, &addrs)
+			for _, ad := range addrs {
+				iface, _ := ad["interface"].(string)
+				netStr, _ := ad["network"].(string)
+				if strings.Contains(strings.ToLower(iface), "pppoe") && netStr != "" {
+					parts := strings.Split(netStr, ".")
+					if len(parts) == 4 {
+						resp.OntSubnet = fmt.Sprintf("%s.%s.%s.0/24", parts[0], parts[1], parts[2])
+						break
+					}
+				}
 			}
 		}
 	}

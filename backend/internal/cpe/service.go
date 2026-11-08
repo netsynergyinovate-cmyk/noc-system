@@ -226,6 +226,11 @@ func SanitizeSecrets(v any) any {
 			if strings.Contains(lower, "password") ||
 				strings.Contains(lower, "passphrase") ||
 				strings.Contains(lower, "presharedkey") ||
+				strings.Contains(lower, "wepkey") ||
+				strings.Contains(lower, "wpakey") ||
+				strings.Contains(lower, "psk") ||
+				strings.Contains(lower, "passwd") ||
+				strings.Contains(lower, "pwd") ||
 				strings.Contains(lower, "secret") {
 				continue
 			}
@@ -233,9 +238,11 @@ func SanitizeSecrets(v any) any {
 		}
 		return cleaned
 	case []any:
-		cleanedList := make([]any, len(val))
-		for i, item := range val {
-			cleanedList[i] = SanitizeSecrets(item)
+		cleanedList := make([]any, 0, len(val))
+		for _, item := range val {
+			if item != nil {
+				cleanedList = append(cleanedList, SanitizeSecrets(item))
+			}
 		}
 		return cleanedList
 	default:
@@ -259,10 +266,11 @@ func (s *Service) ListSanitizedDevices(ctx context.Context, query string) ([]map
 	if err != nil {
 		return nil, err
 	}
-	out := make([]map[string]any, len(rawList))
-	for i, d := range rawList {
-		cleaned, _ := SanitizeSecrets(d).(map[string]any)
-		out[i] = cleaned
+	out := make([]map[string]any, 0, len(rawList))
+	for _, d := range rawList {
+		if cleaned, ok := SanitizeSecrets(d).(map[string]any); ok && cleaned != nil {
+			out = append(out, cleaned)
+		}
 	}
 	return out, nil
 }

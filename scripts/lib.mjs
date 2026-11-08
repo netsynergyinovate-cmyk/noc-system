@@ -59,6 +59,8 @@ export async function prepareEnvironment(cwd = root) {
   // Rahasia bersama dengan backend Go untuk tiket login WebSocket dan REST.
   if (!process.env.REALTIME_TOKEN_SECRET)
     additions.REALTIME_TOKEN_SECRET = randomBytes(32).toString("hex");
+  if (!process.env.PPP_WEBHOOK_TOKEN)
+    additions.PPP_WEBHOOK_TOKEN = randomBytes(32).toString("hex");
   if (!process.env.DATABASE_URL) {
     const local = {
       POSTGRES_USER: process.env.POSTGRES_USER || "starter",

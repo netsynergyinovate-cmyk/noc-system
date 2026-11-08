@@ -102,5 +102,5 @@ function stop(code = 0) {
 process.on("SIGINT", () => stop(0));
 process.on("SIGTERM", () => stop(0));
 
-run("web", "npx next dev", { required: true });
+run("web", "npx next dev -p 3001", { required: true });
 run("backend", "node scripts/backend-dev.mjs", { required: false });

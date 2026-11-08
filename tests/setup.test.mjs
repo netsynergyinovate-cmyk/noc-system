@@ -18,6 +18,7 @@ function prepare(cwd, overrides = {}) {
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "REALTIME_TOKEN_SECRET",
+    "PPP_WEBHOOK_TOKEN",
     "DATABASE_URL",
     "MIGRATION_DATABASE_URL",
     "COMPOSE_PROJECT_NAME",
@@ -72,7 +73,7 @@ test("setup preserves an existing external database and credentials", () => {
     assert.ok(after.startsWith(content), "isi lama harus utuh");
     assert.match(
       after.slice(content.length),
-      /^\nREALTIME_TOKEN_SECRET="[a-f0-9]{64}"\n$/,
+      /^\nREALTIME_TOKEN_SECRET="[a-f0-9]{64}"\nPPP_WEBHOOK_TOKEN="[a-f0-9]{64}"\n$/,
     );
     prepare(cwd);
     assert.equal(readFileSync(resolve(cwd, ".env.local"), "utf8"), after);

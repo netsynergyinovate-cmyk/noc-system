@@ -5,11 +5,13 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type execCall struct {
@@ -119,5 +121,158 @@ func TestCloseStale(t *testing.T) {
 	}
 	if !strings.Contains(db.calls[0].sql, "updated_at < $2") {
 		t.Errorf("hanya yang tidak disentuh sejak boot: %s", db.calls[0].sql)
+	}
+}
+
+func TestSaveOLTAlarm(t *testing.T) {
+	// 1. Insert when no active alert
+	db := &recordingExec{rows: []int64{0}}
+	w := NewAlertWriter(db, persistLogger)
+	err := w.SaveOLTAlarm(context.Background(), OLTAlarmEvent{
+		OLTIP:    "10.0.0.10",
+		Type:     "fiber_cut",
+		Severity: "critical",
+		Status:   "active",
+		PonPort:  "0/1",
+		OnuID:    "3",
+		RawMsg:   "LOS alarm",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(db.calls) != 2 {
+		t.Fatalf("harus touch lalu insert, got %d calls", len(db.calls))
+	}
+	if !strings.Contains(db.calls[0].sql, "UPDATE alerts SET updated_at") {
+		t.Errorf("call 0 bukan touch: %s", db.calls[0].sql)
+	}
+	if !strings.Contains(db.calls[1].sql, "INSERT INTO alerts") {
+		t.Errorf("call 1 bukan insert: %s", db.calls[1].sql)
+	}
+	if db.calls[1].args[0] != "optical" {
+		t.Errorf("alert type harus optical, got %v", db.calls[1].args[0])
+	}
+
+	// 2. Touch when active alert already exists
+	dbTouch := &recordingExec{rows: []int64{1}}
+	wTouch := NewAlertWriter(dbTouch, persistLogger)
+	err = wTouch.SaveOLTAlarm(context.Background(), OLTAlarmEvent{
+		OLTIP:    "10.0.0.10",
+		Type:     "fiber_cut",
+		Severity: "critical",
+		Status:   "active",
+		PonPort:  "0/1",
+		OnuID:    "3",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dbTouch.calls) != 1 {
+		t.Fatalf("harus touch saja tanpa insert ulang, got %d calls", len(dbTouch.calls))
+	}
+
+	// 3. Resolve alert
+	dbResolve := &recordingExec{rows: []int64{1}}
+	wResolve := NewAlertWriter(dbResolve, persistLogger)
+	err = wResolve.SaveOLTAlarm(context.Background(), OLTAlarmEvent{
+		OLTIP:   "10.0.0.10",
+		Status:  "resolved",
+		PonPort: "0/1",
+		OnuID:   "3",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dbResolve.calls) != 1 || !strings.Contains(dbResolve.calls[0].sql, "status = 'resolved'") {
+		t.Fatalf("harus update resolve, calls=%+v", dbResolve.calls)
+	}
+}
+
+func TestSaveOLTAlarmPostgres(t *testing.T) {
+	url := os.Getenv("TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("TEST_DATABASE_URL tidak diatur; jalankan lewat npm test")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	w := NewAlertWriter(pool, persistLogger)
+	oltIP := "10.254.254.1"
+	pon := "0/1"
+	onu := "99"
+
+	// Bersihkan data uji sebelumnya jika ada
+	_, _ = pool.Exec(ctx, `DELETE FROM alerts WHERE detail->>'source' = 'syslog_olt' AND detail->>'olt_ip' = $1`, oltIP)
+	defer func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM alerts WHERE detail->>'source' = 'syslog_olt' AND detail->>'olt_ip' = $1`, oltIP)
+	}()
+
+	// 1. Sisip alarm LOS aktif
+	err = w.SaveOLTAlarm(ctx, OLTAlarmEvent{
+		OLTIP:    oltIP,
+		Type:     "fiber_cut",
+		Severity: "critical",
+		Status:   "active",
+		PonPort:  pon,
+		OnuID:    onu,
+		RawMsg:   "ONU 0/1:99 LOS",
+	})
+	if err != nil {
+		t.Fatalf("sisip pertama gagal: %v", err)
+	}
+
+	var count int
+	var status, severity string
+	err = pool.QueryRow(ctx, `SELECT count(*), status, severity FROM alerts
+		WHERE detail->>'source' = 'syslog_olt' AND detail->>'olt_ip' = $1 AND detail->>'pon' = $2 AND detail->>'onu' = $3
+		GROUP BY status, severity`, oltIP, pon, onu).Scan(&count, &status, &severity)
+	if err != nil || count != 1 || status != "active" || severity != "critical" {
+		t.Fatalf("setelah sisip: count=%d, status=%s, sev=%s, err=%v", count, status, severity, err)
+	}
+
+	// 2. Kirim ulang alarm LOS yang sama (harus touch tanpa menambah baris)
+	err = w.SaveOLTAlarm(ctx, OLTAlarmEvent{
+		OLTIP:    oltIP,
+		Type:     "fiber_cut",
+		Severity: "critical",
+		Status:   "active",
+		PonPort:  pon,
+		OnuID:    onu,
+		RawMsg:   "ONU 0/1:99 LOS repeat",
+	})
+	if err != nil {
+		t.Fatalf("touch ulang gagal: %v", err)
+	}
+
+	var totalRows int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM alerts
+		WHERE detail->>'source' = 'syslog_olt' AND detail->>'olt_ip' = $1 AND detail->>'pon' = $2 AND detail->>'onu' = $3`,
+		oltIP, pon, onu).Scan(&totalRows)
+	if err != nil || totalRows != 1 {
+		t.Fatalf("deduplikasi gagal: ada %d baris, harusnya 1", totalRows)
+	}
+
+	// 3. Pulihkan alarm (resolve)
+	err = w.SaveOLTAlarm(ctx, OLTAlarmEvent{
+		OLTIP:   oltIP,
+		Status:  "resolved",
+		PonPort: pon,
+		OnuID:   onu,
+	})
+	if err != nil {
+		t.Fatalf("resolve gagal: %v", err)
+	}
+
+	var resolvedStatus string
+	var endedAt *time.Time
+	err = pool.QueryRow(ctx, `SELECT status, ended_at FROM alerts
+		WHERE detail->>'source' = 'syslog_olt' AND detail->>'olt_ip' = $1 AND detail->>'pon' = $2 AND detail->>'onu' = $3`,
+		oltIP, pon, onu).Scan(&resolvedStatus, &endedAt)
+	if err != nil || resolvedStatus != "resolved" || endedAt == nil {
+		t.Fatalf("status setelah resolve salah: status=%s endedAt=%v err=%v", resolvedStatus, endedAt, err)
 	}
 }

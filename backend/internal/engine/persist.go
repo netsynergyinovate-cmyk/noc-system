@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -55,6 +56,89 @@ WHERE status = 'active' AND type = $1 AND router_id IS NOT DISTINCT FROM $2::uui
 const closeStaleSQL = `UPDATE alerts SET status = 'resolved', ended_at = $1, end_time_source = 'poll',
   end_time_uncertainty_seconds = 30, updated_at = now()
 WHERE status = 'active' AND updated_at < $2 AND ` + engineSource
+
+const touchActiveOLTSQL = `UPDATE alerts SET updated_at = now(), severity = $2
+WHERE status = 'active'
+  AND type = $1
+  AND detail->>'source' = 'syslog_olt'
+  AND detail->>'olt_ip' = $3
+  AND detail->>'pon' = $4
+  AND detail->>'onu' = $5`
+
+const insertActiveOLTSQL = `INSERT INTO alerts (
+  type, severity, status, title, started_at, detected_at, time_source, time_uncertainty_seconds, detail
+) VALUES (
+  $1, $2, 'active', $3, now(), now(), 'event', 0, $4::jsonb
+)`
+
+const resolveOLTSQL = `UPDATE alerts SET
+  status = 'resolved',
+  ended_at = now(),
+  end_time_source = 'event',
+  end_time_uncertainty_seconds = 0,
+  updated_at = now()
+WHERE status = 'active'
+  AND detail->>'source' = 'syslog_olt'
+  AND detail->>'olt_ip' = $1
+  AND detail->>'pon' = $2
+  AND detail->>'onu' = $3`
+
+// OLTAlarmEvent mewakili alarm dari OLT yang dikirim lewat syslog.
+type OLTAlarmEvent struct {
+	OLTID    string
+	OLTIP    string
+	Type     string
+	Severity string
+	Status   string
+	PonPort  string
+	OnuID    string
+	RawMsg   string
+}
+
+// SaveOLTAlarm menyimpan alarm OLT secara idempoten (touch-or-insert atau resolve).
+// router_id dibiarkan NULL karena ini alarm OLT (olt_id disimpan di dalam detail).
+func (w *AlertWriter) SaveOLTAlarm(ctx context.Context, alarm OLTAlarmEvent) error {
+	if alarm.Status == "resolved" {
+		_, err := w.db.Exec(ctx, resolveOLTSQL, alarm.OLTIP, alarm.PonPort, alarm.OnuID)
+		return err
+	}
+
+	alertType := "optical"
+	if alarm.Type == "power_outage" || alarm.Type == "onu_offline" {
+		alertType = "offline"
+	}
+
+	// 1. Touch alarm aktif yang sudah ada agar tidak menggandakan baris saat syslog mengirim ulang.
+	tag, err := w.db.Exec(ctx, touchActiveOLTSQL, alertType, alarm.Severity, alarm.OLTIP, alarm.PonPort, alarm.OnuID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+
+	// 2. Baris baru bila belum ada alarm aktif untuk OLT/PON/ONU ini.
+	title := fmt.Sprintf("Gangguan OLT %s: PON %s", alarm.Type, alarm.PonPort)
+	if alarm.OnuID != "" {
+		title += fmt.Sprintf(" ONU %s", alarm.OnuID)
+	}
+
+	detailBytes, err := json.Marshal(map[string]any{
+		"source":     "syslog_olt",
+		"olt_ip":     alarm.OLTIP,
+		"olt_id":     alarm.OLTID,
+		"pon":        alarm.PonPort,
+		"onu":        alarm.OnuID,
+		"alarm_type": alarm.Type,
+		"raw":        alarm.RawMsg,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = w.db.Exec(ctx, insertActiveOLTSQL, alertType, alarm.Severity, title, string(detailBytes))
+	return err
+}
 
 // AlertWriter menyimpan event rule engine ke tabel alerts, yang dibaca halaman
 // Alert dan Deteksi Anomali. Kegagalan hanya dicatat: event tetap sampai ke

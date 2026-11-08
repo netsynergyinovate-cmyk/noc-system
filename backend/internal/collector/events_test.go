@@ -335,6 +335,96 @@ func TestParseSyslog(t *testing.T) {
 	}
 }
 
+func TestParseOLTLog(t *testing.T) {
+	tests := []struct {
+		name     string
+		msg      string
+		wantType string
+		wantSev  string
+		wantStat string
+		wantPon  string
+		wantOnu  string
+		wantOk   bool
+	}{
+		{
+			name:   "Closed connection false positive",
+			msg:    "Connection closed on port 22",
+			wantOk: false,
+		},
+		{
+			name:   "Allocated memory false positive",
+			msg:    "Allocated 100 buffers on port 1",
+			wantOk: false,
+		},
+		{
+			name:     "HSGQ LOS colon format",
+			msg:      "<189>HSGQ-OLT: ONU 0/1:3 LOS alarm occurred",
+			wantType: "fiber_cut",
+			wantSev:  "critical",
+			wantStat: "active",
+			wantPon:  "0/1",
+			wantOnu:  "3",
+			wantOk:   true,
+		},
+		{
+			name:     "HSGQ Dying Gasp word format",
+			msg:      "<189>HSGQ-OLT: Dying Gasp alarm on PON 0/1 ONU 4",
+			wantType: "power_outage",
+			wantSev:  "warning",
+			wantStat: "active",
+			wantPon:  "0/1",
+			wantOnu:  "4",
+			wantOk:   true,
+		},
+		{
+			name:     "ONU Recovery Online",
+			msg:      "<189>HSGQ-OLT: ONU 0/1:3 online",
+			wantType: "recovery",
+			wantSev:  "info",
+			wantStat: "resolved",
+			wantPon:  "0/1",
+			wantOnu:  "3",
+			wantOk:   true,
+		},
+		{
+			name:     "Link Down PON only",
+			msg:      "<189>HSGQ-OLT: Link Down on port 0/2",
+			wantType: "fiber_cut",
+			wantSev:  "critical",
+			wantStat: "active",
+			wantPon:  "0/2",
+			wantOnu:  "",
+			wantOk:   true,
+		},
+		{
+			name:     "ONU deregistered",
+			msg:      "<189>HSGQ-OLT: ONU 0/1:5 deregistered",
+			wantType: "onu_offline",
+			wantSev:  "warning",
+			wantStat: "active",
+			wantPon:  "0/1",
+			wantOnu:  "5",
+			wantOk:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := ParseOLTLog(tt.msg, "10.0.0.10")
+			if ok != tt.wantOk {
+				t.Fatalf("ParseOLTLog() ok = %v, want %v", ok, tt.wantOk)
+			}
+			if !tt.wantOk {
+				return
+			}
+			if got.Type != tt.wantType || got.Severity != tt.wantSev || got.Status != tt.wantStat || got.PonPort != tt.wantPon || got.OnuID != tt.wantOnu {
+				t.Errorf("ParseOLTLog() = %+v; want type=%s sev=%s stat=%s pon=%s onu=%s",
+					got, tt.wantType, tt.wantSev, tt.wantStat, tt.wantPon, tt.wantOnu)
+			}
+		})
+	}
+}
+
 func TestRouterAddr(t *testing.T) {
 	good := map[string]string{
 		"10.0.0.1":              "10.0.0.1",

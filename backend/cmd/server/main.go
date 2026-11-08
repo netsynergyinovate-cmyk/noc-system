@@ -281,6 +281,70 @@ func run() error {
 			return err
 		}
 		syslog.SetSources(cfg.SyslogSources)
+		if pool != nil {
+			// Muat host OLT aktif agar SyslogListener mengenali paket alarm dari OLT.
+			if oltRows, err := pool.Query(ctx, `SELECT id::text, host FROM olts WHERE status = 'aktif'`); err == nil {
+				oltMap := make(map[netip.Addr]string)
+				for oltRows.Next() {
+					var id, host string
+					if err := oltRows.Scan(&id, &host); err == nil {
+						if addr, ok := collector.RouterAddr(host); ok {
+							oltMap[addr] = id
+						}
+					}
+				}
+				oltRows.Close()
+				if len(oltMap) > 0 {
+					syslog.SetOLTSources(oltMap)
+					logger.Info("sumber syslog OLT dimuat", "jumlah", len(oltMap))
+				}
+			}
+		}
+
+		syslog.SetOLTAlarm(func(alarm collector.OLTAlarmEvent) {
+			if alertWriter != nil {
+				saveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				err := alertWriter.SaveOLTAlarm(saveCtx, engine.OLTAlarmEvent{
+					OLTID:    alarm.OLTID,
+					OLTIP:    alarm.OLTIP,
+					Type:     alarm.Type,
+					Severity: alarm.Severity,
+					Status:   alarm.Status,
+					PonPort:  alarm.PonPort,
+					OnuID:    alarm.OnuID,
+					RawMsg:   alarm.RawMsg,
+				})
+				cancel()
+				if err != nil {
+					logger.Warn("gagal menyimpan alarm OLT ke alerts", "error", err, "olt", alarm.OLTIP, "type", alarm.Type)
+					return
+				}
+			}
+
+			// Simpan berhasil (atau alertWriter nil): publikasikan ke WebSocket hub.
+			alertType := "optical"
+			if alarm.Type == "power_outage" || alarm.Type == "onu_offline" {
+				alertType = "offline"
+			}
+			now := time.Now()
+			wireEvt := wire.Event{
+				ID:        fmt.Sprintf("olt-%s-%s-%s", alarm.OLTIP, alarm.PonPort, alarm.OnuID),
+				Kind:      alertType,
+				Severity:  alarm.Severity,
+				Active:    alarm.Status == "active",
+				Time:      now.Unix(),
+				StartedAt: now.Unix(),
+				Detail: map[string]any{
+					"source":     "syslog_olt",
+					"olt_ip":     alarm.OLTIP,
+					"olt_id":     alarm.OLTID,
+					"pon":        alarm.PonPort,
+					"onu":        alarm.OnuID,
+					"alarm_type": alarm.Type,
+				},
+			}
+			publishEvents([]wire.Event{wireEvt})
+		})
 		if syslogDB != nil {
 			// Semua baris dari router dikenal disimpan untuk diagnosa pelanggan
 			// (buffer memori router hanya belasan menit).

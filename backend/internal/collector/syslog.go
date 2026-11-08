@@ -35,6 +35,107 @@ var (
 	pppTopic   = regexp.MustCompile(`(?:^|[\s:])(?:[\w-]+,)*ppp(?:,[\w-]+)*(?:[\s:]|$)`)
 	loggedLine = regexp.MustCompile(`(\S+) logged (in|out)\b`)
 )
+var (
+	// oltLosPattern mendeteksi alarm kabel putus (LOS / Loss of Signal / Link Down).
+	// \b mencegah kecocokan parsial seperti "closed" atau "allocated".
+	oltLosPattern = regexp.MustCompile(`(?i)\b(?:LOS|Loss of Signal|Link Down)\b`)
+
+	// oltDyingGaspPattern mendeteksi alarm mati listrik pelanggan (Dying Gasp / Power Down / Power Off).
+	oltDyingGaspPattern = regexp.MustCompile(`(?i)\b(?:Dying Gasp|Power Down|Power Off)\b`)
+
+	// Pola pencarian PON dan ONU
+	ponOnuColonPattern = regexp.MustCompile(`(?i)\b(?:pon|port|onu|epon|gpon)?\s*(\d+/\d+):(\d+)\b`)
+	ponOnuWordPattern  = regexp.MustCompile(`(?i)\b(?:pon|port)\s*(\d+/\d+|\d+)\b.*?\b(?:onu|ont)\s*(\d+)\b`)
+	ponOnlyPattern     = regexp.MustCompile(`(?i)\b(?:pon|port)\s*(\d+/\d+|\d+)\b`)
+
+	// Pola status ONU pemulihan vs offline
+	statusRecoverPattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(online|registered?)\b`)
+	statusOfflinePattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(offline|deregistered?)\b`)
+)
+
+// OLTAlarmEvent mewakili alarm perangkat keras atau perubahan status ONU dari OLT.
+type OLTAlarmEvent struct {
+	OLTID    string
+	OLTIP    string
+	Type     string // "fiber_cut", "power_outage", "onu_offline", "recovery"
+	Severity string // "critical", "warning", "info"
+	Status   string // "active", "resolved"
+	PonPort  string
+	OnuID    string
+	RawMsg   string
+}
+
+func extractPonOnu(msg string) (string, string) {
+	if m := ponOnuColonPattern.FindStringSubmatch(msg); len(m) > 2 {
+		return m[1], m[2]
+	}
+	if m := ponOnuWordPattern.FindStringSubmatch(msg); len(m) > 2 {
+		return m[1], m[2]
+	}
+	if m := ponOnlyPattern.FindStringSubmatch(msg); len(m) > 1 {
+		return m[1], ""
+	}
+	return "", ""
+}
+
+// ParseOLTLog memeriksa apakah pesan log adalah alarm atau status ONU dari OLT.
+func ParseOLTLog(msg string, remoteIP string) (*OLTAlarmEvent, bool) {
+	pon, onu := extractPonOnu(msg)
+	if pon == "" {
+		return nil, false
+	}
+
+	if statusRecoverPattern.MatchString(msg) {
+		return &OLTAlarmEvent{
+			OLTIP:    remoteIP,
+			Type:     "recovery",
+			Severity: "info",
+			Status:   "resolved",
+			PonPort:  pon,
+			OnuID:    onu,
+			RawMsg:   msg,
+		}, true
+	}
+
+	if oltLosPattern.MatchString(msg) {
+		return &OLTAlarmEvent{
+			OLTIP:    remoteIP,
+			Type:     "fiber_cut",
+			Severity: "critical",
+			Status:   "active",
+			PonPort:  pon,
+			OnuID:    onu,
+			RawMsg:   msg,
+		}, true
+	}
+
+	if oltDyingGaspPattern.MatchString(msg) {
+		return &OLTAlarmEvent{
+			OLTIP:    remoteIP,
+			Type:     "power_outage",
+			Severity: "warning",
+			Status:   "active",
+			PonPort:  pon,
+			OnuID:    onu,
+			RawMsg:   msg,
+		}, true
+	}
+
+	if statusOfflinePattern.MatchString(msg) {
+		return &OLTAlarmEvent{
+			OLTIP:    remoteIP,
+			Type:     "onu_offline",
+			Severity: "warning",
+			Status:   "active",
+			PonPort:  pon,
+			OnuID:    onu,
+			RawMsg:   msg,
+		}, true
+	}
+
+	return nil, false
+}
+
 
 // ParseSyslog mengambil kejadian sesi PPP dari satu pesan syslog. Mengembalikan
 // false untuk pesan lain; hampir semua baris log router memang bukan kejadian
@@ -64,6 +165,7 @@ type SyslogStats struct {
 	NotPPPEvent   uint64 // bukan kejadian sesi PPP
 	Rejected      uint64 // pelanggan tidak dikenal atau milik router lain
 	Applied       uint64 // diterapkan ke state (termasuk yang tidak mengubah status)
+	OLTNonAlarm   uint64 // pesan dari OLT tetapi bukan alarm
 }
 
 // SyslogListener menerima syslog UDP dari router dan mengubahnya menjadi status
@@ -87,10 +189,15 @@ type SyslogListener struct {
 	// sources: alamat pengirim tambahan -> id router (SYSLOG_SOURCE_MAP), untuk
 	// router yang mengirim log lewat alamat lain (mis. WireGuard) dari Host-nya.
 	sources map[netip.Addr]string
+	// oltSources: alamat IP OLT -> id OLT untuk alarm hardware OLT.
+	oltSources map[netip.Addr]string
 	// store menerima setiap baris dari router dikenal (bukan hanya PPP).
 	store func(SyslogLine)
+	// oltAlarms antrean non-blocking untuk memproses alarm OLT di luar pembacaan soket UDP.
+	oltAlarms chan OLTAlarmEvent
+	oltHandler func(OLTAlarmEvent)
 
-	received, unknownSource, notPPP, rejected, applied atomic.Uint64
+	received, unknownSource, notPPP, rejected, applied, oltNonAlarm atomic.Uint64
 }
 
 // ListenSyslog membuka soket UDP lebih dulu supaya alamat yang salah atau sudah
@@ -104,7 +211,10 @@ func ListenSyslog(addr string, presence Presence, notify func(state.Change), log
 	if err != nil {
 		return nil, fmt.Errorf("buka syslog UDP %s: %w", addr, err)
 	}
-	return &SyslogListener{conn: conn, presence: presence, notify: notify, logger: logger}, nil
+	return &SyslogListener{
+		conn: conn, presence: presence, notify: notify, logger: logger,
+		oltAlarms: make(chan OLTAlarmEvent, 256),
+	}, nil
 }
 
 // SetSources menambah pemetaan alamat pengirim -> id router. Panggil sebelum Serve.
@@ -112,6 +222,18 @@ func (l *SyslogListener) SetSources(m map[netip.Addr]string) { l.sources = m }
 
 // SetStore memasang penyimpan baris log. Panggil sebelum Serve.
 func (l *SyslogListener) SetStore(fn func(SyslogLine)) { l.store = fn }
+
+// SetOLTSources menyetel pemetaan IP pengirim OLT ke ID OLT. Panggil sebelum Serve.
+func (l *SyslogListener) SetOLTSources(m map[netip.Addr]string) {
+	l.cacheMu.Lock()
+	defer l.cacheMu.Unlock()
+	l.oltSources = m
+}
+
+// SetOLTAlarm memasang callback untuk menangani alarm OLT di goroutine worker.
+func (l *SyslogListener) SetOLTAlarm(fn func(OLTAlarmEvent)) {
+	l.oltHandler = fn
+}
 
 // Addr adalah alamat yang sedang didengarkan.
 func (l *SyslogListener) Addr() net.Addr { return l.conn.LocalAddr() }
@@ -124,6 +246,7 @@ func (l *SyslogListener) Stats() SyslogStats {
 		NotPPPEvent:   l.notPPP.Load(),
 		Rejected:      l.rejected.Load(),
 		Applied:       l.applied.Load(),
+		OLTNonAlarm:   l.oltNonAlarm.Load(),
 	}
 }
 
@@ -139,6 +262,22 @@ func (l *SyslogListener) Serve(ctx context.Context) error {
 		case <-stopped:
 		}
 	}()
+
+	if l.oltHandler != nil {
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case alarm, ok := <-l.oltAlarms:
+					if !ok {
+						return
+					}
+					l.oltHandler(alarm)
+				}
+			}
+		}()
+	}
 
 	buf := make([]byte, maxSyslogPacket+1)
 	for {
@@ -158,6 +297,23 @@ func (l *SyslogListener) Serve(ctx context.Context) error {
 
 func (l *SyslogListener) handle(from net.Addr, message string) {
 	l.received.Add(1)
+
+	if oltID, source, ok := l.oltFor(from); ok {
+		if alarm, ok := ParseOLTLog(message, source.String()); ok {
+			alarm.OLTID = oltID
+			select {
+			case l.oltAlarms <- *alarm:
+				l.applied.Add(1)
+			default:
+				l.logger.Warn("antrean alarm OLT penuh, paket dilepas", "olt", source.String())
+			}
+			return
+		}
+		// Pesan OLT non-alarm tidak dikirim ke store (karena syslog_events.router_id
+		// merujuk ke tabel routers dan akan melanggar FK batch unnest).
+		l.oltNonAlarm.Add(1)
+		return
+	}
 
 	routerID, ok := l.routerFor(from)
 	if !ok {
@@ -192,6 +348,22 @@ func rejectReason(r applyResult) string {
 	}
 	return "pelanggan tidak dikenal"
 }
+
+func (l *SyslogListener) oltFor(from net.Addr) (string, netip.Addr, bool) {
+	udp, ok := from.(*net.UDPAddr)
+	if !ok {
+		return "", netip.Addr{}, false
+	}
+	source := udp.AddrPort().Addr().Unmap()
+	l.cacheMu.Lock()
+	defer l.cacheMu.Unlock()
+	if l.oltSources == nil {
+		return "", source, false
+	}
+	id, ok := l.oltSources[source]
+	return id, source, ok
+}
+
 
 // routerFor mencari router dari alamat IP pengirim.
 func (l *SyslogListener) routerFor(from net.Addr) (string, bool) {

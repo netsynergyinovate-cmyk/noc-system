@@ -52,9 +52,6 @@ export function handleRealtimeMessage(
   ) {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
-      window.dispatchEvent(
-        new CustomEvent("noc:anomaly-event", { detail: msg.payload ?? msg }),
-      );
     }
     return true;
   }

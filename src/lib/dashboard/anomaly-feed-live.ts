@@ -89,6 +89,12 @@ export type AnomalyListener = (payload: unknown) => void;
 export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
   if (typeof window === "undefined") return () => {};
 
+  let timer: NodeJS.Timeout | number | undefined;
+  const trigger = (payload: unknown) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => onNewAnomaly(payload), 150);
+  };
+
   const wsUrl = process.env.NEXT_PUBLIC_GO_WS_URL || "ws://localhost:8080/ws";
   let socket: WebSocket | null = null;
   try {
@@ -96,8 +102,8 @@ export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(String(event.data));
-        if (data.type === "anomaly_event" || data.event === "anomaly") {
-          onNewAnomaly(data.payload);
+        if (data.type === "anomaly_event" || data.event === "anomaly" || data.type === "events") {
+          trigger(data.payload ?? data);
         }
       } catch {}
     };
@@ -105,16 +111,15 @@ export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
   } catch {}
 
   const onSignal = (event: Event) => {
-    onNewAnomaly((event as CustomEvent).detail ?? null);
+    trigger((event as CustomEvent).detail ?? null);
   };
   window.addEventListener(ALERT_EVENTS_SIGNAL, onSignal);
-  window.addEventListener("noc:anomaly-event", onSignal);
 
   return () => {
+    clearTimeout(timer);
     try {
       socket?.close();
     } catch {}
     window.removeEventListener(ALERT_EVENTS_SIGNAL, onSignal);
-    window.removeEventListener("noc:anomaly-event", onSignal);
   };
 }

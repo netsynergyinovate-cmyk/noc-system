@@ -11,7 +11,19 @@
 
 const daily = Date.now(86400000);
 const username = declare("DeviceID.ID", { value: 1 }).value[0];
-const password = Math.trunc(Math.random() * Number.MAX_SAFE_INTEGER).toString(36);
+// Sandi deterministik berbasis ID perangkat (konsisten di setiap sesi inform, anti HTTP 401)
+let seed = 7;
+const strId = String(username);
+for (let i = 0; i < strId.length; i++) {
+  seed = (seed * 31 + strId.charCodeAt(i)) >>> 0;
+}
+const salt = "noc_system_v1";
+for (let i = 0; i < salt.length; i++) {
+  seed = (seed * 31 + salt.charCodeAt(i)) >>> 0;
+}
+const num = (seed * 1664525 + 1013904223) >>> 0;
+const num2 = (num * 1664525 + 1013904223) >>> 0;
+const password = num.toString(36) + num2.toString(36);
 
 // Hanya root yang dipakai modem ini (TR-098 atau TR-181); menulis ke path yang tidak ada
 // membuat modem menjawab fault.

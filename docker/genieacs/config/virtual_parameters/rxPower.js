@@ -29,6 +29,20 @@ if (dbm === null) {
     if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
   }
 }
+if (dbm === null) {
+  for (const p of declare("Device.Optical.Interface.*.OpticalSignalLevel", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw)) {
+      if (raw < -100) {
+        dbm = raw / 100;
+      } else if (raw < 0) {
+        dbm = raw;
+      } else if (raw > 0) {
+        dbm = raw > 1000 ? 10 * Math.log10(raw * 0.0001) : raw * 0.001;
+      }
+    }
+  }
+}
 // GenieACS hanya menerima xsd:int/unsignedInt/boolean/string/dateTime untuk virtual
 // parameter (tanpa double), jadi desimal ditulis sebagai teks dua angka di belakang koma.
 return {writable: false, value: [dbm === null ? "" : String(Math.round(dbm * 100) / 100), "xsd:string"]};

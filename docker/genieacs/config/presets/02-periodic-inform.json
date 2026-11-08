@@ -1,0 +1,9 @@
+{
+  "weight": 10,
+  "channel": "noc-vital",
+  "events": {},
+  "precondition": "",
+  "configurations": [
+    { "type": "provision", "name": "noc-vital-refresh", "args": null }
+  ]
+}

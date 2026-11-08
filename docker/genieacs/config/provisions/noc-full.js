@@ -42,35 +42,5 @@ for (const root of ["InternetGatewayDevice", "Device"]) {
   }
 }
 
-// Yang cepat berubah dan dipakai NOC: diambil real-time pada setiap sesi inform modem.
-// Tanpa jeda pembatasan jam, supaya perangkat terhubung saat itu dan redaman selalu mutakhir.
-const realtimePaths = [
-  // Perangkat yang terhubung ke modem (host kabel dan asosiasi Wi-Fi saat ini).
-  "InternetGatewayDevice.LANDevice.*.Hosts.Host.*.*",
-  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.AssociatedDevice.*.*",
-  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.TotalAssociations",
-  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID",
-  "Device.Hosts.Host.*.*",
-  "Device.WiFi.AccessPoint.*.AssociatedDevice.*.*",
-  // Optik dan redaman modem (sumber kolom RX/TX/Temp di halaman Devices).
-  "InternetGatewayDevice.X_ALU_OntOpticalParam.*",
-  "InternetGatewayDevice.DeviceInfo.XponInterface.*",
-  "InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.*",
-  "InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.*",
-  "InternetGatewayDevice.DeviceInfo.UpTime",
-  "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage",
-  "InternetGatewayDevice.DeviceInfo.MemoryStatus.*",
-  "InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.*.*",
-  // Alamat WAN (berubah saat PPPoE tersambung ulang).
-  "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.ExternalIPAddress",
-  "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress",
-  // Status lapor TR-069 itu sendiri.
-  "InternetGatewayDevice.ManagementServer.*",
-];
-for (const p of realtimePaths) {
-  declare(p, { path: now, value: now });
-}
-
-// Virtual parameter (PON, ID PPPoE, SSID, Active, RX, Temp, Uptime, IP, SN, MAC)
-// dihitung dan DISIMPAN seketika setelah data di atas dibaca secara real-time.
-declare("VirtualParameters.*", { value: now });
+// Virtual parameter dihitung dengan jendela harian untuk full tree
+declare("VirtualParameters.*", { value: daily });

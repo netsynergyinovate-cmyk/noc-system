@@ -10,6 +10,12 @@ for (const p of declare("InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*
   if (v && v !== "0.0.0.0") { ip = String(v); break; }
 }
 if (!ip) {
+  for (const p of declare("Device.PPP.Interface.*.IPCP.LocalIPAddress", {value: 1})) {
+    const v = p.value && p.value[0];
+    if (v && v !== "0.0.0.0") { ip = String(v); break; }
+  }
+}
+if (!ip) {
   for (const p of declare("InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress", {value: 1})) {
     const v = p.value && p.value[0];
     if (v && v !== "0.0.0.0") { ip = String(v); break; }

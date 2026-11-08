@@ -271,4 +271,18 @@ export async function changeDeviceWifi(
   };
 }
 
+/**
+ * Melakukan reboot remote pada satu modem lewat RPC reboot TR-069 seketika (Zero Delay).
+ */
+export async function rebootCpe(
+  id: string,
+  client = new GenieAcsClient(),
+): Promise<boolean> {
+  for (const candidate of deviceIdCandidates(id)) {
+    const res = await client.postTask(candidate, { name: "reboot" }, true, 5000);
+    if (res.ok) return true;
+  }
+  return false;
+}
+
 export { WifiChangeError };

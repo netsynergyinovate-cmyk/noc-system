@@ -220,6 +220,19 @@ function firstWanIp(raw: Raw): string {
       if (ip && !ip.startsWith("127.") && !ip.startsWith("192.168.")) return ip;
     }
   }
+  for (const i of indexes(raw, "Device.PPP.Interface")) {
+    const ip = str(read(raw, `Device.PPP.Interface.${i}.IPCP.LocalIPAddress`));
+    if (ip && ip !== "0.0.0.0") return ip;
+  }
+  const vPppoe = str(read(raw, "VirtualParameters.ipPppoe"));
+  if (vPppoe && vPppoe !== "0.0.0.0") return vPppoe;
+  const vTr069 = str(read(raw, "VirtualParameters.ipTr069"));
+  if (vTr069 && vTr069 !== "0.0.0.0") return vTr069;
+  const crUrl = str(readAny(raw, "ManagementServer.ConnectionRequestURL"));
+  if (crUrl) {
+    const m = /^https?:\/\/([^:\/]+)/i.exec(crUrl);
+    if (m && m[1] && m[1] !== "0.0.0.0") return m[1];
+  }
   return "";
 }
 
@@ -309,6 +322,32 @@ function parseOptical(raw: Raw): CpeOptical {
       biasMa: bias === null ? null : round2(bias / 1000),
       voltageV: volt === null ? null : round2(volt / 10000),
       temperatureC: temp === null || temp === 0 ? null : round2(temp / 256),
+    };
+  }
+  for (const root of ROOTS) {
+    const p = `${root}.WANDevice.1.X_CT-COM_GponInterfaceConfig`;
+    const rx = dbmFromTenthsOfMicrowatt(read(raw, `${p}.RXPower`));
+    if (rx === null) continue;
+    const temp = num(read(raw, `${p}.TransceiverTemperature`));
+    const bias = num(read(raw, `${p}.BiasCurrent`));
+    const volt = num(read(raw, `${p}.SupplyVottage`));
+    return {
+      rxDbm: rx,
+      txDbm: dbmFromTenthsOfMicrowatt(read(raw, `${p}.TXPower`)),
+      biasMa: bias === null ? null : round2(bias / 1000),
+      voltageV: volt === null ? null : round2(volt / 10000),
+      temperatureC: temp === null || temp === 0 ? null : round2(temp / 256),
+    };
+  }
+  for (const root of ROOTS) {
+    const p = `${root}.Optical.Interface.1`;
+    const rawSignal = num(read(raw, `${p}.OpticalSignalLevel`));
+    if (rawSignal === null) continue;
+    const rx = rawSignal < -100 ? round2(rawSignal / 100) : rawSignal < 0 ? rawSignal : round2(rawSignal * 0.001);
+    return {
+      ...empty,
+      rxDbm: rx,
+      txDbm: numWithUnit(read(raw, `${p}.TransmitOpticalLevel`)),
     };
   }
   return empty;

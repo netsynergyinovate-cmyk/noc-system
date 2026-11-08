@@ -76,12 +76,12 @@ test("jendela: dalam sehari yang sama nilainya tetap (tidak mengambil ulang), ha
   assert.ok(at(t + 2 * 86_400_000) > at(t));
 });
 
-test("data cepat berubah diambil real-time dan tidak membaca kata sandi", () => {
+test("noc-full murni daily crawl tanpa spam per-inform", () => {
   const calls = run();
-  const host = calls.find((x) => x.path === "InternetGatewayDevice.LANDevice.*.Hosts.Host.*.*");
-  assert.ok(host);
-  assert.equal(host.ts.value, 1_760_000_000_000);
-  for (const c of calls) assert.doesNotMatch(c.path, /(Password|KeyPassphrase|PreSharedKey)/i);
+  for (const c of calls) {
+    assert.equal(c.ts.value % 86400000, 0, `harus jendela harian: ${c.path}`);
+    assert.doesNotMatch(c.path, /(Password|KeyPassphrase|PreSharedKey)/i);
+  }
 });
 
 test("preset noc-full menunjuk provision yang ada dan berlaku di setiap sesi", () => {
@@ -91,10 +91,10 @@ test("preset noc-full menunjuk provision yang ada dan berlaku di setiap sesi", (
   assert.equal(preset.precondition, "");
 });
 
-test("virtual parameter dihitung dan disimpan seketika secara real-time, SESUDAH pembacaan data", () => {
+test("virtual parameter dihitung pada akhir full tree crawl", () => {
   const calls = run();
   const i = calls.findIndex((c) => c.path === "VirtualParameters.*");
   assert.ok(i > 0, "provision harus meminta VirtualParameters.*");
   assert.equal(i, calls.length - 1, "harus yang terakhir, supaya data sumbernya sudah dibaca");
-  assert.equal(calls[i].ts.value, 1_760_000_000_000);
+  assert.equal(calls[i].ts.value % 86400000, 0);
 });

@@ -179,15 +179,15 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
       // Real mode: dorong ke GenieACS tasks
       let postRes: { ok: boolean; error?: string } = { ok: false };
       if (input.action === "reboot_device") {
-        postRes = await client.postTask(deviceId, { name: "reboot" });
+        postRes = await client.postTask(deviceId, { name: "reboot" }, true, 5000);
       } else if (input.action === "factory_reset") {
-        postRes = await client.postTask(deviceId, { name: "factoryReset" });
+        postRes = await client.postTask(deviceId, { name: "factoryReset" }, true, 5000);
       } else {
         // Diagnostic task TR-069
         postRes = await client.postTask(deviceId, {
           name: "setParameterValues",
           parameterValues: Object.entries(input.parameters).map(([k, v]) => [k, String(v), "xsd:string"]),
-        });
+        }, true, 5000);
       }
 
       ok = postRes.ok;

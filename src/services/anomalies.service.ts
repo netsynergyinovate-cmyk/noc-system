@@ -1,20 +1,17 @@
 import "server-only";
-import { and, desc, eq, gte, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, lte, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
   alerts,
   customers as customersTable,
   networkLogs,
   routers as routersTable,
-  type NetworkLog,
   type NetworkLogSeverity,
-  type NetworkLogType,
 } from "@/db/schema";
 import { ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
 import {
   anomalyRules,
-  sortAnomalies,
   type Anomaly,
   type AnomalyRule,
 } from "@/lib/dashboard/anomalies";

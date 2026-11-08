@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CircleCheck,
   CircleDot,
@@ -147,15 +147,12 @@ function useAnomalies(range: AnomalyRange) {
       now: state.now,
     };
   }, [state, range]);
-  const retryRef = useRef(retry);
-  retryRef.current = retry;
-
   useEffect(() => {
     if (isDemo) return;
     return subscribeAnomalyWs(() => {
-      retryRef.current();
+      retry();
     });
-  }, [isDemo]);
+  }, [isDemo, retry]);
 
   return { loaded, failed, retry };
 }

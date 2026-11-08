@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export interface Polled<T> {
   data: T;
@@ -44,5 +44,7 @@ export function usePolled<T>(
     };
   }, [load, intervalMs, attempt]);
 
-  return { state, failed, retry: () => setAttempt((value) => value + 1) };
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  return { state, failed, retry };
 }

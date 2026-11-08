@@ -99,9 +99,29 @@ export async function loadLiveAnomalies(
 
 export type AnomalyListener = (payload: unknown) => void;
 
+function getAnomalyWsUrl(): string {
+  if (typeof window === "undefined") {
+    return process.env.NEXT_PUBLIC_GO_WS_URL || "ws://localhost:8080/ws";
+  }
+
+  const isHttps = window.location.protocol === "https:";
+  const envUrl = process.env.NEXT_PUBLIC_GO_WS_URL;
+  if (envUrl) {
+    return isHttps ? envUrl.replace(/^ws:\/\//i, "wss://") : envUrl;
+  }
+
+  const protocol = isHttps ? "wss:" : "ws:";
+  const host =
+    process.env.NEXT_PUBLIC_GO_WS_HOST ||
+    (window.location.hostname
+      ? `${window.location.hostname}:8080`
+      : "localhost:8080");
+  return `${protocol}//${host}/ws`;
+}
+
 /**
- * Membuka koneksi WebSocket ke Go backend (ws://localhost:8080/ws) agar saat Go
- * mendeteksi anomali, UI langsung menerima event secara instan.
+ * Membuka koneksi WebSocket ke Go backend agar saat Go mendeteksi anomali,
+ * UI langsung menerima event secara instan dengan auto-reconnect.
  */
 export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
   if (typeof window === "undefined") return () => {};
@@ -112,24 +132,46 @@ export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
     timer = setTimeout(() => onNewAnomaly(payload), 150);
   };
 
-  const wsUrl = process.env.NEXT_PUBLIC_GO_WS_URL || "ws://localhost:8080/ws";
   let socket: WebSocket | null = null;
-  try {
-    socket = new WebSocket(wsUrl);
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(String(event.data));
-        if (
-          data.type === "anomaly_event" ||
-          data.event === "anomaly" ||
-          data.type === "events"
-        ) {
-          trigger(data.payload ?? data);
+  let reconnectTimer: NodeJS.Timeout | number | undefined;
+  let isClosed = false;
+
+  const connect = () => {
+    if (isClosed) return;
+    try {
+      const url = getAnomalyWsUrl();
+      socket = new WebSocket(url);
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(String(event.data));
+          if (
+            data.type === "anomaly_event" ||
+            data.event === "anomaly" ||
+            data.type === "events"
+          ) {
+            trigger(data.payload ?? data);
+          }
+        } catch {}
+      };
+
+      socket.onerror = () => {};
+
+      socket.onclose = () => {
+        if (!isClosed) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(connect, 3000);
         }
-      } catch {}
-    };
-    socket.onerror = () => {};
-  } catch {}
+      };
+    } catch {
+      if (!isClosed) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, 3000);
+      }
+    }
+  };
+
+  connect();
 
   const onSignal = (event: Event) => {
     trigger((event as CustomEvent).detail ?? null);
@@ -137,7 +179,9 @@ export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
   window.addEventListener(ALERT_EVENTS_SIGNAL, onSignal);
 
   return () => {
+    isClosed = true;
     clearTimeout(timer);
+    clearTimeout(reconnectTimer);
     try {
       socket?.close();
     } catch {}

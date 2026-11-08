@@ -13,9 +13,9 @@ import { db } from "@/db";
 import {
   alerts,
   customers as customersTable,
-  networkLogs,
   routers as routersTable,
-  type NetworkLogSeverity,
+  type AlertSeverity,
+  type AlertStatus,
 } from "@/db/schema";
 import { ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
@@ -210,15 +210,13 @@ export async function getAnomaliesList(
     .limit(query.limit)
     .offset(query.offset);
   if (rows.length === 0) {
-    // Jika di DB belum ada data nyata, fallback ke mock
-    const mockList = await loadAnomalies();
     return {
-      anomalies: mockList.slice(query.offset, query.offset + query.limit),
-      total: mockList.length,
-      activeCount: mockList.filter((a) => a.endedAt === null).length,
-      resolvedCount: mockList.filter((a) => a.endedAt !== null).length,
+      anomalies: [],
+      total: 0,
+      activeCount: 0,
+      resolvedCount: 0,
       rules: anomalyRules,
-      sourceStatus: "dummy",
+      sourceStatus: "nyata",
     };
   }
 
@@ -246,12 +244,13 @@ export async function createAnomaly(
   input: CreateAnomalyInput,
 ): Promise<AnomalyItem> {
   const [created] = await db
-    .insert(networkLogs)
+    .insert(alerts)
     .values({
       routerId: input.routerId,
       customerId: input.customerId ?? null,
       type: input.type,
       severity: input.severity,
+      status: input.endedAt ? "resolved" : "active",
       startedAt: input.startedAt ?? new Date(),
       endedAt: input.endedAt ?? null,
       detail: {
@@ -281,9 +280,14 @@ export async function resolveAnomaly(
   endedAt = new Date(),
 ): Promise<AnomalyItem | null> {
   const [updated] = await db
-    .update(networkLogs)
-    .set({ endedAt })
-    .where(eq(networkLogs.id, id))
+    .update(alerts)
+    .set({
+      endedAt,
+      status: "resolved",
+      endTimeSource: "operator",
+      updatedAt: new Date(),
+    })
+    .where(eq(alerts.id, id))
     .returning();
 
   if (!updated) return null;
@@ -395,11 +399,9 @@ export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
           sourceStatus: "nyata",
         };
       }
-    } catch {
-      // Fallback ke mock bila database tidak terjangkau
-    }
+    } catch {}
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
   }
-
   // Fallback ke mock data
   const mockList = await loadAnomalies();
   const found = mockList.find((a) => a.id === id);
@@ -430,8 +432,8 @@ export async function updateAnomalyStatus(
     try {
       const [existing] = await db
         .select()
-        .from(networkLogs)
-        .where(eq(networkLogs.id, id))
+        .from(alerts)
+        .where(eq(alerts.id, id))
         .limit(1);
 
       if (existing) {
@@ -458,32 +460,35 @@ export async function updateAnomalyStatus(
 
         const setValues: {
           endedAt?: Date | null;
-          severity?: NetworkLogSeverity;
+          status?: AlertStatus;
+          severity?: AlertSeverity;
           detail?: Record<string, unknown>;
-        } = { detail: newDetail };
+          updatedAt: Date;
+        } = { detail: newDetail, updatedAt: new Date() };
 
         if (update.status === "resolved") {
           setValues.endedAt = update.endedAt ?? new Date();
+          setValues.status = "resolved";
         } else if (update.status === "active") {
           setValues.endedAt = null;
+          setValues.status = "active";
         } else if (update.endedAt !== undefined) {
           setValues.endedAt = update.endedAt;
+          if (update.endedAt !== null) {
+            setValues.status = "resolved";
+          }
         }
 
         if (update.severity) {
           setValues.severity = update.severity;
         }
 
-        await db
-          .update(networkLogs)
-          .set(setValues)
-          .where(eq(networkLogs.id, id));
+        await db.update(alerts).set(setValues).where(eq(alerts.id, id));
 
         return getAnomalyById(id);
       }
-    } catch {
-      // Fallback ke mock bila database tidak terjangkau
-    }
+    } catch {}
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
   }
 
   // Fallback mode mock

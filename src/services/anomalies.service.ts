@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, gte, isNotNull, isNull, lte, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  alerts,
   customers as customersTable,
   networkLogs,
   routers as routersTable,
@@ -53,9 +54,18 @@ export interface DetectAnomaliesResult {
   sourceStatus: "nyata" | "dummy";
 }
 
-function mapLogToAnomaly(
-  row: NetworkLog & { routerName?: string | null; customerName?: string | null },
-): AnomalyItem {
+function mapLogToAnomaly(row: {
+  id: string;
+  routerId: string | null;
+  customerId: string | null;
+  type: string;
+  severity: string;
+  startedAt: Date;
+  endedAt: Date | null;
+  detail: Record<string, unknown>;
+  routerName?: string | null;
+  customerName?: string | null;
+}): AnomalyItem {
   const detail = (row.detail ?? {}) as Record<string, unknown>;
   const kind = row.type as IncidentKind;
   const severity = row.severity as IncidentSeverity;
@@ -65,7 +75,7 @@ function mapLogToAnomaly(
   const measured = typeof detail.measured === "number" ? detail.measured : null;
 
   const defaultImpact = loneImpact(
-    { routerId: row.routerId, customerId: row.customerId },
+    { routerId: row.routerId ?? "", customerId: row.customerId },
     {
       customerName: (id) => row.customerName ?? mockDirectory.customerName(id),
       routerName: (id) => row.routerName ?? mockDirectory.routerName(id),
@@ -91,7 +101,7 @@ function mapLogToAnomaly(
     severity,
     startedAt,
     endedAt,
-    routerId: row.routerId,
+    routerId: row.routerId ?? "",
     customerId: row.customerId,
     interfaceName,
     measured,
@@ -138,53 +148,52 @@ export async function getAnomaliesList(
   const conditions: SQL[] = [];
 
   if (query.status === "active") {
-    conditions.push(isNull(networkLogs.endedAt));
+    conditions.push(isNull(alerts.endedAt));
   } else if (query.status === "resolved") {
-    conditions.push(isNotNull(networkLogs.endedAt));
+    conditions.push(isNotNull(alerts.endedAt));
   }
 
   if (kind) {
-    conditions.push(eq(networkLogs.type, kind as NetworkLogType));
+    conditions.push(eq(alerts.type, kind as never));
   }
   if (query.severity) {
-    conditions.push(eq(networkLogs.severity, query.severity as NetworkLogSeverity));
+    conditions.push(eq(alerts.severity, query.severity as never));
   }
   if (query.routerId) {
-    conditions.push(eq(networkLogs.routerId, query.routerId));
+    conditions.push(eq(alerts.routerId, query.routerId));
   }
   if (query.customerId) {
-    conditions.push(eq(networkLogs.customerId, query.customerId));
+    conditions.push(eq(alerts.customerId, query.customerId));
   }
   if (query.from) {
-    conditions.push(gte(networkLogs.startedAt, new Date(query.from * 1000)));
+    conditions.push(gte(alerts.startedAt, new Date(query.from * 1000)));
   }
   if (query.to) {
-    conditions.push(lte(networkLogs.startedAt, new Date(query.to * 1000)));
+    conditions.push(lte(alerts.startedAt, new Date(query.to * 1000)));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const rows = await db
     .select({
-      id: networkLogs.id,
-      routerId: networkLogs.routerId,
-      customerId: networkLogs.customerId,
-      type: networkLogs.type,
-      severity: networkLogs.severity,
-      startedAt: networkLogs.startedAt,
-      endedAt: networkLogs.endedAt,
-      detail: networkLogs.detail,
+      id: alerts.id,
+      routerId: alerts.routerId,
+      customerId: alerts.customerId,
+      type: alerts.type,
+      severity: alerts.severity,
+      startedAt: alerts.startedAt,
+      endedAt: alerts.endedAt,
+      detail: alerts.detail,
       routerName: routersTable.name,
       customerName: customersTable.name,
     })
-    .from(networkLogs)
-    .leftJoin(routersTable, eq(networkLogs.routerId, routersTable.id))
-    .leftJoin(customersTable, eq(networkLogs.customerId, customersTable.id))
+    .from(alerts)
+    .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
+    .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
     .where(whereClause)
-    .orderBy(desc(networkLogs.startedAt))
+    .orderBy(desc(alerts.startedAt))
     .limit(query.limit)
     .offset(query.offset);
-
   if (rows.length === 0) {
     // Jika di DB belum ada data nyata, fallback ke mock
     const mockList = await loadAnomalies();
@@ -328,23 +337,22 @@ export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
     try {
       const [row] = await db
         .select({
-          id: networkLogs.id,
-          routerId: networkLogs.routerId,
-          customerId: networkLogs.customerId,
-          type: networkLogs.type,
-          severity: networkLogs.severity,
-          startedAt: networkLogs.startedAt,
-          endedAt: networkLogs.endedAt,
-          detail: networkLogs.detail,
+          id: alerts.id,
+          routerId: alerts.routerId,
+          customerId: alerts.customerId,
+          type: alerts.type,
+          severity: alerts.severity,
+          startedAt: alerts.startedAt,
+          endedAt: alerts.endedAt,
+          detail: alerts.detail,
           routerName: routersTable.name,
           customerName: customersTable.name,
         })
-        .from(networkLogs)
-        .leftJoin(routersTable, eq(networkLogs.routerId, routersTable.id))
-        .leftJoin(customersTable, eq(networkLogs.customerId, customersTable.id))
-        .where(eq(networkLogs.id, id))
+        .from(alerts)
+        .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
+        .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
+        .where(eq(alerts.id, id))
         .limit(1);
-
       if (row) {
         const item = mapLogToAnomaly({
           ...row,

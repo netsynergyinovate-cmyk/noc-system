@@ -23,6 +23,10 @@ const { GET: optical } = await import("../src/app/api/olts/[id]/optical/route.ts
 
 const OLT_ID = "550e8400-e29b-41d4-a716-446655440000";
 const NOW = new Date("2026-01-01T00:00:00Z");
+const setMode = (m) => {
+  process.env.DASHBOARD_DATA = m;
+  env.DASHBOARD_DATA = m;
+};
 
 let authed = true;
 auth.api.getSession = async () => (authed ? { user: { id: "u1" }, session: {} } : null);
@@ -75,7 +79,7 @@ test("pon list: 401 tanpa sesi", async () => {
 });
 
 test("pon list: 404 bila OLT tidak ditemukan", async () => {
-  env.DASHBOARD_DATA = "live";
+  setMode("live");
   for (const id of ["olt-1", "abc", OLT_ID]) {
     const res = await get(ponList, `/api/olts/${id}/pon`, { id });
     assert.equal(res.status, 404, id);
@@ -84,6 +88,7 @@ test("pon list: 404 bila OLT tidak ditemukan", async () => {
 });
 
 test("pon list: 200 demo memuat daya optik tiap port", async () => {
+  setMode("demo");
   const res = await get(ponList, "/api/olts/olt-1/pon", { id: "olt-1" });
   assert.equal(res.status, 200);
   assert.equal(res.headers.get("cache-control"), "private, no-store");
@@ -97,7 +102,7 @@ test("pon list: 200 demo memuat daya optik tiap port", async () => {
 });
 
 test("pon list: 200 live dari DB (tabel olt_pon_ports)", async () => {
-  env.DASHBOARD_DATA = "live";
+  setMode("live");
   rows.olts = [{ id: OLT_ID, name: "O-A", host: "10.0.1.1" }];
   rows.ports = [{ ponIndex: 2, txPower: 3.1, rxPower: -21.4, onuOnlineCount: 1, attenuation: 24.5 }];
   rows.onus = [{ ponIndex: 2 }, { ponIndex: 2 }];
@@ -129,7 +134,7 @@ test("pon detail: 422 untuk ponIndex / id tidak valid", async () => {
 });
 
 test("pon detail: 404 bila OLT atau port tidak ada (mode live)", async () => {
-  env.DASHBOARD_DATA = "live";
+  setMode("live");
   let res = await get(ponDetail, `/api/olts/${OLT_ID}/pon/1`, { id: OLT_ID, ponIndex: "1" });
   assert.equal(res.status, 404, "OLT tidak ada");
   assert.equal(await errCode(res), "NOT_FOUND");
@@ -141,7 +146,7 @@ test("pon detail: 404 bila OLT atau port tidak ada (mode live)", async () => {
 });
 
 test("pon detail: 200 dari DB memuat redaman port & ONU", async () => {
-  env.DASHBOARD_DATA = "live";
+  setMode("live");
   rows.olts = [{ id: OLT_ID, name: "O-A", host: "10.0.1.1" }];
   rows.ports = [{ ponIndex: 3, txPower: 3.2, rxPower: -22.1, attenuation: 25.3, onuOnlineCount: 1, capturedAt: NOW }];
   rows.onus = [
@@ -166,6 +171,7 @@ test("pon detail: 200 dari DB memuat redaman port & ONU", async () => {
 });
 
 test("pon detail: 200 mock pada mode demo bila OLT belum ada di DB", async () => {
+  setMode("demo");
   const res = await get(ponDetail, `/api/olts/${OLT_ID}/pon/2`, { id: OLT_ID, ponIndex: "2" });
   assert.equal(res.status, 200);
   const { data } = await res.json();
@@ -201,7 +207,7 @@ test("optical: 404 bila OLT tidak ditemukan", async () => {
     assert.equal(res.status, 404, id);
     assert.equal(await errCode(res), "NOT_FOUND");
   }
-  env.DASHBOARD_DATA = "live";
+  setMode("live");
   for (const id of ["olt-1", OLT_ID]) {
     const res = await get(optical, "/api/olts/x/optical", { id });
     assert.equal(res.status, 404, `live ${id}`);
@@ -209,6 +215,7 @@ test("optical: 404 bila OLT tidak ditemukan", async () => {
 });
 
 test("optical: 200 memuat summary & items ber-lossDb", async () => {
+  setMode("demo");
   const res = await get(optical, "/api/olts/olt-1/optical", { id: "olt-1" });
   assert.equal(res.status, 200);
   const { data } = await res.json();

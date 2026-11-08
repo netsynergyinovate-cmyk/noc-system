@@ -8,6 +8,7 @@ import {
   runAutomaticSchemaMigrations,
   deriveRemediationHint,
   type MigrationRunnerOptions,
+  type QueryableClient,
 } from "@/services/schema-migration-runner.service";
 
 let inMemoryRollbackEvents: MigrationRollbackEvent[] = [...MOCK_ROLLBACK_HISTORY];
@@ -16,6 +17,7 @@ export interface MigrationSafeRunnerOptions extends MigrationRunnerOptions {
   actor?: string;
   autoRollback?: boolean;
   createCheckpoint?: boolean;
+  client?: QueryableClient;
 }
 
 export interface MigrationSafeRunnerResult {
@@ -167,8 +169,7 @@ export async function runSafeMigrationWithRollback(
   const actor = options.actor ?? "system_safeguard";
 
   try {
-    const res = await runAutomaticSchemaMigrations(undefined, options);
-
+    const res = await runAutomaticSchemaMigrations(options.client, options);
     return {
       success: true,
       dryRun,

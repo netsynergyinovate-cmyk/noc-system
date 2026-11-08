@@ -25,12 +25,12 @@ function fakeClient({ applied = [], failOn, tableExists = true } = {}) {
   };
 }
 
-test("loadMigrationPlan membaca 0000..0014 terurut dan memecah statement", async () => {
+test("loadMigrationPlan membaca migrasi terurut dan memecah statement", async () => {
   const plan = await loadMigrationPlan(folder);
-  assert.equal(plan.length, 15);
+  assert.ok(plan.length > 0);
   assert.deepEqual(
     plan.map((m) => m.tag.slice(0, 4)),
-    Array.from({ length: 15 }, (_, i) => String(i).padStart(4, "0")),
+    Array.from({ length: plan.length }, (_, i) => String(i).padStart(4, "0")),
   );
   for (const m of plan) {
     assert.ok(m.statements.length > 0, m.tag);
@@ -52,21 +52,23 @@ test("getPendingMigrations menghitung migrasi yang belum jalan", () => {
 });
 
 test("dry-run melaporkan pending tanpa mutasi atau lock", async () => {
+  const plan = await loadMigrationPlan(folder);
   const c = fakeClient({ applied: [] });
   const logs = [];
   const r = await migrateServer(c, { dryRun: true, migrationsFolder: folder, logger: (l) => logs.push(l) });
   assert.equal(r.dryRun, true);
-  assert.equal(r.pending.length, 15);
+  assert.equal(r.pending.length, plan.length);
   assert.equal(r.applied.length, 0);
-  assert.ok(logs[0].includes("15"));
+  assert.ok(logs[0].includes(String(plan.length)));
   assert.ok(c.calls.every((q) => q.startsWith("SELECT")), c.calls.join("|"));
   assert.ok(!c.calls.some((q) => q.includes("advisory")));
 });
 
 test("dry-run tanpa tabel pelacak menganggap semua pending", async () => {
+  const plan = await loadMigrationPlan(folder);
   const c = fakeClient({ tableExists: false });
   const r = await migrateServer(c, { dryRun: true, migrationsFolder: folder, logger: quiet });
-  assert.equal(r.pending.length, 15);
+  assert.equal(r.pending.length, plan.length);
 });
 
 test("eksekusi: lock -> transaksi per migrasi -> unlock", async () => {

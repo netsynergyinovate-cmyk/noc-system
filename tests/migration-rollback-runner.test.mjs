@@ -50,8 +50,10 @@ test("recordMigrationRollbackEvent mencatat insiden rollback baru ke daftar", as
 });
 
 test("runSafeMigrationWithRollback menangkap kegagalan dan mengeksekusi proteksi rollback otomatis", async () => {
-  // Tanpa database aktif, runner otomatis memicu proteksi rollback dan mencatat insiden
-  const res = await runSafeMigrationWithRollback({ dryRun: false });
+  const failingClient = {
+    query: async () => { throw new Error("Migrasi 0015_test_failing gagal: disk full"); },
+  };
+  const res = await runSafeMigrationWithRollback({ dryRun: false, client: failingClient });
   assert.equal(res.success, false);
   assert.equal(res.rollbackExecuted, true);
   assert.ok(res.rollbackEvent);

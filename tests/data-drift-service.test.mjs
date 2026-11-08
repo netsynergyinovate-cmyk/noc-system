@@ -29,10 +29,10 @@ test("computeTableChecksum menghasilkan hash sha256 konsisten", () => {
 
 test("detectEnvironmentDataDrift menangani database yang tidak terjangkau tanpa crash", async () => {
   const report = await detectEnvironmentDataDrift({
+    sourceDatabaseUrl: "postgresql://x:x@127.0.0.1:1/x",
     targetDatabaseUrl: "",
     tables: ["routers", "olts"],
   });
-
   assert.equal(report.sourceReachable, false);
   assert.equal(report.driftStatus, "source_unreachable");
   assert.equal(report.recommendation, "check_source");

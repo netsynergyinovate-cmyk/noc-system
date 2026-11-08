@@ -44,11 +44,13 @@ for (const [id, name] of [
 test("ID bukan UUID dan bukan mock -> null (tanpa menyentuh DB)", async () => {
   // mode demo menyajikan mock untuk ID apa pun; penolakan ID hanya berlaku di live.
   const { env } = await import("../src/lib/env.ts");
+  process.env.DASHBOARD_DATA = "live";
   env.DASHBOARD_DATA = "live";
   try {
     for (const bad of ["", "abc", "../etc", "550e8400-e29b-41d4-a716"])
       assert.equal(await getOltPonPorts(bad), null, bad);
   } finally {
+    process.env.DASHBOARD_DATA = "demo";
     env.DASHBOARD_DATA = "demo";
   }
 });

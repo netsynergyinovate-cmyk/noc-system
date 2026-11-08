@@ -19,6 +19,7 @@ const { resolvePonPortDetail } = await import("../src/lib/dashboard/pon-port-res
 
 // env adalah objek biasa hasil parse: mode diganti per tes (dibaca tiap pemanggilan).
 const mode = (m) => {
+  process.env.DASHBOARD_DATA = m;
   env.DASHBOARD_DATA = m;
 };
 

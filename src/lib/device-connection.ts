@@ -177,17 +177,17 @@ export function runSimulatorDeviceTest(
 export function parseMikrotikResource(data: unknown): MikrotikResource {
   const d = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
   if (!d || typeof d !== "object") return {};
+  const res: MikrotikResource = {};
+  if (typeof d["version"] === "string") res.version = d["version"];
   const cpu = Number(d["cpu-load"]);
+  if (d["cpu-load"] !== undefined && Number.isFinite(cpu)) res.cpuLoad = cpu;
+  if (typeof d["uptime"] === "string") res.uptime = d["uptime"];
+  if (typeof d["board-name"] === "string") res.boardName = d["board-name"];
   const free = Number(d["free-memory"]);
+  if (Number.isFinite(free) && free >= 0) res.freeMemory = free;
   const total = Number(d["total-memory"]);
-  return {
-    version: typeof d["version"] === "string" ? d["version"] : undefined,
-    cpuLoad: d["cpu-load"] !== undefined && Number.isFinite(cpu) ? cpu : undefined,
-    uptime: typeof d["uptime"] === "string" ? d["uptime"] : undefined,
-    boardName: typeof d["board-name"] === "string" ? d["board-name"] : undefined,
-    freeMemory: Number.isFinite(free) && free >= 0 ? free : undefined,
-    totalMemory: Number.isFinite(total) && total > 0 ? total : undefined,
-  };
+  if (Number.isFinite(total) && total > 0) res.totalMemory = total;
+  return res;
 }
 
 export function describeNetworkError(error: unknown, label: string): DeviceConnectionError {

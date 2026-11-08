@@ -486,12 +486,19 @@ export async function testDeviceConnection(
     const path = request.type === "genieacs" ? "/devices/?query=%7B%7D&projection=_id" : pathFor(request.type, port);
     const url = `${tls ? "https" : "http"}://${host}:${port}${path}`;
     // redirect "manual": jangan ikuti pengalihan ke host lain (SSRF).
-    const res = await fetchImpl(url, {
-      method: "GET",
-      headers,
-      redirect: "manual",
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(new DOMException("The operation was timed out", "TimeoutError")), timeoutMs);
+    let res: Response;
+    try {
+      res = await fetchImpl(url, {
+        method: "GET",
+        headers,
+        redirect: "manual",
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     const latencyMs = elapsed();
 
     if (res.status === 401 || res.status === 403) return finish({ ...authFail(request.username, res.status, latencyMs) }, endpoint);

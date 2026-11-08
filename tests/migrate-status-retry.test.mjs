@@ -23,11 +23,12 @@ const appliedRows = (plan) =>
   plan.map((m, i) => ({ id: i + 1, hash: m.hash, created_at: String(m.folderMillis) }));
 
 test("status: tabel pelacak belum ada", async () => {
+  const plan = await loadMigrationPlan(folder);
   const s = await getMigrationStatus(statusClient({ tableExists: false }), { migrationsFolder: folder });
   assert.equal(s.trackerExists, false);
   assert.equal(s.appliedCount, 0);
-  assert.equal(s.pendingCount, 15);
-  assert.equal(s.totalCount, 15);
+  assert.equal(s.pendingCount, plan.length);
+  assert.equal(s.totalCount, plan.length);
   assert.equal(s.isUpToDate, false);
   assert.equal(s.lastAppliedAt, null);
 });
@@ -35,7 +36,7 @@ test("status: tabel pelacak belum ada", async () => {
 test("status: up-to-date", async () => {
   const plan = await loadMigrationPlan(folder);
   const s = await getMigrationStatus(statusClient({ rows: appliedRows(plan) }), { migrationsFolder: folder });
-  assert.equal(s.appliedCount, 15);
+  assert.equal(s.appliedCount, plan.length);
   assert.equal(s.pendingCount, 0);
   assert.equal(s.isUpToDate, true);
   assert.equal(s.hashValid, true);
@@ -85,6 +86,7 @@ test("retry: sukses percobaan pertama tanpa delay", async () => {
 });
 
 test("retry: gagal 2x lalu sukses dengan backoff 1s,2s", async () => {
+  const plan = await loadMigrationPlan(folder);
   const delays = [];
   const logs = [];
   const r = await migrateServerWithRetry(flakyClient(2), {
@@ -92,7 +94,7 @@ test("retry: gagal 2x lalu sukses dengan backoff 1s,2s", async () => {
     logger: (l) => logs.push(l),
     sleepFn: async (ms) => delays.push(ms),
   });
-  assert.equal(r.applied.length, 15);
+  assert.equal(r.applied.length, plan.length);
   assert.deepEqual(delays, [1000, 2000]);
   assert.ok(logs.includes("[RETRY 1/3] Gagal (koneksi putus), coba lagi dalam 1000ms"));
   assert.ok(logs.includes("[RETRY 2/3] Gagal (koneksi putus), coba lagi dalam 2000ms"));

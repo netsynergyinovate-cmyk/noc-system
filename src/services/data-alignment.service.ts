@@ -1,4 +1,5 @@
 import "server-only";
+import type { Pool, PoolClient } from "pg";
 import { getRawPool } from "@/db";
 import { logSyncOperationAudit } from "@/services/audit.service";
 
@@ -31,6 +32,7 @@ export interface AlignmentOptions {
   actor?: string;
   logger?: (line: string) => void;
   steps?: Array<AlignmentStepResult["step"]>;
+  pool?: Pool | { connect: () => Promise<never> };
 }
 
 /**
@@ -49,9 +51,8 @@ export async function runDataAlignmentIdempotent(
     "thresholds",
     "routers",
   ];
-
-  const pool = getRawPool();
-  let client: import("pg").PoolClient | null = null;
+  const pool = (options.pool as Pool) ?? getRawPool();
+  let client: PoolClient | null = null;
   let lockAcquired = false;
 
   try {

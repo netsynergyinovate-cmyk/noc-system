@@ -25,8 +25,8 @@ test("runDataAlignmentIdempotent menangani database offline secara aman", async 
   const res = await runDataAlignmentIdempotent({
     actor: "test_suite",
     steps: ["billing_status", "thresholds"],
+    pool: { connect: async () => { throw new Error("Connection refused (database offline)"); } },
   });
-
   assert.equal(res.success, false);
   assert.equal(res.totalSteps, 2);
   assert.equal(res.totalRecordsProcessed, 0);

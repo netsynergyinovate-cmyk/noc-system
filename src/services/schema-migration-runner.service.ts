@@ -193,7 +193,7 @@ export function getPendingMigrations(
     .sort((a, b) => a.idx - b.idx);
 }
 
-interface QueryableClient {
+export interface QueryableClient {
   query(sql: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
 }
 

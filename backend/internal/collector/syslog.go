@@ -241,6 +241,8 @@ func (l *SyslogListener) SetOLTSources(m map[netip.Addr]string) {
 
 // SetOLTAlarm memasang callback untuk menangani alarm OLT di goroutine worker.
 func (l *SyslogListener) SetOLTAlarm(fn func(OLTAlarmEvent)) {
+	l.cacheMu.Lock()
+	defer l.cacheMu.Unlock()
 	l.oltHandler = fn
 }
 
@@ -272,21 +274,24 @@ func (l *SyslogListener) Serve(ctx context.Context) error {
 		}
 	}()
 
-	if l.oltHandler != nil {
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case alarm, ok := <-l.oltAlarms:
+				if !ok {
 					return
-				case alarm, ok := <-l.oltAlarms:
-					if !ok {
-						return
-					}
-					l.oltHandler(alarm)
+				}
+				l.cacheMu.Lock()
+				handler := l.oltHandler
+				l.cacheMu.Unlock()
+				if handler != nil {
+					handler(alarm)
 				}
 			}
-		}()
-	}
+		}
+	}()
 
 	buf := make([]byte, maxSyslogPacket+1)
 	for {

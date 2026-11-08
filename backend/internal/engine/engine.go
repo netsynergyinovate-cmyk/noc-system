@@ -18,10 +18,26 @@ type Source interface {
 	Customers() []state.Customer
 }
 
+// InterfaceSource adalah Source yang juga menyimpan sampel interface router.
+// Sumber yang tidak memenuhinya melewati aturan port, bukan menggagalkan engine.
+type InterfaceSource interface {
+	RouterInterfaces(routerID string) (interfaces []state.Interface, at time.Time, ok bool)
+}
+
+// InterfaceSample adalah sampel penghitung interface satu router pada satu waktu.
+type InterfaceSample struct {
+	Interfaces []state.Interface
+	At         time.Time
+}
+
 // Observation adalah salinan keadaan jaringan pada satu putaran evaluasi.
 type Observation struct {
 	Routers   []state.Router
 	Customers []state.Customer
+	// Interfaces berisi sampel terakhir per id router; kosong bila Source tidak
+	// menyediakannya. Aturan port memakai dua sampel berurutan untuk menghitung
+	// kenaikan error, jadi sampel lama yang basi tidak boleh dipakai.
+	Interfaces map[string]InterfaceSample
 }
 
 // Condition menyatakan "sesuatu sedang bermasalah" pada satu subjek. Aturan
@@ -141,6 +157,14 @@ func (e *Engine) Run(ctx context.Context) {
 // timbul ke Sink. Aman dipanggil dari satu goroutine pada satu waktu.
 func (e *Engine) Evaluate(now time.Time) []Event {
 	obs := Observation{Routers: e.opts.Source.Routers(), Customers: e.opts.Source.Customers()}
+	if src, ok := e.opts.Source.(InterfaceSource); ok {
+		obs.Interfaces = make(map[string]InterfaceSample, len(obs.Routers))
+		for _, router := range obs.Routers {
+			if interfaces, at, found := src.RouterInterfaces(router.ID); found {
+				obs.Interfaces[router.ID] = InterfaceSample{Interfaces: interfaces, At: at}
+			}
+		}
+	}
 
 	current := make(map[string]Condition)
 	for _, rule := range e.opts.Rules {

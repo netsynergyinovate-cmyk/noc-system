@@ -148,6 +148,36 @@ func TestQueueRuleProducesConditionsForCongestedQueues(t *testing.T) {
 	}
 }
 
+func TestQueueRuleIgnoresStaleRatio(t *testing.T) {
+	obs := func(taken time.Time) Observation {
+		return Observation{Customers: []state.Customer{{
+			ID: "c1", IsOnline: true, HasQueue: true,
+			QueueDownRatio: 0.99, QueueAt: taken,
+		}}}
+	}
+	if conds := (QueueRule{}).Evaluate(obs(t0), t0.Add(10*time.Second)); len(conds) != 1 {
+		t.Fatalf("rasio 10 detik lalu masih segar: %+v", conds)
+	}
+	if conds := (QueueRule{}).Evaluate(obs(t0), t0.Add(time.Minute)); len(conds) != 0 {
+		t.Fatalf("rasio 1 menit lalu tidak boleh membuat alert: %+v", conds)
+	}
+}
+
+func TestCpuRuleIgnoresStaleResource(t *testing.T) {
+	obs := func(taken time.Time) Observation {
+		return Observation{Routers: []state.Router{{
+			ID: "r1", Active: true, HasResource: true,
+			Resource: state.Resource{CPULoad: 99, At: taken},
+		}}}
+	}
+	if conds := (CpuRule{}).Evaluate(obs(t0), t0.Add(30*time.Second)); len(conds) != 1 {
+		t.Fatalf("pembacaan 30 detik lalu masih segar: %+v", conds)
+	}
+	if conds := (CpuRule{}).Evaluate(obs(t0), t0.Add(2*time.Minute)); len(conds) != 0 {
+		t.Fatalf("CPU 99%% dari data 2 menit lalu tidak boleh membuat alert: %+v", conds)
+	}
+}
+
 func TestDefaultThresholdConfigAndMakeRules(t *testing.T) {
 	cfg := DefaultThresholdConfig()
 	if cfg.QueueRatio != 0.95 || cfg.CpuPercent != 85 || cfg.OpticalDbm != -25 ||

@@ -134,6 +134,7 @@ func SyncDatabaseState(ctx context.Context, q Querier, mgr *state.Manager, logge
 		// jadi dibawa dari data yang sudah ada.
 		if old, ok := mgr.CustomerByPPPoE(c.PPPoEUsername); ok && old.ID == c.ID {
 			c.QueueUpRatio, c.QueueDownRatio, c.HasQueue = old.QueueUpRatio, old.QueueDownRatio, old.HasQueue
+			c.QueueAt = old.QueueAt
 			// Status online di memori datang dari polling /ppp/active, webhook, dan
 			// syslog, lebih baru daripada kolom is_online di database. Tanpa ini
 			// sinkron tiap 15 detik mengembalikan status ke nilai database.

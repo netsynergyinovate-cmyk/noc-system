@@ -65,7 +65,7 @@ Tanggal audit: **26 Oktober 2026**
 - **Pemanfaatan di Runtime:**
   - Rule engine Go membaca tabel ini pada saat startup (`backend/cmd/server/main.go` -> `engine.LoadThresholdsFromDB`).
   - **Catatan operasional:** Belum ada mekanisme *hot-reload*. Backend Go harus di-restart agar ambang batas baru mulai dievaluasi.
-  - Aturan port error (`PortRule`) tersimpan di DB, namun saat ini belum dievaluasi oleh Go karena counter error antarmuka belum dikoleksi.
+  - Aturan port error (`PortRule`) sudah dievaluasi oleh Go dari kenaikan `rx-error`/`tx-error` antarmuka fisik; antarmuka virtual diabaikan. Sama seperti ambang lain, perubahan baru berlaku setelah backend di-restart.
 
 ### Tab 5: Perangkat (`devices` / `DeviceQuickCards`)
 - **Daftar Perangkat:**

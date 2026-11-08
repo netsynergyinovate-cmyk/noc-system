@@ -171,13 +171,23 @@ export function describeAnomaly(
   const where = anomaly.interfaceName ? ` ${anomaly.interfaceName}` : "";
   switch (anomaly.kind) {
     case "queue":
-      return `Antrean${where} ${anomaly.measured}% (batas 95%)`;
+      return anomaly.measured === null
+        ? `Antrean${where} — angka tidak tercatat (batas 95%)`
+        : `Antrean${where} ${anomaly.measured}% (batas 95%)`;
     case "cpu":
-      return `CPU ${anomaly.measured}% (batas 85%)`;
-    case "port":
-      return `${anomaly.interfaceName}: ${anomaly.measured} error/menit (batas 20)`;
+      return anomaly.measured === null
+        ? "CPU di atas batas — angka tidak tercatat (batas 85%)"
+        : `CPU ${anomaly.measured}% (batas 85%)`;
+    case "port": {
+      const port = anomaly.interfaceName ?? "Interface";
+      return anomaly.measured === null
+        ? `${port}: error tinggi — angka tidak tercatat (batas 20/menit)`
+        : `${port}: ${anomaly.measured} error/menit (batas 20)`;
+    }
     case "optical":
-      return `Rx ${formatDbm(anomaly.measured ?? 0)} (batas -25,0 dBm)`;
+      return anomaly.measured === null
+        ? "Rx — angka tidak tercatat (batas -25,0 dBm)"
+        : `Rx ${formatDbm(anomaly.measured)} (batas -25,0 dBm)`;
     case "offline":
       return "Tidak ada sesi PPPoE (batas 30 detik)";
   }

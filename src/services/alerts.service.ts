@@ -61,7 +61,14 @@ export interface AlertItem {
   endTimeUncertaintySeconds: number | null;
   handledBy: string | null;
   handledAt: number | null;
+  // Angka terukur yang ditulis rule engine di kolom detail. Null bila alert itu
+  // memang tidak membawa ukuran (mis. offline) atau baris lama tanpa detail.
   opticalPowerDbm: number | null;
+  cpuLoad: number | null;
+  queueUpRatio: number | null;
+  queueDownRatio: number | null;
+  errorsPerMinute: number | null;
+  interfaceName: string | null;
   location: {
     name: string;
     address: string | null;
@@ -82,6 +89,8 @@ export interface AlertItem {
 type AlertRow = typeof alerts.$inferSelect;
 
 const sec = (d: Date | null) => (d ? Math.floor(d.getTime() / 1000) : null);
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -107,11 +116,14 @@ function toItem(r: AlertRow): AlertItem {
     endTimeUncertaintySeconds: r.endTimeUncertaintySeconds,
     handledBy: r.handledBy,
     handledAt: sec(r.handledAt),
-    // Rx pada saat alert optik dibuat rule engine (detail.opticalPowerDbm).
-    opticalPowerDbm:
-      typeof r.detail?.opticalPowerDbm === "number"
-        ? r.detail.opticalPowerDbm
-        : null,
+    // Angka saat alert dibuat rule engine (kolom detail), bukan hitungan ulang.
+    opticalPowerDbm: num(r.detail?.opticalPowerDbm),
+    cpuLoad: num(r.detail?.cpuLoad),
+    queueUpRatio: num(r.detail?.upRatio),
+    queueDownRatio: num(r.detail?.downRatio),
+    errorsPerMinute: num(r.detail?.errorsPerMinute),
+    interfaceName:
+      typeof r.detail?.interface === "string" ? r.detail.interface : null,
     location: {
       name:
         r.locationName ??
@@ -141,6 +153,11 @@ function mockItems(nowSec: number): AlertItem[] {
     message: null,
     handledAt: null,
     opticalPowerDbm: null,
+    cpuLoad: null,
+    queueUpRatio: null,
+    queueDownRatio: null,
+    errorsPerMinute: null,
+    interfaceName: null,
     ticket: {
       status: "open",
       priority: "medium",

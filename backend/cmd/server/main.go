@@ -23,6 +23,7 @@ import (
 	"noc-isp/backend/internal/billing"
 	"noc-isp/backend/internal/collector"
 	"noc-isp/backend/internal/config"
+	"noc-isp/backend/internal/diagnostics"
 	"noc-isp/backend/internal/engine"
 	"noc-isp/backend/internal/httpapi"
 	"noc-isp/backend/internal/hub"
@@ -121,13 +122,14 @@ func run() error {
 	// belum siap tidak menghalangi backend naik; pemantauan real-time tidak
 	// bergantung padanya.
 	var (
-		pool        *pgxpool.Pool
-		billingDB   billing.DB              // nil bila DATABASE_URL kosong
-		billingRead billing.ReadDB          // pool yang sama, untuk endpoint /api/v1/billing
-		thresholdDB engine.Querier          // pool yang sama, untuk ambang alert
-		alertDB     engine.Execer           // pool yang sama, untuk menyimpan alert engine
-		syslogDB    collector.Execer        // pool yang sama, untuk menyimpan log router & NetFlow
-		sessions    *collector.SessionIndex // IP sesi -> pelanggan, untuk NetFlow
+		pool          *pgxpool.Pool
+		routerClients *collector.ClientPool
+		billingDB     billing.DB              // nil bila DATABASE_URL kosong
+		billingRead   billing.ReadDB          // pool yang sama, untuk endpoint /api/v1/billing
+		thresholdDB   engine.Querier          // pool yang sama, untuk ambang alert
+		alertDB       engine.Execer           // pool yang sama, untuk menyimpan alert engine
+		syslogDB      collector.Execer        // pool yang sama, untuk menyimpan log router & NetFlow
+		sessions      *collector.SessionIndex // IP sesi -> pelanggan, untuk NetFlow
 	)
 	if cfg.DatabaseURL == "" {
 		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
@@ -137,6 +139,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
+		// Satu pool client per router dipakai poller, impor, diagnosa, dan API
+		// baca. Setelah koneksi pertama, aksi berikutnya tidak login lagi.
+		routerClients = collector.NewClientPool()
 		defer pool.Close()
 		if nR, nC, err := collector.SyncDatabaseState(ctx, pool, manager, logger); err != nil {
 			logger.Warn("gagal memuat data awal router dan pelanggan dari database", "error", err)
@@ -156,7 +161,7 @@ func run() error {
 		}
 		sessions = collector.NewSessionIndex(manager)
 		telemetrySvc.SetDB(pool)
-		startRouterPolling(ctx, cfg.DeviceSecret, pool, manager, notify, logger, bindCfg, sessions.Update, telemetrySvc.SetVlans)
+		startRouterPolling(ctx, cfg.DeviceSecret, pool, routerClients, manager, notify, logger, bindCfg, sessions.Update, telemetrySvc.SetVlans)
 		// Endpoint manual "Daftarkan ke GenieACS" (POST .../tr069-bind): sengaja
 		// tetap dipasang walau bindCfg.Mode == off, supaya operator bisa mengikat
 		// satu ONU lewat tombol tanpa menyalakan pengikatan otomatis untuk semua.
@@ -173,8 +178,19 @@ func run() error {
 		apiOptions.Torch = netflow.NewTorchRunner(pool, cfg.DeviceSecret, logger)
 		// Satu gateway: Next.js membaca router lewat backend Go, bukan koneksi
 		// REST/API sendiri.
-		if proxy := routerproxy.New(pool, cfg.DeviceSecret, logger); proxy != nil {
+		if proxy := routerproxy.NewWithPool(pool, cfg.DeviceSecret, logger, routerClients); proxy != nil {
 			apiOptions.Routers = proxy
+		}
+		// Diagnosa pelanggan 100% Go: worker, trigger otomatis, dan API. Next.js
+		// hanya menampilkan hasil dari tabel diagnostic_runs/diagnostic_findings.
+		if apiOptions.Routers != nil {
+			diagnosticStore := diagnostics.NewStore(pool)
+			diagnosticRunner := diagnostics.NewRunner(diagnosticStore, apiOptions.Routers, logger)
+			diagnosticService := diagnostics.NewService(diagnosticStore, diagnosticRunner, logger)
+			diagnosticService.Start(ctx)
+			diagnosticService.StartAutoTrigger(ctx, 15*time.Second)
+			apiOptions.Diagnostics = diagnosticService
+			logger.Info("diagnosa pelanggan Go aktif", "worker", true, "auto_trigger", true)
 		}
 		billingDB = pool
 		billingRead = pool

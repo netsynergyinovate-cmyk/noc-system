@@ -167,6 +167,11 @@ func TestMonitorTrafficStreamsRouterRates(t *testing.T) {
 				send([]string{"!trap", "=message=interface salah"})
 				return
 			}
+			// Tanpa once: stream harus tetap terbuka, bukan satu sampel lalu
+			// reconnect (yang membuat login/logout berulang di router).
+			if attr(words, "once") != "" {
+				t.Error("monitor-traffic tidak boleh memakai =once=")
+			}
 			send([]string{"!re", "=rx-bps=200000000", "=tx-bps=12000000"})
 			send([]string{"!re", "=rx-bps=250000000", "=tx-bps=15000000"})
 			send([]string{"!done"})

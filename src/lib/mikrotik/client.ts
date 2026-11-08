@@ -198,7 +198,15 @@ export class MikrotikRestClient {
   // tiket internal bertanda tangan. Backend Go memilih REST atau API biner.
 
   private get proxyBase(): string {
-    return process.env.BACKEND_INTERNAL_URL ?? process.env.BACKEND_URL ?? "";
+    // Samakan dengan env.BACKEND_INTERNAL_URL: bila tidak diisi, pakai
+    // BACKEND_URL, lalu bawaan lokal http://localhost:8080. Tanpa bawaan ini,
+    // `npm run dev` di host (tanpa Docker) selalu gagal "Backend Go belum
+    // dikonfigurasi" walau backend Go berjalan normal.
+    return (
+      process.env.BACKEND_INTERNAL_URL ??
+      process.env.BACKEND_URL ??
+      "http://localhost:8080"
+    );
   }
 
   private proxyHeaders(): Record<string, string> {

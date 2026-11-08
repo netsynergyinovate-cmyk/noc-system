@@ -26,13 +26,23 @@ type Source struct {
 	db     *pgxpool.Pool
 	secret string
 	logger *slog.Logger
+	pool   *collector.ClientPool
 }
 
 func New(db *pgxpool.Pool, deviceSecret string, logger *slog.Logger) *Source {
+	return NewWithPool(db, deviceSecret, logger, nil)
+}
+
+// NewWithPool memakai pool client yang sama dengan poller/impor, sehingga
+// semua aksi aplikasi berbagi satu sesi per router.
+func NewWithPool(db *pgxpool.Pool, deviceSecret string, logger *slog.Logger, pool *collector.ClientPool) *Source {
 	if db == nil || deviceSecret == "" {
 		return nil
 	}
-	return &Source{db: db, secret: deviceSecret, logger: logger}
+	if pool == nil {
+		pool = collector.NewClientPool()
+	}
+	return &Source{db: db, secret: deviceSecret, logger: logger, pool: pool}
 }
 
 const targetSQL = `SELECT id::text, name, host, username, password_enc, protocol
@@ -66,7 +76,13 @@ func (s *Source) client(ctx context.Context, routerID string) (*collector.Client
 	if err != nil {
 		return nil, err
 	}
-	return collector.NewClient(t, collector.DefaultHTTPClient())
+	return s.pool.Get(t, collector.DefaultHTTPClient())
+}
+
+// dropClient membuang client router setelah galat autentikasi/konfigurasi,
+// supaya perubahan kredensial router tidak terkunci sampai backend di-restart.
+func (s *Source) dropClient(routerID string) {
+	s.pool.Drop(routerID)
 }
 
 // Read menjalankan GET baca-saja pada path /rest/... dan mengembalikan JSON
@@ -90,7 +106,11 @@ func (s *Source) Read(ctx context.Context, routerID, restPath string, query url.
 		}
 		filter[k] = v
 	}
-	return client.GetQuery(ctx, proplist, filter, segments...)
+	data, err := client.GetQuery(ctx, proplist, filter, segments...)
+	if err != nil && isAuthError(err) {
+		s.dropClient(routerID)
+	}
+	return data, err
 }
 
 // Measure menjalankan perintah ukur baca-saja (ping/traceroute/ethernet monitor).
@@ -104,7 +124,19 @@ func (s *Source) Measure(ctx context.Context, routerID, restPath string, body ma
 	if err != nil {
 		return nil, err
 	}
-	return client.PostRaw(ctx, restPath, body)
+	data, err := client.PostRaw(ctx, restPath, body)
+	if err != nil && isAuthError(err) {
+		s.dropClient(routerID)
+	}
+	return data, err
+}
+
+func isAuthError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "login") ||
+		strings.Contains(msg, "401") ||
+		strings.Contains(msg, "unauthorized") ||
+		strings.Contains(msg, "kata sandi")
 }
 
 func restSegments(restPath string) ([]string, error) {

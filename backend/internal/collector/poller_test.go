@@ -24,6 +24,8 @@ type recordedPoint struct {
 type fakeRecorder struct {
 	mu     sync.Mutex
 	points []recordedPoint
+	queues []state.QueueRatio
+	router string
 	err    error
 }
 
@@ -37,8 +39,18 @@ func (f *fakeRecorder) RecordTraffic(routerID string, p state.TrafficPoint) (boo
 	return true, nil
 }
 
-func (f *fakeRecorder) SetQueues(ratios []state.QueueRatio) ([]state.Change, error) {
+func (f *fakeRecorder) SetQueues(routerID string, ratios []state.QueueRatio) ([]state.Change, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.router = routerID
+	f.queues = append([]state.QueueRatio(nil), ratios...)
 	return nil, nil
+}
+
+func (f *fakeRecorder) queueSnapshot() (string, []state.QueueRatio) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.router, append([]state.QueueRatio(nil), f.queues...)
 }
 
 func (f *fakeRecorder) snapshot() []recordedPoint {
@@ -125,6 +137,45 @@ func TestPollerStatusReflectsSuccess(t *testing.T) {
 		t.Errorf("Status = %+v, ok = %v", s, ok)
 	}
 	stopAndWait(t, p, cancel)
+}
+
+// Queue dinamis bernama "<pppoe-USERNAME>"; angka untuk pelanggan harus memakai
+// USERNAME, bukan nama queue mentah, supaya aturan antrean bisa mencocokkannya.
+func TestPollerPassesPPPoEUsernameFromDynamicQueueName(t *testing.T) {
+	server := fakeRouter(t, okHandler(queueJSON))
+	rec := &fakeRecorder{}
+	p := newPoller(rec, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := p.Start(ctx, target(server)); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "rasio queue terkirim", func() bool {
+		_, ratios := rec.queueSnapshot()
+		return len(ratios) == 2
+	})
+	routerID, ratios := rec.queueSnapshot()
+	stopAndWait(t, p, cancel)
+
+	if routerID != "r1" {
+		t.Errorf("routerID = %q, want r1", routerID)
+	}
+	want := map[string][2]float64{
+		"budi": {1_000_000.0 / 1_500_000.0, 8_000_000.0 / 10_000_000.0},
+		"siti": {500_000.0 / 1_000_000.0, 2_500_000.0 / 3_000_000.0},
+	}
+	for _, r := range ratios {
+		expected, ok := want[r.PPPoEUsername]
+		if !ok {
+			t.Errorf("username queue tidak dikenal: %q", r.PPPoEUsername)
+			continue
+		}
+		if diff := r.UpRatio - expected[0]; diff > 1e-9 || diff < -1e-9 {
+			t.Errorf("%s UpRatio = %v, want %v", r.PPPoEUsername, r.UpRatio, expected[0])
+		}
+		if diff := r.DownRatio - expected[1]; diff > 1e-9 || diff < -1e-9 {
+			t.Errorf("%s DownRatio = %v, want %v", r.PPPoEUsername, r.DownRatio, expected[1])
+		}
+	}
 }
 
 func TestPollerReportsFailuresThenRecovers(t *testing.T) {

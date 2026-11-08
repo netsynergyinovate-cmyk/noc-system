@@ -50,12 +50,22 @@ type Importer struct {
 
 // NewImporter membuat pengimpor. httpClient nil memakai DefaultHTTPClient.
 func NewImporter(load TargetLoader, db Execer, httpClient *http.Client, logger *slog.Logger) *Importer {
+	return NewImporterWithPool(load, db, httpClient, nil, logger)
+}
+
+// NewImporterWithPool membuat pengimpor yang memakai client pool bersama.
+// clients nil berarti perilaku lama (client baru per putaran).
+func NewImporterWithPool(load TargetLoader, db Execer, httpClient *http.Client, clients *ClientPool, logger *slog.Logger) *Importer {
 	if httpClient == nil {
 		httpClient = DefaultHTTPClient()
 	}
+	newSource := func(t Target) (pppSource, error) { return NewClient(t, httpClient) }
+	if clients != nil {
+		newSource = func(t Target) (pppSource, error) { return clients.Get(t, httpClient) }
+	}
 	return &Importer{
 		load: load, db: db, logger: logger,
-		newSource: func(t Target) (pppSource, error) { return NewClient(t, httpClient) },
+		newSource: newSource,
 	}
 }
 

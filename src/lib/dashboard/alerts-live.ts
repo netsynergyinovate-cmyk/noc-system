@@ -30,6 +30,11 @@ export interface LiveAlertItem {
   endTimeUncertaintySeconds: number | null;
   handledBy: string | null;
   opticalPowerDbm?: number | null;
+  cpuLoad?: number | null;
+  queueUpRatio?: number | null;
+  queueDownRatio?: number | null;
+  errorsPerMinute?: number | null;
+  interfaceName?: string | null;
   location: AlertLocation;
 }
 
@@ -68,6 +73,25 @@ export function buildLiveDirectory(
   };
 }
 
+// Ukuran yang benar-benar dicatat rule engine untuk tiap jenis. Tidak ada angka
+// yang dikarang: jenis yang tidak membawa ukuran (offline) tetap null.
+function measuredOf(item: LiveAlertItem): number | null {
+  switch (item.type) {
+    case "optical":
+      return item.opticalPowerDbm ?? null;
+    case "cpu":
+      return item.cpuLoad ?? null;
+    case "queue": {
+      const ratio = Math.max(item.queueUpRatio ?? 0, item.queueDownRatio ?? 0);
+      return ratio > 0 ? Math.round(ratio * 100) : null;
+    }
+    case "port":
+      return item.errorsPerMinute ?? null;
+    default:
+      return null;
+  }
+}
+
 // Baris dengan jenis atau tingkat yang tidak dikenal dilewati, bukan ditebak.
 function toRaw(item: LiveAlertItem): RawAnomaly | null {
   if (!isKind(item.type) || !isSeverity(item.severity)) return null;
@@ -79,8 +103,8 @@ function toRaw(item: LiveAlertItem): RawAnomaly | null {
     endedAt: item.endedAt,
     routerId: item.routerId ?? "",
     customerId: item.customerId,
-    interfaceName: null,
-    measured: item.type === "optical" ? (item.opticalPowerDbm ?? null) : null,
+    interfaceName: item.interfaceName ?? null,
+    measured: measuredOf(item),
   };
 }
 

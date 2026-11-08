@@ -286,7 +286,7 @@ Aturan pencocokan PPPoE ada dua kali (TS `matchBilling`, Go `MatchInvoices`) den
 | `CpuRule` | CPU > 85% | 3 mnt | warning | ya |
 | `OpticalRule` | Rx < −25 dBm | 0 dtk | warning | ya |
 | `BillingMismatchRule` | Isolir tapi masih online | – | warning | **tidak** (hanya WS) |
-| `PortRule` | Error port | 20/mnt | – | **stub, tidak jalan** |
+| `PortRule` | Error port fisik (rx+tx) | 20/mnt | warning | ya |
 
 Siklus: mulai (setelah `For`) → `INSERT`/`touch` `alerts` → selesai → `resolve` (`end_time_source='poll'`).
 Korelasi insiden (akar masalah, `correlationId`) **belum ada di Go**, dikerjakan di frontend.
@@ -527,7 +527,7 @@ Centang `[x]` = sudah nyata di kode. `[ ]` = belum / masih tiruan. Gunakan bagia
 - [x] Ambang di database (`alert_thresholds`), halaman Ambang Batas
 - [x] Suara alert, lencana jumlah alert di menu
 - [ ] Ambang berlaku tanpa restart backend (reload dinamis)
-- [ ] `PortRule` (error/drop interface) benar-benar dievaluasi
+- [x] `PortRule` (error interface fisik) benar-benar dievaluasi
 - [ ] `BillingMismatchRule` disimpan ke `alerts`
 - [ ] Korelasi insiden di backend (mis. OLT/PON down → kelompokkan ratusan offline jadi 1 insiden)
 - [ ] Tiket gangguan ke database (bukan localStorage)
@@ -743,9 +743,9 @@ Urutan disusun supaya **tidak merusak sesi PPPoE pelanggan** dan setiap fase bis
 - [ ] ID event unik (UUID / sequence DB)
 - [ ] Reload ambang tanpa restart (LISTEN/NOTIFY PostgreSQL atau polling `alert_thresholds`)
 - [ ] Graceful shutdown menunggu writer & worker
-- [ ] Hapus router nonaktif dari state; `CpuRule` abaikan data basi
+- [x] Hapus router nonaktif dari state; `CpuRule` abaikan data basi
 - [ ] Backoff login billing berlaku juga untuk sync manual
-- [ ] `PortRule` nyata dari counter error/drop interface
+- [x] `PortRule` nyata dari counter error interface fisik
 - [ ] Snapshot WebSocket memuat alert aktif
 - [ ] CI: `go vet`, `go test`, uji `-race` di Linux; perbaiki ±52 tes merah
 - [ ] Container Go non-root, image di-pin

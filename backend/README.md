@@ -936,13 +936,38 @@ gangguan memakai `id` yang sama.
 - `Engine.Active()` mengembalikan gangguan yang sedang berlangsung (untuk daftar
   alert aktif nanti).
 
-**Aturan yang ada:** `OfflineRule` (pelanggan offline lebih dari 30 detik, batas
-diambil dari PRD, belum bisa diubah lewat pengaturan). Aturan traffic >95%, CPU,
-sinyal optik, dan port error ditambahkan sebagai `Rule` baru tanpa mengubah
-engine. **Belum ada:** riwayat gangguan di tabel `network_logs`, dan pengiriman
+**Aturan yang ada:** `OfflineRule` (pelanggan offline lebih dari 30 detik),
+`RouterUnreachableRule`, `QueueRule` (rasio queue per pelanggan lebih dari 95%),
+`CpuRule` (CPU >85%; pembacaan `Resource.At` yang lebih tua dari 1 menit
+diabaikan), `OpticalRule`, `PortRule` (kenaikan `rx-error`+`tx-error` antarmuka
+fisik lebih dari 20 per menit; interface virtual seperti `wg`, `bridge`, dan
+`vlan` tidak dihitung), dan `BillingMismatchRule`. Ambangnya dibaca dari
+`alert_thresholds` saat backend start. **Belum ada:** riwayat gangguan di tabel `network_logs`, dan pengiriman
 gangguan yang sedang aktif ke dashboard yang baru tersambung (dashboard baru
 hanya menerima gangguan yang mulai atau selesai setelah ia tersambung; keadaan
 online/offline tetap lengkap lewat snapshot).
+
+## Diagnosa pelanggan (Go-only)
+
+`internal/diagnostics` menjalankan seluruh diagnosa pelanggan di proses Go:
+membaca router lewat `routerproxy` (satu gateway yang sama dengan
+`/api/v1/routers/{id}/read|measure`), mengevaluasi 9 lapisan (`hulu`,
+`mikrotik`, `log`, `firewall`, `optik`, `ont`, `trafik`, `aktif`, `billing`),
+menyimpan `diagnostic_runs`/`diagnostic_findings`, dan menghitung verdict
+deterministik (`verdictLayer`, `verdictScope`, `verdictRoot`, `verdictSecondary`,
+anti-flapping 15 menit). Next.js hanya memanggil API dan menampilkan hasil.
+
+- `POST /api/v1/diagnostics` `{customerId, complaintAt?}` — run manual.
+- `POST /api/v1/diagnostics/auto` `{alertId, reason}` — pemicu dari tiket/alert.
+- `GET /api/v1/diagnostics?customerId=&limit=` dan `GET /api/v1/diagnostics/{id}`.
+- `GET|PUT /api/v1/diagnostics/policy` — kebijakan trigger (PUT perlu `threshold:manage`).
+- `POST /api/v1/diagnostics/{id}/attach` `{alertId}` — lampirkan ringkasan ke
+  `alerts.ticket_notes` (perlu `alert:handle`).
+
+Trigger otomatis berjalan di Go (`Service.StartAutoTrigger`, interval 15 detik):
+alert baru bertipe offline/optical/queue dan perubahan billing menjadi isolir.
+Dedupe per pelanggan per jendela `dedupe_minutes`; run manual dan otomatis
+memakai satu worker. Tidak ada analisis diagnosa di TypeScript/Next lagi.
 
 ## Jalur event: webhook PPP dan syslog
 
@@ -1033,7 +1058,12 @@ tiap detik untuk rule engine (rasio per pelanggan).
 `collector.Poller` mengambil **satu permintaan massal per router tiap detik**:
 `GET /rest/queue/simple?.proplist=name,rate,parent,disabled`, bukan satu per
 pelanggan. Hasilnya dijumlahkan menjadi satu sampel traffic dan disimpan lewat
-`state.Manager.RecordTraffic`.
+`state.Manager.RecordTraffic`. Untuk `QueueRule`, nama queue dinamis
+`<pppoe-USERNAME>` diubah kembali menjadi USERNAME sebelum dikirim ke
+`state.Manager.SetQueues`; tanpa itu rasio tidak pernah menempel ke pelanggan.
+Pelanggan router yang queue-nya tidak muncul lagi pada putaran itu kehilangan
+rasio lamanya, jadi alert antrean tidak menggantung. Queue anak dan queue
+`disabled` dilewati.
 
 ```go
 poller := collector.NewPoller(manager, collector.PollerOptions{Logger: logger})
@@ -1103,8 +1133,10 @@ collector.NewPoller(manager, collector.PollerOptions{
   belum/tidak ada bukti dari router (mis. router tidak punya address-list isolir aktif,
   pembacaan gagal, atau pelanggan offline). Status ini menjadi penentu utama status
   efektif di dashboard, sedangkan `customers.billing_status` tetap murni mencatat data tagihan.
-- Penghitung error interface hanya naik; deteksi "kerusakan port" kelak melihat
-  kenaikan antara dua sampel.
+- Penghitung error interface hanya naik; `PortRule` menghitung kenaikan
+  `rx-error`+`tx-error` antara dua sampel `/interface` dan mengabaikan
+  antarmuka virtual (`wg`, `bridge`, `vlan`, `pppoe`, dst.) karena
+  penghitungnya bergerak akibat enkapsulasi, bukan kerusakan fisik.
 - Nilai interval bisa diubah lewat `BackupOptions`; bagian yang dependensinya nil
   (Store atau Presence) dilewati.
 

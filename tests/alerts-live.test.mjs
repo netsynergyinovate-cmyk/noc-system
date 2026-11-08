@@ -32,6 +32,22 @@ test("alert aktif: dipetakan apa adanya, tanpa angka karangan", () => {
   assert.equal(a.affectedCustomers, 1);
 });
 
+test("angka terukur dari detail rule engine dipakai apa adanya (bukan placeholder)", () => {
+  const out = live.toLiveActiveAlerts(
+    [
+      item({ id: "cpu", type: "cpu", cpuLoad: 91 }),
+      item({ id: "queue", type: "queue", queueUpRatio: 0.2, queueDownRatio: 0.97 }),
+      item({ id: "port", type: "port", errorsPerMinute: 32.4, interfaceName: "ether1-wan" }),
+    ],
+    directory,
+  );
+  const byId = Object.fromEntries(out.map((a) => [a.id, a]));
+  assert.equal(byId.cpu.measured, 91);
+  assert.equal(byId.queue.measured, 97);
+  assert.equal(byId.port.measured, 32.4);
+  assert.equal(byId.port.interfaceName, "ether1-wan");
+});
+
 test("baris tak dikenal atau yang sudah selesai tidak masuk daftar aktif", () => {
   const out = live.toLiveActiveAlerts(
     [item({ id: "x", type: "aneh" }), item({ id: "y", severity: "genting" }), item({ id: "z", endedAt: 2000 })],

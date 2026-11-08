@@ -31,6 +31,55 @@ func addCustomer(t *testing.T, m *Manager, id, pppoe string, online bool) {
 	}
 }
 
+func TestSetQueuesClearsStaleRatiosAndIgnoresOtherRouters(t *testing.T) {
+	m := newTestManager(t)
+	addCustomer(t, m, "c1", "budi", true)
+	addCustomer(t, m, "c2", "siti", true)
+	if err := m.UpsertCustomer(Customer{ID: "c3", Name: "c3", PPPoEUsername: "agus", RouterID: "r2"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := m.SetQueues("r1", []QueueRatio{
+		{PPPoEUsername: "budi", UpRatio: 0.9, DownRatio: 0.99},
+		{PPPoEUsername: "siti", UpRatio: 0.5, DownRatio: 0.6},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, username := range []string{"budi", "siti"} {
+		c, _ := m.CustomerByPPPoE(username)
+		if !c.HasQueue {
+			t.Fatalf("%s harus punya data queue setelah polling pertama", username)
+		}
+	}
+
+	// Polling kedua hanya melihat queue budi. Siti tidak lagi punya queue dan
+	// angka lamanya tidak boleh tetap dipakai.
+	if _, err := m.SetQueues("r1", []QueueRatio{
+		{PPPoEUsername: "budi", UpRatio: 0.1, DownRatio: 0.2},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	budi, _ := m.CustomerByPPPoE("budi")
+	if !budi.HasQueue || budi.QueueUpRatio != 0.1 || budi.QueueDownRatio != 0.2 {
+		t.Errorf("budi = %+v, want rasio queue baru 0.1/0.2", budi)
+	}
+	siti, _ := m.CustomerByPPPoE("siti")
+	if siti.HasQueue || siti.QueueUpRatio != 0 || siti.QueueDownRatio != 0 {
+		t.Errorf("siti = %+v, want data queue dibuang", siti)
+	}
+
+	// Queue yang dilaporkan router lain tidak boleh mengubah pelanggan r2.
+	if _, err := m.SetQueues("r1", []QueueRatio{
+		{PPPoEUsername: "agus", UpRatio: 1, DownRatio: 1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	agus, _ := m.CustomerByPPPoE("agus")
+	if agus.HasQueue {
+		t.Errorf("agus milik r2 tidak boleh menerima queue dari r1: %+v", agus)
+	}
+}
+
 func TestHealth(t *testing.T) {
 	tests := []struct {
 		name string

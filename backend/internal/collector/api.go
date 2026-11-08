@@ -407,10 +407,12 @@ func (c *Client) MonitorTraffic(ctx context.Context, iface string, onSample func
 		return err
 	}
 	defer conn.close()
+	// Tanpa "=once=": RouterOS mengalirkan sampel terus-menerus. Dengan
+	// "=once=" router hanya mengirim satu sampel lalu menutup koneksi, sehingga
+	// poller menyambung (dan login) ulang setiap beberapa detik.
 	return conn.stream(ctx, []string{
 		"/interface/monitor-traffic",
 		"=interface=" + iface,
-		"=once=",
 	}, func(row map[string]string) bool {
 		rx, errRx := strconv.ParseFloat(row["rx-bps"], 64)
 		tx, errTx := strconv.ParseFloat(row["tx-bps"], 64)

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"noc-isp/backend/internal/archive"
 	"noc-isp/backend/internal/state"
 )
 
@@ -37,7 +38,7 @@ const (
 // Recorder menerima sampel traffic; *state.Manager memenuhinya.
 type Recorder interface {
 	RecordTraffic(routerID string, p state.TrafficPoint) (accepted bool, err error)
-	SetQueues(ratios []state.QueueRatio) ([]state.Change, error)
+	SetQueues(routerID string, ratios []state.QueueRatio) ([]state.Change, error)
 }
 
 // BackupStore menyimpan data perangkat dari jalur cadangan; *state.Manager
@@ -70,6 +71,10 @@ type PollerOptions struct {
 	// HTTPClient dipakai semua router; nil berarti klien bawaan dengan verifikasi
 	// TLS penuh. Timeout per permintaan diatur lewat RequestTimeout.
 	HTTPClient *http.Client
+	// Clients, bila diisi, adalah pool client bersama. Poller, impor, diagnosa,
+	// dan API baca memakai satu Client per router, jadi router tidak di-login
+	// ulang untuk setiap aksi.
+	Clients *ClientPool
 	// Interval antar polling queue; default 1 detik.
 	Interval time.Duration
 	// RequestTimeout membatasi satu permintaan queue; default 90% dari Interval
@@ -207,7 +212,15 @@ func NewPoller(rec Recorder, opts PollerOptions) *Poller {
 
 // Start mulai memoll satu router sampai ctx dibatalkan atau Stop dipanggil.
 func (p *Poller) Start(ctx context.Context, t Target) error {
-	client, err := NewClient(t, p.opts.HTTPClient)
+	var (
+		client *Client
+		err    error
+	)
+	if p.opts.Clients != nil {
+		client, err = p.opts.Clients.Get(t, p.opts.HTTPClient)
+	} else {
+		client, err = NewClient(t, p.opts.HTTPClient)
+	}
 	if err != nil {
 		return err
 	}
@@ -273,7 +286,9 @@ func (p *Poller) streamTraffic(ctx context.Context, w *worker) {
 			}
 			continue
 		}
+		samples := 0
 		err := w.client.MonitorTraffic(ctx, name, func(rx, tx float64) {
+			samples++
 			now := p.opts.Now()
 			w.streamMu.Lock()
 			w.streamRxMbps, w.streamTxMbps, w.streamAt, w.streamIface = rx, tx, now, name
@@ -295,14 +310,31 @@ func (p *Poller) streamTraffic(ctx context.Context, w *worker) {
 		if ctx.Err() != nil {
 			return
 		}
-		failures++
+		if samples > 0 {
+			// Aliran sempat mengalir: ini bukan kegagalan berulang, cukup
+			// sambung ulang dengan jeda pendek.
+			failures = 0
+		} else {
+			failures++
+		}
 		if err != nil && (failures == 1 || failures%10 == 0) {
 			log.Warn("aliran monitor-traffic terputus, mencoba lagi", "error", err, "gagal_berturut", failures)
+		}
+		delay := 2 * time.Second
+		if failures > 1 {
+			step := failures - 1
+			if step > 5 {
+				step = 5
+			}
+			delay = time.Duration(1<<uint(step)) * 2 * time.Second
+			if delay > 60*time.Second {
+				delay = 60 * time.Second
+			}
 		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(2 * time.Second):
+		case <-time.After(delay):
 		}
 		if p.opts.TrafficInterface == "" {
 			if n, lookupErr := w.client.FindInterfaceByComment(ctx, p.opts.TrafficComment); lookupErr == nil && n != "" {
@@ -533,6 +565,13 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 		if s.Disabled || !s.TopLevel() {
 			continue
 		}
+		// Queue dinamis MikroTik bernama "<pppoe-USERNAME>"; username itulah yang
+		// dikenal Manager. Tanpa ini rasio queue tidak pernah menempel ke pelanggan
+		// dan aturan "antrean penuh" tidak pernah berjalan.
+		username, ok := archive.CustomerUsername(s.Name)
+		if !ok {
+			username = s.Name // queue manual yang memang memakai username apa adanya
+		}
 		var upRatio, downRatio float64
 		if s.UpMax > 0 {
 			upRatio = float64(s.UpBps) / float64(s.UpMax)
@@ -541,17 +580,17 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 			downRatio = float64(s.DownBps) / float64(s.DownMax)
 		}
 		ratios = append(ratios, state.QueueRatio{
-			PPPoEUsername: s.Name,
+			PPPoEUsername: username,
 			UpRatio:       upRatio,
 			DownRatio:     downRatio,
 		})
 	}
-	if len(ratios) > 0 {
-		if changes, err := p.rec.SetQueues(ratios); err == nil && len(changes) > 0 && p.opts.Backup != nil && p.opts.Backup.Notify != nil {
-			for _, ch := range changes {
-				if ch.Changed() {
-					p.opts.Backup.Notify(ch)
-				}
+	// Selalu dipanggil, termasuk saat ratios kosong: Manager memakai daftar ini
+	// untuk membuang rasio lama pelanggan yang queue-nya sudah tidak ada.
+	if changes, err := p.rec.SetQueues(w.routerID, ratios); err == nil && len(changes) > 0 && p.opts.Backup != nil && p.opts.Backup.Notify != nil {
+		for _, ch := range changes {
+			if ch.Changed() {
+				p.opts.Backup.Notify(ch)
 			}
 		}
 	}

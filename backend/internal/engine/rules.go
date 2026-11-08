@@ -56,6 +56,9 @@ type QueueRule struct {
 	// ThresholdRatio adalah batas pemakaian queue (0-1); <= 0 memakai 0.95.
 	ThresholdRatio float64
 	After          time.Duration
+	// MaxAge menolak rasio queue yang sudah basi (polling queue gagal). <= 0
+	// memakai 30 detik; QueueAt kosong (sumber lama) tetap dievaluasi.
+	MaxAge time.Duration
 }
 
 func (QueueRule) Name() string { return "queue" }
@@ -69,10 +72,17 @@ func (r QueueRule) Evaluate(obs Observation, now time.Time) []Condition {
 	if after <= 0 {
 		after = DefaultQueueAfter
 	}
+	maxAge := r.MaxAge
+	if maxAge <= 0 {
+		maxAge = 30 * time.Second
+	}
 	var conds []Condition
 	for _, c := range obs.Customers {
 		if !c.IsOnline || !c.HasQueue {
 			continue
+		}
+		if !c.QueueAt.IsZero() && now.Sub(c.QueueAt) > maxAge {
+			continue // rasio lama; polling queue tidak memberi data baru
 		}
 		if c.QueueUpRatio > ratio || c.QueueDownRatio > ratio {
 			cause := "Download"
@@ -110,6 +120,10 @@ type CpuRule struct {
 	// ThresholdPercent adalah batas beban CPU; <= 0 memakai 85.
 	ThresholdPercent float64
 	After            time.Duration
+	// MaxAge menolak pembacaan resource yang sudah basi (router tidak terbaca).
+	// Tanpa ini CPU tinggi terakhir bisa membuat alert yang tidak pernah selesai.
+	// <= 0 memakai 1 menit; Resource.At kosong (sumber lama) tetap dievaluasi.
+	MaxAge time.Duration
 }
 
 func (CpuRule) Name() string { return "cpu" }
@@ -123,10 +137,17 @@ func (r CpuRule) Evaluate(obs Observation, now time.Time) []Condition {
 	if after <= 0 {
 		after = DefaultCpuAfter
 	}
+	maxAge := r.MaxAge
+	if maxAge <= 0 {
+		maxAge = time.Minute
+	}
 	var conds []Condition
 	for _, router := range obs.Routers {
 		if !router.Active || !router.HasResource {
 			continue
+		}
+		if !router.Resource.At.IsZero() && now.Sub(router.Resource.At) > maxAge {
+			continue // pembacaan lama; jangan pertahankan alert CPU dari data basi
 		}
 
 		if float64(router.Resource.CPULoad) > limit {
@@ -222,6 +243,7 @@ func (r BillingMismatchRule) Evaluate(obs Observation, now time.Time) []Conditio
 	}
 	return conds
 }
+
 // DefaultRouterUnreachableAfter: poller sudah menunggu beberapa kegagalan berturut-turut
 // (anti-flapping) sebelum menandai router tidak terjangkau; ini jeda tambahan kecil.
 const DefaultRouterUnreachableAfter = 15 * time.Second

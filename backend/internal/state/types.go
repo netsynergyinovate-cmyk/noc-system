@@ -70,6 +70,9 @@ type Customer struct {
 	QueueUpRatio   float64
 	QueueDownRatio float64
 	HasQueue       bool
+	// QueueAt adalah kapan rasio queue terakhir diperbarui. Dipakai aturan
+	// antrean untuk menolak angka lama saat polling queue gagal.
+	QueueAt time.Time
 
 	IsOnline bool
 	// StatusSince adalah kapan IsOnline berubah ke nilainya sekarang. Berbeda

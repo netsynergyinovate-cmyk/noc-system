@@ -13,10 +13,22 @@ import (
 	"time"
 
 	"noc-isp/backend/internal/auth"
+	"noc-isp/backend/internal/diagnostics"
 	"noc-isp/backend/internal/netflow"
 	"noc-isp/backend/internal/routerproxy"
 	"noc-isp/backend/internal/wire"
 )
+
+// DiagnosticsService adalah API diagnosa Go. *diagnostics.Service memenuhinya.
+type DiagnosticsService interface {
+	StartManual(ctx context.Context, customerID, userID, userName string, complaintAt *time.Time) (diagnostics.Run, bool, error)
+	StartAutoForAlert(ctx context.Context, alertID, reason string) (diagnostics.Run, bool, error)
+	List(ctx context.Context, customerID string, limit int) ([]diagnostics.Run, error)
+	Get(ctx context.Context, runID string) (*diagnostics.Run, []diagnostics.Finding, error)
+	Policy(ctx context.Context) (diagnostics.Policy, error)
+	UpdatePolicy(ctx context.Context, p diagnostics.Policy, updatedBy string) (diagnostics.Policy, error)
+	Attach(ctx context.Context, runID, alertID, userName string) (string, error)
+}
 
 // NetflowStatusSource adalah status kesehatan penerima NetFlow.
 type NetflowStatusSource interface {
@@ -114,6 +126,9 @@ type Options struct {
 	// Routers melayani baca-saja ke MikroTik untuk Next.js (satu gateway).
 	// Kosong berarti rute /api/v1/routers/{id}/... tidak terdaftar.
 	Routers RouterReader
+	// Diagnostics menjalankan diagnosa pelanggan sepenuhnya di Go. Kosong berarti
+	// rute /api/v1/diagnostics tidak terdaftar.
+	Diagnostics DiagnosticsService
 	// RouterPreflight menguji koneksi router sebelum disimpan.
 	RouterPreflight RouterPreflight
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
@@ -174,6 +189,7 @@ func NewHandler(opts Options) http.Handler {
 		// Rute billing didaftarkan lebih dulu pada mux induk; sisanya (dan semua
 		// 404 di bawah /api/v1/) dilayani mux dashboard.
 		api := http.NewServeMux()
+		registerDiagnostics(api, opts.Diagnostics, opts.Verifier)
 		billingAPI := newBillingAPI(opts.Billing, opts.BillingNextRun, opts.Logger)
 		billingAPI.trigger = opts.BillingTrigger
 		if opts.Now != nil {

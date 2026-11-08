@@ -39,14 +39,8 @@ export async function register() {
         console.error("Gagal memulai background collector VLAN:", err);
       }
 
-      try {
-        const { startDiagnosticAutoTrigger } = await import(
-          "@/services/diagnostics.service"
-        );
-        await startDiagnosticAutoTrigger();
-      } catch (err) {
-        console.error("Gagal memulai pemicu diagnosa otomatis:", err);
-      }
+      // Diagnosa pelanggan (trigger otomatis + analisis) berjalan di backend
+      // Go: internal/diagnostics. Next hanya menampilkan hasilnya.
     }
 
     // Di luar gerbang canBoot: pencocokan ONU hanya butuh database, sedangkan canBoot menuntut variabel MikroTik REST

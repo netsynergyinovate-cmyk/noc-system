@@ -228,21 +228,50 @@ func (m *Manager) updateLocked(id string, mutate func(*Customer)) Change {
 // SetQueues menyimpan rasio pemakaian queue untuk sekumpulan pelanggan sekaligus.
 // Mengembalikan daftar perubahan pelanggan yang status Health-nya tidak berubah,
 // tetapi rule engine tetap perlu memeriksanya untuk mendeteksi kemacetan.
-func (m *Manager) SetQueues(ratios []QueueRatio) ([]Change, error) {
+//
+// Hanya pelanggan milik routerID yang diubah. Pelanggan router itu yang tidak
+// muncul di ratios kehilangan data queue-nya: queue dihapus/dinonaktifkan, jadi
+// angka lama tidak boleh terus dipakai aturan antrean (alert akan menggantung).
+func (m *Manager) SetQueues(routerID string, ratios []QueueRatio) ([]Change, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	seen := make(map[string]struct{}, len(ratios))
 	var changes []Change
 	for _, r := range ratios {
 		id, ok := m.byPPPoE[r.PPPoEUsername]
 		if !ok {
+			id, ok = m.byPPPoE[strings.ToLower(strings.TrimSpace(r.PPPoEUsername))]
+		}
+		if !ok {
 			continue // abaikan queue pelanggan yang belum terdaftar
 		}
+		c := m.customers[id]
+		if c == nil || c.RouterID != routerID {
+			continue // queue router lain tidak boleh mengubah pelanggan ini
+		}
+		seen[id] = struct{}{}
 		change := m.updateLocked(id, func(c *Customer) {
 			c.QueueUpRatio = r.UpRatio
 			c.QueueDownRatio = r.DownRatio
 			c.HasQueue = true
+			c.QueueAt = m.now()
 		})
 		changes = append(changes, change)
+	}
+	for _, id := range m.customerOrder {
+		c := m.customers[id]
+		if c == nil || c.RouterID != routerID || !c.HasQueue {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		changes = append(changes, m.updateLocked(id, func(c *Customer) {
+			c.QueueUpRatio = 0
+			c.QueueDownRatio = 0
+			c.HasQueue = false
+			c.QueueAt = time.Time{}
+		}))
 	}
 	return changes, nil
 }

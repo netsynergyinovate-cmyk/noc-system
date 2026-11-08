@@ -72,7 +72,14 @@ type BackendPreflight = {
 };
 
 function backendBase(): string | null {
-  return process.env.BACKEND_INTERNAL_URL ?? process.env.BACKEND_URL ?? null;
+  // Sama dengan env.BACKEND_INTERNAL_URL: BACKEND_INTERNAL_URL -> BACKEND_URL
+  // -> bawaan lokal. Tanpa bawaan ini, uji router di host (bukan Docker)
+  // selalu gagal "Backend Go belum dikonfigurasi".
+  return (
+    process.env.BACKEND_INTERNAL_URL ??
+    process.env.BACKEND_URL ??
+    "http://localhost:8080"
+  );
 }
 
 function failure(message: string, port?: number, tls?: boolean, code = "CONNECTION_FAILED"): ApiProbeResult {

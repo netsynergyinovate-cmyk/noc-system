@@ -44,8 +44,6 @@ import {
   type TrafficRangeId,
 } from "@/lib/dashboard/ranges";
 import { evaluateTrafficStaleness } from "@/lib/dashboard/staleness";
-import { useSession } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
 import { VlanPonTrafficBoard } from "@/components/dashboard/vlan-pon-traffic-board";
 
 // Peta Leaflet interaktif asli untuk sebaran pelanggan & ODP riil
@@ -90,17 +88,15 @@ export function NocDenseDashboard() {
   const activeRouterCount = useDashboardStore((s) => s.activeRouterCount);
   const telemetry = useDashboardStore((s) => s.telemetry);
   const lastUpdateAt = useDashboardStore((s) => s.lastUpdateAt);
-
-  const isDemo = useSession(selectPreviewEnabled);
-  // Sebelum pesan pertama backend, store masih kosong (live) atau berisi contoh (demo).
-  const hasData = isDemo || lastUpdateAt !== null;
+  // Sebelum pesan pertama backend, store masih kosong.
+  const hasData = lastUpdateAt !== null;
 
   const [range, setRange] = useState<TrafficRangeId>(DEFAULT_RANGE);
   const [inspectedTraffic, setInspectedTraffic] =
     useState<InspectedTrafficPoint | null>(null);
   // Histori dimuat sekali per rentang; ujung grafik digerakkan titik live WebSocket.
-  const history = useTrafficHistory(range, isDemo, false);
-  const live = useLiveIncidents(range === DEFAULT_RANGE, isDemo);
+  const history = useTrafficHistory(range, false, false);
+  const live = useLiveIncidents(range === DEFAULT_RANGE, false);
 
   const historyWindow = useMemo(
     () =>

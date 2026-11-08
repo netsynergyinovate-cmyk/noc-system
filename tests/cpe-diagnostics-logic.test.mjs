@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import {
   clearDiagnosticTasks,
   enqueueDiagnosticTask,
-  generateMockSeedTasks,
   getDiagnosticTasks,
   updateTaskStatus,
 } from "../src/lib/dashboard/cpe-diagnostics-logic.ts";
@@ -50,20 +49,9 @@ test("getDiagnosticTasks: filter customerId", () => {
   assert.equal(getDiagnosticTasks("zzz").length, 0);
 });
 
-test("generateMockSeedTasks: 5-10 entri valid", () => {
-  const seed = generateMockSeedTasks();
-  assert.ok(seed.length >= 5 && seed.length <= 10);
-  assert.equal(new Set(seed.map((s) => s.id)).size, seed.length);
-});
-
-test("komponen panel diekspor dan terpasang di cpe-board", () => {
-  const panel = readFileSync("src/components/dashboard/cpe-diagnostics-panel.tsx", "utf8");
-  assert.match(panel, /export function CpeDiagnosticsPanel/);
-  for (const id of ["cpe-diagnostics-panel", "run-diag-btn", "diag-task-row", "cpe-diag-mock-badge"]) {
-    assert.ok(panel.includes(`"${id}"`), id);
-  }
+test("cpe-board menampilkan live note dan dialog diagnosa pelanggan terpasang", () => {
   const board = readFileSync("src/components/dashboard/cpe-board.tsx", "utf8");
-  assert.match(board, /<CpeDiagnosticsPanel/);
+  assert.ok(board.includes('data-testid="diagnostics-live-note"'));
   assert.match(board, /Tugas Diagnostik/);
   const dlg = readFileSync("src/components/dashboard/customer-cpe-dialog.tsx", "utf8");
   assert.match(dlg, /Jalankan Diagnostik Cepat/);

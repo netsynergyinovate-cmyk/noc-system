@@ -16,8 +16,6 @@ import {
   type TrafficHistory,
 } from "@/lib/dashboard/history";
 import { loadLiveTrafficHistory } from "@/lib/dashboard/history-live";
-import { useSession } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
 import {
   DEFAULT_RANGE,
   getRange,
@@ -332,9 +330,8 @@ export function describe(range: TrafficRangeId) {
 
 export function TrafficPanel({ className }: { className?: string }) {
   const [range, setRange] = useState<TrafficRangeId>(DEFAULT_RANGE);
-  const isDemo = useSession(selectPreviewEnabled);
-  const history = useTrafficHistory(range, isDemo);
-  const live = useLiveIncidents(range === DEFAULT_RANGE, isDemo);
+  const history = useTrafficHistory(range, false);
+  const live = useLiveIncidents(range === DEFAULT_RANGE, false);
 
   const historyWindow = useMemo(
     () =>
@@ -352,7 +349,7 @@ export function TrafficPanel({ className }: { className?: string }) {
   // Preload histori 5 menit awal dari database saat refresh jika buffer store masih kosong
   useEffect(() => {
     let active = true;
-    if (isLive && !isDemo && trafficTimes.length === 0) {
+    if (isLive && trafficTimes.length === 0) {
       loadLiveTrafficHistory("live")
         .then((hist) => {
           if (active && hist.series.times.length > 0) {
@@ -369,7 +366,7 @@ export function TrafficPanel({ className }: { className?: string }) {
     return () => {
       active = false;
     };
-  }, [isLive, isDemo, trafficTimes.length]);
+  }, [isLive, trafficTimes.length]);
 
   const incidents = isLive ? live.incidents : (history.data?.incidents ?? []);
   const now = isLive ? live.now : (history.data?.to ?? 0);

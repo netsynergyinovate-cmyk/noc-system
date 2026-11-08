@@ -8,18 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiOltToDashboard, getOltStats, mockOlts, oltLinkState, type ApiOlt, type DashboardOlt } from "@/lib/dashboard/olts";
+import { apiOltToDashboard, getOltStats, oltLinkState, type ApiOlt, type DashboardOlt } from "@/lib/dashboard/olts";
 import { ConnectionErrorNotice } from "./connection-error-notice";
 import { CpeInventory } from "./cpe-inventory";
 import { OnuCustomerMappingPanel } from "./onu-customer-mapping-panel";
 import { OltWizardDialog } from "./olt-wizard-dialog";
 import { PonPortsDialog } from "./pon-ports-dialog";
 import { OltDeleteDialog } from "./olt-delete-dialog";
-import { useSession } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
 import { fetchLiveOlts } from "@/lib/dashboard/olt-live";
 import { formatInteger } from "@/lib/dashboard/format";
-import { CpeDiagnosticsPanel } from "./cpe-diagnostics-panel";
 import { MetricCard } from "./metric-card";
 
 // Zona waktu tetap supaya HTML server dan browser sama.
@@ -28,19 +25,51 @@ const oltTimeFormat = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
   timeStyle: "medium",
 });
+const VALID_TABS = ["olt", "onus", "mapping", "diagnostics"] as const;
+type CpeTab = (typeof VALID_TABS)[number];
+
+function getInitialTab(): CpeTab {
+  if (typeof window === "undefined") return "olt";
+  const params = new URLSearchParams(window.location.search);
+  const paramTab = params.get("tab") as CpeTab | null;
+  if (paramTab && VALID_TABS.includes(paramTab)) return paramTab;
+  try {
+    const saved = localStorage.getItem("cpe_board_tab") as CpeTab | null;
+    if (saved && VALID_TABS.includes(saved)) return saved;
+  } catch {}
+  return "olt";
+}
 
 export function CpeBoard() {
+  const [tab, setTab] = useState<CpeTab>(getInitialTab);
 
-  const [tab, setTab] = useState("olt");
-  const isDemoMode = useSession(selectPreviewEnabled);
-  // Mode live: hanya OLT dari database; tidak pernah jatuh ke daftar tiruan.
-  const [olts, setOlts] = useState<readonly DashboardOlt[]>(isDemoMode ? mockOlts : []);
-  const [oltsFromApi, setOltsFromApi] = useState(!isDemoMode);
+  const handleTabChange = (next: string) => {
+    if (!VALID_TABS.includes(next as CpeTab)) return;
+    setTab(next as CpeTab);
+    try {
+      localStorage.setItem("cpe_board_tab", next);
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", next);
+      window.history.replaceState(null, "", url.toString());
+    } catch {}
+  };
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const paramTab = params.get("tab") as CpeTab | null;
+      if (paramTab && VALID_TABS.includes(paramTab)) {
+        setTab(paramTab);
+      }
+    };
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+  const [olts, setOlts] = useState<readonly DashboardOlt[]>([]);
   const [oltsFailed, setOltsFailed] = useState(false);
   const [selectedOltForPon, setSelectedOltForPon] = useState<DashboardOlt | null>(null);
   const [oltToDelete, setOltToDelete] = useState<DashboardOlt | null>(null);
 
-  // OLT nyata dari GET /api/devices; gagal atau kosong -> tetap data tiruan.
   const [reloadKey, setReloadKey] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -48,54 +77,34 @@ export function CpeBoard() {
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
-    if (!isDemoMode) {
-      let alive = true;
-      const load = async () => {
-        try {
-          const next = await fetchLiveOlts();
-          if (alive) {
-            setOlts(next);
-            setOltsFailed(false);
-          }
-        } catch {
-          if (alive) setOltsFailed(true);
-        }
-      };
-      const first = setTimeout(() => void load(), 0);
-      const timer = setInterval(() => void load(), 30_000);
-      return () => {
-        alive = false;
-        clearTimeout(first);
-        clearInterval(timer);
-      };
-    }
-    let cancelled = false;
-    (async () => {
+    let alive = true;
+    const load = async () => {
       try {
-        const res = await fetch("/api/devices");
-        if (!res.ok) return;
-        const json = await res.json();
-        const rows: ApiOlt[] = Array.isArray(json?.data?.olts) ? json.data.olts : [];
-        if (cancelled || rows.length === 0) return;
-        setOlts(rows.map(apiOltToDashboard));
-        setOltsFromApi(true);
+        const next = await fetchLiveOlts();
+        if (alive) {
+          setOlts(next);
+          setOltsFailed(false);
+        }
       } catch {
-        // jaringan putus: pertahankan daftar yang sedang tampil
+        if (alive) setOltsFailed(true);
       }
-    })();
-    return () => {
-      cancelled = true;
     };
-  }, [reloadKey, isDemoMode]);
-
+    const first = setTimeout(() => void load(), 0);
+    const timer = setInterval(() => void load(), 30_000);
+    return () => {
+      alive = false;
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [reloadKey]);
 
   const oltStats = getOltStats(olts);
   // Demo: data tiruan punya last_seen_at tetap, jadi jangan dinilai basi terhadap jam sungguhan.
-  const nowSec = isDemoMode ? 0 : Math.floor(now / 1000);
+  const nowSec = Math.floor(now / 1000);
   const oltTerputus = olts.find((o) => ["down", "stale"].includes(oltLinkState(o, nowSec)));
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="gap-6">
+    <Tabs value={tab} onValueChange={handleTabChange} className="gap-6">
       <TabsList className="h-auto flex-wrap">
         <TabsTrigger value="olt">Daftar OLT</TabsTrigger>
         <TabsTrigger value="onus">Perangkat CPE/ONT</TabsTrigger>
@@ -104,18 +113,14 @@ export function CpeBoard() {
       </TabsList>
 
       <TabsContent value="diagnostics" className="flex flex-col gap-6">
-        {isDemoMode ? (
-          <CpeDiagnosticsPanel />
-        ) : (
-          <p
-            data-testid="diagnostics-live-note"
-            className="rounded-md border border-dashed p-6 text-sm text-muted-foreground"
-          >
-            Panel diagnostik massal (ping, traceroute) belum memakai data modem nyata, jadi tidak ditampilkan di mode
-            live. Reboot dan ubah Wi-Fi modem satu pelanggan sudah nyata: buka ikon pengaturan (roda gigi) pada baris
-            pelanggan di halaman Pelanggan.
-          </p>
-        )}
+        <p
+          data-testid="diagnostics-live-note"
+          className="rounded-md border border-dashed p-6 text-sm text-muted-foreground"
+        >
+          Panel diagnostik massal (ping, traceroute) belum memakai data modem nyata, jadi tidak ditampilkan di mode
+          live. Reboot dan ubah Wi-Fi modem satu pelanggan sudah nyata: buka ikon pengaturan (roda gigi) pada baris
+          pelanggan di halaman Pelanggan.
+        </p>
       </TabsContent>
 
       <TabsContent value="mapping" className="flex flex-col gap-6">
@@ -163,9 +168,7 @@ export function CpeBoard() {
             <div className="flex flex-col gap-1.5">
               <CardTitle className="text-lg">Daftar OLT</CardTitle>
               <CardDescription>
-                {oltsFromApi
-                  ? "Data dari database; jumlah port dan ONU dari hasil polling OLT oleh backend."
-                  : "Data tiruan; belum ada OLT terdaftar."}
+                Data dari database; jumlah port dan ONU dari hasil polling OLT oleh backend.
               </CardDescription>
             </div>
             <OltWizardDialog onSaved={() => setReloadKey((k) => k + 1)} />
@@ -209,10 +212,10 @@ export function CpeBoard() {
                       <TableCell>
                         <div className="font-medium text-foreground">{olt.name}</div>
                         <Link
-                          href={`/app/cpe/pon/${oltsFromApi ? `${olt.id}:1` : `olt-${index + 1}-pon-1`}`}
+                          href={`/app/cpe/pon/${olt.id}:1`}
                           className="text-xs text-primary underline-offset-2 hover:underline"
                         >
-                          {oltsFromApi ? "Lihat detail PON 1" : "Lihat detail PON 1/1/1"}
+                          Lihat detail PON 1
                         </Link>
                         <div className="text-xs text-muted-foreground">{olt.brand}</div>
                       </TableCell>

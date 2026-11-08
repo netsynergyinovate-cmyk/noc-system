@@ -35,7 +35,6 @@ import {
   isoDuration,
 } from "@/lib/dashboard/format";
 import { incidentLabels } from "@/lib/dashboard/incidents";
-import { loadAnomalies } from "@/lib/dashboard/anomaly-feed";
 import {
   defaultAnomalyFilters,
   facetCounts,
@@ -48,8 +47,7 @@ import {
   markAnomalyReviewed,
   type ReviewedEntry,
 } from "@/lib/dashboard/anomaly-detail-logic";
-import { useSession, useSessionUser } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
+import { useSessionUser } from "@/components/session-provider";
 import {
   loadLiveAnomalies,
   subscribeAnomalyWs,
@@ -76,7 +74,6 @@ import {
 } from "./anomaly-subject";
 import { DiagnoseButton } from "./diagnose-button";
 import { MetricCard } from "./metric-card";
-import { MockDataNotice } from "./mock-data-notice";
 import { RunningDuration } from "./running-duration";
 import { SeverityBadge } from "./status-badge";
 import {
@@ -111,22 +108,13 @@ interface Loaded {
 // Memuat daftar anomali dan menyegarkannya berkala, supaya anomali yang baru
 // muncul dan lamanya yang masih berjalan ikut bertambah.
 function useAnomalies(range: AnomalyRange) {
-  // Mode live membaca tabel alerts (rule engine Go); demo memakai data tiruan.
-  const isDemo = useSession(selectPreviewEnabled);
-  // Berganti periode berarti memuat ulang dari awal dengan jendela yang baru.
+  // Selalu membaca data live dari tabel alerts (rule engine Go)
   const load = useMemo(
-    () =>
-      isDemo
-        ? async (nowSec: number) => ({
-            anomalies: await loadAnomalies(nowSec, range),
-            resolvedTotal: null as number | null,
-            range,
-          })
-        : async (nowSec: number) => ({
-            ...(await loadLiveAnomalies(nowSec, range)),
-            range,
-          }),
-    [isDemo, range],
+    () => async (nowSec: number) => ({
+      ...(await loadLiveAnomalies(nowSec, range)),
+      range,
+    }),
+    [range],
   );
   const { state, failed, retry } = usePolled(load, REFRESH_MS);
   const loaded: Loaded | null = useMemo(() => {
@@ -150,11 +138,10 @@ function useAnomalies(range: AnomalyRange) {
     };
   }, [state, range]);
   useEffect(() => {
-    if (isDemo) return;
     return subscribeAnomalyWs(() => {
       retry();
     });
-  }, [isDemo, retry]);
+  }, [retry]);
 
   return { loaded, failed, retry };
 }
@@ -761,7 +748,6 @@ export function AnomalyBoard({
                 <span className="inline-flex size-2 rounded-full bg-primary animate-pulse motion-reduce:animate-none" />
                 Deteksi Anomali
               </h1>
-              <MockDataNotice real />
             </div>
             <p className="text-[12px] text-muted-foreground leading-tight">
               Gangguan terdeteksi: jalur penuh, router terbebani, error port,

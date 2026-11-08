@@ -5,9 +5,7 @@ import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 
 // Pengingat status sumber data. Mode live TIDAK otomatis berarti halaman ini
-// memakai data nyata: banyak halaman masih tiruan walau aplikasinya live. Hijau
-// ("nyata") hanya untuk halaman yang memberi `real` karena sumbernya benar-benar
-// router, backend Go, atau database; tanpa itu mode live menampilkan peringatan.
+// memakai data nyata: halaman yang belum terhubung menampilkan peringatan jujur.
 export function MockDataNotice({
   source = "router atau OLT",
   real = false,
@@ -28,7 +26,6 @@ export function MockDataNotice({
     );
   }
   if (!isDemo) {
-    // Operasional live nyata tidak memerlukan lencana AI-slop "Mode Live (Database PostgreSQL)"
     return null;
   }
 

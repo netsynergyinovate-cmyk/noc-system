@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { requireSession } from "@/lib/session";
 import { CpeBoard } from "@/components/dashboard/cpe-board";
 import { UnreachableDeviceBanner } from "@/components/dashboard/unreachable-device-banner";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 
 export const metadata: Metadata = { title: "Perangkat CPE & OLT" };
 
@@ -16,8 +15,6 @@ export default async function CpePage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Perangkat CPE &amp; OLT
           </h1>
-          {/* Daftar perangkat, optik dan status GenieACS berasal dari OLT (polling backend) dan GenieACS NBI. */}
-          <MockDataNotice source="OLT & CPE" real />
         </div>
         <p className="text-sm text-muted-foreground">
           Pemantauan OLT, port PON, status ONU, dan pemetaan pelanggan.

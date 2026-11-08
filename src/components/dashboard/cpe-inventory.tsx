@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mapOnuToCustomer, mockOnus, type DashboardOnu, type OnuStatusFilter } from "@/lib/dashboard/onus";
+import { mapOnuToCustomer, type DashboardOnu, type OnuStatusFilter } from "@/lib/dashboard/onus";
 import {
   EMPTY_INVENTORY_FILTER,
   brandOptions,
@@ -19,8 +19,6 @@ import {
   type InventoryFilter,
 } from "@/lib/dashboard/onu-inventory";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { useSession } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
 import { mapOnuLive } from "@/lib/dashboard/olt-live";
 import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
 import { formatInteger } from "@/lib/dashboard/format";
@@ -78,11 +76,8 @@ export function CpeInventory() {
   const [page, setPage] = useState(1);
 
   const customers = useDashboardStore((state) => state.customers);
-  const isDemo = useSession(selectPreviewEnabled);
-  const live = useLiveOnus(!isDemo);
-  const [demoOnus, setDemoOnus] = useState<readonly DashboardOnu[]>(mockOnus);
-  const liveOnus = live.onus;
-  const onus = useMemo<readonly DashboardOnu[]>(() => (isDemo ? demoOnus : (liveOnus ?? [])), [isDemo, demoOnus, liveOnus]);
+  const live = useLiveOnus(true);
+  const onus = live.onus ?? [];
   const [mappingId, setMappingId] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const mappingOnu = onus.find((o) => o.id === mappingId) ?? null;
@@ -90,11 +85,6 @@ export function CpeInventory() {
   const handleSaveMapping = async (onuId: string, newCustomerId: string | null) => {
     const customer = newCustomerId ? (customers.find((c) => c.id === newCustomerId) ?? null) : null;
     if (newCustomerId && !customer) return;
-    if (isDemo) {
-      setDemoOnus((prev) => prev.map((o) => (o.id === onuId ? mapOnuToCustomer(o, customer) : o)));
-      setMappingId(null);
-      return;
-    }
     const result = await mapOnuLive(onuId, newCustomerId);
     if (!result.ok) {
       setMapError(result.message);
@@ -131,9 +121,7 @@ export function CpeInventory() {
           <div>
             <CardTitle className="text-lg">Perangkat CPE / ONT</CardTitle>
             <CardDescription data-testid="onu-source-note">
-              {isDemo
-                ? "Data tiruan; belum terhubung ke OLT nyata."
-                : "Data dari OLT (polling backend, tiap 30 detik)."}
+              Data dari OLT (polling backend, tiap 30 detik).
             </CardDescription>
           </div>
           <span className="text-xs text-muted-foreground tabular-nums" data-testid="onu-count">
@@ -142,12 +130,12 @@ export function CpeInventory() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!isDemo && live.failed && (
+        {live.failed && (
           <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             Data perangkat belum bisa dimuat dari server. Daftar di bawah adalah yang terakhir berhasil dimuat.
           </p>
         )}
-        {!isDemo && live.truncated && (
+        {live.truncated && (
           <p role="status" className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
             Hanya {formatInteger(onus.length)} dari {formatInteger(live.total)} perangkat yang dimuat. Persempit dengan pencarian atau filter OLT.
           </p>
@@ -272,7 +260,7 @@ export function CpeInventory() {
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={colCount} className="h-28 text-center text-muted-foreground">
-                    {!isDemo && onus.length === 0
+                    {onus.length === 0
                       ? live.onus === null && !live.failed
                         ? "Memuat perangkat dari server…"
                         : "Belum ada perangkat. Daftarkan OLT di tab Daftar OLT; ONU muncul setelah backend berhasil memoll OLT."

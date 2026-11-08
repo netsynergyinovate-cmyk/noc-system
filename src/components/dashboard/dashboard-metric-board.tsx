@@ -21,8 +21,6 @@ import {
 } from "@/lib/dashboard/metric-board-data";
 import { useAlertStore } from "@/lib/dashboard/alert-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
-import { useSession } from "@/components/session-provider";
-import { selectPreviewEnabled } from "@/lib/session-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MetricCard } from "./metric-card";
@@ -60,7 +58,6 @@ function MiniStat({
 // Papan metrik: empat kartu utama + panel ringkasan. Angka dihitung dari store
 // (pelanggan, router, traffic, alert); tanpa data jatuh ke data tiruan.
 export function DashboardMetricBoard() {
-  const isDemo = useSession(selectPreviewEnabled);
   const customers = useDashboardStore((s) => s.customers);
   const routers = useDashboardStore((s) => s.routers);
   const traffic = useDashboardStore((s) => s.traffic);
@@ -73,9 +70,9 @@ export function DashboardMetricBoard() {
         routers,
         traffic,
         alertStore: { active: activeAlerts },
-        sourceStatus: isDemo ? "dummy" : "nyata",
+        sourceStatus: "nyata",
       }),
-    [customers, routers, traffic, activeAlerts, isDemo],
+    [customers, routers, traffic, activeAlerts],
   );
   const pct = (count: number) =>
     m.totalCustomers === 0
@@ -84,7 +81,7 @@ export function DashboardMetricBoard() {
 
   return (
     <div className="flex flex-col gap-4">
-      {!isDemo && m.totalCustomers === 0 && m.totalRouters === 0 && (
+      {m.totalCustomers === 0 && m.totalRouters === 0 && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="space-y-0.5">
             <p className="font-semibold text-foreground flex items-center gap-2">

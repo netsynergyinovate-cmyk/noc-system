@@ -102,9 +102,11 @@ export function POST(request: Request, context: Context) {
           );
 
           if (res.ok) {
+            const resBody = (await res.json().catch(() => null)) as { description?: string } | null;
+            const savedDesc = resBody?.description ?? targetDesc;
             await db
               .update(oltOnus)
-              .set({ description: targetDesc })
+              .set({ description: savedDesc })
               .where(eq(oltOnus.id, row.id));
             updated++;
           } else {

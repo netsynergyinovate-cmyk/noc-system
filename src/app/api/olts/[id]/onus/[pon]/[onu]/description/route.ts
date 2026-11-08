@@ -84,14 +84,15 @@ export function POST(request: Request, context: Context) {
         );
       }
 
-      const body: { ok?: boolean; message?: string } | null = await res.json().catch(() => null);
+      const body: { ok?: boolean; message?: string; description?: string } | null = await res.json().catch(() => null);
 
       if (res.status === 200) {
-        // Sinkronkan ke database lokal setelah OLT berhasil menerima
+        const finalDesc = body?.description ?? description;
+        // Sinkronkan ke database lokal persis dengan yang diterima dan disimpan OLT
         try {
           await db
             .update(oltOnus)
-            .set({ description })
+            .set({ description: finalDesc })
             .where(and(eq(oltOnus.oltId, oltId), eq(oltOnus.ponIndex, pon), eq(oltOnus.onuIndex, onu)));
         } catch (dbErr) {
           console.error("Gagal sinkron nama ONU ke DB:", dbErr);
@@ -99,8 +100,8 @@ export function POST(request: Request, context: Context) {
 
         return Response.json({
           ok: true,
-          message: body?.message ?? `Nama ONU ${pon}/${onu} berhasil disetel menjadi "${description}".`,
-          description,
+          message: body?.message ?? `Nama ONU ${pon}/${onu} berhasil disetel menjadi "${finalDesc}".`,
+          description: finalDesc,
         });
       }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Cpu, Network, Radio, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,43 +29,28 @@ const oltTimeFormat = new Intl.DateTimeFormat("id-ID", {
 const VALID_TABS = ["olt", "onus", "mapping", "diagnostics"] as const;
 type CpeTab = (typeof VALID_TABS)[number];
 
-function getInitialTab(): CpeTab {
-  if (typeof window === "undefined") return "olt";
-  const params = new URLSearchParams(window.location.search);
-  const paramTab = params.get("tab") as CpeTab | null;
-  if (paramTab && VALID_TABS.includes(paramTab)) return paramTab;
-  try {
-    const saved = localStorage.getItem("cpe_board_tab") as CpeTab | null;
-    if (saved && VALID_TABS.includes(saved)) return saved;
-  } catch {}
-  return "olt";
-}
-
 export function CpeBoard() {
-  const [tab, setTab] = useState<CpeTab>(getInitialTab);
+  const searchParams = useSearchParams();
+  const queryTab = searchParams.get("tab") as CpeTab | null;
+  const initialTab: CpeTab = queryTab && VALID_TABS.includes(queryTab) ? queryTab : "olt";
+  const [tab, setTab] = useState<CpeTab>(initialTab);
+
+  useEffect(() => {
+    const current = searchParams.get("tab") as CpeTab | null;
+    if (current && VALID_TABS.includes(current)) {
+      setTab(current);
+    }
+  }, [searchParams]);
 
   const handleTabChange = (next: string) => {
     if (!VALID_TABS.includes(next as CpeTab)) return;
     setTab(next as CpeTab);
     try {
-      localStorage.setItem("cpe_board_tab", next);
       const url = new URL(window.location.href);
       url.searchParams.set("tab", next);
       window.history.replaceState(null, "", url.toString());
     } catch {}
   };
-
-  useEffect(() => {
-    const syncFromUrl = () => {
-      const params = new URLSearchParams(window.location.search);
-      const paramTab = params.get("tab") as CpeTab | null;
-      if (paramTab && VALID_TABS.includes(paramTab)) {
-        setTab(paramTab);
-      }
-    };
-    window.addEventListener("popstate", syncFromUrl);
-    return () => window.removeEventListener("popstate", syncFromUrl);
-  }, []);
   const [olts, setOlts] = useState<readonly DashboardOlt[]>([]);
   const [oltsFailed, setOltsFailed] = useState(false);
   const [selectedOltForPon, setSelectedOltForPon] = useState<DashboardOlt | null>(null);

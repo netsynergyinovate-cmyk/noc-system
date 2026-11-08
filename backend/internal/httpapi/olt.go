@@ -246,6 +246,7 @@ func (a *OltBindAPI) description(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req descRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<10)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Description) == "" {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "bad_request", Message: "deskripsi/nama tidak boleh kosong"})
 		return
@@ -272,12 +273,12 @@ func (a *OltBindAPI) description(w http.ResponseWriter, r *http.Request) {
 	}
 	defer drv.Close()
 
-	err = olt.DescribeOne(ctx, drv, olt.OnuRef{Pon: pon, Onu: onu}, req.Description)
+	cleanDesc, err := olt.DescribeOne(ctx, drv, olt.OnuRef{Pon: pon, Onu: onu}, req.Description)
 	switch {
 	case err == nil:
-		a.logger.Info("deskripsi ONU diubah di OLT", "olt", oltID, "pon", pon, "onu", onu, "desc", req.Description, "oleh", identity.UserID)
+		a.logger.Info("deskripsi ONU diubah di OLT", "olt", oltID, "pon", pon, "onu", onu, "desc", cleanDesc, "oleh", identity.UserID)
 		writeJSON(w, http.StatusOK, map[string]any{
-			"ok": true, "message": fmt.Sprintf("Deskripsi ONU %d/%d berhasil diubah di OLT", pon, onu), "description": req.Description,
+			"ok": true, "message": fmt.Sprintf("Deskripsi ONU %d/%d berhasil diubah di OLT", pon, onu), "description": cleanDesc,
 		})
 	case errors.Is(err, olt.ErrDescriptionRejected):
 		a.logger.Warn("deskripsi ONU ditolak OLT", "olt", oltID, "pon", pon, "onu", onu, "error", err.Error())
@@ -286,7 +287,7 @@ func (a *OltBindAPI) description(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "driver_unsupported", Message: err.Error()})
 	default:
 		a.logger.Warn("gagal mengubah deskripsi ONU", "olt", oltID, "pon", pon, "onu", onu, "error", err.Error())
-		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "description_failed", Message: err.Error()})
+		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "description_failed", Message: "OLT menolak atau gagal mengubah deskripsi"})
 	}
 }
 

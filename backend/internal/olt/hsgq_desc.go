@@ -13,12 +13,13 @@ var ErrDescriptionRejected = errors.New("OLT menolak perintah deskripsi ONU")
 
 // OnuDescriber diimplementasikan driver yang bisa menamai/memberi deskripsi satu ONU lewat OLT.
 type OnuDescriber interface {
-	SetOnuDescription(ctx context.Context, ref OnuRef, desc string) error
+	SetOnuDescription(ctx context.Context, ref OnuRef, desc string) (string, error)
 }
 
 var descCleanRE = regexp.MustCompile(`[^a-zA-Z0-9_\-\. ]`)
 
-func sanitizeDescription(desc string) string {
+// SanitizeDescription membersihkan karakter berbahaya dan membatasi panjang (maks 32 karakter).
+func SanitizeDescription(desc string) string {
 	s := strings.TrimSpace(desc)
 	s = descCleanRE.ReplaceAllString(s, "")
 	s = strings.Join(strings.Fields(s), " ")
@@ -33,31 +34,31 @@ func sanitizeDescription(desc string) string {
 //
 //	interface epon <pon>
 //	onu description <onu-id> "<desc>"
-func descriptionCommands(ref OnuRef, desc string) ([]string, error) {
+func descriptionCommands(ref OnuRef, desc string) (string, []string, error) {
 	if !validRef(ref) {
-		return nil, fmt.Errorf("nomor PON/ONU %d/%d di luar rentang OLT", ref.Pon, ref.Onu)
+		return "", nil, fmt.Errorf("nomor PON/ONU %d/%d di luar rentang OLT", ref.Pon, ref.Onu)
 	}
-	clean := sanitizeDescription(desc)
+	clean := SanitizeDescription(desc)
 	if clean == "" {
-		return nil, errors.New("deskripsi/nama ONU tidak boleh kosong")
+		return "", nil, errors.New("deskripsi/nama ONU tidak boleh kosong")
 	}
-	return []string{
+	return clean, []string{
 		fmt.Sprintf("interface epon %d", ref.Pon),
 		fmt.Sprintf("onu description %d %q", ref.Onu, clean),
 	}, nil
 }
 
-func (d *hsgqTelnetDriver) SetOnuDescription(ctx context.Context, ref OnuRef, desc string) error {
-	cmds, err := descriptionCommands(ref, desc)
+func (d *hsgqTelnetDriver) SetOnuDescription(ctx context.Context, ref OnuRef, desc string) (string, error) {
+	clean, cmds, err := descriptionCommands(ref, desc)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if d.isClosed() {
-		return errors.New("olt/hsgq-telnet: driver sudah ditutup")
+		return "", errors.New("olt/hsgq-telnet: driver sudah ditutup")
 	}
 	c, err := d.open(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer closeSession(ctx, c)
 
@@ -65,7 +66,7 @@ func (d *hsgqTelnetDriver) SetOnuDescription(ctx context.Context, ref OnuRef, de
 	for _, cmd := range cmds {
 		out, err := c.run(ctx, cmd)
 		if err != nil {
-			return fmt.Errorf("perintah %q: %w", cmd, err)
+			return "", fmt.Errorf("perintah %q: %w", cmd, err)
 		}
 		if cliRejected(out) {
 			failed = fmt.Errorf("%w: %q -> %s", ErrDescriptionRejected, cmd, strings.TrimSpace(out))
@@ -77,14 +78,17 @@ func (d *hsgqTelnetDriver) SetOnuDescription(ctx context.Context, ref OnuRef, de
 			failed = fmt.Errorf("perintah %q: %w", cmd, err)
 		}
 	}
-	return failed
+	if failed != nil {
+		return "", failed
+	}
+	return clean, nil
 }
 
 // DescribeOne menamai satu ONU lewat driver. ErrNotSupported bila driver tidak bisa.
-func DescribeOne(ctx context.Context, drv Driver, ref OnuRef, desc string) error {
+func DescribeOne(ctx context.Context, drv Driver, ref OnuRef, desc string) (string, error) {
 	describer, ok := drv.(OnuDescriber)
 	if !ok {
-		return fmt.Errorf("driver %q: %w", drv.Name(), ErrNotSupported)
+		return "", fmt.Errorf("driver %q: %w", drv.Name(), ErrNotSupported)
 	}
 	return describer.SetOnuDescription(ctx, ref, desc)
 }

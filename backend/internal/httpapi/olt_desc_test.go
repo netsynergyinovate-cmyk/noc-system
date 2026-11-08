@@ -37,14 +37,14 @@ func (fakeDescDriver) Close() error                                             
 func (fakeDescDriver) TestConnection(context.Context) error                      { return nil }
 func (fakeDescDriver) FetchPonPorts(context.Context) ([]olt.PonPortStats, error) { return nil, nil }
 func (fakeDescDriver) FetchOnus(context.Context) ([]olt.OnuStats, error)         { return nil, nil }
-func (fakeDescDriver) SetOnuDescription(_ context.Context, ref olt.OnuRef, desc string) error {
+func (fakeDescDriver) SetOnuDescription(_ context.Context, ref olt.OnuRef, desc string) (string, error) {
 	fakeDescMu.Lock()
 	defer fakeDescMu.Unlock()
 	if fakeDescErr != nil {
-		return fakeDescErr
+		return "", fakeDescErr
 	}
 	fakeDescs[ref] = desc
-	return nil
+	return desc, nil
 }
 
 func doBody(h *apiHarness, method, path, ticket, body string) *httptest.ResponseRecorder {

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiOltToDashboard, getOltStats, oltLinkState, type ApiOlt, type DashboardOlt } from "@/lib/dashboard/olts";
+import { getOltStats, oltLinkState, type DashboardOlt } from "@/lib/dashboard/olts";
 import { ConnectionErrorNotice } from "./connection-error-notice";
 import { CpeInventory } from "./cpe-inventory";
 import { OnuCustomerMappingPanel } from "./onu-customer-mapping-panel";
@@ -207,7 +207,7 @@ export function CpeBoard() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {olts.map((olt, index) => (
+                  {olts.map((olt) => (
                     <TableRow key={olt.id}>
                       <TableCell>
                         <div className="font-medium text-foreground">{olt.name}</div>
@@ -273,19 +273,17 @@ export function CpeBoard() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {oltsFromApi && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            data-testid="btn-delete-olt"
-                            aria-label={`Hapus OLT ${olt.name}`}
-                            onClick={() => setOltToDelete(olt)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          data-testid="btn-delete-olt"
+                          aria-label={`Hapus OLT ${olt.name}`}
+                          onClick={() => setOltToDelete(olt)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -215,12 +216,53 @@ func (s *Service) ChangeWifi(ctx context.Context, deviceID string, in WifiChange
 	}, nil
 }
 
-// GetRawDevice mengambil dokumen mentah perangkat
-func (s *Service) GetRawDevice(ctx context.Context, deviceID string) (map[string]any, error) {
-	return s.client.GetDevice(ctx, deviceID)
+// SanitizeSecrets menyaring rekursif kunci password/passphrase/presharedkey agar tidak bocor ke klien umum.
+func SanitizeSecrets(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		cleaned := make(map[string]any, len(val))
+		for k, child := range val {
+			lower := strings.ToLower(k)
+			if strings.Contains(lower, "password") ||
+				strings.Contains(lower, "passphrase") ||
+				strings.Contains(lower, "presharedkey") ||
+				strings.Contains(lower, "secret") {
+				continue
+			}
+			cleaned[k] = SanitizeSecrets(child)
+		}
+		return cleaned
+	case []any:
+		cleanedList := make([]any, len(val))
+		for i, item := range val {
+			cleanedList[i] = SanitizeSecrets(item)
+		}
+		return cleanedList
+	default:
+		return v
+	}
 }
 
-// ListRawDevices mengambil daftar dokumen mentah perangkat
-func (s *Service) ListRawDevices(ctx context.Context, query string) ([]map[string]any, error) {
-	return s.client.ListDevices(ctx, query)
+// GetSanitizedDevice mengambil satu dokumen perangkat dengan semua sandi dibersihkan
+func (s *Service) GetSanitizedDevice(ctx context.Context, deviceID string) (map[string]any, error) {
+	raw, err := s.client.GetDevice(ctx, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	cleaned, _ := SanitizeSecrets(raw).(map[string]any)
+	return cleaned, nil
+}
+
+// ListSanitizedDevices mengambil daftar perangkat dengan semua sandi dibersihkan
+func (s *Service) ListSanitizedDevices(ctx context.Context, query string) ([]map[string]any, error) {
+	rawList, err := s.client.ListDevices(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]map[string]any, len(rawList))
+	for i, d := range rawList {
+		cleaned, _ := SanitizeSecrets(d).(map[string]any)
+		out[i] = cleaned
+	}
+	return out, nil
 }

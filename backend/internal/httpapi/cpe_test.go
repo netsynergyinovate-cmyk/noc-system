@@ -31,8 +31,7 @@ func TestCpeAPI_Endpoints(t *testing.T) {
 
 	client := cpe.NewClient(cpe.Config{BaseURL: srvNBI.URL, Timeout: 2 * time.Second})
 	svc := cpe.NewService(client, slog.Default())
-	api := NewCpeAPI(svc, slog.Default())
-
+	api := NewCpeAPI(svc, nil, nil, slog.Default())
 	mux := http.NewServeMux()
 	api.register(mux)
 
@@ -81,5 +80,13 @@ func TestCpeAPI_Endpoints(t *testing.T) {
 	mux.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// Uji guide
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/cpe/guide", nil)
+	w = httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for guide, got %d", w.Code)
 	}
 }

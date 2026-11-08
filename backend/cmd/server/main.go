@@ -174,16 +174,6 @@ func run() error {
 		} else {
 			apiOptions.OntWeb = httpapi.NewOntWebAPI(pool, cfg.DeviceSecret, ontNets, logger)
 		}
-		genieURL := os.Getenv("GENIEACS_NBI_URL")
-		if genieURL != "" {
-			cpeClient := cpe.NewClient(cpe.Config{
-				BaseURL:  genieURL,
-				Username: os.Getenv("GENIEACS_NBI_USER"),
-				Password: os.Getenv("GENIEACS_NBI_PASSWORD"),
-			})
-			apiOptions.Cpe = httpapi.NewCpeAPI(cpe.NewService(cpeClient, logger), logger)
-			logger.Info("cpe genieacs API Go aktif", "nbi_url", genieURL)
-		}
 		apiOptions.History = archive.NewPGStore(pool)
 		apiOptions.NetflowQuery = netflow.NewReader(pool)
 		apiOptions.Torch = netflow.NewTorchRunner(pool, cfg.DeviceSecret, logger)
@@ -191,6 +181,16 @@ func run() error {
 		// REST/API sendiri.
 		if proxy := routerproxy.NewWithPool(pool, cfg.DeviceSecret, logger, routerClients); proxy != nil {
 			apiOptions.Routers = proxy
+		}
+		genieURL := os.Getenv("GENIEACS_NBI_URL")
+		if genieURL != "" {
+			cpeClient := cpe.NewClient(cpe.Config{
+				BaseURL:  genieURL,
+				Username: os.Getenv("GENIEACS_NBI_USER"),
+				Password: os.Getenv("GENIEACS_NBI_PASSWORD"),
+			})
+			apiOptions.Cpe = httpapi.NewCpeAPI(cpe.NewService(cpeClient, logger), apiOptions.Routers, pool, logger)
+			logger.Info("cpe genieacs API Go aktif", "nbi_url", genieURL)
 		}
 		// Diagnosa pelanggan 100% Go: worker, trigger otomatis, dan API. Next.js
 		// hanya menampilkan hasil dari tabel diagnostic_runs/diagnostic_findings.

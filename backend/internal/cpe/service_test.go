@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -98,5 +99,52 @@ func TestService_ChangeWifiValidation(t *testing.T) {
 	_, err = svc.ChangeWifi(ctx, "DEV-01", WifiChangeInput{})
 	if err == nil {
 		t.Fatalf("expected error for empty wifi, got nil")
+	}
+}
+
+func TestService_SanitizeSecrets(t *testing.T) {
+	input := map[string]any{
+		"_id": "DEV-01",
+		"InternetGatewayDevice": map[string]any{
+			"ManagementServer": map[string]any{
+				"ConnectionRequestUsername": "admin",
+				"ConnectionRequestPassword": "super-secret-password",
+			},
+			"LANDevice": map[string]any{
+				"1": map[string]any{
+					"WLANConfiguration": map[string]any{
+						"1": map[string]any{
+							"SSID":          "MyHomeWifi",
+							"KeyPassphrase": "my-wifi-password",
+							"PreSharedKey": map[string]any{
+								"1": map[string]any{
+									"KeyPassphrase": "another-secret",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	cleaned, ok := SanitizeSecrets(input).(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", cleaned)
+	}
+
+	rawJSON, _ := json.Marshal(cleaned)
+	str := string(rawJSON)
+
+	if strings.Contains(str, "super-secret-password") ||
+		strings.Contains(str, "my-wifi-password") ||
+		strings.Contains(str, "another-secret") ||
+		strings.Contains(str, "ConnectionRequestPassword") ||
+		strings.Contains(str, "KeyPassphrase") {
+		t.Fatalf("secrets leaked in sanitized document: %s", str)
+	}
+
+	if !strings.Contains(str, "MyHomeWifi") || !strings.Contains(str, "DEV-01") {
+		t.Fatalf("safe data missing: %s", str)
 	}
 }

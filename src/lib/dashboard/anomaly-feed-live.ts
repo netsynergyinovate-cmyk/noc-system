@@ -2,6 +2,7 @@ import { sortAnomalies, type Anomaly } from "./anomalies.ts";
 import { anomalyRangeStart, defaultAnomalyRange, type AnomalyRange } from "./anomaly-range.ts";
 import { buildLiveDirectory, toLiveAnomalies, type LiveAlertItem } from "./alerts-live.ts";
 import { useDashboardStore } from "./store.ts";
+import { ALERT_EVENTS_SIGNAL } from "./realtime-ws.ts";
 
 // API membatasi 200 baris per permintaan, jadi riwayat panjang dimuat per halaman.
 const PAGE = 200;
@@ -76,5 +77,44 @@ export async function loadLiveAnomalies(
     anomalies,
     resolvedTotal:
       fetchFrom === rangeFrom ? (capped ? resolved.total : shownResolved) : null,
+  };
+}
+
+export type AnomalyListener = (payload: unknown) => void;
+
+/**
+ * Membuka koneksi WebSocket ke Go backend (ws://localhost:8080/ws) agar saat Go
+ * mendeteksi anomali, UI langsung menerima event secara instan.
+ */
+export function subscribeAnomalyWs(onNewAnomaly: AnomalyListener): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const wsUrl = process.env.NEXT_PUBLIC_GO_WS_URL || "ws://localhost:8080/ws";
+  let socket: WebSocket | null = null;
+  try {
+    socket = new WebSocket(wsUrl);
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(String(event.data));
+        if (data.type === "anomaly_event" || data.event === "anomaly") {
+          onNewAnomaly(data.payload);
+        }
+      } catch {}
+    };
+    socket.onerror = () => {};
+  } catch {}
+
+  const onSignal = (event: Event) => {
+    onNewAnomaly((event as CustomEvent).detail ?? null);
+  };
+  window.addEventListener(ALERT_EVENTS_SIGNAL, onSignal);
+  window.addEventListener("noc:anomaly-event", onSignal);
+
+  return () => {
+    try {
+      socket?.close();
+    } catch {}
+    window.removeEventListener(ALERT_EVENTS_SIGNAL, onSignal);
+    window.removeEventListener("noc:anomaly-event", onSignal);
   };
 }

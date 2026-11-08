@@ -263,7 +263,24 @@ export async function resolveAnomaly(
 }
 
 /**
- * Mengevaluasi aturan anomali pada metrik perangkat dan pelanggan aktif.
+ * Mengambil anomali aktif dari database tanpa evaluasi mandiri di Next.js.
+ * Evaluasi anomali ditangani sepenuhnya oleh engine Go (backend/internal/engine).
+ */
+export async function getActiveAnomaliesFromDB(
+  routerId?: string,
+): Promise<AnomalyItem[]> {
+  const result = await getAnomaliesList({
+    status: "active",
+    routerId,
+    limit: 50,
+    offset: 0,
+  });
+  return result.anomalies;
+}
+
+/**
+ * Mengambil anomali aktif (read-only) tanpa evaluasi atau penulisan mandiri.
+ * Evaluasi diserahkan sepenuhnya ke engine Go.
  */
 export async function detectAnomalies(options: {
   routerId?: string;
@@ -280,68 +297,14 @@ export async function detectAnomalies(options: {
     };
   }
 
-  const queryRouter = db
-    .select({
-      id: routersTable.id,
-      name: routersTable.name,
-      status: routersTable.status,
-    })
-    .from(routersTable);
-
-  const targetRouters = options.routerId
-    ? await queryRouter.where(eq(routersTable.id, options.routerId))
-    : await queryRouter.where(eq(routersTable.status, "aktif"));
-
-  const detectedItems: AnomalyItem[] = [];
-
-  for (const r of targetRouters) {
-    if (r.status !== "aktif") continue;
-
-    // Evaluasi aturan anomali offline untuk pelanggan yang offline
-    const offlineCusts = await db
-      .select({ id: customersTable.id, name: customersTable.name })
-      .from(customersTable)
-      .where(and(eq(customersTable.routerId, r.id), eq(customersTable.isOnline, false)))
-      .limit(5);
-
-    for (const c of offlineCusts) {
-      if (options.persist !== false) {
-        // Cek apakah sudah ada log aktif
-        const existing = await db
-          .select({ id: networkLogs.id })
-          .from(networkLogs)
-          .where(
-            and(
-              eq(networkLogs.routerId, r.id),
-              eq(networkLogs.customerId, c.id),
-              eq(networkLogs.type, "offline"),
-              isNull(networkLogs.endedAt),
-            ),
-          )
-          .limit(1);
-
-        if (existing.length === 0) {
-          const item = await createAnomaly({
-            routerId: r.id,
-            customerId: c.id,
-            type: "offline",
-            severity: "critical",
-            detail: {
-              reason: "Pelanggan offline",
-              ruleTitle: "Pelanggan Offline",
-            },
-          });
-          detectedItems.push(item);
-        }
-      }
-    }
-  }
-
-  const activeLogs = await getAnomaliesList({ status: "active", limit: 50, offset: 0 });
+  // Nonaktifkan trigger evaluasi mandiri di Next.js:
+  // Serahkan sepenuhnya ke engine Go (backend/internal/engine)
+  // Next.js cukup mengambil anomali aktif dari DB:
+  const activeAnomalies = await getActiveAnomaliesFromDB(options.routerId);
 
   return {
-    detected: detectedItems.length,
-    activeAnomalies: activeLogs.anomalies,
+    detected: activeAnomalies.length,
+    activeAnomalies,
     rulesEvaluated: anomalyRules.length,
     sourceStatus: "nyata",
   };

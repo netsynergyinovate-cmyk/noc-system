@@ -45,8 +45,17 @@ export function handleRealtimeMessage(
   // (hanya daftar event), jadi diperiksa sebelum syarat itu. Isinya tidak dipakai
   // langsung: daftar alert dibaca ulang dari database (yang sudah memuat event
   // ini), jadi cukup memberi tahu penyinkron alert agar segera memuat.
-  if (msg && typeof msg === "object" && msg.type === "events") {
-    if (typeof window !== "undefined") window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
+  if (
+    msg &&
+    typeof msg === "object" &&
+    (msg.type === "events" || msg.type === "anomaly_event" || msg.event === "anomaly")
+  ) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(ALERT_EVENTS_SIGNAL));
+      window.dispatchEvent(
+        new CustomEvent("noc:anomaly-event", { detail: msg.payload ?? msg }),
+      );
+    }
     return true;
   }
   // Telemetri tidak membawa `time`: hub hanya mengirimnya saat isinya berubah.

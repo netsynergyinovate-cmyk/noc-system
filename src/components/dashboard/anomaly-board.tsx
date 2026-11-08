@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleCheck,
   CircleDot,
@@ -50,7 +50,7 @@ import {
 } from "@/lib/dashboard/anomaly-detail-logic";
 import { useSession, useSessionUser } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
-import { loadLiveAnomalies } from "@/lib/dashboard/anomaly-feed-live";
+import { loadLiveAnomalies, subscribeAnomalyWs } from "@/lib/dashboard/anomaly-feed-live";
 import {
   anomalyRangeInfo,
   anomalyRangeStart,
@@ -147,6 +147,16 @@ function useAnomalies(range: AnomalyRange) {
       now: state.now,
     };
   }, [state, range]);
+  const retryRef = useRef(retry);
+  retryRef.current = retry;
+
+  useEffect(() => {
+    if (isDemo) return;
+    return subscribeAnomalyWs(() => {
+      retryRef.current();
+    });
+  }, [isDemo]);
+
   return { loaded, failed, retry };
 }
 

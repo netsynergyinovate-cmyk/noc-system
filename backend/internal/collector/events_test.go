@@ -417,6 +417,16 @@ func TestParseOLTLog(t *testing.T) {
 			wantOk:   true,
 		},
 		{
+			name:     "Link Up PON only",
+			msg:      "<189>HSGQ-OLT: Link Up on port 0/2",
+			wantType: "recovery",
+			wantSev:  "info",
+			wantStat: "resolved",
+			wantPon:  "0/2",
+			wantOnu:  "",
+			wantOk:   true,
+		},
+		{
 			name:     "ONU deregistered",
 			msg:      "<189>HSGQ-OLT: ONU 0/1:5 deregistered",
 			wantType: "onu_offline",

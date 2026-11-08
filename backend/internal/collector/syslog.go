@@ -51,8 +51,8 @@ var (
 	// Pola status ONU pemulihan vs offline
 	statusRecoverPattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(online|registered?)\b`)
 	statusOfflinePattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(offline|deregistered?)\b`)
-	// Pola alarm selesai / pulih (cleared, recovered, restored, normal)
-	alarmClearedPattern = regexp.MustCompile(`(?i)\b(?:clear(?:ed)?|restor(?:e|ed)?|recover(?:ed|y)?|disappear(?:ed)?|normal|resume[d]?)\b`)
+	// Pola alarm selesai / pulih (cleared, recovered, restored, normal, Link Up)
+	alarmClearedPattern = regexp.MustCompile(`(?i)\b(?:clear(?:ed)?|restor(?:e|ed)?|recover(?:ed|y)?|disappear(?:ed)?|normal|resume[d]?|Link Up)\b`)
 )
 
 // OLTAlarmEvent mewakili alarm perangkat keras atau perubahan status ONU dari OLT.

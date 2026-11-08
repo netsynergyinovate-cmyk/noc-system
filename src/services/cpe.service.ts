@@ -177,7 +177,7 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
       }
     } else {
       // Real mode: dorong ke GenieACS tasks
-      let postRes: { ok: boolean; error?: string } = { ok: false };
+      let postRes: { ok: boolean; error?: string; status?: number } = { ok: false };
       if (input.action === "reboot_device") {
         postRes = await client.postTask(deviceId, { name: "reboot" }, true, 5000);
       } else if (input.action === "factory_reset") {
@@ -193,8 +193,10 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
       ok = postRes.ok;
       if (!ok) {
         errorReason = postRes.error || "Gagal mengirim tugas ke perangkat via GenieACS";
+      } else if (postRes.status === 202) {
+        resultSummary = `Tugas ${input.action} diantrekan di GenieACS (menunggu inform perangkat berikutnya)`;
       } else {
-        resultSummary = `Tugas ${input.action} berhasil diterima GenieACS NBI`;
+        resultSummary = `Tugas ${input.action} berhasil dieksekusi seketika ke perangkat`;
       }
     }
   } catch (err) {

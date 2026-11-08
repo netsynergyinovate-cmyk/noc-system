@@ -343,11 +343,13 @@ function parseOptical(raw: Raw): CpeOptical {
     const p = `${root}.Optical.Interface.1`;
     const rawSignal = num(read(raw, `${p}.OpticalSignalLevel`));
     if (rawSignal === null) continue;
-    const rx = rawSignal < -100 ? round2(rawSignal / 100) : rawSignal < 0 ? rawSignal : round2(rawSignal * 0.001);
+    const rx = Math.abs(rawSignal) > 100 ? round2(rawSignal * 0.001) : round2(rawSignal);
+    const rawTx = num(read(raw, `${p}.TransmitOpticalLevel`));
+    const tx = rawTx !== null ? (Math.abs(rawTx) > 100 ? round2(rawTx * 0.001) : round2(rawTx)) : null;
     return {
       ...empty,
       rxDbm: rx,
-      txDbm: numWithUnit(read(raw, `${p}.TransmitOpticalLevel`)),
+      txDbm: tx,
     };
   }
   return empty;

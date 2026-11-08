@@ -17,19 +17,36 @@ declare("InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature", {v
 declare("Device.Optical.Interface.*.OpticalSignalLevel", {value: now});
 declare("Device.Optical.Interface.*.TransmitOpticalLevel", {value: now});
 
-// Refresh klien LAN & Wi-Fi instance list & leaf
+// Refresh instance discovery klien LAN & Wi-Fi ({path: now})
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*", {path: now});
+declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.AssociatedDevice.*", {path: now});
+declare("Device.Hosts.Host.*", {path: now});
+declare("Device.WiFi.AccessPoint.*.AssociatedDevice.*", {path: now});
+
+// Refresh nilai klien LAN & Wi-Fi ({value: now})
 declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.HostName", {value: now});
 declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.IPAddress", {value: now});
 declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.MACAddress", {value: now});
 declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.Active", {value: now});
+declare("InternetGatewayDevice.LANDevice.*.Hosts.Host.*.InterfaceType", {value: now});
 declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.AssociatedDevice.*.AssociatedDeviceMACAddress", {value: now});
 declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.TotalAssociations", {value: now});
 declare("Device.Hosts.Host.*.HostName", {value: now});
 declare("Device.Hosts.Host.*.IPAddress", {value: now});
 declare("Device.Hosts.Host.*.PhysAddress", {value: now});
 declare("Device.Hosts.Host.*.Active", {value: now});
+declare("Device.Hosts.Host.*.InterfaceType", {value: now});
 declare("Device.WiFi.AccessPoint.*.AssociatedDevice.*.AssociatedDeviceMACAddress", {value: now});
 
+// Refresh kesehatan & uptime modem
+declare("InternetGatewayDevice.DeviceInfo.UpTime", {value: now});
+declare("InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage", {value: now});
+declare("InternetGatewayDevice.DeviceInfo.MemoryStatus.*", {value: now});
+declare("InternetGatewayDevice.DeviceInfo.TemperatureStatus.TemperatureSensor.*.*", {value: now});
+declare("Device.DeviceInfo.UpTime", {value: now});
+declare("Device.DeviceInfo.ProcessStatus.CPUUsage", {value: now});
+declare("Device.DeviceInfo.MemoryStatus.*", {value: now});
+declare("Device.DeviceInfo.TemperatureStatus.TemperatureSensor.*.*", {value: now});
 // Refresh Wi-Fi SSID
 declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID", {value: now});
 declare("Device.WiFi.SSID.*.SSID", {value: now});

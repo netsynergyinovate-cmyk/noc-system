@@ -18,9 +18,7 @@ import {
   mockDirectory,
   type ServiceDirectory,
 } from "./incident-root.ts";
-import { mockRouters } from "./mock-data.ts";
 import type { DashboardCustomer } from "./types.ts";
-import { hashString, unit } from "./mock-random.ts";
 import type { IncidentKind, IncidentSeverity } from "./types.ts";
 
 // KONTRAK API ALERT AKTIF (yang diasumsikan frontend; backend belum
@@ -147,7 +145,7 @@ export const POLL_SECONDS: Record<IncidentKind, number> = {
 };
 
 const customersById = new Map<string, DashboardCustomer>();
-const routersById = new Map(mockRouters.map((router) => [router.id, router]));
+const routersById = new Map<string, { id: string; name: string }>();
 
 // Lokasi kejadian dari data yang sudah ada: titik dan alamat pelanggan untuk
 // alert pelanggan, nama router untuk alert router.
@@ -198,31 +196,8 @@ interface SlotAlert {
   endTimeUncertaintySeconds: number;
 }
 
-function alertInSlot(slot: number): SlotAlert | null {
-  if (unit(slot * 11 + 3) > START_CHANCE) return null;
-  const startedAt =
-    slot * SLOT_SECONDS + Math.floor(unit(slot * 13 + 5) * SLOT_SECONDS);
-  const kind = KINDS[Math.floor(unit(slot * 17 + 7) * KINDS.length)];
-  const duration = 300 + Math.floor(unit(slot * 19 + 9) * 4500); // 5-80 menit
-  const rule = anomalyRules.find((candidate) => candidate.kind === kind)!;
-  const id = `alert-${slot}`;
-  const fromEvent =
-    kind === "offline" && unit(hashString(id) + 4) < EVENT_SHARE;
-  // Pulihnya dicatat terpisah dari mulainya, jadi sumbernya bisa berbeda.
-  const endFromEvent =
-    kind === "offline" && unit(hashString(id) + 6) < EVENT_SHARE;
-  return {
-    id,
-    kind,
-    startedAt,
-    endedAt: startedAt + duration,
-    // Belum menjadi alert sebelum kondisinya bertahan selama aturannya.
-    detectedAt: startedAt + rule.forSeconds,
-    timeSource: fromEvent ? "event" : "poll",
-    timeUncertaintySeconds: fromEvent ? 0 : POLL_SECONDS[kind],
-    endTimeSource: endFromEvent ? "event" : "poll",
-    endTimeUncertaintySeconds: endFromEvent ? 0 : POLL_SECONDS[kind],
-  };
+function alertInSlot(_slot: number): SlotAlert | null {
+  return null;
 }
 
 // Catatan "ditangani" yang berlaku untuk alert ini pada `now`, atau undefined.
@@ -249,35 +224,10 @@ function handledRecord(
 // untuk dilihat. `handled` (default: tidak ada) adalah alert yang sudah ditandai
 // ditangani petugas; alert itu tidak lagi aktif.
 export function mockActiveAlerts(
-  now: number,
-  handled: HandledMap = noHandled,
+  _now?: number,
+  _handled: HandledMap = noHandled,
 ): ActiveAlert[] {
-  const alerts: ActiveAlert[] = [];
-  const lastSlot = Math.floor(now / SLOT_SECONDS);
-  for (let slot = lastSlot - LOOKBACK_SLOTS; slot <= lastSlot; slot += 1) {
-    const found = alertInSlot(slot);
-    if (!found) continue;
-    if (found.endedAt <= now) continue; // sudah selesai
-    if (found.detectedAt > now) continue; // belum cukup lama untuk menjadi alert
-    if (handledRecord(found, handled, now)) continue; // sudah ditandai ditangani
-
-    const anomaly = toAnomaly({
-      id: found.id,
-      kind: found.kind,
-      severity: defaultSeverity[found.kind],
-      startedAt: found.startedAt,
-      endedAt: null,
-    });
-    alerts.push({
-      ...anomaly,
-      endedAt: null,
-      location: locationFor(anomaly),
-      detectedAt: found.detectedAt,
-      timeSource: found.timeSource,
-      timeUncertaintySeconds: found.timeUncertaintySeconds,
-    });
-  }
-  return withCorrelation(sortActiveAlerts(alerts));
+  return [];
 }
 
 // Seberapa jauh ke belakang riwayat dimuat. Sama dengan jendela halaman
@@ -299,42 +249,11 @@ export function sortResolvedAlerts(alerts: ResolvedAlert[]) {
 // Alert yang ditandai ditangani (`handled`) selesai pada saat penandaannya, bukan
 // pada waktu selesai alaminya, dan tercatat sebagai ditangani oleh petugas itu.
 export function mockResolvedAlerts(
-  now: number,
-  windowSeconds = ALERT_HISTORY_SECONDS,
-  handled: HandledMap = noHandled,
+  _now?: number,
+  _windowSeconds = ALERT_HISTORY_SECONDS,
+  _handled: HandledMap = noHandled,
 ): ResolvedAlert[] {
-  const since = now - windowSeconds;
-  const lastSlot = Math.floor(now / SLOT_SECONDS);
-  // Alert yang mulai sampai LOOKBACK_SLOTS slot sebelum jendela masih bisa
-  // selesai di dalam jendela.
-  const firstSlot = Math.floor(since / SLOT_SECONDS) - LOOKBACK_SLOTS;
-  const alerts: ResolvedAlert[] = [];
-  for (let slot = firstSlot; slot <= lastSlot; slot += 1) {
-    const found = alertInSlot(slot);
-    if (!found) continue;
-    const record = handledRecord(found, handled, now);
-    const endedAt = record ? record.at : found.endedAt;
-    if (endedAt > now || endedAt <= since) continue;
-    const details = toRawAnomaly({
-      id: found.id,
-      kind: found.kind,
-      severity: defaultSeverity[found.kind],
-      startedAt: found.startedAt,
-      endedAt,
-    });
-    alerts.push({
-      ...details,
-      endedAt,
-      location: locationFor(details),
-      detectedAt: found.detectedAt,
-      timeSource: found.timeSource,
-      timeUncertaintySeconds: found.timeUncertaintySeconds,
-      endTimeSource: record ? "operator" : found.endTimeSource,
-      endTimeUncertaintySeconds: record ? 0 : found.endTimeUncertaintySeconds,
-      handledBy: record ? record.by : null,
-    });
-  }
-  return sortResolvedAlerts(alerts);
+  return [];
 }
 
 // Melengkapi tiap alert dengan sumber akar dan jumlah terdampak dari kelompok

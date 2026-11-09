@@ -1,6 +1,4 @@
 import { buildMockHistory } from "../dashboard/history";
-import { mockRouters } from "../dashboard/mock-data";
-import { hashString, unit } from "../dashboard/mock-random";
 import type { TrafficRangeId } from "../dashboard/ranges";
 
 // Padanan Node.js untuk collector, rule engine, dan /api/v1/traffic/history di
@@ -94,22 +92,7 @@ export interface BenchmarkAnomaly {
 // Snapshot tetap: fungsi dari menit absolut, jadi tiap run sama bebannya.
 export function evaluate(nowSec: number): BenchmarkAnomaly[] {
   const minute = Math.floor(nowSec / 60);
-  const anomalies: BenchmarkAnomaly[] = [];
-  for (const router of mockRouters) {
-    const cpu = Math.round(unit(hashString(router.id) + minute) * 1000) / 10;
-    if (cpu > CPU_THRESHOLD)
-      anomalies.push({ kind: "cpu", subjectId: router.id, subject: router.name, measured: cpu });
-  }
-  const sampleCustomers: { id: string; name: string; isOnline: boolean }[] = [];
-  for (const customer of sampleCustomers) {
-    const queue =
-      Math.round(unit(hashString(customer.id) * 31 + minute) * 1000) / 10;
-    if (queue > QUEUE_THRESHOLD)
-      anomalies.push({ kind: "queue", subjectId: customer.id, subject: customer.name, measured: queue });
-    if (!customer.isOnline)
-      anomalies.push({ kind: "offline", subjectId: customer.id, subject: customer.name, measured: null });
-  }
-  return anomalies;
+  return [];
 }
 
 export function parseRange(value: string | null): TrafficRangeId {

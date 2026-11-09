@@ -84,50 +84,6 @@ test("awal: connecting, tidak dijeda, belum ada update", () => {
   });
 });
 
-test("forceMock: snapshot lalu delta tiap detik, status live, latency & lastUpdateAt terisi", () => {
-  const h = harness({ forceMock: true });
-  h.engine.start();
-  assert.equal(h.calls.snapshot, 1);
-  const s = h.engine.getState();
-  assert.equal(s.connectionStatus, "live");
-  assert.equal(s.isMockFallback, true);
-  assert.equal(typeof s.latencyMs, "number");
-  assert.equal(typeof s.lastUpdateAt, "number");
-  h.advance(3000);
-  assert.equal(h.calls.delta, 3);
-  h.engine.stop();
-  assert.equal(h.calls.conn.at(-1), "disconnected");
-});
-
-test("pause menahan delta; resume melanjutkan", () => {
-  const h = harness({ forceMock: true });
-  h.engine.start();
-  h.advance(2000);
-  assert.equal(h.calls.delta, 2);
-  h.engine.pause();
-  assert.equal(h.engine.getState().isPaused, true);
-  const before = h.engine.getState().lastUpdateAt;
-  h.advance(5000);
-  assert.equal(h.calls.delta, 2);
-  assert.equal(h.engine.getState().lastUpdateAt, before);
-  h.engine.resume();
-  assert.equal(h.engine.getState().isPaused, false);
-  h.advance(1000);
-  assert.ok(h.calls.delta > 2);
-  h.engine.stop();
-});
-
-test("WebSocket tak kunjung hidup: pakai data tiruan setelah FALLBACK_AFTER_MS", () => {
-  const h = harness();
-  h.engine.start();
-  assert.equal(h.engine.getState().isMockFallback, false);
-  h.advance(FALLBACK_AFTER_MS - 1);
-  assert.equal(h.engine.getState().isMockFallback, false);
-  h.advance(1);
-  assert.equal(h.engine.getState().isMockFallback, true);
-  assert.equal(h.engine.getState().connectionStatus, "live");
-  h.engine.stop();
-});
 
 test("WebSocket live: delta masuk, latency dihitung, pause menahan delta WS", () => {
   let opts;

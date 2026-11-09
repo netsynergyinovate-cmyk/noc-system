@@ -1,5 +1,4 @@
 import { defaultSeverity, overlaps, sortIncidents } from "./incidents.ts";
-import { unit } from "./mock-random.ts";
 import { getRange, type TrafficRangeId } from "./ranges.ts";
 import type { Incident, IncidentKind, TrafficSeries } from "./types.ts";
 
@@ -25,30 +24,8 @@ const CAPACITY_MBPS = 400;
 
 const KINDS: IncidentKind[] = ["offline", "optical", "queue", "cpu", "port"];
 
-export function mockIncidents(from: number, to: number, now: number) {
-  const found: Incident[] = [];
-  for (
-    let slot = Math.floor(from / SLOT_SECONDS) - 1;
-    slot <= Math.floor(to / SLOT_SECONDS);
-    slot += 1
-  ) {
-    if (unit(slot * 2 + 1) > INCIDENT_CHANCE) continue;
-    const startedAt =
-      slot * SLOT_SECONDS +
-      Math.floor(unit(slot * 3 + 7) * (SLOT_SECONDS - 1200));
-    if (startedAt > now) continue; // belum terjadi
-    const endsAt = startedAt + 120 + Math.floor(unit(slot * 5 + 11) * 1080);
-    const kind = KINDS[Math.floor(unit(slot * 7 + 13) * KINDS.length)];
-    const incident: Incident = {
-      id: `mock-${slot}`,
-      kind,
-      severity: defaultSeverity[kind],
-      startedAt,
-      endedAt: endsAt > now ? null : endsAt, // masih berjalan bila belum lewat
-    };
-    if (overlaps(incident, from, to)) found.push(incident);
-  }
-  return sortIncidents(found);
+export function mockIncidents(_from?: number, _to?: number, _now?: number): Incident[] {
+  return [];
 }
 
 // Pola harian: sepi dini hari, memuncak malam hari (WIB), sedikit lebih ramai
@@ -61,21 +38,9 @@ function baseDownload(t: number) {
   return 90 + 240 * level * week;
 }
 
-function trafficAt(t: number, stepSeconds: number, incidents: Incident[]) {
-  const jitter =
-    (unit(Math.floor(t / stepSeconds)) - 0.5) *
-    (0.1 / Math.sqrt(stepSeconds / 10 + 1));
-  let rx = baseDownload(t) * (1 + jitter);
-  for (const incident of incidents) {
-    if (t < incident.startedAt || t > (incident.endedAt ?? Infinity)) continue;
-    if (incident.kind === "offline") rx *= 0.9;
-    if (incident.kind === "cpu") rx *= 0.95;
-    // Jalur penuh: traffic naik lalu mendatar di batas kapasitas.
-    if (incident.kind === "queue")
-      rx = Math.min(rx * 1.25, CAPACITY_MBPS * 0.97);
-  }
-  const tx =
-    rx * 0.18 * (0.85 + 0.3 * unit(Math.floor(t / stepSeconds) * 3 + 5));
+function trafficAt(t: number, _stepSeconds: number, _incidents: Incident[]) {
+  const rx = baseDownload(t);
+  const tx = rx * 0.18;
   return { rx: Math.round(rx * 10) / 10, tx: Math.round(tx * 10) / 10 };
 }
 

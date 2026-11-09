@@ -8,6 +8,33 @@ import (
 	"time"
 )
 
+const (
+	testPonCount  = 4
+	testOnuPerPon = 8
+)
+
+type testDriver struct{}
+
+func (testDriver) Name() string { return "test" }
+func (testDriver) Close() error { return nil }
+func (testDriver) TestConnection(context.Context) error { return nil }
+func (testDriver) FetchPonPorts(context.Context) ([]PonPortStats, error) {
+	out := make([]PonPortStats, testPonCount)
+	for i := range out {
+		out[i] = PonPortStats{Index: i + 1}
+	}
+	return out, nil
+}
+func (testDriver) FetchOnus(context.Context) ([]OnuStats, error) {
+	out := make([]OnuStats, 0, testPonCount*testOnuPerPon)
+	for p := 1; p <= testPonCount; p++ {
+		for o := 1; o <= testOnuPerPon; o++ {
+			out = append(out, OnuStats{PonIndex: p, OnuIndex: o, MacAddress: "AA:BB:CC:DD:EE:FF"})
+		}
+	}
+	return out, nil
+}
+
 type memWriter struct {
 	ports   map[int]PonPortStats
 	touched []time.Time
@@ -65,13 +92,13 @@ func (unsupportedOnuDriver) FetchOnus(context.Context) ([]OnuStats, error) {
 }
 
 func TestPollOnceNotSupportedSkipsAndTouches(t *testing.T) {
-	d, _ := Get("mock", Config{})
+	d := testDriver{}
 	w, ow := &memWriter{}, &memOnuWriter{}
 	p, _ := NewPoller(PollerOptions{Driver: unsupportedOnuDriver{d}, OltID: "olt1", Writer: w, OnuWriter: ow})
 	if err := p.PollOnce(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.touched) != 1 || len(w.ports) != mockPonCount || len(ow.onus) != 0 {
+	if len(w.touched) != 1 || len(w.ports) != testPonCount || len(ow.onus) != 0 {
 		t.Fatalf("touched=%d ports=%d onus=%d", len(w.touched), len(w.ports), len(ow.onus))
 	}
 }
@@ -90,14 +117,14 @@ func TestPollerPollsOnus(t *testing.T) {
 		}
 		return p
 	}
-	d, _ := Get("mock", Config{})
+	d := testDriver{}
 
 	t.Run("simpan semua ONU", func(t *testing.T) {
 		w, ow := &memWriter{}, &memOnuWriter{}
 		if err := newPoller(d, w, ow).PollOnce(context.Background()); err != nil {
 			t.Fatal(err)
 		}
-		if want := mockPonCount * mockOnuPerPon; len(ow.onus) != want {
+		if want := testPonCount * testOnuPerPon; len(ow.onus) != want {
 			t.Fatalf("onus=%d want %d", len(ow.onus), want)
 		}
 		if len(w.touched) != 1 {
@@ -132,7 +159,7 @@ func TestPollerPollsOnus(t *testing.T) {
 }
 
 func TestPollOnceSavesAllAndTouches(t *testing.T) {
-	d, _ := Get("mock", Config{})
+	d := testDriver{}
 	w := &memWriter{}
 	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	p, err := NewPoller(PollerOptions{Driver: d, OltID: "olt1", Writer: w, Now: func() time.Time { return at }})
@@ -142,8 +169,8 @@ func TestPollOnceSavesAllAndTouches(t *testing.T) {
 	if err := p.PollOnce(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.ports) != mockPonCount {
-		t.Fatalf("ports=%d want %d", len(w.ports), mockPonCount)
+	if len(w.ports) != testPonCount {
+		t.Fatalf("ports=%d want %d", len(w.ports), testPonCount)
 	}
 	if len(w.touched) != 1 || !w.touched[0].Equal(at) {
 		t.Fatalf("touched=%v", w.touched)
@@ -151,7 +178,7 @@ func TestPollOnceSavesAllAndTouches(t *testing.T) {
 }
 
 func TestPollOnceDriverErrorNoTouch(t *testing.T) {
-	d, _ := Get("mock", Config{})
+	d := testDriver{}
 	w := &memWriter{}
 	p, _ := NewPoller(PollerOptions{Driver: failDriver{d}, OltID: "olt1", Writer: w})
 	if err := p.PollOnce(context.Background()); err == nil {
@@ -163,7 +190,7 @@ func TestPollOnceDriverErrorNoTouch(t *testing.T) {
 }
 
 func TestPollOnceWriteErrorNoTouch(t *testing.T) {
-	d, _ := Get("mock", Config{})
+	d := testDriver{}
 	w := &memWriter{upErr: errors.New("db down")}
 	p, _ := NewPoller(PollerOptions{Driver: d, OltID: "olt1", Writer: w})
 	if err := p.PollOnce(context.Background()); err == nil {

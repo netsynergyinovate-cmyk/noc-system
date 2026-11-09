@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { requireSession } from "@/lib/session";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { TrafficTrendBoard } from "@/components/dashboard/traffic-trend-board";
 
 export const metadata: Metadata = { title: "Trafik & Tren Bandwidth" };
@@ -15,7 +14,6 @@ export default async function TrafficPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Trafik &amp; Tren Bandwidth
           </h1>
-          <MockDataNotice source="sampel trafik MikroTik" real />
         </div>
         <p className="text-sm text-muted-foreground">
           Pemantauan throughput bandwidth unduh/unggah real-time dan analisis utilisasi kapasitas

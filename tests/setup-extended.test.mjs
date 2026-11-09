@@ -36,13 +36,8 @@ test("SETUP_PAGE_TIPS: cara kerja, masalah umum, solusi", () => {
 
 test("komponen diekspor dan page memuatnya", () => {
   const tips = read("../src/components/dashboard/setup-tips-panel.tsx");
-  const reg = read("../src/components/dashboard/mock-registry-card.tsx");
   assert.match(tips, /export function SetupTipsPanel/);
   assert.match(tips, /data-testid="setup-tips-panel"/);
-  assert.match(reg, /export function MockRegistryCard/);
-  assert.match(reg, /data-testid="mock-registry-card"/);
-  assert.match(reg, /Data Tiruan \(Mock\)/);
   const page = read("../src/app/(protected)/setup/page.tsx");
   assert.match(page, /<SetupTipsPanel/);
-  assert.match(page, /<MockRegistryCard/);
 });

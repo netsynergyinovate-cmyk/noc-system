@@ -22,7 +22,6 @@ import {
   type OnboardingMikrotikInput,
   type OnboardingMikrotikTestResult,
 } from "@/lib/dashboard/onboarding-mikrotik";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { RouterSetupGuide } from "@/components/dashboard/router-setup-guide";
 import { RouterBootstrapPanel } from "@/components/dashboard/router-bootstrap-panel";
 
@@ -200,9 +199,6 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
           </div>
         </div>
 
-        {form.mode === "simulator" && (
-          <MockDataNotice source="simulator REST v7 MikroTik" />
-        )}
       </div>
 
       {savedNotice && (

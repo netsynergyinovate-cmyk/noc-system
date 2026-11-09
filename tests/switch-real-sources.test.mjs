@@ -130,58 +130,6 @@ test("realtime: tiket sukses -> WebSocket nyata dibuka ke wsUrl", async () => {
   assert.deepEqual(urls, ["ws://hub/ws"]);
 });
 
-test("realtime engine: backend offline -> jatuh ke mock feed setelah jeda, UI tetap hidup", () => {
-  let ms = 1_700_000_000_000;
-  const timers = [];
-  let snapshots = 0;
-  const states = [];
-  const deps = {
-    nowMs: () => ms,
-    setInterval: (fn, every) => (timers.push({ fn, next: ms + every, every, repeat: true }), timers.at(-1)),
-    clearInterval: (t) => timers.splice(timers.indexOf(t), 1),
-    setTimeout: (fn, after) => (timers.push({ fn, next: ms + after, repeat: false }), timers.at(-1)),
-    clearTimeout: (t) => {
-      const i = timers.indexOf(t);
-      if (i >= 0) timers.splice(i, 1);
-    },
-    // Tiket gagal: koneksi melapor disconnected dan meminta fallback.
-    connect: (o) => {
-      o.onStatusChange("disconnected");
-      o.fallbackToMock?.();
-      return { close() {} };
-    },
-    createFeed: () => ({
-      snapshot: (t) => ({ customers: [], routers: [], traffic: { times: [t], rx: [1], tx: [1] } }),
-      next: (t) => ({ traffic: { time: t, rx: 1, tx: 1 }, statusChanges: [] }),
-    }),
-    createIncidentHub: () => ({ snapshot: () => [], changes: () => null }),
-    createAlertHub: () => ({ snapshot: () => ({}), changes: () => null }),
-    dash: () => ({
-      customers: [],
-      applySnapshot: () => snapshots++,
-      applyDelta() {},
-      applyIncidents() {},
-      setConnection() {},
-    }),
-    alerts: () => ({ applySnapshot() {}, applyMessage() {}, prune() {}, reset() {} }),
-  };
-  const engine = createRealtimeFeedEngine({ forceMock: false, onState: (s) => states.push(s), deps });
-  engine.start();
-  assert.equal(engine.getState().isMockFallback, false);
-  // majukan jam melewati FALLBACK_AFTER_MS
-  const end = ms + FALLBACK_AFTER_MS;
-  for (;;) {
-    const due = timers.filter((t) => t.next <= end).sort((a, b) => a.next - b.next)[0];
-    if (!due) break;
-    ms = due.next;
-    if (due.repeat) due.next += due.every;
-    else timers.splice(timers.indexOf(due), 1);
-    due.fn();
-  }
-  engine.stop();
-  assert.equal(states.some((s) => s.isMockFallback && s.connectionStatus === "live"), true);
-  assert.ok(snapshots >= 1);
-});
 
 test("OLT, GenieACS, Billing: tetap simulator/mock dan aman saat env kosong", async () => {
   for (const id of ["olt", "genieacs", "billing"]) {

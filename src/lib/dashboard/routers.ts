@@ -41,7 +41,7 @@ export type RouterStatusFilter = "all" | "active" | "disconnected";
 
 export const CPU_WARNING_THRESHOLD = 80;
 
-// ID sama dengan `mockRouters` di mock-data.ts.
+// ID router default.
 export const defaultRouterDetails: readonly MockRouterDetail[] = [
   {
     id: "router-1",

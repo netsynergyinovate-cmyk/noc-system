@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
+import type { CpeDevice } from "@/lib/dashboard/cpe";
 import { fetchLiveCpe } from "@/lib/dashboard/cpe-live";
 import { formatAgo } from "@/lib/dashboard/customer-live";
 import { formatDbm } from "@/lib/dashboard/format";

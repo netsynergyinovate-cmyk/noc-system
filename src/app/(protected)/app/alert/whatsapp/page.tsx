@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { WhatsappLogBoard } from "@/components/dashboard/whatsapp-log-board";
 import { requireSession } from "@/lib/session";
 
@@ -21,7 +20,6 @@ export default async function WhatsappLogPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Riwayat Notifikasi WhatsApp
           </h1>
-          <MockDataNotice source="gateway log WhatsApp di backend" />
         </div>
         <Link
           href="/app/alert/whatsapp/penerima"

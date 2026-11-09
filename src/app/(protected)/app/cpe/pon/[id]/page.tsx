@@ -4,7 +4,6 @@ import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, Radio, TrendingDown, 
 import { requireSession } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { PonOnuTable } from "@/components/dashboard/pon-onu-table";
 import { formatDbm } from "@/lib/dashboard/format";
 import { getPonPortOpticalStatus } from "@/lib/dashboard/optical";
@@ -65,7 +64,6 @@ export default async function PonPortPage({ params }: { params: Promise<{ id: st
           >
             {pon.status === "up" ? "UP" : "DOWN"}
           </Badge>
-          {pon.source !== "db" && <MockDataNotice source="sensor optik OLT" />}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{pon.oltName}</span>

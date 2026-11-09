@@ -115,7 +115,8 @@ func (d *hsgqDriver) FetchPonPorts(ctx context.Context) ([]PonPortStats, error) 
 		}
 		// Redaman dihitung dari selisih daya hanya bila OLT tidak melaporkannya.
 		if s.AttenuationDb == nil && s.RxPowerDbm != nil && s.TxPowerDbm != nil {
-			s.AttenuationDb = f64(*s.TxPowerDbm - *s.RxPowerDbm)
+			diff := *s.TxPowerDbm - *s.RxPowerDbm
+			s.AttenuationDb = &diff
 		}
 		out = append(out, s)
 	}

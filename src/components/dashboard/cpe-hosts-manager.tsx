@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { CpeHostClient, CpeInterfaceType } from "@/lib/dashboard/cpe-mock";
+import type { CpeHostClient, CpeInterfaceType } from "@/lib/dashboard/cpe";
 
 const INTERFACE_LABEL: Record<CpeInterfaceType, string> = {
   "wifi_2.4g": "Wi-Fi 2.4G",

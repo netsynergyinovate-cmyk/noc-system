@@ -5,7 +5,6 @@ import { TRAFFIC_WINDOW } from "./constants";
 import { getCustomerHealth } from "./health";
 import type { IncidentCard } from "./incident-cards";
 import { mergeIncidentCards } from "./incident-sync";
-import { mockRouters } from "./mock-data";
 import type {
   BillingStatus,
   ConnectionStatus,
@@ -232,14 +231,12 @@ export const useDashboardStore = create<DashboardState>()((set, get) => ({
 
   setLiveMode: (isLive, liveRouters = []) =>
     set({
-      customers: isLive ? [] : initialCustomers,
-      routers: isLive ? liveRouters : mockRouters,
+      customers: [],
+      routers: liveRouters,
       onlineCount: 0,
       offlineCount: 0,
       weakSignalCount: 0,
-      activeRouterCount: isLive
-        ? liveRouters.filter((r) => r.active).length
-        : countActiveRouters(mockRouters),
+      activeRouterCount: countActiveRouters(liveRouters),
       traffic: { times: [], rx: [], tx: [] },
       connection: isLive
         ? liveRouters.length > 0

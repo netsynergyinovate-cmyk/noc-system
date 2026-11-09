@@ -1,4 +1,4 @@
-import type { CpeDevice } from "./cpe-mock.ts";
+import type { CpeDevice } from "./cpe.ts";
 
 // MODEM NYATA dari GenieACS (TR-069) lewat GET /api/cpe. Tidak ada data tiruan di
 // sini: GenieACS kosong berarti daftar kosong, GenieACS mati berarti galat.

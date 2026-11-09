@@ -67,7 +67,7 @@ import { formatAgo } from "@/lib/dashboard/customer-live";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { formatDbm, formatInteger } from "@/lib/dashboard/format";
-import type { CpeDevice, CpeHostClient } from "@/lib/dashboard/cpe-mock";
+import type { CpeDevice, CpeHostClient } from "@/lib/dashboard/cpe";
 import { OpticalRx } from "@/components/dashboard/optical-badge";
 import { CpeWifiForm } from "@/components/dashboard/cpe-wifi-form";
 import { CpeWifiPassword } from "@/components/dashboard/cpe-wifi-password";
@@ -75,11 +75,7 @@ import { CpeHostsManager } from "@/components/dashboard/cpe-hosts-manager";
 import { useCanDo } from "@/components/access";
 
 // Fallback untuk pemanggil lama yang belum memberi data CPE.
-const fallbackHosts: CpeHostClient[] = [
-  { mac: "A1:B2:C3:D4:E5:F6", ip: "192.168.1.2", hostname: "iPhone-Budi", interfaceType: "wifi_2.4g" as const, active: true },
-  { mac: "11:22:33:44:55:66", ip: "192.168.1.3", hostname: "Smart-TV", interfaceType: "ethernet" as const, active: true },
-  { mac: "AA:BB:CC:DD:EE:FF", ip: "192.168.1.4", hostname: "Laptop-Kerja", interfaceType: "wifi_2.4g" as const, active: false },
-];
+const fallbackHosts: CpeHostClient[] = [];
 
 type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 

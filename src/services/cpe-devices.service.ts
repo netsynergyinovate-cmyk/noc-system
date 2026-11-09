@@ -1,6 +1,6 @@
 // Layanan daftar CPE dari GenieACS NBI. Relatif (tanpa alias / server-only) agar bisa diuji dengan node --test.
 import { GenieAcsClient } from "../lib/genieacs/client.ts";
-import type { CpeDevice } from "../lib/dashboard/cpe-mock.ts";
+import type { CpeDevice } from "../lib/dashboard/cpe.ts";
 
 export const CPE_DEFAULT_LIMIT = 20;
 export const CPE_MAX_LIMIT = 100;
@@ -28,8 +28,8 @@ function positiveInt(value: number | undefined, fallback: number, max = Number.M
 }
 
 function matchesSearch(d: CpeDevice, needle: string): boolean {
-  return [d.customerName, d.pppoeUsername, d.serialNumber, d.deviceId, d.wanIp, d.lanIp, d.model].some((f) =>
-    f.toLowerCase().includes(needle),
+  return [d.customerName, d.pppoeUsername, d.serialNumber, d.deviceId, d.wanIp, d.lanIp, d.model].some(
+    (f) => Boolean(f && f.toLowerCase().includes(needle)),
   );
 }
 

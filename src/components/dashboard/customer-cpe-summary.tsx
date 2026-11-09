@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { fetchCpeByPppoe } from "@/lib/dashboard/cpe-live";
-import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
+import type { CpeDevice } from "@/lib/dashboard/cpe";
 import type { DashboardCustomer } from "@/lib/dashboard/types";
 import { formatLastSeen } from "@/lib/dashboard/onu-status";
 import { CustomerCpeDialog } from "./customer-cpe-dialog";

@@ -34,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { initialRefresh, mockRefresh, refreshReducer } from "@/lib/dashboard/refresh-state";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import {
@@ -182,7 +181,6 @@ export function SimpleQueueBoard() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Daftar Simple Queue MikroTik
           </h1>
-          <MockDataNotice source="REST API RouterOS v7 (/rest/queue/simple)" />
         </div>
         <p className="text-sm text-muted-foreground">
           Manajemen limitasi bandwidth, prioritas paket, dan pemantauan trafik per IP target/pelanggan.

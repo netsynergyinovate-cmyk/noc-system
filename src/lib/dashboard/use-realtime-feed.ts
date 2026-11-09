@@ -6,10 +6,10 @@ import { useAlertStore } from "./alert-store";
 import { planCatchUp } from "./catch-up";
 import { TRAFFIC_WINDOW } from "./constants";
 import { createMockIncidentHub } from "./incident-sync";
-import { createMockFeed } from "./mock-feed";
 import { connectRealtimeWs } from "./realtime-ws";
 import { useDashboardStore } from "./store";
-import type { ConnectionStatus } from "./types";
+import type { ConnectionStatus, DashboardCustomer, DashboardDelta, DashboardSnapshot } from "./types";
+import type { IncidentCard } from "./incident-cards";
 import type { Telemetry } from "./telemetry";
 
 // Putus (atau belum tersambung) selama ini, data tiruan dipakai supaya layar
@@ -41,14 +41,13 @@ export interface FeedDeps {
   setTimeout: (fn: () => void, ms: number) => unknown;
   clearTimeout: (id: unknown) => void;
   connect: typeof connectRealtimeWs;
-  createFeed: typeof createMockFeed;
   createIncidentHub: typeof createMockIncidentHub;
   createAlertHub: typeof createMockAlertHub;
   dash: () => {
-    customers: Parameters<typeof createMockFeed>[0];
-    applySnapshot: (s: any, t: number) => void;
-    applyDelta: (d: any, t: number) => void;
-    applyIncidents: (i: any, t: number) => void;
+    customers: DashboardCustomer[];
+    applySnapshot: (s: DashboardSnapshot, t: number) => void;
+    applyDelta: (d: DashboardDelta, t: number) => void;
+    applyIncidents: (i: IncidentCard[], t: number) => void;
     setConnection: (c: ConnectionStatus) => void;
     applyTelemetry?: (t: Telemetry) => void;
   };
@@ -67,11 +66,10 @@ export const defaultFeedDeps = (): FeedDeps => ({
   setTimeout: (fn, ms) => setTimeout(fn, ms),
   clearTimeout: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
   connect: connectRealtimeWs,
-  createFeed: createMockFeed,
   createIncidentHub: createMockIncidentHub,
   createAlertHub: createMockAlertHub,
-  dash: () => useDashboardStore.getState() as any,
-  alerts: () => useAlertStore.getState() as any,
+  dash: () => useDashboardStore.getState(),
+  alerts: () => useAlertStore.getState(),
 });
 
 export interface FeedEngineOptions {
@@ -96,7 +94,7 @@ export function createRealtimeFeedEngine(options: FeedEngineOptions) {
   let ws: { close: () => void } | null = null;
   let timer: unknown = null;
   let fallbackTimer: unknown = null;
-  let feed: ReturnType<typeof createMockFeed> | null = null;
+  let feed: null = null;
   let lastFeed = 0;
   let last = 0;
   let incidents: ReturnType<typeof createMockIncidentHub>;
@@ -111,19 +109,8 @@ export function createRealtimeFeedEngine(options: FeedEngineOptions) {
 
   const measure = (time: number) => touch(d.nowMs() - time * 1000);
 
-  const startMock = () => {
-    if (feed || !running) return;
-    const store = d.dash();
-    lastFeed = sec();
-    feed = d.createFeed(store.customers);
-    const t0 = d.nowMs();
-    store.applySnapshot(feed.snapshot(lastFeed), lastFeed);
-    touch(d.nowMs() - t0);
-    set({ connectionStatus: "live", isMockFallback: true });
-  };
-  const stopMock = () => {
-    feed = null;
-  };
+  const startMock = () => {};
+  const stopMock = () => {};
 
   const cancelFallback = () => {
     if (fallbackTimer !== null) d.clearTimeout(fallbackTimer);
@@ -192,17 +179,7 @@ export function createRealtimeFeedEngine(options: FeedEngineOptions) {
     // Jeda: tidak ada yang didorong ke store. `lastFeed`/`last` dibiarkan,
     // jadi saat lanjut, celah diisi atau disinkronkan ulang.
     if (state.isPaused) return;
-    if (feed) {
-      const t0 = d.nowMs();
-      const plan = planCatchUp(lastFeed, now, TRAFFIC_WINDOW);
-      if (plan.kind === "resync") {
-        dash.applySnapshot(feed.snapshot(now), now);
-      } else if (plan.kind === "fill") {
-        for (const time of plan.times) dash.applyDelta(feed.next(time), time);
-      }
-      lastFeed = now;
-      touch(d.nowMs() - t0);
-    }
+
     if (options.allowFallback ?? true) {
       if (planCatchUp(last, now, TRAFFIC_WINDOW).kind === "resync") {
         dash.applyIncidents(incidents.snapshot(now), now);

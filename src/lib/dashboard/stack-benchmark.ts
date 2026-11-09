@@ -250,7 +250,7 @@ export const mockAuditInventory: readonly MockAuditItem[] = [
     promotionReadiness: "ready",
     realDrivers: ["backend/internal/collector/client.go", "backend/internal/collector/poller.go"],
     simulatorSource: "scripts/simulator-lab.mjs",
-    mockFiles: ["src/lib/dashboard/mock-data.ts", "src/lib/dashboard/mock-feed.ts"],
+    mockFiles: [],
     envKeys: ["ROUTER_SECRET_KEY", "DATABASE_URL"],
     promotionCriteria: [
       "Polling REST lulus lawan simulator RouterOS di Docker lokal.",
@@ -266,7 +266,7 @@ export const mockAuditInventory: readonly MockAuditItem[] = [
     promotionReadiness: "needs_env",
     realDrivers: ["backend/internal/olt/hsgq.go", "backend/internal/olt/driver.go"],
     simulatorSource: "src/lib/olt/hsgq-simulator.ts",
-    mockFiles: ["backend/internal/olt/mock_driver.go", "scripts/mock-hsgq-server.mjs", "src/lib/dashboard/olts.ts"],
+    mockFiles: [],
     envKeys: ["OLT_HOST", "OLT_USERNAME", "OLT_PASSWORD"],
     promotionCriteria: [
       "Parser lulus lawan keluaran simulator HSGQ.",
@@ -282,7 +282,7 @@ export const mockAuditInventory: readonly MockAuditItem[] = [
     promotionReadiness: "needs_env",
     realDrivers: ["src/lib/genieacs/client.ts", "src/lib/genieacs/config.ts", "src/lib/genieacs/test-connection.ts"],
     simulatorSource: "scripts/simulator-lab.mjs",
-    mockFiles: ["src/lib/dashboard/cpe-mock.ts"],
+    mockFiles: [],
     envKeys: ["GENIEACS_URL", "GENIEACS_USERNAME", "GENIEACS_PASSWORD"],
     promotionCriteria: [
       "Klien NBI lulus uji lawan instance GenieACS di lab.",
@@ -298,7 +298,7 @@ export const mockAuditInventory: readonly MockAuditItem[] = [
     promotionReadiness: "needs_env",
     realDrivers: ["backend/internal/billing/scraper.go", "backend/internal/billing/syncer.go", "src/lib/billing-proxy.ts"],
     simulatorSource: "scripts/simulator-lab.mjs",
-    mockFiles: ["src/lib/dashboard/billing.ts"],
+    mockFiles: [],
     envKeys: ["BILLING_URL", "BILLING_USERNAME", "BILLING_PASSWORD", "DATABASE_URL"],
     promotionCriteria: [
       "Profil scraper dicocokkan dengan HTML portal billing asli.",
@@ -318,7 +318,7 @@ export const mockAuditInventory: readonly MockAuditItem[] = [
       "src/lib/realtime-ticket.ts",
     ],
     simulatorSource: "scripts/simulator-lab.mjs",
-    mockFiles: ["src/lib/dashboard/mock-feed.ts"],
+    mockFiles: [],
     envKeys: ["REALTIME_TOKEN_SECRET", "DATABASE_URL"],
     promotionCriteria: [
       "WebSocket hub berjalan nyata di lab Docker lokal.",

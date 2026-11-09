@@ -1,5 +1,4 @@
 import { backendGet } from "./backend-api.ts";
-import { mockRouters } from "./mock-data.ts";
 import type { DashboardCustomer } from "./types.ts";
 
 // Kontrak GET /api/v1/netflow/flows?range=1h|6h|24h&router=&protocol=&app= (belum ada).
@@ -81,7 +80,7 @@ function flowInSlot(slot: number, n: number): NetflowRecord {
   const r = rng(slot * 7 + n * 104_729 + 1);
   let pick = r() * TOTAL_WEIGHT;
   const app = APPS.find((a) => (pick -= a.weight) < 0) ?? APPS[0];
-  const router = mockRouters[Math.floor(r() * mockRouters.length)];
+  const router = { id: "router-1", name: "RTR-Core" };
   const durationSec = 1 + Math.floor(r() * 240);
   const startedAt = slot * SLOT_SECONDS + Math.floor(r() * (SLOT_SECONDS - 1));
   // Ekor panjang: beberapa flow jauh lebih besar dari sisanya.
@@ -806,7 +805,7 @@ export interface NetflowExporterStatus {
 
 export function mapGoExporterToView(
   exp: GoExporterStatus,
-  routers: readonly { id: string; name: string; host?: string }[] = mockRouters,
+  routers: readonly { id: string; name: string; host?: string }[] = [],
   nowMs = Date.now(),
 ): NetflowExporterStatus {
   const router = routers.find((r) => r.id === exp.routerId);
@@ -844,34 +843,7 @@ export function mapGoExporterToView(
 }
 
 export function getMockExporters(flows: NetflowRecord[]): NetflowExporterStatus[] {
-  const routerFlowCount = new Map<string, number>();
-  const routerPacketCount = new Map<string, number>();
-  for (const f of flows) {
-    routerFlowCount.set(f.routerId, (routerFlowCount.get(f.routerId) ?? 0) + 1);
-    routerPacketCount.set(f.routerId, (routerPacketCount.get(f.routerId) ?? 0) + f.packets);
-  }
-
-  return mockRouters.map((r, i) => {
-    const version = (
-      i === 0 ? "NetFlow v9" : i === 1 ? "IPFIX" : "NetFlow v5"
-    ) as "NetFlow v5" | "NetFlow v9" | "IPFIX";
-    const samplingRate = i === 0 ? "1:100" : i === 1 ? "1:500" : "1:1";
-    const multiplier = i === 0 ? 100 : i === 1 ? 500 : 1;
-    const rawFlows = routerFlowCount.get(r.id) ?? 120 + i * 45;
-    const packets = (routerPacketCount.get(r.id) ?? rawFlows * 850) * multiplier;
-    return {
-      routerId: r.id,
-      routerName: r.name,
-      host: `10.10.0.${i + 1}`,
-      version,
-      samplingRate,
-      multiplier,
-      totalPackets: packets,
-      totalFlows: rawFlows * multiplier,
-      lastSeenText: i === 0 ? "Baru saja (3 dtk)" : i === 1 ? "12 dtk lalu" : "45 dtk lalu",
-      status: "active" as const,
-    };
-  });
+  return [];
 }
 
 export function csvCell(v: unknown): string {

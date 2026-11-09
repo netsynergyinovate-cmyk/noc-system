@@ -4,7 +4,14 @@ import { listCpeDevices, getCpeDevice } from "../src/services/cpe-devices.servic
 import { GenieAcsClient } from "../src/lib/genieacs/client.ts";
 
 const client = new GenieAcsClient({ url: "http://sim.local:7557", timeoutMs: 1000, mode: "simulator" });
-const all = await client.listDevices();
+const all = [
+  { id: "cpe-1", deviceId: "DEV-1", customerName: "Budi", serialNumber: "SN1", isOnline: true, hosts: [{ hostname: "Host-1" }] },
+  { id: "cpe-2", deviceId: "DEV-2", customerName: "Siti", serialNumber: "SN2", isOnline: false, hosts: [] },
+  { id: "cpe-3", deviceId: "DEV-3", customerName: "Agus", serialNumber: "SN3", isOnline: true, hosts: [] },
+  { id: "cpe-4", deviceId: "DEV-4", customerName: "Dewi", serialNumber: "SN4", isOnline: false, hosts: [] },
+];
+client.listDevices = async () => all;
+client.getDevice = async (id) => all.find((d) => d.deviceId === id || d.id === id) ?? null;
 
 test("listCpeDevices: default pagination", async () => {
   const r = await listCpeDevices({ client });

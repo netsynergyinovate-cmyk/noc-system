@@ -7,11 +7,9 @@ import { ALERT_HISTORY_SECONDS, mockResolvedAlerts } from "./alerts.ts";
 import { mockAuditLog } from "./audit.ts";
 import { mockBillingOverview } from "./billing.ts";
 import { mockIncidents } from "./history.ts";
-import { mockRouters } from "./mock-data.ts";
 import type { DashboardCustomer } from "./types.ts";
 
-const routerNameOf = (id: string) =>
-  mockRouters.find((r) => r.id === id)?.name ?? id;
+const routerNameOf = (id: string) => id;
 
 export type ExportTimeRange = "24h" | "7d" | "30d" | "all";
 

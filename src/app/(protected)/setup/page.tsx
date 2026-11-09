@@ -3,8 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, FlaskConical, Network, Plus, Router } from "lucide-react";
 import { ConfigValidationPanel } from "@/components/dashboard/config-validation-panel";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
-import { MockRegistryCard } from "@/components/dashboard/mock-registry-card";
 import { OnboardingMikrotikForm } from "@/components/dashboard/onboarding-mikrotik-form";
 import { SetupDevices } from "@/components/dashboard/setup-devices";
 import { SetupTipsPanel } from "@/components/dashboard/setup-tips-panel";
@@ -124,13 +122,9 @@ export default async function SetupPage() {
 
       {isDemo && (
         <section aria-label="Perangkat" className="flex flex-col gap-3">
-          <MockDataNotice source="router dan OLT" />
           <SetupDevices />
         </section>
       )}
-
-      {isDemo && <MockRegistryCard />}
-
       {isDemo && (
         <section
           aria-label="Mode demo"

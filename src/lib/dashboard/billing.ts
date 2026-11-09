@@ -1,6 +1,4 @@
 import { formatInteger } from "./format.ts";
-import { mockRouters } from "./mock-data.ts";
-import { hashString, unit } from "./mock-random.ts";
 import type { BillingStatus, DashboardCustomer } from "./types";
 
 // KONTRAK API STATUS BILLING (yang diasumsikan frontend; backend belum
@@ -449,47 +447,12 @@ function respell(name: string, seed: number) {
 // pelanggan tiruan. Status tiap tagihan sama dengan status pelanggannya di
 // tabel Pelanggan, jadi kedua halaman tidak pernah berbeda pendapat.
 export function mockBillingRecords(
-  customers: readonly DashboardCustomer[],
+  _customers: readonly DashboardCustomer[] = [],
 ): BillingRecord[] {
-  const records: BillingRecord[] = [];
-  customers.forEach((customer, index) => {
-    const seed = hashString(customer.id);
-    const invoiceRef = `INV-${10_001 + index}`;
-    const roll = unit(seed + 101);
-    if (roll < SHARE_NO_INVOICE) return;
-    if (roll < SHARE_NO_INVOICE + SHARE_TYPO) {
-      records.push({
-        invoiceRef,
-        pppoeUsername: withTypo(customer.pppoeUsername),
-        status: customer.billingStatus,
-      });
-      return;
-    }
-    const respelled = roll < SHARE_NO_INVOICE + SHARE_TYPO + SHARE_RESPELLED;
-    records.push({
-      invoiceRef,
-      pppoeUsername: respelled
-        ? respell(customer.pppoeUsername, seed)
-        : customer.pppoeUsername,
-      status: customer.billingStatus,
-    });
-    // Tagihan kedua hanya untuk nama yang ditulis persis, supaya jelas mana
-    // yang dipakai: yang pertama. Statusnya sengaja berbeda, seperti tagihan
-    // lama yang belum dihapus dari billing.
-    if (!respelled && unit(seed + 211) < SHARE_DUPLICATE) {
-      records.push({
-        invoiceRef: `${invoiceRef}-B`,
-        pppoeUsername: customer.pppoeUsername,
-        status: customer.billingStatus === "lunas" ? "isolir" : "lunas",
-      });
-    }
-  });
-  return [...records, ...STRANGER_RECORDS];
+  return [];
 }
 
-const routerNames = new Map(
-  mockRouters.map((router) => [router.id, router.name]),
-);
+const routerNames = new Map<string, string>();
 const mockCustomers: DashboardCustomer[] = [];
 const mockRecords = mockBillingRecords(mockCustomers);
 const mockMatch = matchBilling(
@@ -532,15 +495,12 @@ interface SlotRun {
 // slot mana yang sudah mulai, sedang berjalan, atau sudah selesai.
 function runInSlot(slot: number): SlotRun {
   const startedAt = slot * BILLING_SYNC_INTERVAL_SECONDS + SYNC_OFFSET_SECONDS;
-  const duration =
-    MIN_DURATION_SECONDS +
-    Math.floor(unit(slot * 5 + 1) * DURATION_SPREAD_SECONDS);
   return {
     slot,
     startedAt,
-    finishedAt: startedAt + duration,
-    failed: unit(slot * 7 + 2) < FAIL_CHANCE,
-    error: FAILURES[Math.floor(unit(slot * 11 + 3) * FAILURES.length)],
+    finishedAt: startedAt + MIN_DURATION_SECONDS,
+    failed: false,
+    error: "",
   };
 }
 
@@ -599,16 +559,6 @@ const PERIOD_SPREAD_SLOTS = 40;
 const MAX_FAILED_LOOKBACK = 1_000;
 
 const changing = new Map<string, { period: number; phase: number }>();
-for (const row of mockMatch.rows) {
-  if (row.match === "none") continue;
-  const seed = hashString(row.customerId);
-  if (unit(seed + 307) >= CHANGING_SHARE) continue;
-  const period = MIN_PERIOD_SLOTS + (seed % PERIOD_SPREAD_SLOTS);
-  changing.set(row.customerId, {
-    period,
-    phase: Math.floor(unit(seed + 311) * period),
-  });
-}
 
 // Status awal (sebelum sinkron mana pun berubah), dari data pelanggan tiruan.
 const baseStatuses = new Map(

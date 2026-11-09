@@ -77,7 +77,6 @@ test("halaman dan komponen: ekspor, metadata, penanda, tautan", () => {
   assert.match(page, /export default async function/);
   assert.match(page, /await requireSession\(\)/);
   assert.match(page, /<WhatsappRecipientsManager \/>/);
-  assert.match(page, /source="pengaturan notifikasi WhatsApp"/);
   assert.match(page, /href="\/app\/alert\/whatsapp"/);
   assert.match(page, /href="\/app\/alert"/);
 

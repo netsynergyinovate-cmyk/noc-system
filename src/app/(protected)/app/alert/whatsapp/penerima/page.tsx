@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { WhatsappRecipientsManager } from "@/components/dashboard/whatsapp-recipients-manager";
 import { requireSession } from "@/lib/session";
 
@@ -24,7 +23,6 @@ export default async function WhatsappRecipientsPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Kelola Penerima Notifikasi WhatsApp
           </h1>
-          <MockDataNotice source="pengaturan notifikasi WhatsApp" />
         </div>
         <p className="text-sm text-muted-foreground">
           Daftar nomor telepon operator dan ID grup WhatsApp yang menerima pemberitahuan otomatis

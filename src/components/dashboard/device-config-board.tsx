@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { ConnectionTestPanel } from "@/components/dashboard/connection-test-panel";
 import { DeviceStatusBadge } from "@/components/dashboard/device-status-badge";
 import { DeviceOutcomeAlert } from "@/components/dashboard/device-outcome-alert";
@@ -194,7 +193,6 @@ export function DeviceConfigBoard() {
 
       <DeviceModeSwitch onModeChange={handleModeChange} />
 
-      <MockDataNotice source="integrasi perangkat simulator" />
 
       {/* Banner status feedback */}
       {bannerNotice && (

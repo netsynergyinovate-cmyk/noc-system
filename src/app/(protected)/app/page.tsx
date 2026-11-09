@@ -3,7 +3,6 @@ import { NocDenseDashboard } from "@/components/dashboard/noc-dense-dashboard";
 import { DashboardMetricBoard } from "@/components/dashboard/dashboard-metric-board";
 import { MapFocusFromUrl } from "@/components/dashboard/map-focus-from-url";
 import { StreamDisconnectedBanner } from "@/components/dashboard/stream-disconnected-banner";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
 import { LiveStatus } from "@/components/dashboard/live-status";
 import { readFocusId } from "@/lib/dashboard/map-focus";
@@ -33,7 +32,6 @@ export default async function DashboardPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <MockDataNotice real />
           <AnomalyBadge />
           <LiveStatus />
         </div>

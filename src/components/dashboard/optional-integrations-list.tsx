@@ -20,7 +20,6 @@ import {
   type OptionalIntegrationItem,
   type OptionalIntegrationStatus,
 } from "@/lib/dashboard/optional-integrations";
-import { MockDataNotice } from "@/components/dashboard/mock-data-notice";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "opt-olt-hsgq": Network,
@@ -97,7 +96,6 @@ export function OptionalIntegrationsList() {
           </div>
         </div>
 
-        <MockDataNotice source="status integrasi opsional" />
       </div>
 
       {notice && (

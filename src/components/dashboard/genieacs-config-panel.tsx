@@ -6,7 +6,7 @@ import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
+import type { CpeDevice } from "@/lib/dashboard/cpe";
 import { formatAgo } from "@/lib/dashboard/customer-live";
 import { summarizeFleet } from "@/lib/dashboard/genieacs-fleet";
 

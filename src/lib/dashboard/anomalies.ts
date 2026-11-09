@@ -5,9 +5,7 @@ import {
   type IncidentImpact,
 } from "./incident-root.ts";
 import { incidentLabels } from "./incidents.ts";
-import { mockRouters } from "./mock-data.ts";
 import type { DashboardCustomer } from "./types.ts";
-import { hashString, unit } from "./mock-random.ts";
 import type { Incident, IncidentKind, IncidentSeverity } from "./types.ts";
 
 // DATA TIRUAN untuk fase frontend. Anomali adalah gangguan yang sama dengan
@@ -112,56 +110,13 @@ export function toAnomaly(incident: Incident): Anomaly {
 }
 
 function buildAnomaly(incident: Incident): RawAnomaly {
-  const seed = hashString(incident.id);
-  const base = {
+  return {
     ...incident,
     routerId: "",
-    customerId: null as string | null,
-    interfaceName: null as string | null,
-    measured: null as number | null,
+    customerId: null,
+    interfaceName: null,
+    measured: null,
   };
-  const pickRouter = () =>
-    mockRouters[Math.floor(unit(seed) * mockRouters.length)].id;
-  const pickCustomer = () =>
-    customers.length > 0 ? customers[Math.floor(unit(seed + 1) * customers.length)] : null;
-  const pickInterface = () =>
-    INTERFACES[Math.floor(unit(seed + 2) * INTERFACES.length)];
-
-  switch (incident.kind) {
-    case "queue":
-      return {
-        ...base,
-        routerId: pickRouter(),
-        interfaceName: pickInterface(),
-        measured: 96 + Math.floor(unit(seed + 3) * 5), // 96-100 (aturan: di atas 95%)
-      };
-    case "cpu":
-      return {
-        ...base,
-        routerId: pickRouter(),
-        measured: 86 + Math.floor(unit(seed + 3) * 14), // 86-99
-      };
-    case "port":
-      return {
-        ...base,
-        routerId: pickRouter(),
-        interfaceName: pickInterface(),
-        measured: 21 + Math.floor(unit(seed + 3) * 280),
-      };
-    case "optical": {
-      const customer = pickCustomer();
-      return {
-        ...base,
-        routerId: customer?.routerId ?? pickRouter(),
-        customerId: customer?.id ?? null,
-        measured: -(25.1 + Math.round(unit(seed + 3) * 30) / 10), // -25,1..-28,1
-      };
-    }
-    case "offline": {
-      const customer = pickCustomer();
-      return { ...base, routerId: customer?.routerId ?? pickRouter(), customerId: customer?.id ?? null };
-    }
-  }
 }
 
 // Keterangan satu baris: apa yang terukur dan batasnya. Lama berjalan tidak ikut

@@ -1,7 +1,7 @@
 // Klien baca GenieACS NBI. Dua mode: "real" (HTTP ke NBI) dan "simulator"
 // (data tiruan deterministik). Murni (tanpa alias path) agar bisa diuji dengan node --test.
 
-import { formatUptime, generateMockCpeDevices } from "../dashboard/cpe-mock.ts";
+import { formatUptime } from "../dashboard/cpe.ts";
 import type {
   CpeDevice,
   CpeHealth,
@@ -9,7 +9,7 @@ import type {
   CpeInterfaceType,
   CpeOptical,
   CpeTemperatureSensor,
-} from "../dashboard/cpe-mock.ts";
+} from "../dashboard/cpe.ts";
 import { getGenieacsConfig } from "./config.ts";
 import type { GenieAcsConfig } from "./config.ts";
 
@@ -28,7 +28,7 @@ export class GenieAcsError extends Error {
 }
 
 function simulatorDevices(): CpeDevice[] {
-  return generateMockCpeDevices([]);
+  return [];
 }
 
 type Fetcher = typeof fetch;

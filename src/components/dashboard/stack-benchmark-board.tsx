@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MockStatusPanel } from "@/components/dashboard/mock-status-panel";
 import {
   benchmarkKpis,
   compileBenchmarkSummary,
@@ -26,7 +25,6 @@ export function StackBenchmarkBoard() {
           <TabsTrigger value="ringkasan">Ringkasan</TabsTrigger>
           <TabsTrigger value="metrik">Metrik</TabsTrigger>
           <TabsTrigger value="arsitektur">Arsitektur</TabsTrigger>
-          <TabsTrigger value="status-mock">Status Mock & Kesiapan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ringkasan">
@@ -206,9 +204,6 @@ export function StackBenchmarkBoard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="status-mock">
-          <MockStatusPanel />
-        </TabsContent>
       </Tabs>
     </div>
   );

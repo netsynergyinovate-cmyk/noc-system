@@ -59,7 +59,6 @@ import {
   type ThresholdTexts,
 } from "@/lib/dashboard/thresholds";
 import type { IncidentKind } from "@/lib/dashboard/types";
-import { MockDataNotice } from "./mock-data-notice";
 
 // HALAMAN AMBANG ALERT (Pengaturan > Ambang Batas). Satu kartu per aturan deteksi
 // (lima, sama dengan `anomalyRules`). Isian disimpan sebagai TEKS sementara
@@ -278,7 +277,6 @@ export function ThresholdSettings() {
             Ubah angkanya di kartu aturan, lalu simpan.
           </p>
         </div>
-        <MockDataNotice source="tabel alert_thresholds" real />
         <p
           data-testid="threshold-honesty"
           className="rounded-lg border bg-card p-3 text-sm text-foreground"

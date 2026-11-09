@@ -28,7 +28,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatAlertTime } from "@/lib/dashboard/alerts";
 import { formatInteger } from "@/lib/dashboard/format";
-import { mockRouters } from "@/lib/dashboard/mock-data";
 import { NetflowTrendChart } from "@/components/dashboard/netflow-trend-chart";
 import { backendGet } from "@/lib/dashboard/backend-api";
 import { useSession } from "@/components/session-provider";

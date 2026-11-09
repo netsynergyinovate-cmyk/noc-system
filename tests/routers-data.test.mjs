@@ -7,16 +7,11 @@ import {
   isCpuWarning,
   summarizeRouterResources,
 } from "../src/lib/dashboard/routers.ts";
-import { mockRouters } from "../src/lib/dashboard/mock-data.ts";
 
-test("tiga router default memakai ID mockRouters", () => {
+test("tiga router default memakai ID yang benar", () => {
   assert.deepEqual(
     defaultRouterDetails.map((r) => r.id),
     ["router-1", "router-2", "router-3"],
-  );
-  assert.deepEqual(
-    defaultRouterDetails.map((r) => r.id),
-    mockRouters.map((r) => r.id),
   );
 });
 
@@ -48,7 +43,8 @@ test("pencarian teks: nama, host, model, banyak kata, huruf besar", () => {
 
 test("filter status", () => {
   const routers = buildRouterDetails([
-    ...mockRouters.slice(0, 2),
+    { id: "router-1", name: "RTR-1", host: "10.10.0.1", active: true },
+    { id: "router-2", name: "RTR-2", host: "10.10.0.2", active: true },
     { id: "router-x", name: "RTR-Mati", host: "10.10.0.9", active: false },
   ]);
   assert.equal(filterRouterDetails(routers, "", "all").length, 3);

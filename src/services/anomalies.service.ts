@@ -231,7 +231,7 @@ export async function getAnomaliesList(
 }
 
 /**
- * Membuat catatan anomali baru di tabel network_logs.
+ * Membuat catatan anomali baru di tabel alerts.
  */
 export async function createAnomaly(
   input: CreateAnomalyInput,
@@ -266,7 +266,7 @@ export async function createAnomaly(
 }
 
 /**
- * Menyelesaikan catatan anomali dengan mengisi ended_at.
+ * Menyelesaikan catatan anomali di tabel alerts dengan mengisi ended_at dan status='resolved'.
  */
 export async function resolveAnomaly(
   id: string,

@@ -28,9 +28,6 @@ export function GET(request: Request) {
           opticalStatus: url.searchParams.get("opticalStatus") ?? undefined,
           limit: url.searchParams.get("limit") ?? undefined,
           offset: url.searchParams.get("offset") ?? undefined,
-          forceMock:
-            url.searchParams.get("forceMock") ??
-            (url.searchParams.get("mode") === "mock" ? "true" : undefined),
         };
         const parsed = geocodedCustomersQuerySchema.safeParse(rawParams);
         const result = await getGeocodedCustomers(

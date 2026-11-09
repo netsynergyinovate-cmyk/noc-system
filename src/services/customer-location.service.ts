@@ -8,7 +8,6 @@ import type {
   GeocodedCustomersQueryInput,
   ViewportCustomersQueryInput,
 } from "@/validators/customer-location";
-import { getLocalMockMapData } from "./network-map-mock";
 
 export interface ResolvedViewportBounds {
   minLat: number;
@@ -437,44 +436,6 @@ export function applyCustomerQueryFilters(
 export async function getGeocodedCustomers(
   query?: GeocodedCustomersQueryInput,
 ): Promise<GeocodedCustomersResult> {
-  const isExplicitMock = query?.forceMock === true;
-
-  if (isExplicitMock) {
-    const mock = getLocalMockMapData();
-    const rawItems: GeocodedCustomerItem[] = mock.customers
-      .filter((c): c is typeof c & { latitude: number; longitude: number } =>
-        c.latitude !== null && c.longitude !== null &&
-        Number.isFinite(c.latitude) && Number.isFinite(c.longitude),
-      )
-      .map((c) => ({
-        id: c.id,
-        name: c.name,
-        pppoeUsername: c.pppoeUsername,
-        routerId: c.routerId,
-        routerName: c.routerName ?? null,
-        address: c.address,
-        latitude: c.latitude,
-        longitude: c.longitude,
-        odpName: c.odpName,
-        billingStatus: c.billingStatus,
-        opticalPower: c.opticalPower,
-        isOnline: c.isOnline,
-        lastUpdatedAt: c.lastUpdatedAt,
-        onuDetails: c.onuDetails ?? null,
-      }));
-
-    const { filtered, summary } = applyCustomerQueryFilters(rawItems, query);
-
-    return {
-      customers: filtered,
-      summary,
-      dataSource: {
-        provider: "Mock Simulation Demo",
-        isRealData: false,
-        lastSynchronizedAt: new Date().toISOString(),
-      },
-    };
-  }
 
   try {
     const rawRows = await db
@@ -589,63 +550,6 @@ export async function getCustomerMapDetail(
   customerId: string,
   options?: { forceMock?: boolean },
 ): Promise<CustomerMapDetail | null> {
-  const isExplicitMock = options?.forceMock === true;
-
-  if (isExplicitMock) {
-    const mock = getLocalMockMapData();
-    const found = mock.customers.find(
-      (c) => c.id === customerId || c.pppoeUsername === customerId,
-    );
-
-    if (!found) {
-      return null;
-    }
-
-    return {
-      id: found.id,
-      name: found.name,
-      pppoeUsername: found.pppoeUsername,
-      routerId: found.routerId,
-      routerName: found.routerName ?? null,
-      address: found.address ?? null,
-      latitude:
-        found.latitude !== null && Number.isFinite(found.latitude)
-          ? found.latitude
-          : null,
-      longitude:
-        found.longitude !== null && Number.isFinite(found.longitude)
-          ? found.longitude
-          : null,
-      odpName: found.odpName ?? null,
-      billingStatus: (found.billingStatus as "lunas" | "isolir") || "lunas",
-      opticalPower:
-        found.opticalPower !== null && Number.isFinite(found.opticalPower)
-          ? found.opticalPower
-          : null,
-      isOnline: Boolean(found.isOnline),
-      lastUpdatedAt: found.lastUpdatedAt ?? new Date(),
-      onuDetails: found.onuDetails
-        ? {
-            serialNumber: found.onuDetails.serialNumber,
-            ponIndex: found.onuDetails.ponIndex,
-            onuIndex: found.onuDetails.onuIndex,
-            opticalLevel: found.onuDetails.opticalLevel,
-            txPower: null,
-            attenuation: null,
-            status: found.isOnline ? "online" : "offline",
-            model: "ZTE F609",
-            oltId: null,
-            oltName: "OLT-ZTE-CORE",
-          }
-        : null,
-      dataSource: {
-        provider: "Mock Simulation Demo",
-        isRealData: false,
-        lastSynchronizedAt: new Date().toISOString(),
-      },
-    };
-  }
-
   try {
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(

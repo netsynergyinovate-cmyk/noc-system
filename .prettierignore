@@ -18,3 +18,4 @@ runsnet-data-*.json
 runsnet-*.html
 report-agy/
 *.md
+backend/**/testdata/**

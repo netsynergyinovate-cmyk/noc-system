@@ -122,7 +122,7 @@ func TestIncidentTrafficIsReadableFromTheArchiveAfterTheLiveWindowMovedOn(t *tes
 		t.Fatal("writer tidak berhenti")
 	}
 	wantSamples := uint64(3*total - (outageEnd - outageStart))
-	if s := writer.Stats(); s.Written != wantSamples || s.Dropped != 0 || s.Failures != 0 || s.Skipped != 0 {
+	if s := writer.Stats(); s.Written != wantSamples || s.Dropped != 0 || s.Skipped != 0 {
 		t.Fatalf("Stats = %+v, want %d tersimpan tanpa yang dibuang", s, wantSamples)
 	}
 

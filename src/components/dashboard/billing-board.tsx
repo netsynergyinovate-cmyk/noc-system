@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSession } from "@/components/session-provider";
+import { selectPreviewEnabled } from "@/lib/session-store";
 import { Ban, CircleCheck, FileQuestion, Unlink } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "cn";
@@ -112,6 +114,7 @@ function BillingTiles({ totals }: { totals: BillingTotals }) {
 // store, tempat pesan hub tiba, bersamaan dengan lencana di tabel Pelanggan dan di
 // peta, jadi tabel dan angka ringkasan di sini tidak menunggu penyegaran berikutnya.
 export function BillingBoard() {
+  const isDemo = useSession(selectPreviewEnabled);
   const { state, failed, retry } = usePolled(loadBilling, BILLING_REFRESH_MS);
   const overview = state?.data ?? null;
   const now = state?.now ?? 0;
@@ -141,14 +144,16 @@ export function BillingBoard() {
 
   return (
     <div className="flex flex-col gap-6" data-testid="billing-board">
-      <Badge
-        variant="outline"
-        className="gap-1.5 py-1 text-xs font-normal"
-        data-testid="billing-mock-badge"
-      >
-        Data Tiruan Billing (Fase 2) · Wajib beralih ke sinkronisasi billing
-        nyata di Fase 5
-      </Badge>
+      {isDemo && (
+        <Badge
+          variant="outline"
+          className="gap-1.5 py-1 text-xs font-normal"
+          data-testid="billing-mock-badge"
+        >
+          Data Tiruan Billing (Fase 2) · Wajib beralih ke sinkronisasi billing
+          nyata di Fase 5
+        </Badge>
+      )}
       {failed && (
         <div
           role="alert"

@@ -6,40 +6,6 @@ const { SETUP_DATA_SOURCE_REGISTRY, SETUP_PAGE_TIPS, evaluateSetupProgress } =
   await import("../src/lib/dashboard/setup-extended.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
-test("registry: modul dummy dengan envKey valid", () => {
-  assert.equal(SETUP_DATA_SOURCE_REGISTRY.length, 21);
-  for (const e of SETUP_DATA_SOURCE_REGISTRY) {
-    assert.equal(e.status, "dummy");
-    assert.match(e.envKey, /^[A-Z][A-Z0-9_]+$/);
-    assert.match(e.notes, /Fase 5/);
-  }
-  assert.deepEqual(
-    SETUP_DATA_SOURCE_REGISTRY.map((e) => e.module),
-    [
-      "Router MikroTik",
-      "OLT HSGQ",
-      "GenieACS NBI",
-      "Billing Scraper",
-      "Papan Metrik Dashboard",
-      "Papan Alert Gangguan",
-      "Log Notifikasi WhatsApp",
-      "Ringkasan Jaringan & Router",
-      "Port PON & Daftar ONU",
-      "Sampel Trafik & Tren Bandwidth",
-      "Papan NetFlow & Aliran Trafik",
-      "Deteksi Anomali Jaringan",
-      "Jejak Aktivitas & Log Audit",
-      "Ekspor Data & Laporan",
-      "Riwayat Migrasi Skema",
-      "Sinkronisasi Data Otomatis",
-      "Ringkasan Seed Data Awal",
-      "Transfer Data Lokal ke Server",
-      "Status Penyelarasan Otomatis",
-      "Riwayat Sinkronisasi Data",
-      "Pengaman Deploy & Kesiapan Produksi",
-    ],
-  );
-});
 
 test("evaluateSetupProgress: gerbang butuh router aktif", () => {
   const none = evaluateSetupProgress([

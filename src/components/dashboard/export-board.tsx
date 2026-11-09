@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   EXPORT_DATASETS,
   EXPORT_TIME_RANGES,
-  generateExportData,
-  getExportPreview,
   type ExportDataset,
   type ExportFormat,
   type ExportTimeRange,
@@ -51,25 +49,93 @@ export function ExportBoard() {
   const statusId = useId();
   const nowSec = Math.floor(Date.now() / 1000);
 
-  const preview = getExportPreview(selectedDataset, nowSec, selectedRange, 3);
+  const [realPreview, setRealPreview] = useState<{
+    headers: string[];
+    sampleRows: (string | number)[][];
+    totalRows: number;
+    isEmpty: boolean;
+    estimatedSizeKb: number;
+  } | null>(null);
+  useEffect(() => {
+    let active = true;
+    setRealPreview(null);
+    const params = new URLSearchParams({
+      dataset: selectedDataset,
+      format: "json",
+      range: selectedRange,
+      download: "false",
+      allowEmpty: "true",
+    });
+    fetch(`/api/export?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { ok?: boolean; data?: { content: string; rowCount: number }; meta?: { rowCount: number; isEmpty: boolean } }) => {
+        if (!active || !json?.ok || !json.data) return;
+        try {
+          const list = JSON.parse(json.data.content);
+          if (Array.isArray(list)) {
+            const headers = list.length > 0 && typeof list[0] === "object" ? Object.keys(list[0]) : [];
+            const sampleRows = list.slice(0, 3).map((item) => headers.map((h) => item[h] ?? "-"));
+            setRealPreview({
+              headers,
+              sampleRows,
+              totalRows: json.meta?.rowCount ?? list.length,
+              isEmpty: list.length === 0,
+              estimatedSizeKb: Math.max(0.1, Math.round((new Blob([json.data.content]).size / 1024) * 10) / 10),
+            });
+          }
+        } catch {}
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selectedDataset, selectedRange]);
 
-  const handleDownload = () => {
-    if (isGenerating || preview.isEmpty) return;
+  const preview = realPreview ?? {
+    headers: [],
+    sampleRows: [],
+    totalRows: 0,
+    isEmpty: true,
+    estimatedSizeKb: 0,
+  };
+
+  const handleDownload = async () => {
+    if (isGenerating) return;
     setIsGenerating(true);
-    // Simulasi penyiapan berkas; backend nyata (Fase 5) akan menggantikan jeda ini.
-    timerRef.current = setTimeout(() => {
-      const result = generateExportData(selectedDataset, selectedFormat, nowSec, selectedRange);
-      triggerDownload(result.content, result.filename, result.mimeType);
+    try {
+      const params = new URLSearchParams({
+        dataset: selectedDataset,
+        format: selectedFormat,
+        range: selectedRange,
+      });
+      const res = await fetch(`/api/export?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(`Gagal mengunduh laporan (HTTP ${res.status})`);
+      }
+      const content = await res.text();
+      const disposition = res.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="?([^";]+)"?/);
+      const filename = filenameMatch?.[1] ?? `laporan-${selectedDataset}.${selectedFormat}`;
+      const mimeType = selectedFormat === "json" ? "application/json" : "text/csv;charset=utf-8";
+      triggerDownload(content, filename, mimeType);
+      const headerCount = res.headers.get("X-Row-Count");
+      const rowCount = headerCount !== null
+        ? parseInt(headerCount, 10)
+        : selectedFormat === "json"
+          ? (JSON.parse(content) as unknown[]).length
+          : Math.max(0, content.trim().split("\n").length - 1);
       setLastDownloaded({
-        filename: result.filename,
-        rowCount: result.rowCount,
+        filename,
+        rowCount,
         at: new Date(),
         format: selectedFormat,
-        sizeKb: Math.max(0.1, Math.round((new Blob([result.content]).size / 1024) * 10) / 10),
+        sizeKb: Math.max(0.1, Math.round((new Blob([content]).size / 1024) * 10) / 10),
       });
+    } catch (err) {
+      console.error("Gagal ekspor laporan:", err);
+    } finally {
       setIsGenerating(false);
-      timerRef.current = null;
-    }, 400);
+    }
   };
 
   const activeOption = EXPORT_DATASETS.find((d) => d.id === selectedDataset)!;
@@ -77,13 +143,7 @@ export function ExportBoard() {
 
   return (
     <div className="flex flex-col gap-6" data-testid="export-board">
-      <Badge
-        variant="outline"
-        className="gap-1.5 py-1 text-xs font-normal"
-        data-testid="export-mock-badge"
-      >
-        Data Tiruan Ekspor (Fase 2) · Wajib beralih ke generator laporan nyata di Fase 5
-      </Badge>
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* Kolom 1: Pilih Dataset */}
         <Card>
@@ -235,7 +295,7 @@ export function ExportBoard() {
                 <div className="flex justify-between py-1">
                   <span className="text-muted-foreground">Estimasi baris:</span>
                   <span className="font-medium text-foreground">
-                    {activeOption.recordCount(nowSec, selectedRange).toLocaleString("id-ID")}
+                    {preview.totalRows.toLocaleString("id-ID")}
                   </span>
                 </div>
                 <div className="flex justify-between py-1">

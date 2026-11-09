@@ -133,11 +133,12 @@ export async function probeRouterApi(input: ApiProbeInput): Promise<ApiProbeResu
       signal: controller.signal,
     });
     if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { message?: string; error?: string } | null;
+      const json = (await res.json().catch(() => null)) as { message?: string; error?: string; code?: string } | null;
       return failure(
         json?.message ?? json?.error ?? `Backend Go menjawab HTTP ${res.status} untuk uji router.`,
         input.port,
         input.useSsl,
+        json?.code ?? (res.status === 408 || res.status === 504 ? "TIMEOUT" : "CONNECTION_FAILED"),
       );
     }
     const json = (await res.json()) as { data?: BackendPreflight };

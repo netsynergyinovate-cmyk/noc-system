@@ -166,25 +166,6 @@ export async function updateCustomerLocation(
       .limit(1);
 
     if (existing.length === 0) {
-      if (process.env.NODE_ENV !== "production") {
-        const mock = getLocalMockMapData();
-        const mockFound = mock.customers.find(
-          (c) => c.id === customerId || c.pppoeUsername === customerId,
-        );
-        if (mockFound) {
-          mockFound.latitude = input.latitude;
-          mockFound.longitude = input.longitude;
-          mockFound.lastUpdatedAt = new Date();
-          return {
-            id: mockFound.id,
-            name: mockFound.name,
-            pppoeUsername: mockFound.pppoeUsername,
-            latitude: input.latitude,
-            longitude: input.longitude,
-            lastUpdatedAt: mockFound.lastUpdatedAt,
-          };
-        }
-      }
       throw new Error(`Pelanggan dengan ID '${customerId}' tidak ditemukan di database.`);
     }
 
@@ -241,29 +222,6 @@ export async function updateCustomerLocation(
       lastUpdatedAt: updated.lastUpdatedAt,
     };
   } catch (err) {
-    if (
-      process.env.NODE_ENV !== "production" &&
-      err instanceof Error &&
-      !err.message.includes("tidak ditemukan")
-    ) {
-      const mock = getLocalMockMapData();
-      const mockFound = mock.customers.find(
-        (c) => c.id === customerId || c.pppoeUsername === customerId,
-      );
-      if (mockFound) {
-        mockFound.latitude = input.latitude;
-        mockFound.longitude = input.longitude;
-        mockFound.lastUpdatedAt = new Date();
-        return {
-          id: mockFound.id,
-          name: mockFound.name,
-          pppoeUsername: mockFound.pppoeUsername,
-          latitude: input.latitude,
-          longitude: input.longitude,
-          lastUpdatedAt: mockFound.lastUpdatedAt,
-        };
-      }
-    }
     throw err;
   }
 }

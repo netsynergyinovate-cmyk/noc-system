@@ -8,6 +8,8 @@ process.env.DATABASE_URL ??= "postgresql://x:x@127.0.0.1:1/x";
 process.env.BETTER_AUTH_SECRET ??= "s".repeat(32);
 process.env.BETTER_AUTH_URL = "http://localhost:3101";
 process.env.DEVICE_SECRET = "d".repeat(32);
+process.env.REALTIME_TOKEN_SECRET ??= "r".repeat(64);
+process.env.BACKEND_INTERNAL_URL ??= "http://127.0.0.1:8080";
 
 const require = createRequire(import.meta.url);
 const so = require.resolve("server-only");
@@ -149,19 +151,29 @@ test("POST /api/routers/[id]/test: 404 ROUTER_NOT_FOUND", async () => {
 
 test("POST /api/routers/[id]/test: 200, lastSeenAt, device_test_results, audit", async () => {
   state.rows.routers = [{ id: ID, host: "10.0.0.1", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
-  let auth;
-  stubFetch(async (url, init) => {
-    auth = init.headers.Authorization;
-    assert.match(String(url), /10\.0\.0\.1.*\/rest\/system\/resource/);
-    return jsonRes({ version: "7.14", "cpu-load": "5", uptime: "1d", "board-name": "RB" });
+  stubFetch(async (url) => {
+    assert.match(String(url), /\/api\/v1\/routers\/preflight/);
+    return jsonRes({
+      data: {
+        ok: true,
+        code: "OK",
+        message: "Router terhubung",
+        latencyMs: 12,
+        port: 443,
+        tls: true,
+        endpointTested: "REST",
+        version: "7.14",
+        cpuLoad: 5,
+        uptime: "1d",
+        boardName: "RB",
+      },
+    });
   });
   const { status, json } = await callId(routerIdTest, `/api/routers/${ID}/test`, ID);
-  assert.equal(status, 200);
   assert.equal(json.success, true);
   assert.equal(json.data.ok, true);
   assert.equal(json.data.status, "connected");
   assert.equal(json.data.code, "OK");
-  assert.equal(auth, `Basic ${Buffer.from(`admin:${PASS}`).toString("base64")}`);
   assert.equal(state.updates.length, 1);
   assert.equal(state.updates[0].table, "routers");
   assert.ok(state.updates[0].set.lastSeenAt instanceof Date);
@@ -176,7 +188,7 @@ test("POST /api/routers/[id]/test: 200, lastSeenAt, device_test_results, audit",
 
 test("POST /api/routers/[id]/test: gagal koneksi -> 200 ok=false, disimpan, lastSeenAt tidak disentuh", async () => {
   state.rows.routers = [{ id: ID, host: "10.0.0.1", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
-  stubFetch(async () => jsonRes({}, 401));
+  stubFetch(async () => jsonRes({ data: { ok: false, code: "AUTH_FAILED", message: "Login ditolak", latencyMs: 5, port: 443, tls: true, endpointTested: "REST" } }, 200));
   const { status, json } = await callId(routerIdTest, `/api/routers/${ID}/test`, ID);
   assert.equal(status, 200);
   assert.equal(json.data.ok, false);

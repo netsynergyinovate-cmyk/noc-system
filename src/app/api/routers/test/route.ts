@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withApiPermission, readJson, ApiError } from "@/lib/api";
-import { runSimulatorDeviceTest } from "@/lib/device-connection";
+import { DeviceConnectionError, runSimulatorDeviceTest, sanitizeHost } from "@/lib/device-connection";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
@@ -20,10 +20,17 @@ export const POST = (request: Request) =>
       throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     }
     const { host, port, username, password } = parsed.data;
+    try {
+      sanitizeHost(host, port);
+    } catch (err) {
+      if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
+        throw new ApiError(422, "INVALID_HOST", err.message);
+      }
+      throw err;
+    }
     const protocol = parsed.data.protocol ?? "rest";
     const mode = parsed.data.mode ?? "real";
     const secrets = { username, password: password ?? "" };
-
     let probe: Awaited<ReturnType<typeof probeRouterApi>> | null = null;
     if (mode === "simulator") {
       const sim = runSimulatorDeviceTest({ type: "mikrotik", mode: "simulator", host, port });

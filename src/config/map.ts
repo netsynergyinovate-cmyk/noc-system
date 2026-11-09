@@ -22,7 +22,7 @@ export const DEFAULT_MAP_ZOOM = Number(process.env.NEXT_PUBLIC_MAP_DEFAULT_ZOOM)
 export function getTileProviders(): Record<MapLayerId, TileProviderConfig> {
   const satelliteUrl =
     process.env.NEXT_PUBLIC_MAP_SATELLITE_URL ||
-    "https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
   const satelliteSubdomains = satelliteUrl.includes("{s}")
     ? (process.env.NEXT_PUBLIC_MAP_SATELLITE_SUBDOMAINS?.split(",") || ["0", "1", "2", "3"])
     : undefined;
@@ -33,10 +33,10 @@ export function getTileProviders(): Record<MapLayerId, TileProviderConfig> {
       url: satelliteUrl,
       attribution:
         process.env.NEXT_PUBLIC_MAP_SATELLITE_ATTRIBUTION ||
-        "&copy; Google Maps",
+        "&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
       maxNativeZoom: 20,
       maxZoom: 21,
-      ...(satelliteSubdomains ? { subdomains: satelliteSubdomains } : {}),
+      subdomains: satelliteSubdomains || ["0", "1", "2", "3"],
     },
     streets: {
       id: "streets",

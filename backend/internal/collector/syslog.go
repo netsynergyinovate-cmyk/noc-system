@@ -38,21 +38,21 @@ var (
 var (
 	// oltLosPattern mendeteksi alarm kabel putus (LOS / Loss of Signal / Link Down).
 	// \b mencegah kecocokan parsial seperti "closed" atau "allocated".
-	oltLosPattern = regexp.MustCompile(`(?i)\b(?:LOS|Loss of Signal|Link Down)\b`)
+	oltLosPattern = regexp.MustCompile(`(?i)\b(?:LOS|Loss[-_ ]of[-_ ]Signal|Link[-_ ]Down)\b`)
 
 	// oltDyingGaspPattern mendeteksi alarm mati listrik pelanggan (Dying Gasp / Power Down / Power Off).
-	oltDyingGaspPattern = regexp.MustCompile(`(?i)\b(?:Dying Gasp|Power Down|Power Off)\b`)
+	oltDyingGaspPattern = regexp.MustCompile(`(?i)\b(?:Dying[-_ ]Gasp|Power[-_ ](?:Down|Off))\b`)
 
-	// Pola pencarian PON dan ONU
-	ponOnuColonPattern = regexp.MustCompile(`(?i)\b(?:pon|port|onu|epon|gpon)?\s*(\d+/\d+):(\d+)\b`)
-	ponOnuWordPattern  = regexp.MustCompile(`(?i)\b(?:pon|port)\s*(\d+/\d+|\d+)\b.*?\b(?:onu|ont)\s*(\d+)\b`)
-	ponOnlyPattern     = regexp.MustCompile(`(?i)\b(?:pon|port)\s*(\d+/\d+|\d+)\b`)
-
+	// Pola pencarian PON dan ONU (wajib memuat slash 'x/y:z' agar tidak cocok dengan jam '05:12:33' syslog)
+	ponOnuColonPattern         = regexp.MustCompile(`(?i)\b(?:pon|port|onu|epon|gpon)?\s*(\d+/\d+):(\d+)\b`)
+	ponOnuPrefixedColonPattern = regexp.MustCompile(`(?i)\b(?:epon|gpon|pon)\s*(\d+):(\d+)\b`)
+	ponOnuWordPattern          = regexp.MustCompile(`(?i)\b(?:pon|port|epon|gpon)\s*(\d+(?:/\d+)?)\b.*?\b(?:onu|ont)\s*(\d+)\b`)
+	ponOnlyPattern             = regexp.MustCompile(`(?i)\b(?:pon|port|epon|gpon)\s*(\d+(?:/\d+)?)\b`)
 	// Pola status ONU pemulihan vs offline
 	statusRecoverPattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(online|registered?)\b`)
 	statusOfflinePattern = regexp.MustCompile(`(?i)\b(?:onu|ont)?\s*.*?\b(offline|deregistered?)\b`)
 	// Pola alarm selesai / pulih (cleared, recovered, restored, normal, Link Up)
-	alarmClearedPattern = regexp.MustCompile(`(?i)\b(?:clear(?:ed)?|restor(?:e|ed)?|recover(?:ed|y)?|disappear(?:ed)?|normal|resume[d]?|Link Up)\b`)
+	alarmClearedPattern = regexp.MustCompile(`(?i)\b(?:clear(?:ed)?|restor(?:e|ed)?|recover(?:ed|y)?|disappear(?:ed)?|normal|resume[d]?|Link[-_ ]Up)\b`)
 )
 
 // OLTAlarmEvent mewakili alarm perangkat keras atau perubahan status ONU dari OLT.
@@ -69,6 +69,9 @@ type OLTAlarmEvent struct {
 
 func extractPonOnu(msg string) (string, string) {
 	if m := ponOnuColonPattern.FindStringSubmatch(msg); len(m) > 2 {
+		return m[1], m[2]
+	}
+	if m := ponOnuPrefixedColonPattern.FindStringSubmatch(msg); len(m) > 2 {
 		return m[1], m[2]
 	}
 	if m := ponOnuWordPattern.FindStringSubmatch(msg); len(m) > 2 {

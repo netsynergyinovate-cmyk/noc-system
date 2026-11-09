@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 import { getRawPool } from "@/db";
 import {
   getTransferConnectionConfig,
@@ -62,8 +62,11 @@ export async function detectEnvironmentDataDrift(
   const targetUrl = options.targetDatabaseUrl ?? cfg.targetDatabaseUrl;
   const tables = options.tables ?? [...TRANSFERRABLE_TABLES];
 
-  const sourcePool = getRawPool();
-  let sourceClient: import("pg").PoolClient | null = null;
+  const customSource = !!options.sourceDatabaseUrl;
+  const sourcePool = customSource
+    ? new Pool({ connectionString: options.sourceDatabaseUrl, connectionTimeoutMillis: 2000 })
+    : getRawPool();
+  let sourceClient: PoolClient | null = null;
   let sourceReachable = false;
 
   try {
@@ -74,6 +77,7 @@ export async function detectEnvironmentDataDrift(
   }
 
   if (!sourceReachable || !sourceClient) {
+    if (customSource) await sourcePool.end().catch(() => {});
     return {
       sourceMasked: cfg.sourceMaskedUrl,
       targetMasked: cfg.targetMaskedUrl ?? "-",
@@ -102,7 +106,7 @@ export async function detectEnvironmentDataDrift(
   }
 
   let targetPool: Pool | null = null;
-  let targetClient: import("pg").PoolClient | null = null;
+  let targetClient: PoolClient | null = null;
   let targetReachable = false;
 
   if (targetUrl) {
@@ -230,6 +234,7 @@ export async function detectEnvironmentDataDrift(
     };
   } finally {
     if (sourceClient) sourceClient.release();
+    if (customSource) await sourcePool.end();
     if (targetClient) targetClient.release();
     if (targetPool) await targetPool.end();
   }

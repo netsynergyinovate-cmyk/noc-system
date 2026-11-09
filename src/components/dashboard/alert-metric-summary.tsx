@@ -7,7 +7,7 @@ import {
   History,
   TriangleAlert,
 } from "lucide-react";
-import { generateMockAlertKpi } from "@/lib/dashboard/alert-board-mock";
+import { computeAlertKpi } from "@/lib/dashboard/alert-board-mock";
 import { formatInteger } from "@/lib/dashboard/format";
 import { useNowMinute } from "@/lib/dashboard/use-now";
 import { MetricCard } from "./metric-card";
@@ -22,10 +22,9 @@ interface Props {
 export function AlertMetricSummary({ active, resolved }: Props) {
   const now = useNowMinute();
   const kpi = useMemo(
-    () => generateMockAlertKpi(active ?? [], resolved ?? [], now),
+    () => computeAlertKpi(active ?? [], resolved ?? [], now),
     [active, resolved, now],
   );
-
   return (
     <section aria-label="Ringkasan alert" className="flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4 [&>[data-slot=card]]:gap-0 [&>[data-slot=card]]:rounded [&>[data-slot=card]]:px-3 [&>[data-slot=card]]:py-2 [&_p.text-2xl]:mt-0 [&_p.text-2xl]:font-mono [&_p.text-2xl]:text-lg">

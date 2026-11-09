@@ -16,21 +16,23 @@ export function useCustomerLiveStatus(enabled: boolean): Record<string, Customer
     const load = async () => {
       try {
         // Direct call ke Go backend dengan tiket autentikasi
-        const liveData = await backendGet<Record<string, CustomerLiveStatus>>("/api/v1/customers/live-status");
-        if (alive && liveData) {
-          setData(liveData);
-          return;
-        }
-      } catch {
-        // Fallback jika direct ticket gagal: coba lewat route handler Next.js
         try {
-          const res = await fetch("/api/customers/live-status", { cache: "no-store" });
-          if (!res.ok) return;
-          const body: { data?: Record<string, CustomerLiveStatus> } | null = await res.json().catch(() => null);
-          if (alive && body?.data) setData(body.data);
+          const liveData = await backendGet<Record<string, CustomerLiveStatus>>("/api/v1/customers/live-status");
+          if (alive && liveData && Object.keys(liveData).length > 0) {
+            setData(liveData);
+            return;
+          }
         } catch {
-          // jaringan putus: pertahankan data terakhir
+          // Direct ticket gagal, lanjut ke route handler Next.js
         }
+
+        // Fallback: ambil lewat route handler Next.js
+        const res = await fetch("/api/customers/live-status", { cache: "no-store" });
+        if (!res.ok) return;
+        const body: { data?: Record<string, CustomerLiveStatus> } | null = await res.json().catch(() => null);
+        if (alive && body?.data) setData(body.data);
+      } catch {
+        // jaringan putus: pertahankan data terakhir
       }
     };
     const first = setTimeout(() => void load(), 0);

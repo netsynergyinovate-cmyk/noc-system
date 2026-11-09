@@ -742,26 +742,17 @@ async function fetchOk<T>(path: string): Promise<T | null> {
 }
 
 // GET /api/v1/billing lewat /api/billing; gagal atau offline jatuh ke tiruan.
-export async function loadBilling(
-  nowSec = Math.floor(Date.now() / 1000),
-): Promise<BillingOverview> {
-  const mock = mockBillingOverview(nowSec);
-  return (
-    (await fetchOk<BillingOverview>("/api/billing")) ??
-    // Di luar browser data tiruan dikembalikan apa adanya (tanpa `source`).
-    (typeof window === "undefined" ? mock : overviewWithSource(mock, "mock"))
-  );
+export async function loadBilling(_nowSec?: number): Promise<BillingOverview> {
+  const data = await fetchOk<BillingOverview>("/api/billing");
+  if (data) return data;
+  throw new Error("Gagal memuat data billing dari server.");
 }
 
 // Titik ganti ke backend: GET /api/v1/billing/sync. Hanya keadaan sinkron, tanpa
 // daftar pelanggan dan tagihan, untuk halaman yang cuma perlu tahu seberapa baru
 // data tagihannya (isinya sama dengan `sync` pada GET /api/v1/billing).
-export async function loadBillingSync(
-  nowSec = Math.floor(Date.now() / 1000),
-): Promise<BillingSyncState> {
-  const mock = mockBillingSync(nowSec);
-  return (
-    (await fetchOk<BillingSyncState>("/api/billing/sync")) ??
-    (typeof window === "undefined" ? mock : withBillingSource(mock, "mock"))
-  );
+export async function loadBillingSync(_nowSec?: number): Promise<BillingSyncState> {
+  const data = await fetchOk<BillingSyncState>("/api/billing/sync");
+  if (data) return data;
+  throw new Error("Gagal memuat status sinkronisasi billing dari server.");
 }

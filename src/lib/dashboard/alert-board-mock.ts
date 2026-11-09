@@ -36,7 +36,7 @@ const DAY = 86_400;
 // Deterministik: hasil hanya bergantung pada daftar dan `nowSec` (detik epoch).
 // Alert aktif belum ditandai petugas = semua alert aktif (yang ditandai sudah
 // pindah ke riwayat). Riwayat dihitung di (now - jendela, now].
-export function generateMockAlertKpi(
+export function computeAlertKpi(
   activeAlerts: readonly ActiveLike[] = [],
   resolvedAlerts: readonly ResolvedLike[] = [],
   nowSec: number = Math.floor(Date.now() / 1000),
@@ -55,9 +55,17 @@ export function generateMockAlertKpi(
     resolvedPast24h: within(DAY),
     resolvedPast7d: within(7 * DAY),
     unacknowledgedCount: activeAlerts.length,
-    sourceStatus: "dummy",
+    sourceStatus: "nyata",
     lastSyncedAt: new Date(nowSec * 1000).toISOString(),
   };
+}
+
+export function generateMockAlertKpi(
+  activeAlerts: readonly ActiveLike[] = [],
+  resolvedAlerts: readonly ResolvedLike[] = [],
+  nowSec: number = Math.floor(Date.now() / 1000),
+): AlertBoardKpi {
+  return computeAlertKpi(activeAlerts, resolvedAlerts, nowSec);
 }
 
 export function isAlertBoardMockActive(status?: "dummy" | "nyata"): boolean {

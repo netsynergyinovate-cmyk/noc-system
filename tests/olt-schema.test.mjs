@@ -23,7 +23,7 @@ test("olts: kolom, host unik, status check", () => {
   assert.equal(cfg.name, "olts");
   assert.deepEqual(
     names(olts),
-    ["brand", "created_at", "driver", "host", "id", "last_seen_at", "name", "password_enc", "status", "username"],
+    ["brand", "created_at", "driver", "host", "id", "last_seen_at", "latitude", "longitude", "name", "password_enc", "status", "tr069_autobind_since", "username"],
   );
   const c = cols(olts);
   assert.ok(c.id.primary);

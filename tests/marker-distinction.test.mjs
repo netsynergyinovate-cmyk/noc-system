@@ -39,7 +39,7 @@ test("Tampilkan penanda pelanggan berbeda dari perangkat", async (t) => {
     );
     assert.match(
       content,
-      /radius = isRouter \? 12 : isOlt \? 10 : 8/,
+      /radius = isRouter \? 12 : isOlt \? 10 : (?:isOdp \? 11 : )?8/,
       "Radius perangkat harus 8-12px",
     );
   });

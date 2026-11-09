@@ -63,7 +63,7 @@ export function describeBillingSession(session: BillingScraperSession): {
 
 // ponytail: tiruan, fungsi dari `syncState` saja. Ganti dengan GET status sesi
 // dari backend saat endpoint-nya ada.
-export function mockBillingSession(syncState?: {
+export function resolveBillingSession(syncState?: {
   runs?: { status: string; finishedAt: number }[];
 }): BillingScraperSession {
   const runs = syncState?.runs ?? [];
@@ -74,19 +74,24 @@ export function mockBillingSession(syncState?: {
   }
   const lastSuccess = runs.find((run) => run.status === "success");
   const backoff = failures >= BILLING_BACKOFF_FAILURES;
+  const isConfigured = runs.length > 0;
   return {
-    portalUrl: "https://billing.example.net/login",
-    username: "noc-scraper",
-    isConfigured: true,
-    sessionStatus: backoff
-      ? "expired"
-      : lastSuccess
-        ? "active"
-        : "not_logged_in",
-    csrfStatus: backoff ? "missing" : lastSuccess ? "acquired" : "missing",
+    portalUrl: "",
+    username: "",
+    isConfigured,
+    sessionStatus: !isConfigured
+      ? "not_logged_in"
+      : backoff
+        ? "expired"
+        : lastSuccess
+          ? "active"
+          : "not_logged_in",
+    csrfStatus: !isConfigured || backoff ? "missing" : lastSuccess ? "acquired" : "missing",
     lastLoginAt: lastSuccess?.finishedAt ?? null,
     consecutiveFailures: failures,
     isBackoffActive: backoff,
-    cookiejarCount: !backoff && lastSuccess ? 2 : 0,
+    cookiejarCount: 0,
   };
 }
+
+export const mockBillingSession = resolveBillingSession;

@@ -157,7 +157,7 @@ test("Task: Gambar Polilin Jalur Kabel Mengikuti Lekukan Jalan", async (t) => {
     );
     assert.match(
       content,
-      /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*parentCandidate\.latitude,\s*parentCandidate\.longitude\s*\]/s,
+      /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*(?:parentCandidate|parent)\.latitude,\s*(?:parentCandidate|parent)\.longitude\s*\]/s,
       "Kabel feeder ODP harus menggunakan generateRoadBendedPolyline",
     );
   });

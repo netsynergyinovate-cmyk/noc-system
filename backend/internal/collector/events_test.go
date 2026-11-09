@@ -368,6 +368,16 @@ func TestParseOLTLog(t *testing.T) {
 			wantOk:   true,
 		},
 		{
+			name:     "Syslog with timestamp does not match timestamp as PON/ONU",
+			msg:      "<134>Oct  7 05:12:33 OLT-HSGQ [EPON0/1:3] LOS",
+			wantType: "fiber_cut",
+			wantSev:  "critical",
+			wantStat: "active",
+			wantPon:  "0/1",
+			wantOnu:  "3",
+			wantOk:   true,
+		},
+		{
 			name:     "HSGQ Dying Gasp word format",
 			msg:      "<189>HSGQ-OLT: Dying Gasp alarm on PON 0/1 ONU 4",
 			wantType: "power_outage",

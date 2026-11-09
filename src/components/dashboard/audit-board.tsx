@@ -466,14 +466,16 @@ export function AuditBoard() {
       data-view={view.kind}
       className="flex flex-col gap-6"
     >
-      <Badge
-        variant="outline"
-        className="gap-1.5 py-1 text-xs font-normal"
-        data-testid="audit-mock-badge"
-      >
-        Data Tiruan Audit (Fase 2) · Wajib beralih ke database audit_log nyata di
-        Fase 5
-      </Badge>
+      {isDemo && (
+        <Badge
+          variant="outline"
+          className="gap-1.5 py-1 text-xs font-normal"
+          data-testid="audit-mock-badge"
+        >
+          Data Tiruan Audit (Fase 2) · Wajib beralih ke database audit_log nyata di
+          Fase 5
+        </Badge>
+      )}
       {(view.kind === "error" || view.stale) && (
         <div
           role="alert"

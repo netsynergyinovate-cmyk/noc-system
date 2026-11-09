@@ -108,16 +108,18 @@ export function selectBillingStatuses(state: {
 
 // Data awal yang sama di server dan browser; snapshot asli menggantikannya
 // begitu sumber data tersambung.
-export const initialCustomers = createMockCustomers();
+export const initialCustomers: DashboardCustomer[] = [];
 
 // Nomor permintaan sorot tidak pernah mundur, bahkan setelah sorotan ditutup.
 let focusSeq = 0;
 
 export const useDashboardStore = create<DashboardState>()((set, get) => ({
-  customers: initialCustomers,
-  routers: mockRouters,
-  ...countCustomers(initialCustomers),
-  activeRouterCount: countActiveRouters(mockRouters),
+  customers: [],
+  routers: [],
+  onlineCount: 0,
+  offlineCount: 0,
+  weakSignalCount: 0,
+  activeRouterCount: 0,
   traffic: { times: [], rx: [], tx: [] },
   connection: "connecting",
   latencyMs: null,

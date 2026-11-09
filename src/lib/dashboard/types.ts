@@ -25,7 +25,7 @@ export interface DashboardCustomer {
   opticalPowerDbm: number;
   isOnline: boolean;
   isLos?: boolean;
-  // Paket langganan (Mbps), dipakai untuk memperkirakan traffic tiruan.
+  // Paket langganan (Mbps) dari profil layanan pelanggan.
   planMbps: number;
 }
 

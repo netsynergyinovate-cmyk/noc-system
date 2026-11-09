@@ -412,39 +412,60 @@ export interface GoCustomerUsageRecord {
   status: string;
 }
 
+interface RawBackendNetflowSession {
+  id: string;
+  routerId?: string | null;
+  routerName?: string | null;
+  customerId?: string | null;
+  customerName?: string | null;
+  direction?: string | null;
+  ponPort?: string | null;
+  srcIp: string;
+  srcPort: number;
+  dstIp: string;
+  dstPort: number;
+  protocol?: string | null;
+  bytes?: number | string | null;
+  packets?: number | string | null;
+  capturedAt?: number | null;
+}
+
 export async function loadNetflow(now: number, isDemo = false): Promise<NetflowRecord[]> {
-  if (typeof window !== "undefined" && !isDemo) {
-    const rawSessions = await backendGet<any[]>("/api/v1/netflow/sessions", {
-      range: "7d",
-      limit: 200,
-    });
-    if (Array.isArray(rawSessions)) {
-      return rawSessions.map((s) => ({
-        id: s.id,
-        routerId: s.routerId ?? "",
-        routerName: s.routerName ?? "Router tidak dikenal",
-        customerId: s.customerId ?? null,
-        customerName: s.customerName ?? null,
-        direction: s.direction === "up" || s.direction === "down" ? s.direction : null,
-        ponPort: s.ponPort ?? null,
-        srcIp: s.srcIp,
-        srcPort: s.srcPort,
-        dstIp: s.dstIp,
-        dstPort: s.dstPort,
-        protocol: (s.protocol?.toUpperCase() as FlowProtocol) || "TCP",
-        app: appForPort(s.protocol, s.dstPort),
-        bytes: Number(s.bytes) || 0,
-        packets: Number(s.packets) || 1,
-        startedAt: s.capturedAt || now,
-        durationSec: 0,
-        endedAt: s.capturedAt || now,
-      }));
+  if (!isDemo) {
+    try {
+      const rawSessions = await backendGet<RawBackendNetflowSession[]>("/api/v1/netflow/sessions", {
+        range: "7d",
+        limit: 200,
+      });
+      if (Array.isArray(rawSessions)) {
+        return rawSessions.map((s) => ({
+          id: s.id,
+          routerId: s.routerId ?? "",
+          routerName: s.routerName ?? "Router tidak dikenal",
+          customerId: s.customerId ?? null,
+          customerName: s.customerName ?? null,
+          direction: s.direction === "up" || s.direction === "down" ? s.direction : null,
+          ponPort: s.ponPort ?? null,
+          srcIp: s.srcIp,
+          srcPort: s.srcPort,
+          dstIp: s.dstIp,
+          dstPort: s.dstPort,
+          protocol: (s.protocol?.toUpperCase() as FlowProtocol) || "TCP",
+          app: appForPort(s.protocol || "TCP", s.dstPort),
+          bytes: Number(s.bytes) || 0,
+          packets: Number(s.packets) || 0,
+          startedAt: s.capturedAt || now,
+          durationSec: 0,
+          endedAt: s.capturedAt || now,
+        }));
+      }
+    } catch {
+      // Jaringan backend terputus: kembalikan daftar kosong
     }
     return [];
   }
   return Promise.resolve(mockNetflow(now, flowRangeSeconds["7d"]));
 }
-
 // Nama aplikasi dari protokol + port tujuan (DB tidak menyimpan kolom app).
 export function appForPort(protocol: string, dstPort: number): string {
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Router as RouterIcon, Server, Thermometer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,18 +166,67 @@ export function DeviceStatusCardGrid() {
   const routers = useDashboardStore((s) => s.routers);
   const customers = useDashboardStore((s) => s.customers);
   const [filter, setFilter] = useState<Filter>("all");
+  const [realOlts, setRealOlts] = useState<
+    Array<{
+      id: string;
+      name: string;
+      host: string;
+      brand: string;
+      ponPorts: number;
+      activeOnus: number;
+      temperature: number | null;
+      uptime: string | null;
+      online: boolean;
+    }>
+  >([]);
 
+  useEffect(() => {
+    if (isDemo) return;
+    let active = true;
+    fetch("/api/olts")
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Gagal memuat data OLT`);
+        return res.json();
+      })
+      .then((json: { data?: Array<{ id: string; name: string; host: string; brand?: string; lastSeenAt?: string | null; ponPortCount?: number; onuOnline?: number }> }) => {
+        if (!active || !Array.isArray(json?.data)) return;
+        const mapped = json.data.map((o) => {
+          const isFresh = o.lastSeenAt
+            ? Date.now() - new Date(o.lastSeenAt).getTime() < 5 * 60 * 1000
+            : false;
+          return {
+            id: o.id,
+            name: o.name,
+            host: o.host,
+            brand: o.brand || "OLT",
+            ponPorts: o.ponPortCount ?? 0,
+            activeOnus: o.onuOnline ?? 0,
+            temperature: null,
+            uptime: null,
+            online: isFresh,
+          };
+        });
+        setRealOlts(mapped);
+      })
+      .catch((err: unknown) => {
+        console.error("Gagal memuat OLT:", err instanceof Error ? err.message : err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isDemo]);
+
+  const currentOlts = isDemo ? MOCK_OLTS : realOlts;
   const routerCards = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const c of customers) counts[c.routerId] = (counts[c.routerId] ?? 0) + 1;
     return transformRoutersToStatusCards(buildRouterDetails(routers, counts), customers);
   }, [routers, customers]);
-  const oltCards = useMemo(() => (isDemo ? transformOltsToStatusCards(MOCK_OLTS) : []), [isDemo]);
+  const oltCards = useMemo(() => transformOltsToStatusCards(currentOlts), [currentOlts]);
   const agg = useMemo(
-    () => computeAggregateDeviceStatus(routers, isDemo ? MOCK_OLTS : [], customers),
-    [routers, customers, isDemo],
+    () => computeAggregateDeviceStatus(routers, currentOlts, customers),
+    [routers, customers, currentOlts],
   );
-
   const cards = [
     ...(filter !== "olt" ? routerCards : []),
     ...(filter !== "router" ? oltCards : []),

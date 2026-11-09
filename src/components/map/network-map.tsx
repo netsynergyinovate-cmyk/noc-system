@@ -2496,7 +2496,7 @@ export function NetworkMap({
             Gagal Menghubungkan ke Backend Jaringan
           </h3>
           <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
-            {loadError}. Data operasional jaringan tidak dapat dimuat.
+            {loadError}. Data operasional jaringan tidak dapat dimuat. Kebijakan zero-dummy: data tiruan tidak ditampilkan saat koneksi gagal.
           </p>
           <Button
             type="button"
@@ -2942,23 +2942,6 @@ export function NetworkMap({
         </div>
       )}
 
-      {/* Mock Data Simulation Notification Badge/Banner */}
-      {data && !data.dataSource.isRealData && (
-        <div
-          className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-blue-500/10 dark:bg-blue-950/40 border border-blue-500/30 backdrop-blur-md p-2.5 rounded-lg shadow-lg text-xs flex items-start gap-2 text-foreground"
-          data-testid="mock-data-indicator"
-        >
-          <Database className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <p className="font-semibold text-blue-600 dark:text-blue-400">
-              Pratinjau Data Mock Lokal (Tiruan)
-            </p>
-            <p className="text-muted-foreground text-[11px] leading-relaxed">
-              Memuat simulasi titik pelanggan & topologi jaringan Mukomuko untuk pengujian interaktivitas UI tanpa server fisik.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Zero-Dummy Status Notification Banner */}
       {data && data.dataSource.isRealData && data.summary.geocodedCustomers === 0 && data.summary.totalCustomers > 0 && (

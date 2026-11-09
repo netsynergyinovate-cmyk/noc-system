@@ -319,6 +319,36 @@ func run() error {
 		}
 
 		syslog.SetOLTAlarm(func(alarm collector.OLTAlarmEvent) {
+			// Update status olt_onus seketika di awal (zero-delay) agar status LOS langsung terbaca
+			if pool != nil && alarm.OLTID != "" && alarm.PonPort != "" && alarm.OnuID != "" {
+				ponStr := alarm.PonPort
+				if parts := strings.Split(ponStr, "/"); len(parts) > 1 {
+					ponStr = parts[len(parts)-1]
+				}
+				pIdx, errP := strconv.Atoi(ponStr)
+				oIdx, errO := strconv.Atoi(alarm.OnuID)
+				if errP == nil && errO == nil {
+					targetStatus := ""
+					var updateSQL string
+					if alarm.Type == "fiber_cut" || alarm.Type == "los" {
+						if alarm.Status == "active" {
+							targetStatus = "los"
+							updateSQL = `UPDATE olt_onus SET status = $1, captured_at = now() WHERE olt_id = $2::uuid AND pon_index = $3 AND onu_index = $4`
+						} else if alarm.Status == "resolved" {
+							targetStatus = "online"
+							updateSQL = `UPDATE olt_onus SET status = $1, captured_at = now() WHERE olt_id = $2::uuid AND pon_index = $3 AND onu_index = $4 AND status = 'los'`
+						}
+					}
+					if targetStatus != "" && updateSQL != "" {
+						updateCtx, updateCancel := context.WithTimeout(ctx, 3*time.Second)
+						if _, err := pool.Exec(updateCtx, updateSQL, targetStatus, alarm.OLTID, pIdx, oIdx); err != nil {
+							logger.Warn("gagal update status olt_onus seketika dari alarm OLT", "error", err, "olt", alarm.OLTIP, "pon", pIdx, "onu", oIdx)
+						}
+						updateCancel()
+					}
+				}
+			}
+
 			if alertWriter != nil {
 				saveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 				err := alertWriter.SaveOLTAlarm(saveCtx, engine.OLTAlarmEvent{
@@ -334,30 +364,6 @@ func run() error {
 				cancel()
 				if err != nil {
 					logger.Warn("gagal menyimpan alarm OLT ke alerts", "error", err, "olt", alarm.OLTIP, "type", alarm.Type)
-					return
-				}
-			}
-			if pool != nil && alarm.OLTID != "" && alarm.PonPort != "" && alarm.OnuID != "" {
-				ponStr := alarm.PonPort
-				if parts := strings.Split(ponStr, "/"); len(parts) > 1 {
-					ponStr = parts[len(parts)-1]
-				}
-				pIdx, errP := strconv.Atoi(ponStr)
-				oIdx, errO := strconv.Atoi(alarm.OnuID)
-				if errP == nil && errO == nil {
-					targetStatus := ""
-					if alarm.Type == "fiber_cut" || alarm.Type == "los" {
-						if alarm.Status == "active" {
-							targetStatus = "los"
-						} else if alarm.Status == "resolved" {
-							targetStatus = "online"
-						}
-					}
-					if targetStatus != "" {
-						updateCtx, updateCancel := context.WithTimeout(ctx, 3*time.Second)
-						_, _ = pool.Exec(updateCtx, `UPDATE olt_onus SET status = $1, captured_at = now() WHERE olt_id = $2::uuid AND pon_index = $3 AND onu_index = $4`, targetStatus, alarm.OLTID, pIdx, oIdx)
-						updateCancel()
-					}
 				}
 			}
 

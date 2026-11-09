@@ -83,9 +83,21 @@ func (c *Client) req(ctx context.Context, method, path string, body any) (*http.
 
 // ListDevices mengambil daftar perangkat mentah dari GenieACS NBI.
 func (c *Client) ListDevices(ctx context.Context, queryJSON string) ([]map[string]any, error) {
+	return c.ListDevicesProjected(ctx, queryJSON, "")
+}
+
+// ListDevicesProjected mengambil daftar perangkat dengan proyeksi parameter tertentu.
+func (c *Client) ListDevicesProjected(ctx context.Context, queryJSON string, projection string) ([]map[string]any, error) {
 	p := "/devices"
+	params := url.Values{}
 	if queryJSON != "" {
-		p += "?query=" + url.QueryEscape(queryJSON)
+		params.Set("query", queryJSON)
+	}
+	if projection != "" {
+		params.Set("projection", projection)
+	}
+	if encoded := params.Encode(); encoded != "" {
+		p += "?" + encoded
 	}
 	res, err := c.req(ctx, http.MethodGet, p, nil)
 	if err != nil {

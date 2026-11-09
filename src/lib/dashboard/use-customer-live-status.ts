@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CustomerLiveStatus } from "./customer-live.ts";
 import { backendGet } from "./backend-api";
-
+import { ALERT_EVENTS_SIGNAL } from "./realtime-ws";
 const REFRESH_MS = 60_000;
 
 /** Data langsung per pelanggan (MikroTik + GenieACS + OLT + LOS) diproses di Go backend. */
@@ -35,10 +35,26 @@ export function useCustomerLiveStatus(enabled: boolean): Record<string, Customer
     };
     const first = setTimeout(() => void load(), 0);
     const timer = setInterval(() => void load(), REFRESH_MS);
+
+    // Pemicu seketika saat ada alarm OLT/LOS dari WebSocket hub
+    let debounceTimer: number | undefined;
+    const onSignal = () => {
+      if (!alive) return;
+      clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => void load(), 200);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener(ALERT_EVENTS_SIGNAL, onSignal);
+    }
+
     return () => {
       alive = false;
       clearTimeout(first);
       clearInterval(timer);
+      clearTimeout(debounceTimer);
+      if (typeof window !== "undefined") {
+        window.removeEventListener(ALERT_EVENTS_SIGNAL, onSignal);
+      }
     };
   }, [enabled]);
 

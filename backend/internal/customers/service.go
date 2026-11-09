@@ -87,8 +87,8 @@ func (s *Service) loadCpeMap(ctx context.Context) map[string]cpeInfo {
 		return cached
 	}
 	s.mu.Unlock()
-
-	rawDevices, err := s.cpeClient.ListDevices(ctx, "")
+	projection := "_lastInform,VirtualParameters.pppoeUsername,VirtualParameters.ipPppoe,VirtualParameters.ipTr069,VirtualParameters.rxPower,VirtualParameters.connectedDevices,InternetGatewayDevice.DeviceInfo.UpTime,Device.DeviceInfo.UpTime,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID,InternetGatewayDevice.LANDevice.WLANConfiguration.1.SSID,Device.WiFi.SSID.1.SSID,InternetGatewayDevice.WANDevice.1.WANConnectionDevice,InternetGatewayDevice.X_ALU_OntOpticalParam,InternetGatewayDevice.DeviceInfo.XponInterface,InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig,InternetGatewayDevice.Optical.Interface.1.OpticalSignalLevel,Device.Optical.Interface.1.OpticalSignalLevel,Device.PPP.Interface"
+	rawDevices, err := s.cpeClient.ListDevicesProjected(ctx, "", projection)
 	if err != nil {
 		if s.logger != nil {
 			s.logger.Warn("gagal memuat daftar perangkat GenieACS NBI", "error", err)
@@ -392,28 +392,93 @@ func parseCpeDevice(raw map[string]any, nowSec int64) cpeInfo {
 		}
 	}
 
-	// 6. Rx Power (dBm)
-	if rx, ok := findNestedFloat(raw, "VirtualParameters.rxPower"); ok {
-		r := math.Round(rx*100) / 100
-		info.RxDbm = &r
-	} else if rawRx, ok := findNestedFloat(raw,
-		"InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
-		"InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower",
-		"InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
-	); ok && rawRx > 0 {
-		// 0.1 uW -> dBm
-		dbm := math.Round((10*math.Log10(rawRx*0.0001))*100) / 100
-		info.RxDbm = &dbm
-	} else if optRx, ok := findNestedFloat(raw, "InternetGatewayDevice.Optical.Interface.1.OpticalSignalLevel"); ok {
-		if math.Abs(optRx) > 100 {
-			optRx = optRx * 0.001
-		}
-		r := math.Round(optRx*100) / 100
-		info.RxDbm = &r
-	}
+	// 6. Rx Power (dBm) mengikuti urutan dan konversi multi-vendor yang teruji
+	info.RxDbm = parseOpticalRx(raw)
 
 	return info
 }
+
+func parseOpticalRx(raw map[string]any) *float64 {
+	// 1. CDTC: X_ALU_OntOpticalParam
+	if s := findNestedString(raw,
+		"InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower",
+		"Device.X_ALU_OntOpticalParam.RXPower",
+	); s != "" {
+		if val, err := parseDbmString(s); err == nil && val > -35.0 && val != 0 {
+			r := math.Round(val*100) / 100
+			return &r
+		}
+	}
+
+	// 2. CDTC cadangan: DeviceInfo.XponInterface
+	if s := findNestedString(raw,
+		"InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
+		"Device.DeviceInfo.XponInterface.RXPower",
+	); s != "" {
+		if val, err := parseDbmString(s); err == nil && val > -35.0 && val != 0 {
+			r := math.Round(val*100) / 100
+			return &r
+		}
+	}
+
+	// 3. CT-COM (Epon / Gpon): 0.1 uW mentah -> dBm
+	if rawRx, ok := findNestedFloat(raw,
+		"InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
+		"Device.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
+		"InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
+		"Device.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
+	); ok && rawRx > 0 {
+		dbm := math.Round((10*math.Log10(rawRx*0.0001))*100) / 100
+		if dbm > -35.0 {
+			return &dbm
+		}
+	}
+
+	// 4. CMCC (ZTE F609 & Huawei HG8245H Epon / Gpon): 0.1 uW mentah -> dBm
+	if rawRx, ok := findNestedFloat(raw,
+		"InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower",
+		"Device.WANDevice.1.X_CMCC_EponInterfaceConfig.RXPower",
+		"InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig.RXPower",
+		"Device.WANDevice.1.X_CMCC_GponInterfaceConfig.RXPower",
+	); ok && rawRx > 0 {
+		dbm := math.Round((10*math.Log10(rawRx*0.0001))*100) / 100
+		if dbm > -35.0 {
+			return &dbm
+		}
+	}
+
+	// 5. TR-181 Optical Interface
+	if optRx, ok := findNestedFloat(raw,
+		"InternetGatewayDevice.Optical.Interface.1.OpticalSignalLevel",
+		"Device.Optical.Interface.1.OpticalSignalLevel",
+	); ok {
+		if math.Abs(optRx) > 100 {
+			optRx = optRx * 0.001
+		}
+		if optRx > -35.0 && optRx != 0 {
+			r := math.Round(optRx*100) / 100
+			return &r
+		}
+	}
+
+	// 6. VirtualParameters.rxPower
+	if rx, ok := findNestedFloat(raw, "VirtualParameters.rxPower"); ok && rx > -35.0 && rx != 0 {
+		r := math.Round(rx*100) / 100
+		return &r
+	}
+
+	return nil
+}
+
+func parseDbmString(s string) (float64, error) {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("empty string")
+	}
+	clean := strings.TrimRight(fields[0], "dBm")
+	return strconv.ParseFloat(clean, 64)
+}
+
 
 func getNestedVal(raw map[string]any, path string) (any, bool) {
 	if v, ok := raw[path]; ok {

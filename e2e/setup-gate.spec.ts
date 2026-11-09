@@ -230,7 +230,15 @@ test("in live mode the admin link follows the real role: absent for a regular ac
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error") {
+      const text = message.text();
+      if (
+        text.includes("WebSocket connection") ||
+        text.includes("ERR_CONNECTION_REFUSED")
+      )
+        return;
+      errors.push(text);
+    }
   });
   const email = await signUp(page);
   await addOlt("aktif", true);

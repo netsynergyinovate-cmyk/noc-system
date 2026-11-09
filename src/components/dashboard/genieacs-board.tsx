@@ -13,10 +13,8 @@ import type { CpeDevice } from "@/lib/dashboard/cpe-mock";
 import { fetchLiveCpe } from "@/lib/dashboard/cpe-live";
 import { formatAgo } from "@/lib/dashboard/customer-live";
 import { formatDbm } from "@/lib/dashboard/format";
-import { useCustomerLiveStatus } from "@/lib/dashboard/use-customer-live-status";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GenieacsDeviceDialog } from "@/components/dashboard/genieacs-device-dialog";
-import { GenieacsOltMatch } from "@/components/dashboard/genieacs-olt-match";
 import { GenieacsConfigPanel, type GenieacsConfigView, type NbiStatusView } from "@/components/dashboard/genieacs-config-panel";
 
 const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
@@ -37,9 +35,6 @@ export function GenieacsBoard() {
   // Pencocokan ke pelanggan di sini: service GenieACS hanya tahu username PPPoE.
   const customers = useDashboardStore((s) => s.customers);
   const byPppoe = useMemo(() => new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])), [customers]);
-  // Redaman dari OLT sebagai cadangan bila modem tidak melapor ke GenieACS.
-  const live = useCustomerLiveStatus(true);
-
   const checkNbi = useCallback(async () => {
     try {
       const res = await fetch("/api/cpe/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -133,7 +128,6 @@ export function GenieacsBoard() {
       <Tabs defaultValue="devices" className="w-full">
         <TabsList>
           <TabsTrigger value="devices">Perangkat</TabsTrigger>
-          <TabsTrigger value="olt">Cocokkan OLT</TabsTrigger>
           <TabsTrigger value="config">Konfigurasi</TabsTrigger>
         </TabsList>
 
@@ -177,7 +171,6 @@ export function GenieacsBoard() {
                     <TableBody>
                       {rows.map((d) => {
                         const customer = byPppoe.get(d.pppoeUsername.trim().toLowerCase());
-                        const oltRx = customer ? live?.[customer.id]?.rxDbm : null;
                         const rx = d.isOnline ? d.optical.rxDbm : null;
                         const ageText = d.lastInformAt > 0 ? formatAgo(nowSec - d.lastInformAt) : "belum pernah";
                         return (
@@ -213,12 +206,7 @@ export function GenieacsBoard() {
                               {rx != null ? (
                                 <span className={rxTone(rx)}>
                                   {formatDbm(rx)}
-                                  <div className="text-[10px] font-sans text-muted-foreground">dari modem</div>
-                                </span>
-                              ) : oltRx != null ? (
-                                <span className={rxTone(oltRx)}>
-                                  {formatDbm(oltRx)}
-                                  <div className="text-[10px] font-sans text-muted-foreground">dari OLT</div>
+                                  <div className="text-[10px] font-sans text-muted-foreground">GenieACS</div>
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
@@ -253,9 +241,6 @@ export function GenieacsBoard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="olt" className="mt-4">
-          <GenieacsOltMatch />
-        </TabsContent>
 
         <TabsContent value="config" className="mt-4">
           <GenieacsConfigPanel config={config} configError={configError} nbi={nbi} devices={devices} nowSec={nowSec} />

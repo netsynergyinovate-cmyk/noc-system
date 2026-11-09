@@ -60,3 +60,6 @@ setup_sheets_agent.*
 install.ps1
 ref-folder/
 *.docx
+
+# WireGuard configs mengandung private key — jangan pernah commit.
+wireguard/

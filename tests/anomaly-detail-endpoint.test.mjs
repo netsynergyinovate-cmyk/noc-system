@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { register } from "tsx/esm/api";
 
-process.env.DATABASE_URL ??= "postgresql://x:x@127.0.0.1:5432/x";
+process.env.DATABASE_URL ??= "postgresql://starter:starter_password@127.0.0.1:5432/starter";
 process.env.BETTER_AUTH_SECRET ??= "s".repeat(32);
 process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
@@ -17,12 +17,10 @@ const { updateAnomalyStatusSchema } = await import(
   "../src/validators/anomalies.ts"
 );
 const {
+  createAnomaly,
   getAnomalyById,
   updateAnomalyStatus,
 } = await import("../src/services/anomalies.service.ts");
-const { loadAnomalies } = await import(
-  "../src/lib/dashboard/anomaly-feed.ts"
-);
 const routeDetail = await import("../src/app/api/anomalies/[id]/route.ts");
 
 test("validator: updateAnomalyStatusSchema memvalidasi status dan note", () => {
@@ -45,13 +43,14 @@ test("validator: updateAnomalyStatusSchema memvalidasi status dan note", () => {
 });
 
 test("getAnomalyById: mengambil detail anomali yang valid", async () => {
-  const anomalies = await loadAnomalies();
-  assert.ok(anomalies.length > 0);
-  const sample = anomalies[0];
-
-  const detail = await getAnomalyById(sample.id);
+  const created = await createAnomaly({
+    type: "offline",
+    severity: "warning",
+    message: "Uji anomali detail",
+  });
+  const detail = await getAnomalyById(created.id);
   assert.ok(detail);
-  assert.equal(detail.anomaly.id, sample.id);
+  assert.equal(detail.anomaly.id, created.id);
   assert.ok(detail.troubleshooting);
   assert.ok(Array.isArray(detail.troubleshooting.steps));
   assert.equal(typeof detail.reviewed, "boolean");
@@ -65,10 +64,13 @@ test("getAnomalyById: melempar error 404 bila id tidak ditemukan", async () => {
 });
 
 test("updateAnomalyStatus: memperbarui status reviewed", async () => {
-  const anomalies = await loadAnomalies();
-  const sample = anomalies[0];
+  const created = await createAnomaly({
+    type: "offline",
+    severity: "warning",
+    message: "Uji anomali update",
+  });
 
-  const updated = await updateAnomalyStatus(sample.id, {
+  const updated = await updateAnomalyStatus(created.id, {
     reviewed: true,
     operator: "Operator NOC",
     note: "Sedang diperiksa",

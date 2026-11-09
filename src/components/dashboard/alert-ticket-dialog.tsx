@@ -122,10 +122,20 @@ function FormBody({
     setPhase("saving");
     const record = createTicketResponseRecord(input);
     saveTicketResponse(record);
+    await fetch("/api/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        alertId: alert.id,
+        status,
+        priority,
+        notes,
+        dispatchTechnician: dispatch,
+        technicianName: dispatch ? technician : undefined,
+      }),
+    }).catch(() => undefined);
     onSaved?.(record);
     if (status === "resolved") {
-      // Tiket selesai = alert ditandai ditangani; tolak diam-diam bila sudah
-      // tidak aktif (selesai sendiri / petugas lain), tiket tetap tercatat.
       await markHandled(alert.id, operator).catch(() => undefined);
     }
     setPhase("success");

@@ -6,7 +6,6 @@ import {
   Activity,
   ArrowDownToLine,
   ArrowUpFromLine,
-  FlaskConical,
   PlusCircle,
   Receipt,
   Router,
@@ -15,10 +14,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { formatInteger, formatMbps } from "@/lib/dashboard/format";
-import {
-  computeMetricsFromStore,
-  isMetricBoardMockActive,
-} from "@/lib/dashboard/metric-board-data";
+
 import { useAlertStore } from "@/lib/dashboard/alert-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { Button } from "@/components/ui/button";
@@ -63,17 +59,39 @@ export function DashboardMetricBoard() {
   const traffic = useDashboardStore((s) => s.traffic);
   const activeAlerts = useAlertStore((s) => s.active);
 
-  const m = useMemo(
-    () =>
-      computeMetricsFromStore({
-        customers,
-        routers,
-        traffic,
-        alertStore: { active: activeAlerts },
-        sourceStatus: "nyata",
-      }),
-    [customers, routers, traffic, activeAlerts],
-  );
+  const m = useMemo(() => {
+    let onlineCount = 0;
+    let weakSignalCount = 0;
+    let criticalSignalCount = 0;
+    let billingPaidCount = 0;
+    let billingIsolatedCount = 0;
+    for (const c of customers) {
+      if (c.isOnline) {
+        onlineCount += 1;
+        if (c.opticalPowerDbm < -25) weakSignalCount += 1;
+        if (c.opticalPowerDbm < -28) criticalSignalCount += 1;
+      }
+      if (c.billingStatus === "lunas") billingPaidCount += 1;
+      else if (c.billingStatus === "isolir") billingIsolatedCount += 1;
+    }
+    const last = (arr?: readonly number[]) => (arr && arr.length > 0 ? arr[arr.length - 1] : 0);
+    return {
+      onlineCount,
+      offlineCount: customers.length - onlineCount,
+      totalCustomers: customers.length,
+      weakSignalCount,
+      criticalSignalCount,
+      activeRouterCount: routers.filter((r) => r.active).length,
+      totalRouters: routers.length,
+      totalBandwidthInMbps: Math.round(last(traffic?.rx) * 10) / 10,
+      totalBandwidthOutMbps: Math.round(last(traffic?.tx) * 10) / 10,
+      activeAlertsCount: activeAlerts?.length ?? 0,
+      criticalAlertsCount: activeAlerts?.filter((a) => a.severity === "critical").length ?? 0,
+      warningAlertsCount: activeAlerts?.filter((a) => a.severity === "warning").length ?? 0,
+      billingPaidCount,
+      billingIsolatedCount,
+    };
+  }, [customers, routers, traffic, activeAlerts]);
   const pct = (count: number) =>
     m.totalCustomers === 0
       ? 0
@@ -139,18 +157,6 @@ export function DashboardMetricBoard() {
         <CardContent className="p-0 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2 shrink-0">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan terpadu</h2>
-            {isMetricBoardMockActive(m.sourceStatus) && (
-              <p
-                data-testid="metric-mock-badge"
-                className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning"
-              >
-                <FlaskConical className="size-3" aria-hidden="true" />
-                Data Tiruan (Fase 2)
-                <span className="hidden sm:inline font-normal">
-                  · Wajib beralih ke backend nyata di Fase 5
-                </span>
-              </p>
-            )}
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
             <MiniStat

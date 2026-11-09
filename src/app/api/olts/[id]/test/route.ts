@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { olts } from "@/db/schema";
 import { ApiError, withApiPermission } from "@/lib/api";
 import { DeviceConnectionError } from "@/lib/device-connection";
-import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
 import { HsgqClient } from "@/lib/olt/hsgq-client";
 import { HSGQ_TELNET_DRIVER, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
@@ -29,10 +28,10 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     try {
       password = decryptAES256GCM(olt.passwordEnc);
     } catch {
-      password = env.OLT_HSGQ_PASSWORD; // fallback kredensial env
+      throw new ApiError(422, "DECRYPT_FAILED", "Gagal mendekripsi kata sandi OLT dari database.");
     }
     if (!password) {
-      throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi OLT tidak tersedia.");
+      throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi OLT tidak tersedia di database.");
     }
 
     const target = parseTarget(olt.host);

@@ -1,19 +1,14 @@
 import { withApiPermission } from "@/lib/api";
 import { withAudit } from "@/lib/audit-middleware";
-import { postBillingSync, proxyBilling } from "@/lib/billing-proxy";
-import { mockBillingSync, withBillingSource } from "@/lib/dashboard/billing";
+import { postBillingSync } from "@/lib/billing-proxy";
+import { withBillingSource } from "@/lib/dashboard/billing";
 import { getBillingSyncState } from "@/services/billing.service";
 
 export const runtime = "nodejs";
 
-export function GET(request: Request) {
-  return proxyBilling(
-    request,
-    "/api/v1/billing/sync",
-    mockBillingSync,
-    (data, source) => withBillingSource(data, source),
-    getBillingSyncState,
-  );
+export async function GET() {
+  const sync = await getBillingSyncState();
+  return Response.json(withBillingSource(sync, "live"));
 }
 
 // Sinkron manual. Hanya peran dengan billing:manage (admin); anonim 401.

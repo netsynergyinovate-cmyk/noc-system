@@ -75,17 +75,6 @@ export async function getOnboardingMikrotikStatus(): Promise<OnboardingMikrotikC
     // Database mungkin belum aktif
   }
 
-  // Jika di database belum ada tapi env terisi, jadikan env sebagai data router
-  if (!primaryRouter && envConfigured) {
-    primaryRouter = {
-      name: "Router Core MikroTik (Env)",
-      host: envHost!,
-      port: envPort,
-      username: envUser!,
-      status: "aktif",
-      lastSeenAt: null,
-    };
-  }
 
   // Router hanya dianggap configured jika ada router aktif yang terverifikasi (pernah terhubung / last_seen_at valid)
   const hasVerifiedRouter = Boolean(primaryRouter?.lastSeenAt) || activeRouterCount > 0;

@@ -1,58 +1,81 @@
-// NOC virtual parameter. Hanya MEMBACA data yang sudah tersimpan di GenieACS
-// (declare dengan {value: 1} memakai cache; modem baru ditanya bila belum pernah
-// dibaca). Penyegaran berkala dilakukan preset "noc-full", bukan di sini, jadi
-// membuka halaman Devices tidak membebani modem.
-
-// Daya optik terima (dBm).
-// Utama: X_ALU_OntOpticalParam (CDTC) atau DeviceInfo.XponInterface ("-18.29 dBm").
-// Cadangan: nilai mentah X_CT-COM_EponInterfaceConfig / GponInterfaceConfig dalam 0,1 uW.
+// Multi-vendor optical RX power parser (Huawei, ZTE, Nokia, CT-COM, CMCC, TR-181)
 let dbm = null;
-for (const p of declare("InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower", {value: 1})) {
-  const f = parseFloat(String(p.value && p.value[0]));
-  if (isFinite(f)) dbm = f;
+
+function parseRaw(val) {
+  if (val === undefined || val === null) return null;
+  const str = String(Array.isArray(val) ? val[0] : val).trim();
+  const f = parseFloat(str);
+  return isFinite(f) ? f : null;
 }
-if (dbm === null) {
-  for (const p of declare("InternetGatewayDevice.DeviceInfo.XponInterface.RXPower", {value: 1})) {
-    const f = parseFloat(String(p.value && p.value[0]));
-    if (isFinite(f)) dbm = f;
+
+function uWToDbm(uW) {
+  return uW > 0 ? 10 * Math.log10(uW / 1000) : null;
+}
+
+const directPaths = [
+  "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower",
+  "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_HW_GponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_HW_EponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_ZTE-COM_GponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_ZTE-COM_EponInterfaceConfig.RXPower",
+];
+
+for (const path of directPaths) {
+  if (dbm !== null) break;
+  for (const p of declare(path, { value: 1 })) {
+    const f = parseRaw(p.value);
+    if (f !== null) {
+      dbm = f;
+      break;
+    }
   }
 }
-if (dbm === null) {
-  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.RXPower", {value: 1})) {
-    const raw = Number(p.value && p.value[0]);
-    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
+
+const raw01uWPaths = [
+  "InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.RXPower",
+  "InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.RXPower",
+];
+
+for (const path of raw01uWPaths) {
+  if (dbm !== null) break;
+  for (const p of declare(path, { value: 1 })) {
+    const raw = parseRaw(p.value);
+    if (raw !== null && raw > 0) {
+      dbm = 10 * Math.log10(raw * 0.0001);
+      break;
+    }
   }
 }
+
 if (dbm === null) {
-  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.RXPower", {value: 1})) {
-    const raw = Number(p.value && p.value[0]);
-    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
-  }
-}
-if (dbm === null) {
-  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.RXPower", {value: 1})) {
-    const raw = Number(p.value && p.value[0]);
-    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
-  }
-}
-if (dbm === null) {
-  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.RXPower", {value: 1})) {
-    const raw = Number(p.value && p.value[0]);
-    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
-  }
-}
-if (dbm === null) {
-  for (const p of declare("Device.Optical.Interface.*.OpticalSignalLevel", {value: 1})) {
-    const raw = Number(p.value && p.value[0]);
-    if (isFinite(raw)) {
-      if (Math.abs(raw) > 100) {
-        dbm = raw * 0.001;
-      } else {
-        dbm = raw;
+  const tr181Paths = [
+    "Device.Optical.Interface.1.OpticalSignalLevel",
+    "Device.Optical.Interface.*.OpticalSignalLevel",
+    "Device.Optical.Interface.1.RxPower",
+    "Device.Optical.Interface.*.RxPower",
+  ];
+  for (const path of tr181Paths) {
+    if (dbm !== null) break;
+    for (const p of declare(path, { value: 1 })) {
+      const raw = parseRaw(p.value);
+      if (raw !== null) {
+        if (Math.abs(raw) > 100) {
+          dbm = raw * 0.001; // 0.001 dBm scale
+        } else if (raw > 0 && raw < 10000) {
+          dbm = uWToDbm(raw);
+        } else {
+          dbm = raw;
+        }
+        break;
       }
     }
   }
 }
-// GenieACS hanya menerima xsd:int/unsignedInt/boolean/string/dateTime untuk virtual
-// parameter (tanpa double), jadi desimal ditulis sebagai teks dua angka di belakang koma.
-return {writable: false, value: [dbm === null ? "" : String(Math.round(dbm * 100) / 100), "xsd:string"]};
+
+return {
+  writable: false,
+  value: [dbm === null ? "" : String(Math.round(dbm * 100) / 100), "xsd:string"],
+};

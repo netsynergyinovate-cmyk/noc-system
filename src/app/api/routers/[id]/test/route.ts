@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { routers } from "@/db/schema";
 import { ApiError, withApiPermission } from "@/lib/api";
-import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
 import { recordAudit } from "@/services/audit.service";
 import { recordClientTestResult } from "@/services/device-test-results.service";
@@ -28,10 +27,10 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     try {
       password = decryptAES256GCM(router.passwordEnc);
     } catch {
-      password = env.MIKROTIK_REST_PASSWORD ?? "";
+      throw new ApiError(422, "DECRYPT_FAILED", "Gagal mendekripsi kata sandi router dari database.");
     }
     if (!password) {
-      throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi router tidak tersedia.");
+      throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi router tidak tersedia di database.");
     }
 
     // Pre-flight 5 detik di backend Go; mendukung REST maupun API biner.

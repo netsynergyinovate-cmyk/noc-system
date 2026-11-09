@@ -35,6 +35,25 @@ export function POST(request: Request) {
     audit(request, async (session) => {
       const body = await readJson(request);
 
+      if (body && typeof body === "object" && "deviceId" in body && "taskName" in body) {
+        const { deviceId, taskName, parameterValues } = body as {
+          deviceId: string;
+          taskName: string;
+          parameterValues?: [string, unknown, string?][];
+        };
+        const nbiUrl = process.env.GENIEACS_URL || "http://localhost:7557";
+        const res = await fetch(
+          `${nbiUrl}/devices/${encodeURIComponent(deviceId)}/tasks?timeout=5000&connection_request`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: taskName, parameterValues: parameterValues ?? [] }),
+          },
+        );
+        const json = await res.json().catch(() => ({}));
+        return Response.json({ ok: res.ok, status: res.status, data: json }, { status: res.status });
+      }
+
       // Cek apakah request berupa changeWifi atau diagnostic task
       if (body && typeof body === "object" && "ssid" in body) {
         const input = changeWifiSchema.parse(body);

@@ -8,7 +8,6 @@ import { AUDIT_LOG_MOCK_ENTRY } from "./audit.ts";
 import { EXPORT_DATA_MOCK_ENTRY } from "./export.ts";
 import { SCHEMA_MIGRATION_MOCK_ENTRY } from "./schema-migrations.ts";
 import { DATA_SYNC_MOCK_ENTRY } from "./data-sync.ts";
-import { SEED_DATA_MOCK_ENTRY } from "./seed-data.ts";
 import { TRANSFER_STATUS_MOCK_ENTRY } from "./transfer-status.ts";
 import { AUTO_ALIGNMENT_MOCK_ENTRY } from "./auto-alignment.ts";
 import { SYNC_HISTORY_MOCK_ENTRY } from "./sync-history.ts";
@@ -21,7 +20,6 @@ import { PAGE_TIPS_MOCK_ENTRY } from "./page-tips-data.ts";
 export {
   SCHEMA_MIGRATION_MOCK_ENTRY,
   DATA_SYNC_MOCK_ENTRY,
-  SEED_DATA_MOCK_ENTRY,
   TRANSFER_STATUS_MOCK_ENTRY,
   AUTO_ALIGNMENT_MOCK_ENTRY,
   SYNC_HISTORY_MOCK_ENTRY,
@@ -139,7 +137,6 @@ export const SETUP_DATA_SOURCE_REGISTRY: readonly DataSourceEntry[] = [
   EXPORT_DATA_MOCK_ENTRY,
   SCHEMA_MIGRATION_MOCK_ENTRY,
   DATA_SYNC_MOCK_ENTRY,
-  SEED_DATA_MOCK_ENTRY,
   TRANSFER_STATUS_MOCK_ENTRY,
   AUTO_ALIGNMENT_MOCK_ENTRY,
   SYNC_HISTORY_MOCK_ENTRY,

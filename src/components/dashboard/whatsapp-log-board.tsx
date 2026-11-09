@@ -310,9 +310,10 @@ export function WhatsappLogBoard() {
                           variant="outline"
                           size="sm"
                           className="gap-1.5"
-                          onClick={() =>
-                            setResent((r) => ({ ...r, [l.id]: 300 + (l.id.length % 5) * 100 }))
-                          }
+                          onClick={async () => {
+                            await fetch("/api/alerts/whatsapp/resend", { method: "POST" }).catch(() => undefined);
+                            setResent((r) => ({ ...r, [l.id]: Date.now() }));
+                          }}
                         >
                           <Send className="size-4" />
                           Kirim Ulang

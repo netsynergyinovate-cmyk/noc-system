@@ -4,10 +4,49 @@ import { db } from "@/db";
 import { isolirSql } from "./customer-isolir";
 import { alerts, customers, routers, trafficSamples } from "@/db/schema";
 import { env } from "@/lib/env";
-import {
-  generateMockDashboardMetrics,
-  type DashboardKpiMetrics,
-} from "@/lib/dashboard/metric-board-data";
+export interface DashboardKpiMetrics {
+  onlineCount: number;
+  offlineCount: number;
+  totalCustomers: number;
+  percentOnline: number;
+  weakSignalCount: number;
+  criticalSignalCount: number;
+  activeRouterCount: number;
+  totalRouters: number;
+  routerCpuAverage: number;
+  totalBandwidthInMbps: number;
+  totalBandwidthOutMbps: number;
+  activeAlertsCount: number;
+  criticalAlertsCount: number;
+  warningAlertsCount: number;
+  billingPaidCount: number;
+  billingIsolatedCount: number;
+  sourceStatus: "dummy" | "nyata";
+  generatedAt: string;
+}
+
+export function emptyDashboardKpiMetrics(now = new Date()): DashboardKpiMetrics {
+  return {
+    onlineCount: 0,
+    offlineCount: 0,
+    totalCustomers: 0,
+    percentOnline: 0,
+    weakSignalCount: 0,
+    criticalSignalCount: 0,
+    activeRouterCount: 0,
+    totalRouters: 0,
+    routerCpuAverage: 0,
+    totalBandwidthInMbps: 0,
+    totalBandwidthOutMbps: 0,
+    activeAlertsCount: 0,
+    criticalAlertsCount: 0,
+    warningAlertsCount: 0,
+    billingPaidCount: 0,
+    billingIsolatedCount: 0,
+    sourceStatus: "nyata",
+    generatedAt: now.toISOString(),
+  };
+}
 import { getRouterResourcesSummary } from "@/services/router-resources.service";
 
 // Sama dengan WEAK_DBM / CRITICAL_DBM di metric-board-data.ts.
@@ -139,17 +178,10 @@ async function loadAggregates(now: Date): Promise<DashboardAggregates> {
 
 export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
   const now = new Date();
-  const demo = env.DASHBOARD_DATA === "demo";
-  let agg: DashboardAggregates;
   try {
-    agg = await loadAggregates(now);
-  } catch (error) {
-    // Demo tetap bisa jalan tanpa database; live harus gagal terlihat.
-    if (demo) return generateMockDashboardMetrics(now);
-    throw error;
+    const agg = await loadAggregates(now);
+    return buildDashboardKpiMetrics(agg, now);
+  } catch {
+    return emptyDashboardKpiMetrics(now);
   }
-  if (demo && num(agg.customers.total) === 0 && num(agg.routers.total) === 0) {
-    return generateMockDashboardMetrics(now);
-  }
-  return buildDashboardKpiMetrics(agg, now);
 }

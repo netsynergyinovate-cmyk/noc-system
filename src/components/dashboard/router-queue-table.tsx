@@ -7,7 +7,6 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   initialRefresh,
-  mockRefresh,
   refreshReducer,
 } from "@/lib/dashboard/refresh-state";
 import { useDashboardStore } from "@/lib/dashboard/store";
@@ -83,8 +82,7 @@ export function RouterQueueTable({
   routerName: string;
 }) {
   const customers = useDashboardStore((s) => s.customers);
-  const isDemo = useSession(selectPreviewEnabled);
-  const live = useLiveQueues(routerId, !isDemo);
+  const live = useLiveQueues(routerId, true);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<QueueStatusFilter>("all");
   const [refresh, dispatch] = useReducer(refreshReducer, initialRefresh);
@@ -94,9 +92,7 @@ export function RouterQueueTable({
     if (isRefreshing) return;
     dispatch({ type: "start" });
     try {
-      if (isDemo) {
-        await mockRefresh(navigator.onLine);
-      } else if (!(await live.refresh())) {
+      if (!(await live.refresh())) {
         throw new Error("Server tidak bisa membaca queue dari router. Coba lagi sebentar.");
       }
       dispatch({ type: "success" });

@@ -202,8 +202,7 @@ export function TrafficTrendBoard({ nowSec }: { nowSec?: number }) {
   const [range, setRange] = useState<TrafficTimeRange>("24h");
   // nowSec dari server dipakai agar render server dan klien identik.
   const [now] = useState(() => nowSec ?? Math.floor(Date.now() / 1000));
-  const isDemo = useSession(selectPreviewEnabled);
-  const live = useLiveTrend(range, !isDemo);
+  const live = useLiveTrend(range, true);
   const series = live.data?.series ?? [];
   const stats = live.data?.overview ?? emptyStats(range);
   const interfaces = live.data?.interfaces ?? [];
@@ -220,30 +219,20 @@ export function TrafficTrendBoard({ nowSec }: { nowSec?: number }) {
   return (
     <section data-testid="traffic-trend-board" className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {isDemo ? (
-          <p
-            data-testid="traffic-mock-badge"
-            className="inline-flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
-          >
-            <FlaskConical className="size-3.5" aria-hidden="true" />
-            Data Tiruan Trafik (mode demo)
-          </p>
-        ) : (
-          <p
-            data-testid="traffic-live-badge"
-            data-state={live.failed ? "error" : live.loading ? "loading" : (live.data?.sourceStatus ?? "kosong")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
-          >
-            <Radio className="size-3.5" aria-hidden="true" />
-            {live.failed
-              ? "Gagal memuat data dari server"
-              : live.loading
-                ? "Memuat data nyata…"
-                : live.data?.sourceStatus === "nyata"
-                  ? "Data nyata dari router (arsip traffic)"
-                  : "Belum ada histori traffic; backend baru mulai merekam"}
-          </p>
-        )}
+        <p
+          data-testid="traffic-live-badge"
+          data-state={live.failed ? "error" : live.loading ? "loading" : (live.data?.sourceStatus ?? "kosong")}
+          className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+        >
+          <Radio className="size-3.5" aria-hidden="true" />
+          {live.failed
+            ? "Gagal memuat data dari server"
+            : live.loading
+              ? "Memuat data nyata…"
+              : live.data?.sourceStatus === "nyata"
+                ? "Data nyata dari router (arsip traffic)"
+                : "Belum ada histori traffic; backend baru mulai merekam"}
+        </p>
         <div
           role="group"
           aria-label="Rentang waktu"

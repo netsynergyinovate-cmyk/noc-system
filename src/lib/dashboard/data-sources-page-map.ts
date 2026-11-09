@@ -24,7 +24,7 @@ export const PAGE_DATA_SOURCES: readonly PageDataSourceMapping[] = [
     primaryModuleId: "dashboard-kpi-metrics",
     status: "dummy",
     envKey: "DASHBOARD_DATA",
-    readPath: "src/lib/dashboard/metric-board-data.ts",
+    readPath: "src/services/dashboard-metrics.service.ts",
     writePath: "-",
     goLiveCriterion: "Terkoneksi ke agregator data perangkat aktif",
   },
@@ -146,7 +146,6 @@ export const PAGE_DATA_SOURCES: readonly PageDataSourceMapping[] = [
     category: "Sistem",
     primaryModuleId: "data-sync-runs",
     secondaryModuleIds: [
-      "seed-data-summary",
       "transfer-status-summary",
       "auto-alignment-status",
       "sync-history-log",

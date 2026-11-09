@@ -43,17 +43,7 @@ export async function pingFromRouter(
   }
   const count = Math.min(Math.max(1, countInput), 10);
 
-  if (routerId.startsWith("router-") || env.DASHBOARD_DATA === "demo") {
-    const mockPackets = Array.from({ length: count }, (_, i) => ({
-      seq: i,
-      host: target,
-      size: 56,
-      ttl: 64,
-      time: `${(1.2 + i * 0.1).toFixed(2)}ms`,
-      packetLoss: 0,
-    }));
-    return formatPingOutput(target, count, mockPackets);
-  }
+
 
   if (!UUID.test(routerId)) {
     throw new Error("ID router tidak valid.");

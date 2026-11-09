@@ -132,34 +132,5 @@ function pick<T>(items: readonly T[], rng: () => number): T {
 }
 
 export function createMockCustomers(): DashboardCustomer[] {
-  const rng = mulberry32(20260101);
-  const customers = Array.from({ length: CUSTOMER_COUNT }, (_, index) => {
-    const first = pick(FIRST_NAMES, rng);
-    const last = pick(LAST_NAMES, rng);
-    const number = String(index + 1).padStart(3, "0");
-    const weakSignal = rng() < 0.07;
-    return {
-      id: `customer-${number}`,
-      name: `${first} ${last}`,
-      pppoeUsername: `${first}.${last}${number}`.toLowerCase(),
-      routerId: mockRouters[index % mockRouters.length].id,
-      address: `${pick(STREETS, rng)} No. ${1 + Math.floor(rng() * 80)}, RT 0${1 + Math.floor(rng() * 6)}/RW 0${1 + Math.floor(rng() * 4)}`,
-      // Sebaran di sekitar pusat kota contoh (Bandung).
-      latitude: -6.9175 + (rng() - 0.5) * 0.04,
-      longitude: 107.6191 + (rng() - 0.5) * 0.04,
-      billingStatus: rng() < 0.12 ? "isolir" : "lunas",
-      opticalPowerDbm: Number(
-        (weakSignal
-          ? -25.5 - rng() * 2.5
-          : Math.min(-14, Math.max(-24.5, -19 + (rng() - 0.5) * 8))
-        ).toFixed(1),
-      ),
-      isOnline: rng() >= 0.04,
-      planMbps: pick(PLANS_MBPS, rng),
-    } satisfies Omit<DashboardCustomer, "odpName">;
-  });
-  return customers.map((customer) => ({
-    ...customer,
-    odpName: nearestOdp(customer.latitude, customer.longitude),
-  }));
+  return [];
 }

@@ -61,6 +61,7 @@ export function GET(request: Request) {
 
       return NextResponse.json({
         ok: true,
+        success: true,
         data: rows,
       });
     } catch (err) {

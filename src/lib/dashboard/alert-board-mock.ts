@@ -65,7 +65,10 @@ export function generateMockAlertKpi(
   resolvedAlerts: readonly ResolvedLike[] = [],
   nowSec: number = Math.floor(Date.now() / 1000),
 ): AlertBoardKpi {
-  return computeAlertKpi(activeAlerts, resolvedAlerts, nowSec);
+  return {
+    ...computeAlertKpi(activeAlerts, resolvedAlerts, nowSec),
+    sourceStatus: "dummy",
+  };
 }
 
 export function isAlertBoardMockActive(status?: "dummy" | "nyata"): boolean {

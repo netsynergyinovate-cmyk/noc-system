@@ -203,6 +203,16 @@ export async function getAnomaliesList(
     .limit(query.limit)
     .offset(query.offset);
 
+  if (rows.length === 0) {
+    return {
+      anomalies: [],
+      total: 0,
+      activeCount: Number(totals?.activeCount ?? 0),
+      resolvedCount: Number(totals?.resolvedCount ?? 0),
+      rules: anomalyRules,
+      sourceStatus: "nyata",
+    };
+  }
   const items = rows.map((r) =>
     mapLogToAnomaly({
       ...r,
@@ -328,10 +338,15 @@ export interface AnomalyDetailResult {
   sourceStatus: "nyata" | "dummy";
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Mengambil detail satu anomali lengkap dengan panduan troubleshooting dan status review.
  */
 export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
+  if (!UUID_REGEX.test(id)) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
   const [row] = await db
       .select({
         id: alerts.id,
@@ -383,6 +398,9 @@ export async function updateAnomalyStatus(
   id: string,
   update: UpdateAnomalyStatusInput,
 ): Promise<AnomalyDetailResult> {
+  if (!UUID_REGEX.test(id)) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
   const [existing] = await db
       .select()
       .from(alerts)

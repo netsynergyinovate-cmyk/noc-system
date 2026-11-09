@@ -28,6 +28,14 @@ func TestSessionIndexMapsIPsPerRouter(t *testing.T) {
 		{Name: "a@runsnet.id", Service: "l2tp", Address: "10.9.9.9"}, // bukan PPPoE
 		{Name: "a@runsnet.id", Service: "pppoe", Address: "0.0.0.0"},
 	})
+	sess, ok := x.LookupCustomer("cust-a")
+	if !ok || sess.IP != "172.16.15.247" {
+		t.Errorf("LookupCustomer = %+v, ok=%v", sess, ok)
+	}
+	sessUser, ok := x.LookupUser("A@RUNSNET.ID")
+	if !ok || sessUser.IP != "172.16.15.247" {
+		t.Errorf("LookupUser = %+v, ok=%v", sessUser, ok)
+	}
 	if id, ok := x.Lookup("r1", netip.MustParseAddr("172.16.15.247")); !ok || id != "cust-a" {
 		t.Fatalf("Lookup = %q %v", id, ok)
 	}

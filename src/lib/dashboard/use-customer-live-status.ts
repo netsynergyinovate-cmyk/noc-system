@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { CustomerLiveStatus } from "./customer-live.ts";
+import { backendGet } from "./backend-api";
 
 const REFRESH_MS = 60_000;
 
-/** Data langsung per pelanggan (IP, uptime, Wi-Fi, redaman), kunci = id pelanggan. undefined = belum dimuat / gagal. */
+/** Data langsung per pelanggan (MikroTik + GenieACS + OLT + LOS) diproses di Go backend. */
 export function useCustomerLiveStatus(enabled: boolean): Record<string, CustomerLiveStatus> | undefined {
   const [data, setData] = useState<Record<string, CustomerLiveStatus>>();
 
@@ -14,12 +15,22 @@ export function useCustomerLiveStatus(enabled: boolean): Record<string, Customer
     let alive = true;
     const load = async () => {
       try {
-        const res = await fetch("/api/customers/live-status", { cache: "no-store" });
-        if (!res.ok) return;
-        const body: { data?: Record<string, CustomerLiveStatus> } | null = await res.json().catch(() => null);
-        if (alive && body?.data) setData(body.data);
+        // Direct call ke Go backend dengan tiket autentikasi
+        const liveData = await backendGet<Record<string, CustomerLiveStatus>>("/api/v1/customers/live-status");
+        if (alive && liveData) {
+          setData(liveData);
+          return;
+        }
       } catch {
-        // jaringan putus: pertahankan data terakhir
+        // Fallback jika direct ticket gagal: coba lewat route handler Next.js
+        try {
+          const res = await fetch("/api/customers/live-status", { cache: "no-store" });
+          if (!res.ok) return;
+          const body: { data?: Record<string, CustomerLiveStatus> } | null = await res.json().catch(() => null);
+          if (alive && body?.data) setData(body.data);
+        } catch {
+          // jaringan putus: pertahankan data terakhir
+        }
       }
     };
     const first = setTimeout(() => void load(), 0);

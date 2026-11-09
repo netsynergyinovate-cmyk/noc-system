@@ -12,10 +12,11 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"noc-isp/backend/internal/archive"
@@ -23,6 +24,7 @@ import (
 	"noc-isp/backend/internal/billing"
 	"noc-isp/backend/internal/collector"
 	"noc-isp/backend/internal/cpe"
+	"noc-isp/backend/internal/customers"
 	"noc-isp/backend/internal/config"
 	"noc-isp/backend/internal/diagnostics"
 	"noc-isp/backend/internal/engine"
@@ -182,9 +184,10 @@ func run() error {
 		if proxy := routerproxy.NewWithPool(pool, cfg.DeviceSecret, logger, routerClients); proxy != nil {
 			apiOptions.Routers = proxy
 		}
+		var cpeClient *cpe.Client
 		genieURL := os.Getenv("GENIEACS_NBI_URL")
 		if genieURL != "" {
-			cpeClient := cpe.NewClient(cpe.Config{
+			cpeClient = cpe.NewClient(cpe.Config{
 				BaseURL:  genieURL,
 				Username: os.Getenv("GENIEACS_NBI_USER"),
 				Password: os.Getenv("GENIEACS_NBI_PASSWORD"),
@@ -192,6 +195,9 @@ func run() error {
 			apiOptions.Cpe = httpapi.NewCpeAPI(cpe.NewService(cpeClient, logger), apiOptions.Routers, pool, logger)
 			logger.Info("cpe genieacs API Go aktif", "nbi_url", genieURL)
 		}
+		custSvc := customers.NewService(pool, sessions, cpeClient, logger)
+		apiOptions.Customers = httpapi.NewCustomersAPI(custSvc)
+		logger.Info("customers live status Go API aktif", "genieacs", cpeClient != nil)
 		// Diagnosa pelanggan 100% Go: worker, trigger otomatis, dan API. Next.js
 		// hanya menampilkan hasil dari tabel diagnostic_runs/diagnostic_findings.
 		if apiOptions.Routers != nil {
@@ -329,6 +335,29 @@ func run() error {
 				if err != nil {
 					logger.Warn("gagal menyimpan alarm OLT ke alerts", "error", err, "olt", alarm.OLTIP, "type", alarm.Type)
 					return
+				}
+			}
+			if pool != nil && alarm.OLTID != "" && alarm.PonPort != "" && alarm.OnuID != "" {
+				ponStr := alarm.PonPort
+				if parts := strings.Split(ponStr, "/"); len(parts) > 1 {
+					ponStr = parts[len(parts)-1]
+				}
+				pIdx, errP := strconv.Atoi(ponStr)
+				oIdx, errO := strconv.Atoi(alarm.OnuID)
+				if errP == nil && errO == nil {
+					targetStatus := ""
+					if alarm.Type == "fiber_cut" || alarm.Type == "los" {
+						if alarm.Status == "active" {
+							targetStatus = "los"
+						} else if alarm.Status == "resolved" {
+							targetStatus = "online"
+						}
+					}
+					if targetStatus != "" {
+						updateCtx, updateCancel := context.WithTimeout(ctx, 3*time.Second)
+						_, _ = pool.Exec(updateCtx, `UPDATE olt_onus SET status = $1, captured_at = now() WHERE olt_id = $2::uuid AND pon_index = $3 AND onu_index = $4`, targetStatus, alarm.OLTID, pIdx, oIdx)
+						updateCancel()
+					}
 				}
 			}
 

@@ -1,7 +1,7 @@
 import { getCustomerHealth } from "./health";
 import type { DashboardCustomer } from "./types";
 
-export type StatusFilter = "all" | "online" | "offline" | "weak";
+export type StatusFilter = "all" | "online" | "offline" | "weak" | "los";
 
 export interface CustomerFilters {
   query: string;
@@ -35,6 +35,9 @@ export function filterCustomers(
     }
     if (filters.status === "online" && !customer.isOnline) return false;
     if (filters.status === "offline" && customer.isOnline) return false;
+    if (filters.status === "los" && !customer.isLos) {
+      return false;
+    }
     if (
       filters.status === "weak" &&
       getCustomerHealth(customer) !== "warning"

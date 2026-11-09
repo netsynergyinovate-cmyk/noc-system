@@ -24,6 +24,7 @@ export interface DashboardCustomer {
   // Rx power ONU dalam dBm, makin negatif makin lemah.
   opticalPowerDbm: number;
   isOnline: boolean;
+  isLos?: boolean;
   // Paket langganan (Mbps), dipakai untuk memperkirakan traffic tiruan.
   planMbps: number;
 }

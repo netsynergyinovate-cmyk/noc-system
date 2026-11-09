@@ -114,6 +114,8 @@ type Options struct {
 	OntWeb *OntWebAPI
 	// Cpe melayani operasi CPE TR-069 via GenieACS. Kosong berarti rute tidak terdaftar.
 	Cpe *CpeAPI
+	// Customers melayani data status langsung pelanggan dari GenieACS, MikroTik, dan OLT.
+	Customers *CustomersAPI
 
 	// Telemetry melayani GET /api/v1/dashboard/telemetry (isi yang sama dengan pesan
 	// WebSocket "telemetry"). Kosong berarti rute itu tidak terdaftar.
@@ -206,6 +208,9 @@ func NewHandler(opts Options) http.Handler {
 		}
 		if opts.Cpe != nil {
 			opts.Cpe.register(api)
+		}
+		if opts.Customers != nil {
+			opts.Customers.register(api)
 		}
 		if opts.Telemetry != nil {
 			api.Handle("/api/v1/dashboard/vlans/history", readOnly(func(w http.ResponseWriter, r *http.Request) {

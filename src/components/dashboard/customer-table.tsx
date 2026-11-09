@@ -44,6 +44,7 @@ const statusOptions: { value: StatusFilter; label: string }[] = [
   { value: "online", label: "Online" },
   { value: "offline", label: "Offline" },
   { value: "weak", label: "Sinyal lemah" },
+  { value: "los", label: "LOS (Kabel putus)" },
 ];
 
 // Objek pelanggan hanya diganti saat statusnya berubah, jadi baris lain
@@ -83,7 +84,17 @@ const CustomerRow = memo(function CustomerRow({
       </td>
       <td className="px-4 py-3 text-muted-foreground">{routerName}</td>
       <td className="px-4 py-3">
-        <HealthBadge health={getCustomerHealth(customer)} />
+        {live?.onuLos ? (
+          <span
+            title="Kabel optik putus / Loss of Signal di OLT"
+            className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive animate-pulse"
+          >
+            <span className="size-1.5 rounded-full bg-destructive" />
+            LOS (Putus)
+          </span>
+        ) : (
+          <HealthBadge health={getCustomerHealth(customer)} />
+        )}
       </td>
       <td className="px-4 py-3">
         {live?.ip && IPV4.test(live.ip) ? (
@@ -122,7 +133,10 @@ const CustomerRow = memo(function CustomerRow({
             )}
           </div>
         ) : live?.onuLos ? (
-          <OpticalRx dbm={null} />
+          <div>
+            <OpticalRx dbm={null} />
+            <div className="mt-0.5 text-[10px] font-semibold text-destructive">Kabel Putus (LOS OLT)</div>
+          </div>
         ) : (
           <span className="text-xs text-muted-foreground">Belum ada data</span>
         )}
@@ -233,7 +247,12 @@ export function CustomerTable() {
       live
         ? customers.map((c) => {
             const rx = live[c.id]?.rxDbm;
-            return rx != null ? { ...c, opticalPowerDbm: rx } : c;
+            const isLos = live[c.id]?.onuLos;
+            return {
+              ...c,
+              ...(rx != null ? { opticalPowerDbm: rx } : {}),
+              ...(isLos ? { isLos: true, isOnline: false } : {}),
+            };
           })
         : customers,
     [customers, live],

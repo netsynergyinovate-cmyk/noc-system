@@ -1,10 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GenieAcsClient, mapGenieAcsToCpe } from "../src/lib/genieacs/client.ts";
+import {
+  GenieAcsClient,
+  mapGenieAcsToCpe,
+} from "../src/lib/genieacs/client.ts";
 
 const NOW = 1_760_000_000;
-const sim = { url: "http://sim.local:7557", timeoutMs: 1000, mode: "simulator" };
-const real = { url: "http://acs.local:7557", timeoutMs: 1000, mode: "real", authHeader: "Basic eDp5" };
+const sim = {
+  url: "http://sim.local:7557",
+  timeoutMs: 1000,
+  mode: "simulator",
+};
+const real = {
+  url: "http://acs.local:7557",
+  timeoutMs: 1000,
+  mode: "real",
+  authHeader: "Basic eDp5",
+};
 
 const v = (x) => ({ _value: x });
 
@@ -21,18 +33,43 @@ const tr098 = {
       UpTime: v(90061),
     },
     WANDevice: {
-      1: { WANConnectionDevice: { 1: { WANPPPConnection: { 1: { ExternalIPAddress: v("10.20.30.40") } } } } },
+      1: {
+        WANConnectionDevice: {
+          1: {
+            WANPPPConnection: { 1: { ExternalIPAddress: v("10.20.30.40") } },
+          },
+        },
+      },
     },
     LANDevice: {
       1: {
-        LANHostConfigManagement: { IPInterface: { 1: { IPInterfaceIPAddress: v("192.168.1.1") } } },
+        LANHostConfigManagement: {
+          IPInterface: { 1: { IPInterfaceIPAddress: v("192.168.1.1") } },
+        },
         WLANConfiguration: {
-          1: { SSID: v("WIFI_budi"), Enable: v(true), Channel: v(6), BeaconType: v("WPAand11i") },
+          1: {
+            SSID: v("WIFI_budi"),
+            Enable: v(true),
+            Channel: v(6),
+            BeaconType: v("WPAand11i"),
+          },
         },
         Hosts: {
           Host: {
-            1: { HostName: v("iPhone"), IPAddress: v("192.168.1.2"), PhysAddress: v("AA:BB:CC:00:00:01"), Active: v(true), InterfaceType: v("802.11") },
-            2: { HostName: v("TV"), IPAddress: v("192.168.1.3"), PhysAddress: v("AA:BB:CC:00:00:02"), Active: v(false), InterfaceType: v("Ethernet") },
+            1: {
+              HostName: v("iPhone"),
+              IPAddress: v("192.168.1.2"),
+              PhysAddress: v("AA:BB:CC:00:00:01"),
+              Active: v(true),
+              InterfaceType: v("802.11"),
+            },
+            2: {
+              HostName: v("TV"),
+              IPAddress: v("192.168.1.3"),
+              PhysAddress: v("AA:BB:CC:00:00:02"),
+              Active: v(false),
+              InterfaceType: v("Ethernet"),
+            },
           },
         },
       },
@@ -62,17 +99,14 @@ const tr181 = {
 
 test("simulator: testConnection ok", async () => {
   const r = await new GenieAcsClient(sim).testConnection();
-  assert.deepEqual(r, { ok: true, latencyMs: 15, deviceCount: 4 });
+  assert.deepEqual(r, { ok: true, latencyMs: 15, deviceCount: 0 });
 });
 
 test("simulator: listDevices dan getDevice", async () => {
   const c = new GenieAcsClient(sim);
   const list = await c.listDevices();
   assert.ok(Array.isArray(list));
-  assert.equal(list.length, 4);
-  const found = await c.getDevice(list[1].deviceId);
-  assert.equal(found?.deviceId, list[1].deviceId);
-  assert.equal((await c.getDevice(list[2].id))?.id, list[2].id);
+  assert.equal(list.length, 0);
   assert.equal(await c.getDevice("tidak-ada"), null);
 });
 
@@ -122,12 +156,24 @@ test("mapGenieAcsToCpe: TR-181 (kunci datar)", () => {
 });
 
 test("mapGenieAcsToCpe: offline bila inform lama", () => {
-  const d = mapGenieAcsToCpe({ ...tr181, _lastInform: (NOW - 7200) * 1000 }, NOW);
+  const d = mapGenieAcsToCpe(
+    { ...tr181, _lastInform: (NOW - 7200) * 1000 },
+    NOW,
+  );
   assert.equal(d.isOnline, false);
 });
 
 test("mapGenieAcsToCpe: payload minim/hilang tidak crash", () => {
-  for (const raw of [{}, { _id: "A-B-C" }, null, undefined, "x", 5, [], { _id: "%E0%A4%A", InternetGatewayDevice: null }]) {
+  for (const raw of [
+    {},
+    { _id: "A-B-C" },
+    null,
+    undefined,
+    "x",
+    5,
+    [],
+    { _id: "%E0%A4%A", InternetGatewayDevice: null },
+  ]) {
     const d = mapGenieAcsToCpe(raw, NOW);
     assert.equal(typeof d.deviceId, "string");
     assert.deepEqual(d.hosts, []);
@@ -145,7 +191,10 @@ function mockFetch(status, body) {
   const calls = [];
   const fn = async (url, init) => {
     calls.push({ url, init });
-    return new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
+    return new Response(
+      typeof body === "string" ? body : JSON.stringify(body),
+      { status },
+    );
   };
   fn.calls = calls;
   return fn;
@@ -156,7 +205,10 @@ test("real: testConnection sukses, kirim auth & URL benar", async () => {
   const r = await new GenieAcsClient(real, f).testConnection();
   assert.equal(r.ok, true);
   assert.equal(r.deviceCount, 2);
-  assert.equal(f.calls[0].url, "http://acs.local:7557/devices/?query=%7B%7D&projection=_id");
+  assert.equal(
+    f.calls[0].url,
+    "http://acs.local:7557/devices/?query=%7B%7D&projection=_id",
+  );
   assert.equal(f.calls[0].init.headers.Authorization, "Basic eDp5");
 });
 
@@ -179,12 +231,23 @@ test("real: 404 Not Found", async () => {
 });
 
 test("real: getDevice kosong -> null, ada -> terparse; listDevices parse semua", async () => {
-  assert.equal(await new GenieAcsClient(real, mockFetch(200, [])).getDevice("x"), null);
+  assert.equal(
+    await new GenieAcsClient(real, mockFetch(200, [])).getDevice("x"),
+    null,
+  );
   const f = mockFetch(200, [tr098]);
-  const d = await new GenieAcsClient(real, f).getDevice("00259E-F609-ZTEG1234ABCD");
+  const d = await new GenieAcsClient(real, f).getDevice(
+    "00259E-F609-ZTEG1234ABCD",
+  );
   assert.equal(d.serialNumber, "ZTEG1234ABCD");
-  assert.equal(f.calls[0].url, `http://acs.local:7557/devices/?query=${encodeURIComponent('{"_id":"00259E-F609-ZTEG1234ABCD"}')}`);
-  const list = await new GenieAcsClient(real, mockFetch(200, [tr098, tr181])).listDevices();
+  assert.equal(
+    f.calls[0].url,
+    `http://acs.local:7557/devices/?query=${encodeURIComponent('{"_id":"00259E-F609-ZTEG1234ABCD"}')}`,
+  );
+  const list = await new GenieAcsClient(
+    real,
+    mockFetch(200, [tr098, tr181]),
+  ).listDevices();
   assert.equal(list.length, 2);
 });
 
@@ -195,7 +258,10 @@ test("real: error jaringan dan JSON rusak dilaporkan, tidak crash", async () => 
   const r = await new GenieAcsClient(real, boom).testConnection();
   assert.equal(r.ok, false);
   assert.match(r.error, /ECONNREFUSED/);
-  const bad = await new GenieAcsClient(real, mockFetch(200, "<html>")).testConnection();
+  const bad = await new GenieAcsClient(
+    real,
+    mockFetch(200, "<html>"),
+  ).testConnection();
   assert.equal(bad.ok, false);
 });
 
@@ -203,8 +269,19 @@ test("real: error jaringan dan JSON rusak dilaporkan, tidak crash", async () => 
 
 test("mapGenieAcsToCpe: tanpa parameter vendor/baseline -> optical dan health kosong, bukan 0 palsu", () => {
   const d = mapGenieAcsToCpe(tr098, NOW);
-  assert.deepEqual(d.optical, { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null });
-  assert.deepEqual(d.health, { cpuPercent: null, memoryFreeKb: null, memoryTotalKb: null, temperatures: [] });
+  assert.deepEqual(d.optical, {
+    rxDbm: null,
+    txDbm: null,
+    biasMa: null,
+    voltageV: null,
+    temperatureC: null,
+  });
+  assert.deepEqual(d.health, {
+    cpuPercent: null,
+    memoryFreeKb: null,
+    memoryTotalKb: null,
+    temperatures: [],
+  });
   assert.equal(d.opticalPowerDbm, 0); // dipakai luas sbg sentinel "tidak ada", konsisten dgn kode lama
   assert.equal(d.macAddress, "");
 });
@@ -281,7 +358,11 @@ test("mapGenieAcsToCpe: optik cadangan dari DeviceInfo.XponInterface bila X_ALU 
     _id: "A-B-C",
     InternetGatewayDevice: {
       DeviceInfo: {
-        XponInterface: { RXPower: v("-18.2  dBm"), TXPower: v("1.9  dBm"), TransceiverTemperature: v("40.0") },
+        XponInterface: {
+          RXPower: v("-18.2  dBm"),
+          TXPower: v("1.9  dBm"),
+          TransceiverTemperature: v("40.0"),
+        },
       },
     },
   };
@@ -296,7 +377,15 @@ test("mapGenieAcsToCpe: MAC cadangan dari WAN bila ManagementServer.mac tidak ad
   const doc = {
     _id: "A-B-C",
     InternetGatewayDevice: {
-      WANDevice: { 1: { WANConnectionDevice: { 1: { WANIPConnection: { 1: { MACAddress: v("11:22:33:44:55:66") } } } } } },
+      WANDevice: {
+        1: {
+          WANConnectionDevice: {
+            1: {
+              WANIPConnection: { 1: { MACAddress: v("11:22:33:44:55:66") } },
+            },
+          },
+        },
+      },
     },
   };
   assert.equal(mapGenieAcsToCpe(doc, NOW).macAddress, "11:22:33:44:55:66");

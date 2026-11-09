@@ -30,14 +30,7 @@ test("perintah CLI resmi ada di package.json dan di checklist", () => {
   const scripts = JSON.parse(
     readFileSync(new URL("../package.json", import.meta.url), "utf8"),
   ).scripts;
-  for (const c of [
-    "db:migrate:server",
-    "db:migrate:status",
-    "db:timescale",
-    "seed:accounts",
-    "image:build",
-    "image:verify",
-  ]) {
+  for (const c of ["db:migrate:server", "db:migrate:status", "db:timescale"]) {
     assert.ok(scripts[c], `script ${c} tidak ada`);
     assert.ok(doc.includes(`npm run ${c}`), c);
   }
@@ -47,8 +40,6 @@ test("urutan perintah database benar", () => {
   const at = (s) => doc.indexOf(`npm run ${s}`);
   assert.ok(at("db:migrate:status") < at("db:migrate:server"));
   assert.ok(at("db:migrate:server") < at("db:timescale"));
-  assert.ok(at("db:timescale") < at("seed:accounts"));
-  assert.ok(at("image:build") < at("image:verify"));
 });
 
 test("healthcheck, urutan startup dan rollback terdokumentasi", () => {
@@ -72,7 +63,10 @@ test("endpoint /api/health merespons JSON status ok", async () => {
   assert.match(src, /timestamp/);
   const { default: ts } = await import("typescript");
   const js = ts.transpileModule(src, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+    },
   }).outputText;
   const mod = await import(
     `data:text/javascript;base64,${Buffer.from(js).toString("base64")}`

@@ -4,10 +4,14 @@ import { db } from "@/db";
 import { routers as routersTable } from "@/db/schema";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
-import { MikrotikRestClient, type MikrotikPingPacket } from "@/lib/mikrotik/client";
+import {
+  MikrotikRestClient,
+  type MikrotikPingPacket,
+} from "@/lib/mikrotik/client";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TARGET_REGEX = /^([a-zA-Z0-9][-a-zA-Z0-9.]*[a-zA-Z0-9]|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
+const TARGET_REGEX =
+  /^([a-zA-Z0-9][-a-zA-Z0-9.]*[a-zA-Z0-9]|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/;
 
 export interface RouterPingResult {
   ok: boolean;
@@ -43,8 +47,6 @@ export async function pingFromRouter(
   }
   const count = Math.min(Math.max(1, countInput), 10);
 
-
-
   if (!UUID.test(routerId)) {
     throw new Error("ID router tidak valid.");
   }
@@ -76,17 +78,16 @@ export async function pingFromRouter(
   return formatPingOutput(target, count, rawPackets);
 }
 
-function formatPingOutput(
+export function formatPingOutput(
   target: string,
   count: number,
   packets: MikrotikPingPacket[],
 ): RouterPingResult {
   const received = packets.filter((p) => p.packetLoss === 0).length;
-  const lossPct = count > 0 ? Math.round(((count - received) / count) * 100) : 0;
+  const lossPct =
+    count > 0 ? Math.round(((count - received) / count) * 100) : 0;
 
-  const lines: string[] = [
-    `PING ${target} (${target}) 56(84) bytes of data.`,
-  ];
+  const lines: string[] = [`PING ${target} (${target}) 56(84) bytes of data.`];
 
   for (const p of packets) {
     if (p.packetLoss === 0) {
@@ -134,4 +135,3 @@ function formatPingOutput(
     terminalLines: lines,
   };
 }
-

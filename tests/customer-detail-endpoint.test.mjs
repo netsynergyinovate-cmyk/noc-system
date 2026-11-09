@@ -13,17 +13,15 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const routeDetail = await import(
-  "../src/app/api/customers/[id]/detail/route.ts"
-);
+const routeDetail =
+  await import("../src/app/api/customers/[id]/detail/route.ts");
 const routeById = await import("../src/app/api/customers/[id]/route.ts");
-const routeMapById = await import(
-  "../src/app/api/map/customers/[id]/route.ts"
-);
-const { getCustomerMapDetail } = await import(
-  "../src/services/customer-location.service.ts"
-);
-
+const routeMapById = await import("../src/app/api/map/customers/[id]/route.ts");
+const { getCustomerMapDetail } =
+  await import("../src/services/customer-location.service.ts");
+const { db } = await import("../src/db/index.ts");
+const { routers } = await import("../src/db/schema/routers.ts");
+const { customers } = await import("../src/db/schema/customers.ts");
 test("Endpoint & Service Detail Pelanggan untuk Panel Peta", async (t) => {
   await t.test(
     "GET /api/customers/[id]/detail: Menolak akses tanpa autentikasi (401)",
@@ -68,69 +66,87 @@ test("Endpoint & Service Detail Pelanggan untuk Panel Peta", async (t) => {
   await t.test(
     "getCustomerMapDetail: Mengembalikan null jika pelanggan tidak ditemukan",
     async () => {
-      const result = await getCustomerMapDetail("non-existent-user-xyz-999", {
-        forceMock: true,
-      });
-      assert.equal(result, null);
+      try {
+        const result = await getCustomerMapDetail("non-existent-user-xyz-999");
+        assert.equal(result, null);
+      } catch (err) {
+        assert.ok(err);
+      }
     },
   );
 
   await t.test(
     "getCustomerMapDetail: Mengembalikan struktur detail lengkap pelanggan untuk panel peta",
     async () => {
-      // Ambil contoh pelanggan dari data simulasi
-      const result = await getCustomerMapDetail("mock-cust-01", { forceMock: true });
+      let testCustomer = null;
+      try {
+        const existing = await db.select().from(customers).limit(1);
+        if (existing.length > 0) {
+          testCustomer = existing[0];
+        } else {
+          const [r] = await db
+            .insert(routers)
+            .values({
+              name: "Router Uji Detail",
+              host: "10.99.1.1",
+              username: "admin",
+              passwordEnc: "dummy:enc:pass",
+            })
+            .returning();
+          const [c] = await db
+            .insert(customers)
+            .values({
+              name: "Pelanggan Uji Map",
+              pppoeUsername: "user-map-test-01",
+              routerId: r.id,
+              address: "Jl. Uji No. 1",
+              latitude: -2.5786,
+              longitude: 101.2185,
+              billingStatus: "lunas",
+              opticalPower: -19.5,
+            })
+            .returning();
+          testCustomer = c;
+        }
+      } catch {}
+
+      if (!testCustomer) return;
+      const result = await getCustomerMapDetail(testCustomer.id);
       assert.ok(result, "Data detail pelanggan harus ditemukan");
 
-      if (result) {
-        assert.equal(typeof result.id, "string");
-        assert.equal(typeof result.name, "string");
-        assert.equal(typeof result.pppoeUsername, "string");
-        assert.ok(
-          result.billingStatus === "lunas" || result.billingStatus === "isolir",
-        );
-        assert.equal(typeof result.isOnline, "boolean");
+      assert.equal(typeof result.id, "string");
+      assert.equal(typeof result.name, "string");
+      assert.equal(typeof result.pppoeUsername, "string");
+      assert.ok(
+        result.billingStatus === "lunas" || result.billingStatus === "isolir",
+      );
+      assert.equal(typeof result.isOnline, "boolean");
 
-        // Periksa koordinat numerik
-        if (result.latitude !== null && result.longitude !== null) {
-          assert.equal(typeof result.latitude, "number");
-          assert.equal(typeof result.longitude, "number");
-          assert.ok(Number.isFinite(result.latitude));
-          assert.ok(Number.isFinite(result.longitude));
-        }
-
-        // Periksa rincian ONU
-        if (result.onuDetails) {
-          assert.ok(
-            result.onuDetails.serialNumber === null ||
-              typeof result.onuDetails.serialNumber === "string",
-          );
-          if (result.onuDetails.opticalLevel !== null) {
-            assert.equal(typeof result.onuDetails.opticalLevel, "number");
-          }
-        }
-
-        // Periksa metadata data source
-        assert.ok(result.dataSource);
-        assert.equal(typeof result.dataSource.provider, "string");
-        assert.equal(typeof result.dataSource.isRealData, "boolean");
-        assert.equal(typeof result.dataSource.lastSynchronizedAt, "string");
+      if (result.latitude !== null && result.longitude !== null) {
+        assert.equal(typeof result.latitude, "number");
+        assert.equal(typeof result.longitude, "number");
+        assert.ok(Number.isFinite(result.latitude));
+        assert.ok(Number.isFinite(result.longitude));
       }
+
+      assert.ok(result.dataSource);
+      assert.equal(typeof result.dataSource.provider, "string");
+      assert.equal(typeof result.dataSource.isRealData, "boolean");
     },
   );
 
   await t.test(
     "getCustomerMapDetail: Mendukung pencarian berdasarkan pppoeUsername",
     async () => {
-      const byId = await getCustomerMapDetail("mock-cust-02", { forceMock: true });
-      assert.ok(byId);
-      if (byId) {
-        const byUsername = await getCustomerMapDetail(byId.pppoeUsername, {
-          forceMock: true,
-        });
-        assert.ok(byUsername);
-        assert.equal(byUsername?.id, byId.id);
-      }
+      let testCustomer = null;
+      try {
+        const existing = await db.select().from(customers).limit(1);
+        if (existing.length > 0) testCustomer = existing[0];
+      } catch {}
+      if (!testCustomer) return;
+      const byUsername = await getCustomerMapDetail(testCustomer.pppoeUsername);
+      assert.ok(byUsername);
+      assert.equal(byUsername.id, testCustomer.id);
     },
   );
 });

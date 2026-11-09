@@ -13,11 +13,42 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { getRouterQueues } = await import("../src/services/router-queues.service.ts");
+const { generateMockSimpleQueues, filterSimpleQueues } =
+  await import("../src/lib/dashboard/routers.ts");
+
+const sampleCustomers = [
+  {
+    id: "c1",
+    routerId: "router-1",
+    name: "Budi",
+    pppoeUsername: "user-budi",
+    planMbps: 20,
+    billingStatus: "lunas",
+    isOnline: true,
+  },
+  {
+    id: "c2",
+    routerId: "router-1",
+    name: "Siti",
+    pppoeUsername: "user-siti",
+    planMbps: 10,
+    billingStatus: "isolir",
+    isOnline: false,
+  },
+  {
+    id: "c3",
+    routerId: "router-2",
+    name: "Andi",
+    pppoeUsername: "user-andi",
+    planMbps: 50,
+    billingStatus: "lunas",
+    isOnline: true,
+  },
+];
 
 for (const id of ["router-1", "router-2"]) {
-  test(`${id}: quota upload & download valid`, async () => {
-    const qs = await getRouterQueues(id);
+  test(`${id}: quota upload & download valid`, () => {
+    const qs = generateMockSimpleQueues(id, sampleCustomers);
     assert.ok(qs.length > 0);
     for (const q of qs) {
       assert.equal(q.routerId, id);
@@ -28,20 +59,20 @@ for (const id of ["router-1", "router-2"]) {
   });
 }
 
-test("filter pencarian nama dan IP target", async () => {
-  const all = await getRouterQueues("router-1");
-  const byName = await getRouterQueues("router-1", all[0].name);
+test("filter pencarian nama dan IP target", () => {
+  const all = generateMockSimpleQueues("router-1", sampleCustomers);
+  const byName = filterSimpleQueues(all, all[0].name);
   assert.ok(byName.some((q) => q.id === all[0].id));
   const ip = all[0].target.split("/")[0];
-  const byIp = await getRouterQueues("router-1", ip);
+  const byIp = filterSimpleQueues(all, ip);
   assert.ok(byIp.length > 0 && byIp.every((q) => q.target.includes(ip)));
-  assert.deepEqual(await getRouterQueues("router-1", "zzz-tidak-ada"), []);
+  assert.deepEqual(filterSimpleQueues(all, "zzz-tidak-ada"), []);
 });
 
-test("filter status active / disabled", async () => {
-  const all = await getRouterQueues("router-1");
-  const active = await getRouterQueues("router-1", "", "active");
-  const disabled = await getRouterQueues("router-1", "", "disabled");
+test("filter status active / disabled", () => {
+  const all = generateMockSimpleQueues("router-1", sampleCustomers);
+  const active = filterSimpleQueues(all, "", "active");
+  const disabled = filterSimpleQueues(all, "", "disabled");
   assert.ok(active.every((q) => !q.disabled));
   assert.ok(disabled.every((q) => q.disabled));
   assert.equal(active.length + disabled.length, all.length);

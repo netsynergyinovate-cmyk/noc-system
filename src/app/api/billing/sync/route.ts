@@ -1,4 +1,4 @@
-import { withApiPermission } from "@/lib/api";
+import { withApiPermission, withApiSession } from "@/lib/api";
 import { withAudit } from "@/lib/audit-middleware";
 import { postBillingSync } from "@/lib/billing-proxy";
 import { withBillingSource } from "@/lib/dashboard/billing";
@@ -6,9 +6,11 @@ import { getBillingSyncState } from "@/services/billing.service";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const sync = await getBillingSyncState();
-  return Response.json(withBillingSource(sync, "live"));
+export function GET(request: Request) {
+  return withApiSession(request, async () => {
+    const sync = await getBillingSyncState();
+    return Response.json(withBillingSource(sync, "live"));
+  });
 }
 
 // Sinkron manual. Hanya peran dengan billing:manage (admin); anonim 401.

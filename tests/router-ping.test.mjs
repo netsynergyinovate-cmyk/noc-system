@@ -13,7 +13,8 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { pingFromRouter } = await import("../src/services/router-ping.service.ts");
+const { pingFromRouter, formatPingOutput } =
+  await import("../src/services/router-ping.service.ts");
 
 test("Ping Service: menolak host atau target tidak valid / berbahaya", async () => {
   await assert.rejects(
@@ -30,8 +31,42 @@ test("Ping Service: menolak host atau target tidak valid / berbahaya", async () 
   );
 });
 
-test("Ping Service: mode demo mengembalikan respons ping terformat", async () => {
-  const res = await pingFromRouter("router-1", "8.8.8.8", 4);
+test("Ping Service: formatPingOutput mengembalikan respons ping terformat", () => {
+  const samplePackets = [
+    {
+      host: "8.8.8.8",
+      size: 56,
+      ttl: 118,
+      timeMs: 14.2,
+      packetLoss: 0,
+      status: "ok",
+    },
+    {
+      host: "8.8.8.8",
+      size: 56,
+      ttl: 118,
+      timeMs: 15.1,
+      packetLoss: 0,
+      status: "ok",
+    },
+    {
+      host: "8.8.8.8",
+      size: 56,
+      ttl: 118,
+      timeMs: 13.9,
+      packetLoss: 0,
+      status: "ok",
+    },
+    {
+      host: "8.8.8.8",
+      size: 56,
+      ttl: 118,
+      timeMs: 14.5,
+      packetLoss: 0,
+      status: "ok",
+    },
+  ];
+  const res = formatPingOutput("8.8.8.8", 4, samplePackets);
   assert.equal(res.target, "8.8.8.8");
   assert.equal(res.stats.sent, 4);
   assert.ok(res.stats.received > 0);

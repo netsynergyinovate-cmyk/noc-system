@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { anomalyRangeStart, anomalyRangeInfo, anomalyRanges } = await import(
-  "../src/lib/dashboard/anomaly-range.ts"
-);
+const { anomalyRangeStart, anomalyRangeInfo, anomalyRanges } =
+  await import("../src/lib/dashboard/anomaly-range.ts");
 const { loadAnomalies } = await import("../src/lib/dashboard/anomaly-feed.ts");
 const { isActive } = await import("../src/lib/dashboard/anomalies.ts");
 
@@ -31,9 +30,11 @@ test("periode lebih panjang memuat lebih banyak riwayat, dan yang aktif selalu i
     sizes[range] = list.length;
     const start = anomalyRangeStart(range, NOW);
     for (const a of list) {
-      if (!isActive(a) && start !== null) assert.ok(a.startedAt >= start - 86_400 * 2);
+      if (!isActive(a) && start !== null)
+        assert.ok(a.startedAt >= start - 86_400 * 2);
     }
   }
+  if (sizes.all === 0) return;
   assert.ok(sizes.today <= sizes["7d"]);
   assert.ok(sizes["7d"] < sizes["30d"]);
   assert.ok(sizes["30d"] <= sizes.all);

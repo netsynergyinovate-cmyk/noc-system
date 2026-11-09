@@ -8,7 +8,8 @@ const {
   loadTrafficTrendOverview,
   TRAFFIC_TREND_MOCK_ENTRY,
 } = await import("../src/lib/dashboard/traffic-trend-data.ts");
-const { SETUP_DATA_SOURCE_REGISTRY } = await import("../src/lib/dashboard/setup-extended.ts");
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 const NOW = 1_760_000_000;
@@ -22,7 +23,10 @@ test("generateTrafficTrendSeries: jumlah, urutan, nilai valid, deterministik", (
       const p = s[i];
       if (i > 0) assert.ok(p.timestamp > s[i - 1].timestamp);
       assert.ok(p.downloadMbps >= 0 && p.uploadMbps >= 0);
-      assert.equal(p.totalMbps, Math.round((p.downloadMbps + p.uploadMbps) * 100) / 100);
+      assert.equal(
+        p.totalMbps,
+        Math.round((p.downloadMbps + p.uploadMbps) * 100) / 100,
+      );
       assert.ok(p.peakMbps >= p.totalMbps);
       assert.ok(p.timeLabel.length > 0);
     }
@@ -58,7 +62,10 @@ test("loadTrafficTrendOverview: KPI konsisten dengan seri", () => {
       o.activeInterfacesCount,
       getMockInterfaceSamples().filter((i) => i.status === "up").length,
     );
-    assert.equal(o.lastSampledAt, new Date(s.at(-1).timestamp * 1000).toISOString());
+    assert.equal(
+      o.lastSampledAt,
+      new Date(s.at(-1).timestamp * 1000).toISOString(),
+    );
   }
 });
 
@@ -72,7 +79,12 @@ test("TRAFFIC_TREND_MOCK_ENTRY terdaftar di registry", () => {
 test("komponen, halaman, dan menu", () => {
   const board = read("../src/components/dashboard/traffic-trend-board.tsx");
   assert.match(board, /export function TrafficTrendBoard/);
-  for (const id of ["traffic-trend-board", "traffic-range-select", "traffic-interface-table", "traffic-mock-badge"])
+  for (const id of [
+    "traffic-trend-board",
+    "traffic-range-select",
+    "traffic-interface-table",
+    "traffic-live-badge",
+  ])
     assert.match(board, new RegExp(`data-testid="${id}"`));
   const page = read("../src/app/(protected)/app/traffic/page.tsx");
   assert.match(page, /export default async function TrafficPage/);

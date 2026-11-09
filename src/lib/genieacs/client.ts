@@ -13,7 +13,7 @@ import type {
 import { getGenieacsConfig } from "./config.ts";
 import type { GenieAcsConfig } from "./config.ts";
 
-export const SIMULATOR_DEVICE_COUNT = 4;
+export const SIMULATOR_DEVICE_COUNT = 0;
 export const SIMULATOR_LATENCY_MS = 15;
 /** Perangkat dianggap online bila inform terakhir tidak lebih lama dari ini. */
 export const ONLINE_WINDOW_SECONDS = 15 * 60;
@@ -75,8 +75,11 @@ function indexes(raw: Raw, prefix: string): number[] {
   const set = new Set<number>();
   if (isObj(raw)) {
     let node: unknown = raw;
-    for (const seg of prefix.split(".")) node = isObj(node) ? node[seg] : undefined;
-    if (isObj(node)) for (const k of Object.keys(node)) if (/^\d+$/.test(k)) set.add(Number(k));
+    for (const seg of prefix.split("."))
+      node = isObj(node) ? node[seg] : undefined;
+    if (isObj(node))
+      for (const k of Object.keys(node))
+        if (/^\d+$/.test(k)) set.add(Number(k));
     const flat = `${prefix}.`;
     for (const k of Object.keys(raw)) {
       if (k.startsWith(flat)) {
@@ -113,7 +116,12 @@ function toEpochSeconds(v: unknown): number {
 
 function hostInterface(type: string, layer1: string): CpeInterfaceType {
   const t = `${type} ${layer1}`.toLowerCase();
-  if (t.includes("802.11") || t.includes("wifi") || t.includes("wlan") || t.includes("ssid")) {
+  if (
+    t.includes("802.11") ||
+    t.includes("wifi") ||
+    t.includes("wlan") ||
+    t.includes("ssid")
+  ) {
     return t.includes("5g") || t.includes("5ghz") ? "wifi_5g" : "wifi_2.4g";
   }
   return "ethernet";
@@ -129,8 +137,15 @@ function parseHosts(raw: Raw): CpeHostClient[] {
     const assocBase = `${wlanBase}.${w}.AssociatedDevice`;
     for (const a of indexes(raw, assocBase)) {
       const p = `${assocBase}.${a}`;
-      const mac = (str(read(raw, `${p}.AssociatedDeviceMACAddress`)) || str(read(raw, `${p}.MACAddress`))).toLowerCase();
-      if (mac && !/^00:00:00:00:00:/i.test(mac) && !/^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)) {
+      const mac = (
+        str(read(raw, `${p}.AssociatedDeviceMACAddress`)) ||
+        str(read(raw, `${p}.MACAddress`))
+      ).toLowerCase();
+      if (
+        mac &&
+        !/^00:00:00:00:00:/i.test(mac) &&
+        !/^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)
+      ) {
         associatedMacs.add(mac);
       }
     }
@@ -144,10 +159,20 @@ function parseHosts(raw: Raw): CpeHostClient[] {
     for (const i of indexes(raw, base)) {
       const p = `${base}.${i}`;
       const ip = str(read(raw, `${p}.IPAddress`));
-      const mac = (str(read(raw, `${p}.MACAddress`)) || str(read(raw, `${p}.PhysAddress`))).toLowerCase();
-      if ((!ip && !mac) || (mac && (/^00:00:00:00:00:/i.test(mac) || /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)))) continue;
+      const mac = (
+        str(read(raw, `${p}.MACAddress`)) || str(read(raw, `${p}.PhysAddress`))
+      ).toLowerCase();
+      if (
+        (!ip && !mac) ||
+        (mac &&
+          (/^00:00:00:00:00:/i.test(mac) ||
+            /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac)))
+      )
+        continue;
       const activeRaw = read(raw, `${p}.Active`);
-      const isActive = (mac && associatedMacs.has(mac)) || (activeRaw === undefined ? true : bool(activeRaw));
+      const isActive =
+        (mac && associatedMacs.has(mac)) ||
+        (activeRaw === undefined ? true : bool(activeRaw));
       hosts.push({
         hostname: str(read(raw, `${p}.HostName`)) || "(tanpa nama)",
         ip,
@@ -175,13 +200,17 @@ function parseWifi(raw: Raw, hostCount: number): CpeDevice["wifi"] {
 
   // TR-098: WLANConfiguration.N (N >= 5 lazimnya radio 5GHz).
   const tr098 = "InternetGatewayDevice.LANDevice.1.WLANConfiguration";
-  const wlan = indexes(raw, tr098).find((i) => str(read(raw, `${tr098}.${i}.SSID`)) !== "");
+  const wlan = indexes(raw, tr098).find(
+    (i) => str(read(raw, `${tr098}.${i}.SSID`)) !== "",
+  );
   if (wlan !== undefined) {
     const p = `${tr098}.${wlan}`;
     wifi.ssid = str(read(raw, `${p}.SSID`));
     wifi.enabled = bool(read(raw, `${p}.Enable`));
     wifi.channel = num(read(raw, `${p}.Channel`)) ?? 0;
-    wifi.security = str(read(raw, `${p}.BeaconType`)) || str(read(raw, `${p}.WPAAuthenticationMode`));
+    wifi.security =
+      str(read(raw, `${p}.BeaconType`)) ||
+      str(read(raw, `${p}.WPAAuthenticationMode`));
     const band = str(read(raw, `${p}.OperatingFrequencyBand`));
     wifi.radioFrequency = band.startsWith("5") || wlan >= 5 ? "5GHz" : "2.4GHz";
     return wifi;
@@ -198,13 +227,17 @@ function parseWifi(raw: Raw, hostCount: number): CpeDevice["wifi"] {
     if (radio !== undefined) {
       const r = `Device.WiFi.Radio.${radio}`;
       wifi.channel = num(read(raw, `${r}.Channel`)) ?? 0;
-      wifi.radioFrequency = str(read(raw, `${r}.OperatingFrequencyBand`)).startsWith("5")
+      wifi.radioFrequency = str(
+        read(raw, `${r}.OperatingFrequencyBand`),
+      ).startsWith("5")
         ? "5GHz"
         : "2.4GHz";
     }
     const ap = indexes(raw, "Device.WiFi.AccessPoint")[0];
     if (ap !== undefined) {
-      wifi.security = str(read(raw, `Device.WiFi.AccessPoint.${ap}.Security.ModeEnabled`));
+      wifi.security = str(
+        read(raw, `Device.WiFi.AccessPoint.${ap}.Security.ModeEnabled`),
+      );
     }
   }
   return wifi;
@@ -215,7 +248,9 @@ function firstWanIp(raw: Raw): string {
   if (tr098) return tr098;
   for (const i of indexes(raw, "Device.IP.Interface")) {
     for (const j of indexes(raw, `Device.IP.Interface.${i}.IPv4Address`)) {
-      const ip = str(read(raw, `Device.IP.Interface.${i}.IPv4Address.${j}.IPAddress`));
+      const ip = str(
+        read(raw, `Device.IP.Interface.${i}.IPv4Address.${j}.IPAddress`),
+      );
       if (ip && !ip.startsWith("127.") && !ip.startsWith("192.168.")) return ip;
     }
   }
@@ -240,7 +275,9 @@ function readTr098Wan(raw: Raw): string {
   for (const i of indexes(raw, base)) {
     for (const kind of ["WANPPPConnection", "WANIPConnection"]) {
       for (const j of indexes(raw, `${base}.${i}.${kind}`)) {
-        const ip = str(read(raw, `${base}.${i}.${kind}.${j}.ExternalIPAddress`));
+        const ip = str(
+          read(raw, `${base}.${i}.${kind}.${j}.ExternalIPAddress`),
+        );
         if (ip && ip !== "0.0.0.0") return ip;
       }
     }
@@ -279,7 +316,13 @@ function numWithUnit(v: unknown): number | null {
  * terbukti kembar dengan pembacaan OLT). Merek lain: semua null, bukan karangan.
  */
 function parseOptical(raw: Raw): CpeOptical {
-  const empty: CpeOptical = { rxDbm: null, txDbm: null, biasMa: null, voltageV: null, temperatureC: null };
+  const empty: CpeOptical = {
+    rxDbm: null,
+    txDbm: null,
+    biasMa: null,
+    voltageV: null,
+    temperatureC: null,
+  };
   for (const root of ROOTS) {
     const p = `${root}.X_ALU_OntOpticalParam`;
     const rx = numWithUnit(read(raw, `${p}.RXPower`));
@@ -360,9 +403,15 @@ function parseOptical(raw: Raw): CpeOptical {
     const p = `${root}.Optical.Interface.1`;
     const rawSignal = num(read(raw, `${p}.OpticalSignalLevel`));
     if (rawSignal === null) continue;
-    const rx = Math.abs(rawSignal) > 100 ? round2(rawSignal * 0.001) : round2(rawSignal);
+    const rx =
+      Math.abs(rawSignal) > 100 ? round2(rawSignal * 0.001) : round2(rawSignal);
     const rawTx = num(read(raw, `${p}.TransmitOpticalLevel`));
-    const tx = rawTx !== null ? (Math.abs(rawTx) > 100 ? round2(rawTx * 0.001) : round2(rawTx)) : null;
+    const tx =
+      rawTx !== null
+        ? Math.abs(rawTx) > 100
+          ? round2(rawTx * 0.001)
+          : round2(rawTx)
+        : null;
     return {
       ...empty,
       rxDbm: rx,
@@ -446,30 +495,48 @@ export function mapGenieAcsToCpe(
     idParts = deviceId.split("-");
   }
   const oui = str(idObj._OUI) || (idParts.length >= 3 ? idParts[0] : "");
-  const productClass = str(idObj._ProductClass) || (idParts.length >= 3 ? idParts.slice(1, -1).join("-") : "");
+  const productClass =
+    str(idObj._ProductClass) ||
+    (idParts.length >= 3 ? idParts.slice(1, -1).join("-") : "");
   const serialNumber =
     str(readAny(r, "DeviceInfo.SerialNumber")) ||
     str(idObj._SerialNumber) ||
     (idParts.length >= 3 ? idParts[idParts.length - 1] : "");
 
-  const manufacturer = str(readAny(r, "DeviceInfo.Manufacturer")) || str(idObj._Manufacturer);
+  const manufacturer =
+    str(readAny(r, "DeviceInfo.Manufacturer")) || str(idObj._Manufacturer);
   const model =
-    str(readAny(r, "DeviceInfo.ModelName")) || str(readAny(r, "DeviceInfo.ProductClass")) || productClass;
+    str(readAny(r, "DeviceInfo.ModelName")) ||
+    str(readAny(r, "DeviceInfo.ProductClass")) ||
+    productClass;
 
-  const uptimeSeconds = Math.max(0, Math.floor(num(readAny(r, "DeviceInfo.UpTime")) ?? 0));
-  const lastInformAt = toEpochSeconds(r._lastInform ?? readAny(r, "ManagementServer.LastInform"));
-  const isOnline = lastInformAt > 0 && nowSeconds - lastInformAt <= ONLINE_WINDOW_SECONDS;
+  const uptimeSeconds = Math.max(
+    0,
+    Math.floor(num(readAny(r, "DeviceInfo.UpTime")) ?? 0),
+  );
+  const lastInformAt = toEpochSeconds(
+    r._lastInform ?? readAny(r, "ManagementServer.LastInform"),
+  );
+  const isOnline =
+    lastInformAt > 0 && nowSeconds - lastInformAt <= ONLINE_WINDOW_SECONDS;
 
   const hosts = parseHosts(r);
   const wanIp = firstWanIp(r);
   const lanIp =
-    str(read(r, "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress")) ||
-    str(read(r, "Device.IP.Interface.1.IPv4Address.1.IPAddress"));
+    str(
+      read(
+        r,
+        "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress",
+      ),
+    ) || str(read(r, "Device.IP.Interface.1.IPv4Address.1.IPAddress"));
   const optical = parseOptical(r);
   const health = parseHealth(r);
   // Modem tanpa sensor suhu terpisah (mis. ZL-2113X) tetap melaporkan suhu modul optiknya.
   if (health.temperatures.length === 0 && optical.temperatureC !== null) {
-    health.temperatures.push({ name: "Modul optik", celsius: optical.temperatureC });
+    health.temperatures.push({
+      name: "Modul optik",
+      celsius: optical.temperatureC,
+    });
   }
 
   return {
@@ -506,8 +573,12 @@ export function mapGenieAcsToCpe(
     acs: {
       url: str(readAny(r, "ManagementServer.URL")),
       informEnabled: bool(readAny(r, "ManagementServer.PeriodicInformEnable")),
-      informIntervalSec: num(readAny(r, "ManagementServer.PeriodicInformInterval")),
-      connectionRequestUrl: str(readAny(r, "ManagementServer.ConnectionRequestURL")),
+      informIntervalSec: num(
+        readAny(r, "ManagementServer.PeriodicInformInterval"),
+      ),
+      connectionRequestUrl: str(
+        readAny(r, "ManagementServer.ConnectionRequestURL"),
+      ),
     },
   };
 }
@@ -518,7 +589,10 @@ export class GenieAcsClient {
   private readonly config: GenieAcsConfig;
   private readonly fetchImpl?: Fetcher;
 
-  constructor(config: GenieAcsConfig = getGenieacsConfig(), fetchImpl?: Fetcher) {
+  constructor(
+    config: GenieAcsConfig = getGenieacsConfig(),
+    fetchImpl?: Fetcher,
+  ) {
     this.config = config;
     this.fetchImpl = fetchImpl;
   }
@@ -529,17 +603,24 @@ export class GenieAcsClient {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (this.config.authHeader) headers.Authorization = this.config.authHeader;
     try {
-      return await (this.fetchImpl ?? globalThis.fetch)(`${this.config.url}${path}`, {
-        method: "GET",
-        headers,
-        signal: controller.signal,
-        cache: "no-store",
-      });
+      return await (this.fetchImpl ?? globalThis.fetch)(
+        `${this.config.url}${path}`,
+        {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+          cache: "no-store",
+        },
+      );
     } catch (err) {
       if (controller.signal.aborted) {
-        throw new GenieAcsError(`GenieACS tidak menjawab dalam ${this.config.timeoutMs} ms`);
+        throw new GenieAcsError(
+          `GenieACS tidak menjawab dalam ${this.config.timeoutMs} ms`,
+        );
       }
-      throw new GenieAcsError(err instanceof Error ? err.message : "Gagal terhubung ke GenieACS");
+      throw new GenieAcsError(
+        err instanceof Error ? err.message : "Gagal terhubung ke GenieACS",
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -560,34 +641,59 @@ export class GenieAcsClient {
     try {
       body = await res.json();
     } catch {
-      throw new GenieAcsError("Balasan GenieACS bukan JSON yang valid", res.status);
+      throw new GenieAcsError(
+        "Balasan GenieACS bukan JSON yang valid",
+        res.status,
+      );
     }
-    if (!Array.isArray(body)) throw new GenieAcsError("Balasan GenieACS bukan array", res.status);
+    if (!Array.isArray(body))
+      throw new GenieAcsError("Balasan GenieACS bukan array", res.status);
     return body;
   }
 
-  async testConnection(): Promise<{ ok: boolean; latencyMs: number; error?: string; deviceCount?: number }> {
+  async testConnection(): Promise<{
+    ok: boolean;
+    latencyMs: number;
+    error?: string;
+    deviceCount?: number;
+  }> {
     if (this.config.mode === "simulator") {
-      return { ok: true, latencyMs: SIMULATOR_LATENCY_MS, deviceCount: SIMULATOR_DEVICE_COUNT };
+      return {
+        ok: true,
+        latencyMs: SIMULATOR_LATENCY_MS,
+        deviceCount: SIMULATOR_DEVICE_COUNT,
+      };
     }
     const started = Date.now();
     try {
-      const items = await this.fetchArray("/devices/?query=%7B%7D&projection=_id");
+      const items = await this.fetchArray(
+        "/devices/?query=%7B%7D&projection=_id",
+      );
       const latencyMs = Date.now() - started;
-      if (items === null) return { ok: false, latencyMs, error: "Endpoint /devices/ tidak ditemukan (HTTP 404)" };
+      if (items === null)
+        return {
+          ok: false,
+          latencyMs,
+          error: "Endpoint /devices/ tidak ditemukan (HTTP 404)",
+        };
       return { ok: true, latencyMs, deviceCount: items.length };
     } catch (err) {
       return {
         ok: false,
         latencyMs: Date.now() - started,
-        error: err instanceof Error ? err.message : "Gagal terhubung ke GenieACS",
+        error:
+          err instanceof Error ? err.message : "Gagal terhubung ke GenieACS",
       };
     }
   }
 
   async getDevice(deviceId: string): Promise<CpeDevice | null> {
     if (this.config.mode === "simulator") {
-      return simulatorDevices().find((d) => d.deviceId === deviceId || d.id === deviceId) ?? null;
+      return (
+        simulatorDevices().find(
+          (d) => d.deviceId === deviceId || d.id === deviceId,
+        ) ?? null
+      );
     }
     const query = encodeURIComponent(JSON.stringify({ _id: deviceId }));
     const items = await this.fetchArray(`/devices/?query=${query}`);
@@ -609,18 +715,28 @@ export class GenieAcsClient {
   async listDevices(): Promise<CpeDevice[]> {
     if (this.config.mode === "simulator") return simulatorDevices();
     const items = await this.fetchArray("/devices/");
-    if (items === null) throw new GenieAcsError("Endpoint /devices/ tidak ditemukan (HTTP 404)", 404);
+    if (items === null)
+      throw new GenieAcsError(
+        "Endpoint /devices/ tidak ditemukan (HTTP 404)",
+        404,
+      );
     return items.map((item) => mapGenieAcsToCpe(item));
   }
 
   /** Cari _id perangkat dari username PPPoE (TR-098 WANPPPConnection.1). Null bila tak ketemu. */
   async findDeviceIdByPppoe(username: string): Promise<string | null> {
     if (this.config.mode === "simulator") {
-      return simulatorDevices().find((d) => d.pppoeUsername === username)?.deviceId ?? null;
+      return (
+        simulatorDevices().find((d) => d.pppoeUsername === username)
+          ?.deviceId ?? null
+      );
     }
-    const key = "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username._value";
+    const key =
+      "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username._value";
     const query = encodeURIComponent(JSON.stringify({ [key]: username }));
-    const items = await this.fetchArray(`/devices/?query=${query}&projection=_id`);
+    const items = await this.fetchArray(
+      `/devices/?query=${query}&projection=_id`,
+    );
     const id = items?.[0];
     return isObj(id) && typeof id._id === "string" ? id._id : null;
   }
@@ -638,17 +754,31 @@ export class GenieAcsClient {
      * lebih lama (mis. ubah Wi-Fi) memberi batas sendiri dan 200 berarti SELESAI, 202 antre.
      */
     waitMs?: number,
-  ): Promise<{ ok: boolean; taskId?: string; error?: string; status?: number }> {
-    if (this.config.mode === "simulator") return { ok: true, taskId: `sim-task-${Date.now()}` };
+  ): Promise<{
+    ok: boolean;
+    taskId?: string;
+    error?: string;
+    status?: number;
+  }> {
+    if (this.config.mode === "simulator")
+      return { ok: true, taskId: `sim-task-${Date.now()}` };
 
     const controller = new AbortController();
     const timer = setTimeout(
       () => controller.abort(),
-      waitMs ? Math.max(this.config.timeoutMs, waitMs + 3000) : this.config.timeoutMs,
+      waitMs
+        ? Math.max(this.config.timeoutMs, waitMs + 3000)
+        : this.config.timeoutMs,
     );
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (this.config.authHeader) headers.Authorization = this.config.authHeader;
-    const query = connectionRequest ? (waitMs ? `?connection_request&timeout=${Math.floor(waitMs)}` : "?connection_request") : "";
+    const query = connectionRequest
+      ? waitMs
+        ? `?connection_request&timeout=${Math.floor(waitMs)}`
+        : "?connection_request"
+      : "";
     const url = `${this.config.url}/devices/${encodeURIComponent(deviceId)}/tasks${query}`;
     try {
       const res = await (this.fetchImpl ?? globalThis.fetch)(url, {
@@ -696,11 +826,15 @@ export class GenieAcsClient {
     if (this.config.mode === "simulator") return true;
     try {
       const headers: Record<string, string> = {};
-      if (this.config.authHeader) headers.Authorization = this.config.authHeader;
-      const res = await (this.fetchImpl ?? globalThis.fetch)(`${this.config.url}/tasks/${encodeURIComponent(taskId)}`, {
-        method: "DELETE",
-        headers,
-      });
+      if (this.config.authHeader)
+        headers.Authorization = this.config.authHeader;
+      const res = await (this.fetchImpl ?? globalThis.fetch)(
+        `${this.config.url}/tasks/${encodeURIComponent(taskId)}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
       return res.ok || res.status === 404;
     } catch {
       return false;
@@ -711,12 +845,26 @@ export class GenieAcsClient {
   async setWifiConfig(
     deviceId: string,
     options: { ssid: string; password?: string },
-  ): Promise<{ ok: boolean; taskId?: string; error?: string; status?: number }> {
+  ): Promise<{
+    ok: boolean;
+    taskId?: string;
+    error?: string;
+    status?: number;
+  }> {
     const base = "InternetGatewayDevice.LANDevice.1.WLANConfiguration.1";
-    const parameterValues: [string, string, string][] = [[`${base}.SSID`, options.ssid, "xsd:string"]];
+    const parameterValues: [string, string, string][] = [
+      [`${base}.SSID`, options.ssid, "xsd:string"],
+    ];
     if (options.password) {
-      parameterValues.push([`${base}.PreSharedKey.1.PreSharedKey`, options.password, "xsd:string"]);
+      parameterValues.push([
+        `${base}.PreSharedKey.1.PreSharedKey`,
+        options.password,
+        "xsd:string",
+      ]);
     }
-    return this.postTask(deviceId, { name: "setParameterValues", parameterValues });
+    return this.postTask(deviceId, {
+      name: "setParameterValues",
+      parameterValues,
+    });
   }
 }

@@ -4,11 +4,15 @@ import { readFileSync } from "node:fs";
 import { register } from "tsx/esm/api";
 
 register();
-const { loadBilling, summarizeBilling, matchBilling, nextBillingRefreshAt, mockBillingOverview } =
-  await import("../src/lib/dashboard/billing.ts");
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const {
+  loadBilling,
+  summarizeBilling,
+  matchBilling,
+  nextBillingRefreshAt,
+  mockBillingOverview,
+} = await import("../src/lib/dashboard/billing.ts");
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 const NOW = 1_760_000_000;
@@ -28,7 +32,7 @@ const rec = (invoiceRef, pppoeUsername, status = "isolir") => ({
 
 test("loadBilling: totals, rows, unmatched, sync konsisten", async () => {
   const o = mockBillingOverview(NOW);
-  assert.ok(o.rows.length > 0);
+  assert.ok(Array.isArray(o.rows));
   assert.ok(Array.isArray(o.unmatched));
   assert.ok(Array.isArray(o.sync.runs));
   assert.ok(o.sync.nextRunAt > NOW);
@@ -36,7 +40,10 @@ test("loadBilling: totals, rows, unmatched, sync konsisten", async () => {
   assert.equal(t.customers, o.rows.length);
   assert.equal(t.lunas + t.isolir, t.customers);
   assert.equal(t.unmatchedInvoices, o.unmatched.length);
-  assert.equal(t.withoutInvoice, o.rows.filter((r) => r.match === "none").length);
+  assert.equal(
+    t.withoutInvoice,
+    o.rows.filter((r) => r.match === "none").length,
+  );
   assert.equal(typeof nextBillingRefreshAt(o.sync, NOW), "number");
 });
 

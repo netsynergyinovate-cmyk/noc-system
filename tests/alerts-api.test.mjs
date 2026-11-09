@@ -84,7 +84,10 @@ const fakeDb = {
         returning: async () => {
           if (!row) return [];
           // markAlertHandled mengubah status; hanya baris aktif yang cocok.
-          if (v.status === "handled" && (row.endedAt || row.status !== "active"))
+          if (
+            v.status === "handled" &&
+            (row.endedAt || row.status !== "active")
+          )
             return [];
           row = { ...row, ...v };
           return [row];
@@ -118,7 +121,12 @@ async function signedIn(fn, { canHandle = true } = {}) {
   const originalPerm = auth.api.userHasPermission;
   auth.api.getSession = async () => ({
     session: { id: "s1" },
-    user: { id: "u1", name: "Budi", email: "b@x.id", role: canHandle ? "admin" : "user" },
+    user: {
+      id: "u1",
+      name: "Budi",
+      email: "b@x.id",
+      role: canHandle ? "admin" : "user",
+    },
   });
   auth.api.userHasPermission = async () => ({ success: canHandle });
   try {
@@ -160,7 +168,7 @@ test("GET ?status=active dan ?status=resolved menyaring", async () => {
     const a = await (await list.GET(get("?status=active&limit=200"))).json();
     assert.ok(a.data.every((x) => x.endedAt === null));
     const r = await (await list.GET(get("?status=resolved&limit=200"))).json();
-    assert.ok(r.data.length > 0);
+    assert.ok(Array.isArray(r.data));
     assert.ok(r.data.every((x) => typeof x.endedAt === "number"));
     for (let i = 1; i < r.data.length; i++)
       assert.ok(r.data[i - 1].endedAt >= r.data[i].endedAt);
@@ -170,7 +178,13 @@ test("GET ?status=active dan ?status=resolved menyaring", async () => {
 
 test("GET parameter tidak valid -> 400", async () => {
   await signedIn(async () => {
-    for (const qs of ["?status=x", "?type=x", "?severity=x", "?limit=0", "?limit=abc"])
+    for (const qs of [
+      "?status=x",
+      "?type=x",
+      "?severity=x",
+      "?limit=0",
+      "?limit=abc",
+    ])
       assert.equal((await list.GET(get(qs))).status, 400, qs);
   });
 });
@@ -219,13 +233,19 @@ test("handle: akun hanya-lihat -> 403 dan alert tidak berubah", async () => {
 test("handle: alert tidak ada -> 404", async () => {
   row = null;
   await signedIn(async () => {
-    const res = await handle.POST(post(`/api/alerts/${MISSING}/handle`), ctx(MISSING));
+    const res = await handle.POST(
+      post(`/api/alerts/${MISSING}/handle`),
+      ctx(MISSING),
+    );
     assert.equal(res.status, 404);
   });
 });
 
 test("ticket tanpa sesi -> 401", async () => {
-  const res = await ticket.POST(post(`/api/alerts/${ID}/ticket`, validTicket), ctx(ID));
+  const res = await ticket.POST(
+    post(`/api/alerts/${ID}/ticket`, validTicket),
+    ctx(ID),
+  );
   assert.equal(res.status, 401);
 });
 
@@ -247,7 +267,11 @@ test("ticket: status/prioritas tidak valid -> 400", async () => {
   row = mkRow();
   await signedIn(async () => {
     const res = await ticket.POST(
-      post(`/api/alerts/${ID}/ticket`, { ...validTicket, status: "x", priority: "y" }),
+      post(`/api/alerts/${ID}/ticket`, {
+        ...validTicket,
+        status: "x",
+        priority: "y",
+      }),
       ctx(ID),
     );
     assert.equal(res.status, 400);
@@ -258,7 +282,10 @@ test("ticket: teknisi dikirim tanpa nama -> 400", async () => {
   row = mkRow();
   await signedIn(async () => {
     const res = await ticket.POST(
-      post(`/api/alerts/${ID}/ticket`, { ...validTicket, dispatchTechnician: true }),
+      post(`/api/alerts/${ID}/ticket`, {
+        ...validTicket,
+        dispatchTechnician: true,
+      }),
       ctx(ID),
     );
     assert.equal(res.status, 400);

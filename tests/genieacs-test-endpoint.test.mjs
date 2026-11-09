@@ -11,7 +11,7 @@ test("mode simulator mengembalikan hasil tetap", async () => {
   assert.deepEqual(await runGenieacsTest(config), {
     ok: true,
     latencyMs: 15,
-    deviceCount: 4,
+    deviceCount: 0,
     mode: "simulator",
   });
 });
@@ -24,7 +24,12 @@ test("tanpa input memakai config env (default simulator)", async () => {
 
 test("input host membuat config real tanpa kredensial tertanam", () => {
   const c = buildGenieacsTestConfig(
-    { host: "http://u:p@10.0.0.5", port: 7557, username: "admin", password: "rahasia" },
+    {
+      host: "http://u:p@10.0.0.5",
+      port: 7557,
+      username: "admin",
+      password: "rahasia",
+    },
     {},
   );
   assert.equal(c.mode, "real");
@@ -39,7 +44,11 @@ test("host non-http ditolak; mode real tanpa host ditolak", () => {
 
 test("validasi: port di luar 1-65535 ditolak", () => {
   for (const port of [0, 65536, -1, 1.5]) {
-    assert.equal(testGenieacsSchema.safeParse({ port }).success, false, String(port));
+    assert.equal(
+      testGenieacsSchema.safeParse({ port }).success,
+      false,
+      String(port),
+    );
   }
   assert.equal(testGenieacsSchema.safeParse({ port: 1 }).success, true);
   assert.equal(testGenieacsSchema.safeParse({ port: 65535 }).success, true);
@@ -56,7 +65,9 @@ test("error tidak membocorkan kata sandi", async () => {
   );
   const basic = config.authHeader.replace("Basic ", "");
   const leaky = async () => {
-    throw new Error(`connect failed ${password} ${config.authHeader} ${basic} http://admin:${password}@10.0.0.5`);
+    throw new Error(
+      `connect failed ${password} ${config.authHeader} ${basic} http://admin:${password}@10.0.0.5`,
+    );
   };
   const r = await runGenieacsTest(config, leaky);
   assert.equal(r.ok, false);

@@ -37,8 +37,15 @@ test("GET /api/audit: format respons dan filter limit/before", async () => {
       const parsed = parseInt(limitRaw, 10);
       if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 500) limit = parsed;
     }
-    const { mockAuditLog } = await import("../src/lib/dashboard/audit.ts");
-    const entries = mockAuditLog(1_760_000_000).slice(0, limit);
+    const sample = Array.from({ length: 15 }, (_, i) => ({
+      id: `audit-${i}`,
+      at: 1_760_000_000 - i * 60,
+      actor: { id: "u1", name: "Admin" },
+      action: "test",
+      target: "router",
+      changes: [],
+    }));
+    const entries = sample.slice(0, limit);
     return Response.json({
       ok: true,
       entries,

@@ -82,6 +82,7 @@ try {
     // pengembang.
     DEVICE_SECRET: randomBytes(16).toString("hex"),
     BACKEND_URL: "http://localhost:8180",
+    ALLOW_SIGN_UP: "true",
   };
   delete testEnv.__NEXT_PROCESSED_ENV;
   await run(process.execPath, ["scripts/migrate.mjs"], testEnv);
@@ -106,7 +107,11 @@ try {
   } else {
     await run(
       process.execPath,
-      [resolve(root, "node_modules/@playwright/test/cli.js"), "test", ...process.argv.slice(3)],
+      [
+        resolve(root, "node_modules/@playwright/test/cli.js"),
+        "test",
+        ...process.argv.slice(3),
+      ],
       testEnv,
     );
   }

@@ -26,8 +26,7 @@ import {
   type Anomaly,
   type AnomalyRule,
 } from "@/lib/dashboard/anomalies";
-import { loadAnomalies } from "@/lib/dashboard/anomaly-feed";
-import { loneImpact, mockDirectory } from "@/lib/dashboard/incident-root";
+import { loneImpact } from "@/lib/dashboard/incident-root";
 import type { IncidentKind, IncidentSeverity } from "@/lib/dashboard/types";
 import {
   getAnomalyTroubleshootingSteps,
@@ -81,20 +80,13 @@ function mapLogToAnomaly(row: {
   const endedAt = row.endedAt ? Math.floor(row.endedAt.getTime() / 1000) : null;
   const interfaceName = (detail.interfaceName as string) ?? null;
   const measured = typeof detail.measured === "number" ? detail.measured : null;
-
   const defaultImpact = loneImpact(
     { routerId: row.routerId ?? "", customerId: row.customerId },
     {
-      customerName: (id) =>
-        row.customerName ??
-        (env.DASHBOARD_DATA === "demo" ? mockDirectory.customerName(id) : id),
-      routerName: (id) =>
-        row.routerName ??
-        (env.DASHBOARD_DATA === "demo" ? mockDirectory.routerName(id) : id),
-      customersOnRouter: (id) =>
-        env.DASHBOARD_DATA === "demo" ? mockDirectory.customersOnRouter(id) : 0,
-      customersOnOdp: (r, o) =>
-        env.DASHBOARD_DATA === "demo" ? mockDirectory.customersOnOdp(r, o) : 0,
+      customerName: (id: string) => row.customerName ?? id,
+      routerName: (id: string) => row.routerName ?? id,
+      customersOnRouter: () => 0,
+      customersOnOdp: () => 0,
     },
   );
   const rootSource =
@@ -138,34 +130,7 @@ export async function getAnomaliesList(
 ): Promise<AnomalyListResult> {
   const kind = query.kind ?? query.type;
 
-  if (env.DASHBOARD_DATA === "demo") {
-    let mockList = await loadAnomalies();
-    if (query.status === "active")
-      mockList = mockList.filter((a) => a.endedAt === null);
-    if (query.status === "resolved")
-      mockList = mockList.filter((a) => a.endedAt !== null);
-    if (kind) mockList = mockList.filter((a) => a.kind === kind);
-    if (query.severity)
-      mockList = mockList.filter((a) => a.severity === query.severity);
-    if (query.routerId)
-      mockList = mockList.filter((a) => a.routerId === query.routerId);
-    if (query.customerId)
-      mockList = mockList.filter((a) => a.customerId === query.customerId);
-    if (query.from)
-      mockList = mockList.filter((a) => a.startedAt >= query.from!);
-    if (query.to) mockList = mockList.filter((a) => a.startedAt <= query.to!);
 
-    const total = mockList.length;
-    const paged = mockList.slice(query.offset, query.offset + query.limit);
-    return {
-      anomalies: paged,
-      total,
-      activeCount: mockList.filter((a) => a.endedAt === null).length,
-      resolvedCount: mockList.filter((a) => a.endedAt !== null).length,
-      rules: anomalyRules,
-      sourceStatus: "dummy",
-    };
-  }
 
   const conditions: SQL[] = [];
 
@@ -338,16 +303,7 @@ export async function detectAnomalies(
     persist?: boolean;
   } = {},
 ): Promise<DetectAnomaliesResult> {
-  if (env.DASHBOARD_DATA === "demo") {
-    const list = await loadAnomalies();
-    const active = list.filter((a) => a.endedAt === null);
-    return {
-      detected: active.length,
-      activeAnomalies: active,
-      rulesEvaluated: anomalyRules.length,
-      sourceStatus: "dummy",
-    };
-  }
+
 
   // Nonaktifkan trigger evaluasi mandiri di Next.js:
   // Serahkan sepenuhnya ke engine Go (backend/internal/engine)
@@ -376,8 +332,7 @@ export interface AnomalyDetailResult {
  * Mengambil detail satu anomali lengkap dengan panduan troubleshooting dan status review.
  */
 export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
-  if (env.DASHBOARD_DATA !== "demo") {
-    const [row] = await db
+  const [row] = await db
       .select({
         id: alerts.id,
         routerId: alerts.routerId,
@@ -419,24 +374,6 @@ export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
       note,
       sourceStatus: "nyata",
     };
-  }
-  // Fallback ke mock data
-  const mockList = await loadAnomalies();
-  const found = mockList.find((a) => a.id === id);
-  if (!found) {
-    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
-  }
-
-  const reviewed = isAnomalyReviewed(id);
-  return {
-    anomaly: found,
-    troubleshooting: getAnomalyTroubleshootingSteps(found),
-    reviewed,
-    reviewedBy: null,
-    reviewedAt: null,
-    note: null,
-    sourceStatus: "dummy",
-  };
 }
 
 /**
@@ -446,8 +383,7 @@ export async function updateAnomalyStatus(
   id: string,
   update: UpdateAnomalyStatusInput,
 ): Promise<AnomalyDetailResult> {
-  if (env.DASHBOARD_DATA !== "demo") {
-    const [existing] = await db
+  const [existing] = await db
       .select()
       .from(alerts)
       .where(eq(alerts.id, id))
@@ -501,37 +437,4 @@ export async function updateAnomalyStatus(
     await db.update(alerts).set(setValues).where(eq(alerts.id, id));
 
     return getAnomalyById(id);
-  }
-
-  // Fallback mode mock
-  const mockList = await loadAnomalies();
-  const found = mockList.find((a) => a.id === id);
-  if (!found) {
-    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
-  }
-
-  if (update.reviewed || update.status === "reviewed") {
-    markAnomalyReviewed(id, update.operator ?? "Operator NOC");
-  }
-
-  const updatedMock: AnomalyItem = {
-    ...found,
-    severity: (update.severity as IncidentSeverity) ?? found.severity,
-    endedAt:
-      update.status === "resolved"
-        ? Math.floor(Date.now() / 1000)
-        : update.status === "active"
-          ? null
-          : found.endedAt,
-  };
-
-  return {
-    anomaly: updatedMock,
-    troubleshooting: getAnomalyTroubleshootingSteps(updatedMock),
-    reviewed: Boolean(update.reviewed || isAnomalyReviewed(id)),
-    reviewedBy: update.operator ?? null,
-    reviewedAt: new Date().toISOString(),
-    note: update.note ?? null,
-    sourceStatus: "dummy",
-  };
 }

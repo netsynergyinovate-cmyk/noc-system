@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Cpu, Network, Radio, Trash2 } from "lucide-react";
+import { Activity, CheckCircle2, Cpu, Network, Radio, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,33 @@ export function CpeBoard() {
   const [oltsFailed, setOltsFailed] = useState(false);
   const [selectedOltForPon, setSelectedOltForPon] = useState<DashboardOlt | null>(null);
   const [oltToDelete, setOltToDelete] = useState<DashboardOlt | null>(null);
+  const [pingStatus, setPingStatus] = useState<
+    Record<string, { loading: boolean; ok?: boolean; latencyMs?: number; error?: string }>
+  >({});
 
+  const handlePing = async (oltId: string) => {
+    setPingStatus((prev) => ({ ...prev, [oltId]: { loading: true } }));
+    try {
+      const res = await fetch(`/api/olts/${encodeURIComponent(oltId)}/ping`, { method: "POST" });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setPingStatus((prev) => ({
+          ...prev,
+          [oltId]: { loading: false, ok: json.data.ok, latencyMs: json.data.latencyMs, error: json.data.error },
+        }));
+      } else {
+        setPingStatus((prev) => ({
+          ...prev,
+          [oltId]: { loading: false, ok: false, error: json.error?.message || "Gagal ping" },
+        }));
+      }
+    } catch (e) {
+      setPingStatus((prev) => ({
+        ...prev,
+        [oltId]: { loading: false, ok: false, error: e instanceof Error ? e.message : "Gagal koneksi" },
+      }));
+    }
+  };
   const [reloadKey, setReloadKey] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -259,17 +285,44 @@ export function CpeBoard() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          data-testid="btn-delete-olt"
-                          aria-label={`Hapus OLT ${olt.name}`}
-                          onClick={() => setOltToDelete(olt)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {pingStatus[olt.id]?.loading ? (
+                            <Badge variant="outline" className="border-muted font-mono text-[10px] animate-pulse">
+                              Ping...
+                            </Badge>
+                          ) : pingStatus[olt.id]?.ok ? (
+                            <Badge variant="outline" className="border-success/40 bg-success/10 text-success font-mono text-[10px]">
+                              {pingStatus[olt.id].latencyMs} ms
+                            </Badge>
+                          ) : pingStatus[olt.id]?.ok === false ? (
+                            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive font-mono text-[10px]" title={pingStatus[olt.id].error}>
+                              RTO
+                            </Badge>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            disabled={pingStatus[olt.id]?.loading}
+                            onClick={() => handlePing(olt.id)}
+                            title="Uji keterjangkauan jaringan TCP dan latensi dari aplikasi ke OLT"
+                          >
+                            <Activity className="size-3.5" />
+                            Ping
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            data-testid="btn-delete-olt"
+                            aria-label={`Hapus OLT ${olt.name}`}
+                            onClick={() => setOltToDelete(olt)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

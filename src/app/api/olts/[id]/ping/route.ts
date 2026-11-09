@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { olts } from "@/db/schema";
-import { ApiError, withApiSession } from "@/lib/api";
+import { ApiError, withApiPermission } from "@/lib/api";
 import { parseTarget } from "@/services/device-connection-tester";
 import { HSGQ_TELNET_DRIVER } from "@/lib/olt/hsgq-telnet";
 import { pingTcp } from "@/lib/olt/tcp-ping";
@@ -11,7 +11,7 @@ import { oltIdSchema } from "@/validators/devices";
 export const runtime = "nodejs";
 
 export const POST = (request: Request, { params }: { params: Promise<{ id: string }> }) =>
-  withApiSession(request, async () => {
+  withApiPermission(request, { router: ["manage"] }, async () => {
     const { id } = await params;
     if (!oltIdSchema.safeParse(id).success) {
       throw new ApiError(404, "OLT_NOT_FOUND", "OLT tidak ditemukan.");

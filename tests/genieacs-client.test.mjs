@@ -301,3 +301,28 @@ test("mapGenieAcsToCpe: MAC cadangan dari WAN bila ManagementServer.mac tidak ad
   };
   assert.equal(mapGenieAcsToCpe(doc, NOW).macAddress, "11:22:33:44:55:66");
 });
+
+test("mapGenieAcsToCpe: optik ZTE F609 & Huawei HG8245H (X_CMCC) terkonversi akurat ke dBm", () => {
+  const doc = {
+    _id: "2400FA-F609-CMHI2522EE4F",
+    InternetGatewayDevice: {
+      WANDevice: {
+        1: {
+          X_CMCC_EponInterfaceConfig: {
+            RXPower: v(322),
+            TXPower: v(15170),
+            TransceiverTemperature: v(12864),
+            SupplyVottage: v(32410),
+            BiasCurrent: v(5201),
+          },
+        },
+      },
+    },
+  };
+  const d = mapGenieAcsToCpe(doc, NOW);
+  assert.equal(d.optical.rxDbm, -14.92);
+  assert.equal(d.optical.txDbm, 1.81);
+  assert.equal(d.optical.temperatureC, 50.25);
+  assert.equal(d.optical.voltageV, 3.24);
+  assert.equal(d.optical.biasMa, 5.2);
+});

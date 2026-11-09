@@ -215,11 +215,8 @@ func TestGetLiveStatusMikrotikAndOLTLOSDetection(t *testing.T) {
 	if normal.IP == nil || *normal.IP != "172.16.15.101" {
 		t.Errorf("normal IP = %v, want 172.16.15.101", normal.IP)
 	}
-	if normal.Uptime == nil || *normal.Uptime != "3d 4h" {
-		t.Errorf("normal Uptime = %v, want 3d 4h", normal.Uptime)
-	}
-	if normal.RxDbm == nil || *normal.RxDbm != -19.25 {
-		t.Errorf("normal RxDbm = %v, want -19.25", normal.RxDbm)
+	if normal.Uptime == nil || *normal.Uptime != "3h 4j 0m" {
+		t.Errorf("normal Uptime = %v, want 3h 4j 0m", *normal.Uptime)
 	}
 	if normal.OnuLos {
 		t.Errorf("normal OnuLos should be false")

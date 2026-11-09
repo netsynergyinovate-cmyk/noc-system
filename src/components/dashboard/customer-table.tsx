@@ -58,9 +58,12 @@ const CustomerRow = memo(function CustomerRow({
   routerName: string;
   live: CustomerLiveStatus | undefined;
 }) {
-  // Redaman: modem (GenieACS) atau OLT dari data langsung; nilai di tabel pelanggan hanya cadangan.
-  const optical = { dbm: live?.rxDbm ?? (customer.isOnline ? (customer.opticalPowerDbm ?? null) : null) };
-  // Modem yang tidak sedang inform ke GenieACS: nilai terakhir tetap tampil tapi redup, dengan waktu bacaannya.
+  // Redaman: bila LOS maka null; modem (GenieACS) atau OLT dari data langsung; nilai di tabel pelanggan hanya cadangan.
+  const optical = {
+    dbm: live?.onuLos
+      ? null
+      : (live?.rxDbm ?? (customer.isOnline ? (customer.opticalPowerDbm ?? null) : null)),
+  };
   const staleTitle =
     live?.informAt && !live.modemOnline
       ? `Bacaan terakhir modem, ${new Date(live.informAt * 1000).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" })}`

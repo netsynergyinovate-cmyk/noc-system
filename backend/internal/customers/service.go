@@ -244,7 +244,8 @@ func (s *Service) GetLiveStatus(ctx context.Context) (map[string]CustomerLiveSta
 		if hasCpe && cpe.IsOnline && cpe.UptimeText != "" {
 			uptime = &cpe.UptimeText
 		} else if mikrotikUptime != "" {
-			uptime = &mikrotikUptime
+			normUp := normalizeRouterOSUptime(mikrotikUptime)
+			uptime = &normUp
 		} else if hasCpe && cpe.UptimeText != "" {
 			uptime = &cpe.UptimeText
 			if cpe.LastInformAt > 0 {
@@ -303,6 +304,45 @@ func formatAgo(seconds int64) string {
 		return fmt.Sprintf("%d jam lalu", s/3600)
 	}
 	return fmt.Sprintf("%d hari lalu", s/86400)
+}
+
+func normalizeRouterOSUptime(s string) string {
+	if s == "" {
+		return ""
+	}
+	var weeks, days, hours, mins, secs int64
+	var curr int64
+	hasUnits := false
+	for i := range s {
+		ch := s[i]
+		if ch >= '0' && ch <= '9' {
+			curr = curr*10 + int64(ch-'0')
+		} else {
+			switch ch {
+			case 'w':
+				weeks = curr
+				hasUnits = true
+			case 'd':
+				days = curr
+				hasUnits = true
+			case 'h':
+				hours = curr
+				hasUnits = true
+			case 'm':
+				mins = curr
+				hasUnits = true
+			case 's':
+				secs = curr
+				hasUnits = true
+			}
+			curr = 0
+		}
+	}
+	if !hasUnits {
+		return s
+	}
+	totalSec := weeks*7*86400 + days*86400 + hours*3600 + mins*60 + secs
+	return formatSecondsUptime(totalSec)
 }
 
 func formatSecondsUptime(sec int64) string {

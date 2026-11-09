@@ -28,7 +28,7 @@ function fixture(parent) {
     }),
     "README.md": "# Base\n\nSetup instructions.\n",
     "docs/architecture.md": "The architecture.",
-    "agent.md": "Read AGENTS.md.\n",
+    "docs/agent.md": "Read AGENTS.md.\n",
     "AGENTS.md": "Project guidance.\n",
     ".agents/skills/dev-database/SKILL.md": "Database workflow.\n",
     "compose.dev.yaml": "services: {}\n",
@@ -83,7 +83,7 @@ test("a derivative preserves base files and provenance while excluding local sta
     assert.ok(existsSync(resolve(target, "src/app/page.tsx")));
     assert.ok(existsSync(resolve(target, ".env.example")));
     assert.ok(existsSync(resolve(target, "compose.dev.yaml")));
-    assert.ok(existsSync(resolve(target, "agent.md")));
+    assert.ok(existsSync(resolve(target, "docs/agent.md")));
     assert.ok(existsSync(resolve(target, "AGENTS.md")));
     assert.ok(
       existsSync(resolve(target, ".agents/skills/dev-database/SKILL.md")),

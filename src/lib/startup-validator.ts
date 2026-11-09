@@ -123,11 +123,8 @@ export function runStartupValidation(
     {
       pagePath: "/app/router",
       pageTitle: "Router MikroTik",
-      isDummy:
-        !filled(source.MIKROTIK_REST_HOST) ||
-        isSim(source.MIKROTIK_MODE) ||
-        isSim(source.DEVICE_MODE),
-      reason: "Variabel MIKROTIK_REST_HOST belum lengkap atau mode simulator aktif",
+      isDummy: isSim(source.MIKROTIK_MODE) || isSim(source.DEVICE_MODE),
+      reason: "Mode simulator aktif untuk perangkat MikroTik",
     },
     {
       pagePath: "/app/cpe",
@@ -166,19 +163,13 @@ export function runStartupValidation(
   }
 
   if (live) {
-    const allowEmpty = source.ALLOW_EMPTY_DEVICES === "true";
-    if (missing.length) {
-      if (allowEmpty) {
-        warnings.push(
-          `Mode live (device fleksibel): variabel MikroTik REST belum lengkap (${missing.join(", ")}). Perangkat dapat ditambahkan via database/UI.`,
-        );
-      } else {
-        violations.push(
-          `Mode live: variabel MikroTik REST belum lengkap (${missing.join(", ")}).`,
-        );
-      }
+    // Kredensial MikroTik disimpan di database (tabel routers), tidak di env.
+    if (configured.length > 0 && missing.length > 0) {
+      warnings.push(
+        `Variabel MikroTik REST di env terisi sebagian (${missing.join(", ")} belum). Disarankan konfigurasi via database/UI.`,
+      );
     }
-    if (deviceMode === "simulator" && !allowEmpty)
+    if (deviceMode === "simulator")
       violations.push(
         "Pelanggaran Go-Live: MikroTik berjalan dalam mode simulator di mode live.",
       );
@@ -186,19 +177,9 @@ export function runStartupValidation(
     for (const c of pageChecks) {
       if (c.isDummy) {
         dummyPages.push(c.pagePath);
-        if (c.pagePath === "/app/router") {
-          // Sudah dihitung di atas
-          continue;
-        }
-        if (!allowEmpty) {
-          violations.push(
-            `Pelanggaran Mode Nyata: Halaman "${c.pageTitle}" (${c.pagePath}) masih menggunakan data tiruan (${c.reason}).`,
-          );
-        } else {
-          warnings.push(
-            `Mode Nyata: Halaman "${c.pageTitle}" (${c.pagePath}) menunggu perangkat terhubung (${c.reason}).`,
-          );
-        }
+        violations.push(
+          `Pelanggaran Mode Nyata: Halaman "${c.pageTitle}" (${c.pagePath}) masih menggunakan data tiruan (${c.reason}).`,
+        );
       }
     }
 
@@ -220,7 +201,7 @@ export function runStartupValidation(
     details: {
       database,
       auth,
-      devices: { ok: missing.length === 0, missing, configured },
+      devices: { ok: true, missing, configured },
       goLiveCheck: { passed: violations.length === 0, violations },
       pageDataSources: { passed: dummyPages.length === 0, dummyPages },
     },

@@ -57,12 +57,10 @@ test("BETTER_AUTH_URL tidak valid -> fatal", () => {
   );
 });
 
-test("live tanpa MikroTik -> gagal go-live", () => {
+test("live tanpa MikroTik di env -> tetap canBoot karena disimpan di database", () => {
   const r = runStartupValidation({ ...base, DASHBOARD_DATA: "live" });
-  assert.equal(r.canBoot, false);
-  assert.equal(r.details.goLiveCheck.passed, false);
-  assert.deepEqual(r.details.devices.missing.length, 3);
-  assert.ok(r.details.goLiveCheck.violations.length > 0);
+  assert.equal(r.canBoot, true);
+  assert.equal(r.details.goLiveCheck.passed, true);
 });
 
 test("live + MikroTik simulator -> pelanggaran simulator", () => {
@@ -114,11 +112,7 @@ test("DATA_MODE=nyata menolak boot bila ada halaman yang masih dummy", () => {
       (e) => e.includes("/app/billing") && e.includes("Billing"),
     ),
   );
-  assert.ok(
-    r.fatalErrors.some(
-      (e) => e.includes("/app/alert"),
-    ),
-  );
+  assert.ok(r.fatalErrors.some((e) => e.includes("/app/alert")));
 });
 
 test("DATA_MODE=dummy mengizinkan boot meskipun ada modul simulator", () => {
@@ -135,7 +129,12 @@ test("DATA_MODE=dummy mengizinkan boot meskipun ada modul simulator", () => {
 test("banner & report tidak membocorkan rahasia", () => {
   for (const env of [
     { ...base, ...mikrotik, DASHBOARD_DATA: "live" },
-    { ...base, ...mikrotik, DASHBOARD_DATA: "live", MIKROTIK_MODE: "simulator" },
+    {
+      ...base,
+      ...mikrotik,
+      DASHBOARD_DATA: "live",
+      MIKROTIK_MODE: "simulator",
+    },
     { ...base, BETTER_AUTH_SECRET: "x" },
   ]) {
     const r = runStartupValidation(env);
@@ -144,13 +143,12 @@ test("banner & report tidak membocorkan rahasia", () => {
       assert.ok(!out.includes(s), `bocor: ${s}`);
   }
   assert.match(
-    formatStartupBanner(runStartupValidation({ ...base, ...mikrotik, DASHBOARD_DATA: "live" })),
+    formatStartupBanner(
+      runStartupValidation({ ...base, ...mikrotik, DASHBOARD_DATA: "live" }),
+    ),
     /\[READY\]/,
   );
-  assert.match(
-    formatStartupBanner(runStartupValidation({})),
-    /\[BLOCKED\]/,
-  );
+  assert.match(formatStartupBanner(runStartupValidation({})), /\[BLOCKED\]/);
 });
 
 test("assertStartupConfig melempar bila tidak bisa boot", () => {

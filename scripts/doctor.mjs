@@ -61,9 +61,8 @@ await check("PostgreSQL connection and authentication tables", async () => {
   }
 });
 await check("Startup configuration completeness", async () => {
-  const { runStartupValidation } = await import(
-    "../src/lib/startup-validator.ts"
-  );
+  const { runStartupValidation } =
+    await import("../src/lib/startup-validator.ts");
   const report = runStartupValidation(process.env);
   for (const w of report.warnings) console.warn(`  ! ${w}`);
   if (!report.canBoot) throw new Error(report.fatalErrors.join(" | "));
@@ -71,7 +70,7 @@ await check("Startup configuration completeness", async () => {
 await check("Project instructions and skills", () => {
   for (const path of [
     "AGENTS.md",
-    "agent.md",
+    "docs/agent.md",
     "compose.dev.yaml",
     ".agents/skills/dev-database/SKILL.md",
     ".agents/skills/build-feature/SKILL.md",

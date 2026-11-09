@@ -41,7 +41,7 @@ const sources = [
   ".prettierrc.json",
   ".prettierignore",
   "AGENTS.md",
-  "agent.md",
+  "docs/agent.md",
   "CLAUDE.md",
   "README.md",
   "LICENSE",

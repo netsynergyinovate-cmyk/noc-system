@@ -1,19 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Activity,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  Layers,
-  Play,
-  Power,
-  RefreshCw,
-  Server,
-  ShieldCheck,
-  Zap,
-} from "lucide-react";
+import { Activity, CheckCircle2, Play, Power, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -73,10 +61,7 @@ export function AutoAlignmentStatus() {
   };
 
   return (
-    <div
-      className="flex flex-col gap-6"
-      data-testid="auto-alignment-status"
-    >
+    <div className="flex flex-col gap-6" data-testid="auto-alignment-status">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -130,11 +115,14 @@ export function AutoAlignmentStatus() {
             <CardDescription>Detak Penyelarasan Terakhir</CardDescription>
             <CardTitle className="text-sm font-semibold truncate">
               {overview.lastGlobalTickAt
-                ? new Date(overview.lastGlobalTickAt).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  }) + " WIB"
+                ? new Date(overview.lastGlobalTickAt).toLocaleTimeString(
+                    "id-ID",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    },
+                  ) + " WIB"
                 : "-"}
             </CardTitle>
           </CardHeader>
@@ -173,7 +161,8 @@ export function AutoAlignmentStatus() {
           Jadwal Penyelarasan Otomatis (Periodic Background Jobs)
         </h2>
         <p className="text-xs text-muted-foreground">
-          Konfigurasi dan pemantauan tugas polling telemetri, penarikan data optik OLT, rekonsiliasi billing, dan evaluasi rule mesin anomali.
+          Konfigurasi dan pemantauan tugas polling telemetri, penarikan data
+          optik OLT, rekonsiliasi billing, dan evaluasi rule mesin anomali.
         </p>
       </div>
 
@@ -190,7 +179,10 @@ export function AutoAlignmentStatus() {
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
                       {job.name}
-                      <Badge variant="outline" className="text-[10px] font-mono">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-mono"
+                      >
                         {formatInterval(job.intervalSeconds)}
                       </Badge>
                     </CardTitle>
@@ -216,9 +208,7 @@ export function AutoAlignmentStatus() {
             </CardHeader>
 
             <CardContent className="space-y-3 pt-0">
-              <p className="text-xs text-muted-foreground">
-                {job.description}
-              </p>
+              <p className="text-xs text-muted-foreground">{job.description}</p>
 
               <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/40 p-2.5 text-xs">
                 <div>

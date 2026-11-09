@@ -289,3 +289,64 @@ func TestParseCpeDeviceGenieAcs(t *testing.T) {
 		t.Errorf("RxDbm = %v, want -18.75", info.RxDbm)
 	}
 }
+
+func TestCountHosts(t *testing.T) {
+	raw3Active := map[string]any{
+		"InternetGatewayDevice": map[string]any{
+			"LANDevice": map[string]any{
+				"1": map[string]any{
+					"Hosts": map[string]any{
+						"Host": map[string]any{
+							"1": map[string]any{"Active": map[string]any{"_value": true}},
+							"2": map[string]any{"Active": map[string]any{"_value": false}},
+							"3": map[string]any{"Active": map[string]any{"_value": true}},
+							"4": map[string]any{"Active": map[string]any{"_value": false}},
+							"5": map[string]any{"Active": map[string]any{"_value": true}},
+							"6": map[string]any{"Active": map[string]any{"_value": false}},
+							"7": map[string]any{"Active": map[string]any{"_value": false}},
+						},
+					},
+				},
+			},
+		},
+	}
+	c3 := countHosts(raw3Active)
+	if c3 == nil || *c3 != 3 {
+		t.Fatalf("countHosts 3 active: got %v, want 3", c3)
+	}
+
+	raw0Active := map[string]any{
+		"InternetGatewayDevice": map[string]any{
+			"LANDevice": map[string]any{
+				"1": map[string]any{
+					"Hosts": map[string]any{
+						"Host": map[string]any{
+							"1": map[string]any{"Active": map[string]any{"_value": false}},
+							"2": map[string]any{"Active": map[string]any{"_value": false}},
+							"3": map[string]any{"Active": map[string]any{"_value": false}},
+						},
+					},
+				},
+			},
+		},
+	}
+	c0 := countHosts(raw0Active)
+	if c0 == nil || *c0 != 0 {
+		t.Fatalf("countHosts 0 active: got %v, want 0", c0)
+	}
+
+	rawNoActive := map[string]any{
+		"Device": map[string]any{
+			"Hosts": map[string]any{
+				"Host": map[string]any{
+					"1": map[string]any{"HostName": map[string]any{"_value": "Laptop"}},
+					"2": map[string]any{"HostName": map[string]any{"_value": "Phone"}},
+				},
+			},
+		},
+	}
+	cNoActive := countHosts(rawNoActive)
+	if cNoActive == nil || *cNoActive != 2 {
+		t.Fatalf("countHosts no Active field: got %v, want 2", cNoActive)
+	}
+}

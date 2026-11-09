@@ -1,5 +1,5 @@
 import { backendGet } from "./backend-api.ts";
-import { mockRouters, createMockCustomers } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
 import type { DashboardCustomer } from "./types.ts";
 
 // Kontrak GET /api/v1/netflow/flows?range=1h|6h|24h&router=&protocol=&app= (belum ada).

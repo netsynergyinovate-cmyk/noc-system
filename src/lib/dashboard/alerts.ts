@@ -18,7 +18,8 @@ import {
   mockDirectory,
   type ServiceDirectory,
 } from "./incident-root.ts";
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
+import type { DashboardCustomer } from "./types.ts";
 import { hashString, unit } from "./mock-random.ts";
 import type { IncidentKind, IncidentSeverity } from "./types.ts";
 
@@ -145,9 +146,7 @@ export const POLL_SECONDS: Record<IncidentKind, number> = {
   offline: 30,
 };
 
-const customersById = new Map(
-  createMockCustomers().map((customer) => [customer.id, customer]),
-);
+const customersById = new Map<string, DashboardCustomer>();
 const routersById = new Map(mockRouters.map((router) => [router.id, router]));
 
 // Lokasi kejadian dari data yang sudah ada: titik dan alamat pelanggan untuk

@@ -5,7 +5,8 @@ import {
   type IncidentImpact,
 } from "./incident-root.ts";
 import { incidentLabels } from "./incidents.ts";
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
+import type { DashboardCustomer } from "./types.ts";
 import { hashString, unit } from "./mock-random.ts";
 import type { Incident, IncidentKind, IncidentSeverity } from "./types.ts";
 
@@ -91,7 +92,7 @@ export const anomalyRules: AnomalyRule[] = [
 
 const INTERFACES = ["ether1-wan", "ether2-lan", "sfp1-olt", "sfp2-olt"];
 
-const customers = createMockCustomers();
+const customers: DashboardCustomer[] = [];
 
 // Satu anomali menghasilkan angka yang sama setiap dihitung, karena hanya
 // bergantung pada id-nya.
@@ -122,7 +123,7 @@ function buildAnomaly(incident: Incident): RawAnomaly {
   const pickRouter = () =>
     mockRouters[Math.floor(unit(seed) * mockRouters.length)].id;
   const pickCustomer = () =>
-    customers[Math.floor(unit(seed + 1) * customers.length)];
+    customers.length > 0 ? customers[Math.floor(unit(seed + 1) * customers.length)] : null;
   const pickInterface = () =>
     INTERFACES[Math.floor(unit(seed + 2) * INTERFACES.length)];
 
@@ -151,14 +152,14 @@ function buildAnomaly(incident: Incident): RawAnomaly {
       const customer = pickCustomer();
       return {
         ...base,
-        routerId: customer.routerId,
-        customerId: customer.id,
+        routerId: customer?.routerId ?? pickRouter(),
+        customerId: customer?.id ?? null,
         measured: -(25.1 + Math.round(unit(seed + 3) * 30) / 10), // -25,1..-28,1
       };
     }
     case "offline": {
       const customer = pickCustomer();
-      return { ...base, routerId: customer.routerId, customerId: customer.id };
+      return { ...base, routerId: customer?.routerId ?? pickRouter(), customerId: customer?.id ?? null };
     }
   }
 }

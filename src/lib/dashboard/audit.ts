@@ -1,4 +1,5 @@
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
+import type { DashboardCustomer } from "./types.ts";
 import { hashString, unit } from "./mock-random.ts";
 import { paginate, type Page } from "./paging.ts";
 
@@ -438,11 +439,9 @@ function actionFor(roll: number): AuditAction {
   return actionWeights[actionWeights.length - 1][0];
 }
 
-// Pelanggan tiruan yang sama dengan halaman Pelanggan, dibuat sekali.
-let customerCache: ReturnType<typeof createMockCustomers> | null = null;
+const emptyCustomers: DashboardCustomer[] = [];
 function customers() {
-  customerCache ??= createMockCustomers();
-  return customerCache;
+  return emptyCustomers;
 }
 
 const thresholdRules = [

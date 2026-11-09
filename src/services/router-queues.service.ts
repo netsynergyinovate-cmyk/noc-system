@@ -5,7 +5,6 @@ import { routers as routersTable } from "@/db/schema";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
 import { MikrotikRestClient, type MikrotikSimpleQueue } from "@/lib/mikrotik/client";
-import { createMockCustomers } from "@/lib/dashboard/mock-data";
 import {
   filterSimpleQueues,
   generateMockSimpleQueues,
@@ -50,7 +49,7 @@ export async function getRouterQueues(
   status: QueueStatusFilter = "all",
 ): Promise<MockSimpleQueue[]> {
   if (routerId.startsWith("router-") || env.DASHBOARD_DATA === "demo") {
-    return filterSimpleQueues(generateMockSimpleQueues(routerId, createMockCustomers()), query, status);
+    return filterSimpleQueues(generateMockSimpleQueues(routerId, []), query, status);
   }
   if (!UUID.test(routerId)) return [];
 

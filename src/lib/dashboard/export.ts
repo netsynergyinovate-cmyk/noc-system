@@ -7,7 +7,8 @@ import { ALERT_HISTORY_SECONDS, mockResolvedAlerts } from "./alerts.ts";
 import { mockAuditLog } from "./audit.ts";
 import { mockBillingOverview } from "./billing.ts";
 import { mockIncidents } from "./history.ts";
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
+import type { DashboardCustomer } from "./types.ts";
 
 const routerNameOf = (id: string) =>
   mockRouters.find((r) => r.id === id)?.name ?? id;
@@ -85,7 +86,7 @@ export const EXPORT_DATASETS: readonly DatasetOption[] = [
     id: "customers",
     label: "Data Pelanggan & Jaringan",
     description: "Daftar seluruh pelanggan PPPoE, router pelayan, ODP, koordinat, dan status optik.",
-    recordCount: () => createMockCustomers().length,
+    recordCount: () => 0,
   },
   {
     id: "billing",
@@ -238,7 +239,7 @@ export function generateExportData(
   }
 
   if (dataset === "customers") {
-    const list = createMockCustomers();
+    const list: DashboardCustomer[] = [];
     if (format === "json") {
       return {
         filename: `data-pelanggan-${dateStr}.json`,

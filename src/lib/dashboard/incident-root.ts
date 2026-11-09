@@ -1,5 +1,5 @@
 import type { AlertGroup } from "./correlation.ts";
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
 
 // SKEMA GANGGUAN: sumber akar dan jumlah terdampak. Tiap gangguan (anomali atau
 // alert) membawa empat isian ini, supaya petugas langsung tahu apa yang harus
@@ -104,10 +104,8 @@ export function groupImpact(
 }
 
 // Direktori dari data tiruan.
-const mockCustomers = createMockCustomers();
-const customerById = new Map(
-  mockCustomers.map((customer) => [customer.id, customer]),
-);
+const mockCustomers: { id: string; name: string; routerId?: string; odpName?: string }[] = [];
+const customerById = new Map<string, { id: string; name: string; routerId?: string; odpName?: string }>();
 const routerById = new Map(mockRouters.map((router) => [router.id, router]));
 
 export const mockDirectory: ServiceDirectory = {

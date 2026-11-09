@@ -5,7 +5,7 @@ import { TRAFFIC_WINDOW } from "./constants";
 import { getCustomerHealth } from "./health";
 import type { IncidentCard } from "./incident-cards";
 import { mergeIncidentCards } from "./incident-sync";
-import { createMockCustomers, mockRouters } from "./mock-data";
+import { mockRouters } from "./mock-data";
 import type {
   BillingStatus,
   ConnectionStatus,

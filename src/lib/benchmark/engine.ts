@@ -1,5 +1,5 @@
 import { buildMockHistory } from "../dashboard/history";
-import { createMockCustomers, mockRouters } from "../dashboard/mock-data";
+import { mockRouters } from "../dashboard/mock-data";
 import { hashString, unit } from "../dashboard/mock-random";
 import type { TrafficRangeId } from "../dashboard/ranges";
 
@@ -100,7 +100,8 @@ export function evaluate(nowSec: number): BenchmarkAnomaly[] {
     if (cpu > CPU_THRESHOLD)
       anomalies.push({ kind: "cpu", subjectId: router.id, subject: router.name, measured: cpu });
   }
-  for (const customer of createMockCustomers()) {
+  const sampleCustomers: { id: string; name: string; isOnline: boolean }[] = [];
+  for (const customer of sampleCustomers) {
     const queue =
       Math.round(unit(hashString(customer.id) * 31 + minute) * 1000) / 10;
     if (queue > QUEUE_THRESHOLD)

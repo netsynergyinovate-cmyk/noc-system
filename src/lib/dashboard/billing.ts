@@ -1,5 +1,5 @@
 import { formatInteger } from "./format.ts";
-import { createMockCustomers, mockRouters } from "./mock-data.ts";
+import { mockRouters } from "./mock-data.ts";
 import { hashString, unit } from "./mock-random.ts";
 import type { BillingStatus, DashboardCustomer } from "./types";
 
@@ -490,7 +490,7 @@ export function mockBillingRecords(
 const routerNames = new Map(
   mockRouters.map((router) => [router.id, router.name]),
 );
-const mockCustomers = createMockCustomers();
+const mockCustomers: DashboardCustomer[] = [];
 const mockRecords = mockBillingRecords(mockCustomers);
 const mockMatch = matchBilling(
   mockCustomers,

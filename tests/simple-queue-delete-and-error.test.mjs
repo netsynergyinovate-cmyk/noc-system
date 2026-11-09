@@ -48,8 +48,8 @@ test("dialog konfirmasi memuat nama, target, batas, Batal, Ya Hapus Queue", () =
   assert.match(src, /deletingQueue\.target/);
   assert.match(src, /formatBitrate\(deletingQueue\.maxLimit\.upload\)/);
   assert.match(src, /formatBitrate\(deletingQueue\.maxLimit\.download\)/);
-  assert.match(src, /menghapus aturan limitasi bandwidth ini dari router/);
-  assert.match(src, /<AlertDialogCancel[^>]*>Batal</);
+  assert.match(src, /menghapus aturan limitasi bandwidth ini dari\s+router/);
+  assert.match(src, /<AlertDialogCancel[^>]*>\s*Batal\s*</);
   assert.match(src, /Ya, Hapus Queue/);
 });
 

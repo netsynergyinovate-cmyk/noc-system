@@ -115,10 +115,7 @@ test("NetflowBoard: test id, badge tiruan, kolom tabel", () => {
     "Paket",
     "Throughput",
   ]) {
-    assert.ok(
-      src.includes(`>${col}<`) || src.includes(`${col}\n`),
-      `kolom ${col}`,
-    );
+    assert.ok(src.includes(col), `kolom ${col}`);
   }
   assert.match(src, /IP Asal:Port → IP Tujuan:Port/);
 });

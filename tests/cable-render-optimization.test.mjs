@@ -59,7 +59,7 @@ test("Optimasi Render Ribuan Jalur Kabel di Peta (Spatial Bounding Box Culling &
     () => {
       assert.match(
         content,
-        /dynamicSmoothFactor = currentZoom >= 16 \? 0\.25 : currentZoom >= 13 \? 1\.0 : 2\.0/,
+        /dynamicSmoothFactor\s*=\s*currentZoom\s*>=\s*16\s*\?\s*0\.25\s*:\s*currentZoom\s*>=\s*13\s*\?\s*1\.0\s*:\s*2\.0/,
         "Harus menghitung dynamicSmoothFactor berdasarkan level zoom",
       );
       assert.match(

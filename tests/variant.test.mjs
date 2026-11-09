@@ -56,10 +56,14 @@ test("a derivative preserves base files and provenance while excluding local sta
   const parent = mkdtempSync(resolve(tmpdir(), "starter-variant-"));
   try {
     const source = fixture(parent);
-    symlinkSync(
-      resolve(source, ".env.local"),
-      resolve(source, "src/leaked-secret"),
-    );
+    try {
+      symlinkSync(
+        resolve(source, ".env.local"),
+        resolve(source, "src/leaked-secret"),
+      );
+    } catch (err) {
+      if (process.platform !== "win32" || err.code !== "EPERM") throw err;
+    }
     const target = createVariant(
       "dashboard",
       resolve(parent, "dashboard"),
@@ -117,11 +121,20 @@ test("a derivative refuses overwrites, nested destinations, and paths through a 
       () => createVariant("dashboard", resolve(source, "child"), source),
       /outside/,
     );
-    symlinkSync(source, resolve(parent, "alias"), "dir");
-    assert.throws(
-      () => createVariant("dashboard", resolve(parent, "alias/child"), source),
-      /outside/,
-    );
+    let aliasCreated = false;
+    try {
+      symlinkSync(source, resolve(parent, "alias"), "dir");
+      aliasCreated = true;
+    } catch (err) {
+      if (process.platform !== "win32" || err.code !== "EPERM") throw err;
+    }
+    if (aliasCreated) {
+      assert.throws(
+        () =>
+          createVariant("dashboard", resolve(parent, "alias/child"), source),
+        /outside/,
+      );
+    }
     assert.throws(
       () => createVariant("../invalid", resolve(parent, "new"), source),
       /Usage/,

@@ -120,7 +120,7 @@ test("Task: Jaga ketajaman garis penghubung saat zoom peta", async (t) => {
       );
       assert.match(
         networkMapContent,
-        /const scaledWeight = getZoomScaledLineWeight\(baseWeight, currentZoom\);/,
+        /const scaledWeight = getZoomScaledLineWeight\(\s*baseWeight,\s*currentZoom,?\s*\);/,
         "Polyline kabel wajib menggunakan scaledWeight hasil perhitungan zoom",
       );
       assert.match(

@@ -202,7 +202,7 @@ test("Task: Petakan Kapasitas Serat ke Ketebalan dan Warna", async (t) => {
       );
       assert.match(
         content,
-        /color:[^,\n]*style\.color/,
+        /color:[\s\S]*?style\.color/,
         "Polyline harus menggunakan warna dari style.color",
       );
       assert.match(

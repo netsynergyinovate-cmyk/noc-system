@@ -83,6 +83,7 @@ try {
     DEVICE_SECRET: randomBytes(16).toString("hex"),
     BACKEND_URL: "http://localhost:8180",
     ALLOW_SIGN_UP: "true",
+    PG_MAX_CONNECTIONS: "5",
   };
   delete testEnv.__NEXT_PROCESSED_ENV;
   await run(process.execPath, ["scripts/migrate.mjs"], testEnv);
@@ -103,7 +104,11 @@ try {
     const files = readdirSync(resolve(root, "tests"))
       .filter((file) => file.endsWith(".test.mjs"))
       .map((file) => `tests/${file}`);
-    await run(process.execPath, ["--test", ...files], testEnv);
+    await run(
+      process.execPath,
+      ["--test", "--test-concurrency=4", ...files],
+      testEnv,
+    );
   } else {
     await run(
       process.execPath,

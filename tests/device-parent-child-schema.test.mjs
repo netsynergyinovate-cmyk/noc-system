@@ -270,7 +270,7 @@ test("Task: Buat Skema Relasi Induk Anak Perangkat (Backend)", async (t) => {
     );
     assert.match(
       serviceContent,
-      /detectHierarchyCycle\(input\.childId,\s*input\.parentId\)/,
+      /detectHierarchyCycle\(\s*input\.childId,[\s\S]*?input\.parentId\s*\)/,
       "createDeviceRelation wajib memanggil detectHierarchyCycle sebelum menyimpan relasi hierarchy",
     );
   });

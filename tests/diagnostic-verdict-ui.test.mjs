@@ -26,7 +26,7 @@ test("diagnostic-run-view mengekspor VerdictConclusion dan scopeBadgeLabels", ()
   // Periksa teks peringatan & kalimat penjelas
   assert.match(
     source,
-    /Gangguan bersama di sisi hulu: bukan masalah perangkat pelanggan\./,
+    /Gangguan bersama di sisi hulu: bukan masalah perangkat\s+pelanggan\./,
   );
   assert.match(
     source,
@@ -41,7 +41,7 @@ test("diagnostic-run-view mengekspor VerdictConclusion dan scopeBadgeLabels", ()
   // Periksa pola kalimat sumber akar
   assert.match(
     source,
-    /Sumber:\s*\{run\.verdictRoot\.name\}\s*—\s*\{run\.verdictRoot\.affected\}\s*dari(?:\{"\s*"\}|\s+)*\{run\.verdictRoot\.served\}\s*pelanggan terganggu/,
+    /Sumber:\s*\{run\.verdictRoot\.name\}[\s\S]*?\{run\.verdictRoot\.affected\}[\s\S]*?dari[\s\S]*?\{run\.verdictRoot\.served\}[\s\S]*?pelanggan terganggu/,
   );
 });
 

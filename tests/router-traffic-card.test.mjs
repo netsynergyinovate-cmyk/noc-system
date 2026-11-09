@@ -79,7 +79,7 @@ test("RouterTrafficCard: struktur konten dan empty state", () => {
 test("RouterTable: tab Trafik Live memakai RouterTrafficCard", () => {
   assert.match(tableSrc, /import \{ RouterTrafficCard \}/);
   assert.match(tableSrc, /grid-cols-5/);
-  assert.match(tableSrc, /<TabsTrigger value="traffic"/);
+  assert.match(tableSrc, /<TabsTrigger[\s\S]*?value="traffic"/);
   assert.match(tableSrc, /Trafik Live/);
   assert.match(
     tableSrc,

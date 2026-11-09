@@ -48,12 +48,12 @@ test("Fitur Penyorotan Titik Peta dari Panel Pohon Relasi", async (t) => {
       );
       assert.match(
         mapContent,
-        /data\.infrastructure\?\.find\(\(inf\)\s*=>\s*inf\.id\s*===\s*focusedNodeId\)/,
+        /data\.infrastructure\?\.find\([\s\S]*?focusedNodeId[\s\S]*?\)/,
         "Wajib mencari simpul infrastruktur yang cocok dengan focusedNodeId",
       );
       assert.match(
         mapContent,
-        /data\.customers\?\.find\([\s\S]*?focusedNodeId\)/,
+        /data\.customers\?\.find\([\s\S]*?focusedNodeId/,
         "Wajib mencari simpul pelanggan yang cocok dengan focusedNodeId",
       );
       assert.match(

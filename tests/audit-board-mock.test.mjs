@@ -105,5 +105,5 @@ test("AuditBoard memuat data-testid yang diwajibkan", () => {
     assert.ok(src.includes(`data-testid="${id}"`), id);
   }
   assert.match(src, /Data Tiruan Audit \(Fase 2\)/);
-  assert.match(src, /database audit_log nyata di\s+Fase 5/);
+  assert.match(src, /database audit_log nyata[\s\S]+?Fase 5/);
 });

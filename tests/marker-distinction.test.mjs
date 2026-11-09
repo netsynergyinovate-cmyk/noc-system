@@ -106,7 +106,7 @@ test("Tampilkan penanda pelanggan berbeda dari perangkat", async (t) => {
       );
       assert.match(
         content,
-        /Pelanggan Terhubung/,
+        /Pelanggan\s+Terhubung/,
         "Tooltip ODP harus menampilkan jumlah pelanggan terhubung",
       );
     },

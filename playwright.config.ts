@@ -22,6 +22,8 @@ const baseEnv = {
   // Terisi kosong secara tegas supaya .env.local pengembang tidak ikut terbaca:
   // server utama dan server gate diuji tanpa proxy tepercaya.
   TRUSTED_PROXIES: "",
+  MIKROTIK_MODE: "",
+  DEVICE_MODE: "",
 };
 
 export default defineConfig({
@@ -54,6 +56,7 @@ export default defineConfig({
         ...baseEnv,
         BETTER_AUTH_URL: "http://localhost:3101",
         DASHBOARD_DATA: "demo",
+        DATA_MODE: "demo",
       },
       gracefulShutdown: { signal: "SIGTERM", timeout: 5000 },
     },
@@ -66,6 +69,7 @@ export default defineConfig({
         ...baseEnv,
         BETTER_AUTH_URL: "http://localhost:3102",
         DASHBOARD_DATA: "live",
+        DATA_MODE: "live",
       },
       gracefulShutdown: { signal: "SIGTERM", timeout: 5000 },
     },
@@ -78,6 +82,7 @@ export default defineConfig({
         ...baseEnv,
         BETTER_AUTH_URL: "http://localhost:3103",
         DASHBOARD_DATA: "demo",
+        DATA_MODE: "demo",
         TRUSTED_PROXIES: "10.10.0.0/16, 172.31.0.1,2001:db8:ffff::/48",
       },
       gracefulShutdown: { signal: "SIGTERM", timeout: 5000 },

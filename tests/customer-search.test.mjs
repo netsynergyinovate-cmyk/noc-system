@@ -123,7 +123,7 @@ test("Tambah pencarian nama dan nomor pelanggan", async (t) => {
     () => {
       assert.match(
         serviceContent,
-        /matchName \|\| matchId \|\| matchOdp \|\| matchHost \|\| matchAddr \|\| matchPppoe \|\| matchSerial/,
+        /matchName\s*\|\|\s*matchId\s*\|\|\s*matchOdp\s*\|\|\s*matchHost\s*\|\|\s*matchAddr\s*\|\|\s*matchPppoe\s*\|\|\s*matchSerial/,
         "Service markers harus memfilter berdasarkan nama, ID, nomor PPPoE, dan serial number",
       );
     },

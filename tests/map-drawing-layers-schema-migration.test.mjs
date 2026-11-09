@@ -42,7 +42,7 @@ test("Tabel Anotasi Lapisan Peta & Migrasi Database Drizzle (Map Drawing Layers 
         schemaContent,
         /export const mapDrawingLayers = pgTable\(\s*"map_drawing_layers"/,
       );
-      assert.match(schemaContent, /id:\s*text\("id"\)\.primaryKey\(\)/);
+      assert.match(schemaContent, /id:\s*text\("id"\)\s*\.primaryKey\(\)/);
       assert.match(schemaContent, /name:\s*text\("name"\)\.notNull\(\)/);
       assert.match(schemaContent, /opacity:\s*numeric\("opacity"/);
       assert.match(schemaContent, /zIndex:\s*integer\("z_index"\)/);
@@ -59,7 +59,7 @@ test("Tabel Anotasi Lapisan Peta & Migrasi Database Drizzle (Map Drawing Layers 
     () => {
       assert.match(
         schemaContent,
-        /export type DrawingShapeType\s*=\s*\| "rectangle"/,
+        /export type DrawingShapeType\s*=\s*(\| )?"rectangle"/,
       );
       assert.match(schemaContent, /"circle"/);
       assert.match(schemaContent, /"arrow"/);

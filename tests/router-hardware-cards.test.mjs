@@ -111,7 +111,7 @@ test("komponen RouterHardwareCards: 4 kartu, progressbar, a11y", () => {
   ]) {
     assert.ok(cardsSrc.includes(id), id);
   }
-  assert.equal((cardsSrc.match(/<Bar /g) ?? []).length, 2);
+  assert.equal((cardsSrc.match(/<Bar[\s\n]/g) ?? []).length, 2);
   assert.match(cardsSrc, /role="progressbar"/);
   assert.match(cardsSrc, /aria-valuenow=/);
   assert.match(cardsSrc, /aria-valuemin=\{0\}/);

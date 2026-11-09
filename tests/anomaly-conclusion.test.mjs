@@ -460,7 +460,10 @@ test("AnomalyConclusion UI component: kontrak DOM, testid, aksesibilitas, dan to
   assert.ok(source.includes("maks 50 data terbaru"));
 
   // Catatan aturan tetap berdasarkan lapisan
-  assert.match(source, /aturan tetap berdasarkan lapisan, bukan probabilitas/i);
+  assert.match(
+    source,
+    /aturan tetap berdasarkan lapisan,\s*bukan\s+probabilitas/i,
+  );
   // Tombol disclosure 'Apa ini?'
   assert.ok(source.includes("Apa ini?"));
   assert.ok(source.includes("aria-expanded"));

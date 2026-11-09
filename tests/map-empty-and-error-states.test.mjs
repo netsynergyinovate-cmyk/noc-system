@@ -53,7 +53,7 @@ test("Tambah empty state dan error state peta", async (t) => {
     );
     assert.match(
       content,
-      /customers\.length === 0 && data\.infrastructure\.length === 0/,
+      /customers\.length === 0 &&\s*data\.infrastructure\.length === 0/,
       "Empty state condition must verify total absence of network infrastructure and customers",
     );
   });

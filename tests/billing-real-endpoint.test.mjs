@@ -14,10 +14,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 
 const { GET: getBilling } = await import("../src/app/api/billing/route.ts");
-const { GET: getBillingSync } = await import("../src/app/api/billing/sync/route.ts");
-const { getBillingOverview, getBillingSyncState } = await import(
-  "../src/services/billing.service.ts"
-);
+const { GET: getBillingSync } =
+  await import("../src/app/api/billing/sync/route.ts");
+const { getBillingOverview, getBillingSyncState } =
+  await import("../src/services/billing.service.ts");
 
 test("GET /api/billing menolak anonim dengan status 401", async () => {
   const req = new Request("http://localhost:3000/api/billing");

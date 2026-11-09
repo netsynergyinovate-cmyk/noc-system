@@ -138,17 +138,17 @@ test("Endpoint & Service Simpan Koreksi Koordinat Pelanggan", async (t) => {
     assert.equal(nonNumeric.success, false, "Nilai non-numerik harus ditolak");
   });
 
-  await t.test("Service updateCustomerLocation: Memperbarui koordinat pelanggan", async () => {
+  await t.test("Service updateCustomerLocation: Memperbarui koordinat pelanggan", async (st) => {
     let cust;
     try {
       const rows = await db.select({ id: customers.id }).from(customers).limit(1);
       cust = rows[0];
     } catch {
-      if (typeof t.skip === "function") t.skip("tidak ada koneksi DB pada standalone test");
+      if (typeof st.skip === "function") st.skip("tidak ada koneksi DB pada standalone test");
       return;
     }
     if (!cust) {
-      if (typeof t.skip === "function") t.skip("tabel customers kosong");
+      if (typeof st.skip === "function") st.skip("tabel customers kosong");
       return;
     }
     const updated = await updateCustomerLocation(cust.id, {

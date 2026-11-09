@@ -87,7 +87,7 @@ func (s *Service) loadCpeMap(ctx context.Context) map[string]cpeInfo {
 		return cached
 	}
 	s.mu.Unlock()
-	projection := "_lastInform,VirtualParameters.pppoeUsername,VirtualParameters.ipPppoe,VirtualParameters.ipTr069,VirtualParameters.rxPower,VirtualParameters.connectedDevices,InternetGatewayDevice.DeviceInfo.UpTime,Device.DeviceInfo.UpTime,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID,InternetGatewayDevice.LANDevice.WLANConfiguration.1.SSID,Device.WiFi.SSID.1.SSID,InternetGatewayDevice.WANDevice.1.WANConnectionDevice,InternetGatewayDevice.X_ALU_OntOpticalParam,InternetGatewayDevice.DeviceInfo.XponInterface,InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig,InternetGatewayDevice.Optical.Interface.1.OpticalSignalLevel,Device.Optical.Interface.1.OpticalSignalLevel,Device.PPP.Interface"
+	projection := "_lastInform,VirtualParameters.pppoeUsername,VirtualParameters.ipPppoe,VirtualParameters.ipTr069,VirtualParameters.rxPower,VirtualParameters.connectedDevices,InternetGatewayDevice.DeviceInfo.UpTime,Device.DeviceInfo.UpTime,InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID,InternetGatewayDevice.LANDevice.WLANConfiguration.1.SSID,Device.WiFi.SSID.1.SSID,InternetGatewayDevice.WANDevice.1.WANConnectionDevice,InternetGatewayDevice.X_ALU_OntOpticalParam,InternetGatewayDevice.DeviceInfo.XponInterface,InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_EponInterfaceConfig,InternetGatewayDevice.WANDevice.1.X_CMCC_GponInterfaceConfig,InternetGatewayDevice.Optical.Interface.1.OpticalSignalLevel,Device.Optical.Interface.1.OpticalSignalLevel,Device.PPP.Interface,InternetGatewayDevice.LANDevice.1.Hosts.Host,Device.Hosts.Host"
 	rawDevices, err := s.cpeClient.ListDevicesProjected(ctx, "", projection)
 	if err != nil {
 		if s.logger != nil {
@@ -410,27 +410,8 @@ func parseCpeDevice(raw map[string]any, nowSec int64) cpeInfo {
 		"Device.WiFi.SSID.1.SSID",
 	)
 
-	// 5. Wi-Fi Clients count
-	if v, ok := getNestedVal(raw, "VirtualParameters.connectedDevices"); ok {
-		switch countVal := v.(type) {
-		case float64:
-			c := int(countVal)
-			info.ClientsCount = &c
-		case int:
-			info.ClientsCount = &countVal
-		case string:
-			var list []any
-			if json.Unmarshal([]byte(countVal), &list) == nil {
-				c := len(list)
-				info.ClientsCount = &c
-			} else if n, err := strconv.Atoi(countVal); err == nil {
-				info.ClientsCount = &n
-			}
-		case []any:
-			c := len(countVal)
-			info.ClientsCount = &c
-		}
-	}
+	// 5. Wi-Fi Clients count: periksa Host aktif nyata dari tabel Hosts.Host modem
+	info.ClientsCount = countHosts(raw)
 
 	// 6. Rx Power (dBm) mengikuti urutan dan konversi multi-vendor yang teruji
 	info.RxDbm = parseOpticalRx(raw)
@@ -517,6 +498,71 @@ func parseDbmString(s string) (float64, error) {
 	}
 	clean := strings.TrimRight(fields[0], "dBm")
 	return strconv.ParseFloat(clean, 64)
+}
+func countHosts(raw map[string]any) *int {
+	// 1. Cek InternetGatewayDevice.LANDevice.1.Hosts.Host atau Device.Hosts.Host
+	for _, basePath := range []string{
+		"InternetGatewayDevice.LANDevice.1.Hosts.Host",
+		"InternetGatewayDevice.LANDevice.Hosts.Host",
+		"Device.Hosts.Host",
+	} {
+		if val, ok := getNestedVal(raw, basePath); ok {
+			if hostMap, isMap := val.(map[string]any); isMap {
+				activeCount := 0
+				totalValid := 0
+				sawActiveField := false
+				for k, h := range hostMap {
+					if strings.HasPrefix(k, "_") {
+						continue
+					}
+					if hMap, ok := h.(map[string]any); ok {
+						totalValid++
+						if activeVal, exists := hMap["Active"]; exists {
+							sawActiveField = true
+							unwrapped := unwrapValue(activeVal)
+							if b, isBool := unwrapped.(bool); isBool && b {
+								activeCount++
+							} else if s, isStr := unwrapped.(string); isStr && (s == "true" || s == "1") {
+								activeCount++
+							}
+						}
+					}
+				}
+				if sawActiveField {
+					return &activeCount
+				}
+				if totalValid > 0 {
+					return &totalValid
+				}
+			}
+		}
+	}
+
+	// 2. Fallback: VirtualParameters.connectedDevices
+	if v, ok := getNestedVal(raw, "VirtualParameters.connectedDevices"); ok {
+		switch countVal := v.(type) {
+		case float64:
+			c := int(countVal)
+			return &c
+		case int:
+			return &countVal
+		case string:
+			var list []any
+			if json.Unmarshal([]byte(countVal), &list) == nil && len(list) > 0 {
+				c := len(list)
+				return &c
+			} else if n, err := strconv.Atoi(countVal); err == nil && n > 0 {
+				return &n
+			}
+		case []any:
+			if len(countVal) > 0 {
+				c := len(countVal)
+				return &c
+			}
+		}
+	}
+
+	return nil
 }
 
 

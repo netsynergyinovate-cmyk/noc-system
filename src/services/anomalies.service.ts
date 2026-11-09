@@ -206,7 +206,7 @@ export async function getAnomaliesList(
   if (rows.length === 0) {
     return {
       anomalies: [],
-      total: 0,
+      total,
       activeCount: Number(totals?.activeCount ?? 0),
       resolvedCount: Number(totals?.resolvedCount ?? 0),
       rules: anomalyRules,

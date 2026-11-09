@@ -24,8 +24,8 @@ type pppSource interface {
 }
 
 const (
-	// defaultImportEvery: daftar akun PPP jarang berubah; lima menit cukup.
-	defaultImportEvery = 5 * time.Minute
+	// defaultImportEvery: cek dan impor akun PPP / pelanggan baru tiap 30 detik.
+	defaultImportEvery = 30 * time.Second
 	// maxSecretsPerRouter membatasi satu putaran bila router mengirim daftar yang tidak wajar.
 	maxSecretsPerRouter = 50000
 	maxNameLength       = 200

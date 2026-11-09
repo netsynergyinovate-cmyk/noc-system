@@ -196,7 +196,7 @@ func startRouterPolling(
 		return collector.LoadTargets(ctx, pool, deviceSecret, logger)
 	}
 	go collector.NewFleet(poller, load, logger).Run(ctx, fleetEvery)
-	go collector.NewImporterWithPool(load, pool, nil, clients, logger).Run(ctx, 0)
+	go collector.NewImporterWithPool(load, pool, nil, clients, logger).Run(ctx, 30*time.Second)
 	// OLT: kondisi optik PON dan ONU dipoll dari tiap OLT aktif lalu disimpan ke
 	// olt_pon_ports dan olt_onus (dibaca halaman OLT & Optik).
 	loadOlts := func(ctx context.Context) ([]collector.OltTarget, error) {

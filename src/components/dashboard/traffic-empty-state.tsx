@@ -1,6 +1,11 @@
 "use client";
 
-import { Activity, AlertTriangle, SearchX, type LucideIcon } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  SearchX,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface TrafficEmptyStateProps {
   variant: "no_data" | "no_match" | "collector_offline";
@@ -29,7 +34,8 @@ const DEFAULTS: Record<
   collector_offline: {
     Icon: AlertTriangle,
     title: "Kolektor Tidak Terhubung",
-    description: "Kolektor data trafik tidak merespons. Periksa layanannya lalu coba lagi.",
+    description:
+      "Kolektor data trafik tidak merespons. Periksa layanannya lalu coba lagi.",
   },
 };
 
@@ -57,7 +63,9 @@ export function TrafficEmptyState({
         <Icon className="size-5 text-muted-foreground" aria-hidden="true" />
         <h3 className="text-lg font-semibold">{title ?? d.title}</h3>
       </div>
-      <p className="text-sm text-muted-foreground">{description ?? d.description}</p>
+      <p className="text-sm text-muted-foreground">
+        {description ?? d.description}
+      </p>
       {showHint && (
         <pre className="w-full overflow-x-auto rounded-md border bg-secondary p-3 font-mono text-xs">
           <code>{cliHint}</code>

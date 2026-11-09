@@ -1,6 +1,13 @@
 import { getRawPool } from "@/db";
 import { ApiError, readJson, withApiSession } from "@/lib/api";
-import { isDeveloper, isPreviewableRole, isSuperAdmin, previewableRoles, roleLabel, type AppRole } from "@/lib/roles";
+import {
+  isDeveloper,
+  isPreviewableRole,
+  isSuperAdmin,
+  previewableRoles,
+  roleLabel,
+  type AppRole,
+} from "@/lib/roles";
 
 export const runtime = "nodejs";
 

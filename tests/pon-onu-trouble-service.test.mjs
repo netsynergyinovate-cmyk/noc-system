@@ -15,9 +15,12 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 const { db } = await import("../src/db/index.ts");
 const { env } = await import("../src/lib/env.ts");
-const { olts, oltPonPorts, oltOnus } = await import("../src/db/schema/index.ts");
-const { getMockPonPortDetail } = await import("../src/lib/dashboard/pon-ports.ts");
-const { getOltPonPort, listOnus, getOltOpticalData } = await import("../src/services/devices.service.ts");
+const { olts, oltPonPorts, oltOnus } =
+  await import("../src/db/schema/index.ts");
+const { getMockPonPortDetail } =
+  await import("../src/lib/dashboard/pon-ports.ts");
+const { getOltPonPort, listOnus, getOltOpticalData } =
+  await import("../src/services/devices.service.ts");
 const { parseListOnusParams } = await import("../src/validators/devices.ts");
 const { PgDialect } = await import("drizzle-orm/pg-core");
 
@@ -31,10 +34,16 @@ db.select = (cols) => {
   let table;
   const countQuery = cols && "total" in cols;
   const chain = {
-    from(t) { table = t; return chain; },
+    from(t) {
+      table = t;
+      return chain;
+    },
     leftJoin: () => chain,
     innerJoin: () => chain,
-    where(w) { if (!countQuery && w) wheres.push(dialect.sqlToQuery(w).sql); return chain; },
+    where(w) {
+      if (!countQuery && w) wheres.push(dialect.sqlToQuery(w).sql);
+      return chain;
+    },
     orderBy: () => chain,
     limit: () => chain,
     offset: () => chain,
@@ -43,7 +52,14 @@ db.select = (cols) => {
       if (countQuery) out = [{ total: rows.listed.length }];
       else if (table === olts) out = rows.olts;
       else if (table === oltPonPorts) out = rows.ports;
-      else if (table === oltOnus) out = cols && "customerName" in cols && "onuIndex" in cols && !("id" in cols) ? rows.onus : rows.listed;
+      else if (table === oltOnus)
+        out =
+          cols &&
+          "customerName" in cols &&
+          "onuIndex" in cols &&
+          !("id" in cols)
+            ? rows.onus
+            : rows.listed;
       return Promise.resolve(out).then(resolve, reject);
     },
   };
@@ -57,8 +73,15 @@ test.beforeEach(() => {
 });
 
 const onuRow = (onuIndex, status, rx) => ({
-  onuIndex, status, rx, tx: 2, serialNumber: `HSGQ${onuIndex}`, capturedAt: NOW,
-  customerName: null, pppoeUsername: null, address: null,
+  onuIndex,
+  status,
+  rx,
+  tx: 2,
+  serialNumber: `HSGQ${onuIndex}`,
+  capturedAt: NOW,
+  customerName: null,
+  pppoeUsername: null,
+  address: null,
 });
 
 test("getMockPonPortDetail: ONU memuat trouble/isTroubled dan port memuat troubleSummary", () => {
@@ -81,7 +104,9 @@ test("getMockPonPortDetail: ONU memuat trouble/isTroubled dan port memuat troubl
 test("getOltPonPort mock mode: trouble lengkap + ringkasan", async () => {
   const p = await getOltPonPort("olt-1", 2);
   assert.equal(p.source, "mock");
-  assert.ok(p.onus.every((o) => o.trouble && typeof o.isTroubled === "boolean"));
+  assert.ok(
+    p.onus.every((o) => o.trouble && typeof o.isTroubled === "boolean"),
+  );
   assert.equal(p.troubledOnuCount, p.troubleSummary.troubled);
   assert.equal(p.weakOnuCount, p.troubleSummary.warningCount);
   assert.equal(p.losOnuCount, p.troubleSummary.losCount);
@@ -90,7 +115,16 @@ test("getOltPonPort mock mode: trouble lengkap + ringkasan", async () => {
 
 test("getOltPonPort DB rows: critical / warning / normal", async () => {
   rows.olts = [{ id: OLT_ID, name: "O-A", host: "10.0.1.1" }];
-  rows.ports = [{ ponIndex: 1, txPower: 3, rxPower: -20, onuOnlineCount: 3, attenuation: 23, capturedAt: NOW }];
+  rows.ports = [
+    {
+      ponIndex: 1,
+      txPower: 3,
+      rxPower: -20,
+      onuOnlineCount: 3,
+      attenuation: 23,
+      capturedAt: NOW,
+    },
+  ];
   rows.onus = [
     onuRow(1, "online", -20), // normal
     onuRow(2, "online", -26), // warning (lemah)
@@ -118,13 +152,25 @@ test("getOltPonPort DB rows: critical / warning / normal", async () => {
   assert.equal(p.losOnuCount, 1);
 });
 
-const listedRow = (id, status, rxPower) => ({ id, status, rxPower, serialNumber: id });
+const listedRow = (id, status, rxPower) => ({
+  id,
+  status,
+  rxPower,
+  serialNumber: id,
+});
 
 test("listOnus: tiap baris memuat trouble & isTroubled", async () => {
-  rows.listed = [listedRow("a", "online", -20), listedRow("b", "online", -28), listedRow("c", "offline", null)];
+  rows.listed = [
+    listedRow("a", "online", -20),
+    listedRow("b", "online", -28),
+    listedRow("c", "offline", null),
+  ];
   const { items, total } = await listOnus({});
   assert.equal(total, 3);
-  assert.deepEqual(items.map((i) => i.isTroubled), [false, true, true]);
+  assert.deepEqual(
+    items.map((i) => i.isTroubled),
+    [false, true, true],
+  );
   assert.equal(items[1].trouble.category, "optical_critical");
   assert.equal(items[2].trouble.category, "power_off");
   assert.equal(items[0].trouble.severity, "normal");
@@ -151,18 +197,41 @@ test("getOltOpticalData: item memuat trouble & isTroubled", async () => {
     assert.ok(o.trouble);
     assert.equal(o.isTroubled, o.trouble.isTroubled);
     if (o.status === "los") assert.equal(o.trouble.severity, "critical");
-    if (o.rxPowerDbm !== null && o.status === "online" && o.rxPowerDbm >= -25) assert.equal(o.isTroubled, false);
+    if (o.rxPowerDbm !== null && o.status === "online" && o.rxPowerDbm >= -25)
+      assert.equal(o.isTroubled, false);
   }
 });
 
 test("parseListOnusParams: isTroubled dan alias troubled", () => {
-  assert.equal(parseListOnusParams(new URLSearchParams("isTroubled=true")).isTroubled, true);
-  assert.equal(parseListOnusParams(new URLSearchParams("isTroubled=false")).isTroubled, false);
-  assert.equal(parseListOnusParams(new URLSearchParams("troubled=true")).isTroubled, true);
-  assert.equal(parseListOnusParams(new URLSearchParams("troubled=false")).isTroubled, false);
-  assert.equal(parseListOnusParams(new URLSearchParams("isTroubled=false&troubled=true")).isTroubled, false);
-  assert.equal(parseListOnusParams(new URLSearchParams("isTroubled=x")).isTroubled, undefined);
-  assert.equal(parseListOnusParams(new URLSearchParams("")).isTroubled, undefined);
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("isTroubled=true")).isTroubled,
+    true,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("isTroubled=false")).isTroubled,
+    false,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("troubled=true")).isTroubled,
+    true,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("troubled=false")).isTroubled,
+    false,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("isTroubled=false&troubled=true"))
+      .isTroubled,
+    false,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("isTroubled=x")).isTroubled,
+    undefined,
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("")).isTroubled,
+    undefined,
+  );
   assert.equal(parseListOnusParams({ troubled: true }).isTroubled, true);
   assert.equal(parseListOnusParams({ isTroubled: false }).isTroubled, false);
 });

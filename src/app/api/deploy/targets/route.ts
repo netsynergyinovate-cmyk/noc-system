@@ -1,5 +1,8 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
 import {
   getDeployTarget,
   saveDeployTarget,
@@ -17,7 +20,9 @@ const saveTargetSchema = z.object({
   mode: z.enum(["lan", "tailscale", "tunnel"]).default("lan"),
   tailscaleHost: z.string().optional().nullable(),
   connectionReason: z.string().optional().nullable(),
-  deviceAccessLevel: z.enum(["simulator", "baca-saja", "penuh"]).default("simulator"),
+  deviceAccessLevel: z
+    .enum(["simulator", "baca-saja", "penuh"])
+    .default("simulator"),
 });
 
 export async function GET(request: Request) {

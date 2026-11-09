@@ -26,7 +26,6 @@ export function GET(
   });
 }
 
-
 export function PATCH(
   request: Request,
   props: { params: Promise<{ id: string }> },
@@ -78,6 +77,9 @@ export function DELETE(
       throw new ApiError(404, "NOT_FOUND", "Tanda fitur tidak ditemukan.");
     }
 
-    return Response.json({ success: true, message: "Tanda fitur berhasil dihapus." });
+    return Response.json({
+      success: true,
+      message: "Tanda fitur berhasil dihapus.",
+    });
   });
 }

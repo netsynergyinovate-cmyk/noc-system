@@ -16,7 +16,11 @@ import {
 } from "@/services/map/types";
 import { useState } from "react";
 import { oltPonCount, routePon } from "@/services/map/topology";
-import { CONNECTION_STYLE, FIBER_CAPACITY_OPTIONS, connectionStyle } from "./map-style";
+import {
+  CONNECTION_STYLE,
+  FIBER_CAPACITY_OPTIONS,
+  connectionStyle,
+} from "./map-style";
 import { RouteColorPicker } from "./route-drawing-modal";
 import { DeviceBadge } from "./device-badge";
 
@@ -53,9 +57,13 @@ function RouteEditForm({
   const ponCount = olt?.type === "server" ? oltPonCount(olt) : 0;
   const usedBy = (n: number) =>
     routes.find(
-      (r) => r.id !== route.id && r.fromDeviceId === route.fromDeviceId && routePon(r.code) === n,
+      (r) =>
+        r.id !== route.id &&
+        r.fromDeviceId === route.fromDeviceId &&
+        routePon(r.code) === n,
     );
-  const inputCls = "w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs outline-none";
+  const inputCls =
+    "w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs outline-none";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +74,9 @@ function RouteEditForm({
     const data: RouteUpdate = {
       ...(name.trim() !== route.name && { name: name.trim() }),
       ...(color && color !== route.color && { color }),
-      ...(cableType.trim() !== route.cableType && { cableType: cableType.trim() }),
+      ...(cableType.trim() !== route.cableType && {
+        cableType: cableType.trim(),
+      }),
       ...(fiberCapacity !== route.fiberCapacity && { fiberCapacity }),
       ...(pon > 0 && pon !== routePon(route.code) && { pon }),
     };
@@ -89,20 +99,34 @@ function RouteEditForm({
       className="p-3 rounded-xl bg-muted/30 border border-primary/40 space-y-2.5"
     >
       <span className="font-semibold text-foreground block">Ubah Jalur</span>
-      {error && <p role="alert" className="text-[11px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[11px] text-destructive">
+          {error}
+        </p>
+      )}
       <label className="block space-y-1">
         <span className="text-[10px] text-muted-foreground">Nama jalur</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={inputCls}
+        />
       </label>
       <div className="space-y-1">
-        <span className="text-[10px] text-muted-foreground block">Warna jalur</span>
+        <span className="text-[10px] text-muted-foreground block">
+          Warna jalur
+        </span>
         <RouteColorPicker value={color} onChange={setColor} />
       </div>
       <div className="grid grid-cols-3 gap-2">
         {ponCount > 0 && (
           <label className="space-y-1">
             <span className="text-[10px] text-muted-foreground">PON</span>
-            <select value={pon} onChange={(e) => setPon(Number(e.target.value))} className={inputCls}>
+            <select
+              value={pon}
+              onChange={(e) => setPon(Number(e.target.value))}
+              className={inputCls}
+            >
               {pon === 0 && <option value={0}>PON ?</option>}
               {Array.from({ length: ponCount }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n} disabled={Boolean(usedBy(n))}>
@@ -129,7 +153,11 @@ function RouteEditForm({
         </label>
         <label className="space-y-1">
           <span className="text-[10px] text-muted-foreground">Tipe kabel</span>
-          <input value={cableType} onChange={(e) => setCableType(e.target.value)} className={inputCls} />
+          <input
+            value={cableType}
+            onChange={(e) => setCableType(e.target.value)}
+            className={inputCls}
+          />
         </label>
       </div>
       <p className="text-[10px] text-muted-foreground">
@@ -193,11 +221,16 @@ export function RoutePanel({
 
   // Pisahkan segmen antar-perangkat dengan segmen drop ke pelanggan
   const interDeviceSegments = sortedSegments.filter((s) => !s.customerId);
-  const customerDropSegments = sortedSegments.filter((s) => Boolean(s.customerId));
+  const customerDropSegments = sortedSegments.filter((s) =>
+    Boolean(s.customerId),
+  );
 
   // Metrik Jarak (Sesuai PRD: diukur dari geometri server)
   const totalLengthM = route.totalLengthM;
-  const segmentSumM = sortedSegments.reduce((sum, s) => sum + (s.lengthM || 0), 0);
+  const segmentSumM = sortedSegments.reduce(
+    (sum, s) => sum + (s.lengthM || 0),
+    0,
+  );
   // total_length_m turunan dari segmen; selisih = data tidak konsisten (ditampilkan, tidak diperbaiki diam-diam)
   const totalMismatch = Math.abs(totalLengthM - segmentSumM) > 1;
 
@@ -235,7 +268,11 @@ export function RoutePanel({
   const hasUnsnapped = unsnappedSegments.length > 0;
 
   const getDeviceIcon = (type?: MapDevice["type"]) =>
-    type ? <DeviceBadge type={type} /> : <Cable className="w-3.5 h-3.5 text-zinc-400 shrink-0" />;
+    type ? (
+      <DeviceBadge type={type} />
+    ) : (
+      <Cable className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+    );
 
   return (
     <aside
@@ -262,23 +299,23 @@ export function RoutePanel({
         </div>
 
         <div className="flex items-center gap-1">
-        {!route.readOnly && !editing && (
+          {!route.readOnly && !editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-medium text-[11px] hover:opacity-90"
+              type="button"
+            >
+              Ubah
+            </button>
+          )}
           <button
-            onClick={() => setEditing(true)}
-            className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground font-medium text-[11px] hover:opacity-90"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             type="button"
+            aria-label="Tutup panel"
           >
-            Ubah
+            <X className="w-4 h-4" />
           </button>
-        )}
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          type="button"
-          aria-label="Tutup panel"
-        >
-          <X className="w-4 h-4" />
-        </button>
         </div>
       </div>
 
@@ -360,7 +397,9 @@ export function RoutePanel({
                   />
                   <span className="truncate">{s.label}</span>
                 </span>
-                <span className="font-mono font-bold text-foreground">{s.count}</span>
+                <span className="font-mono font-bold text-foreground">
+                  {s.count}
+                </span>
               </div>
             ))}
           </div>
@@ -376,8 +415,9 @@ export function RoutePanel({
             role="alert"
             className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px]"
           >
-            Data tidak konsisten: total jalur tersimpan {formatLength(totalLengthM)}
-            , jumlah panjang segmen {formatLength(segmentSumM)}.
+            Data tidak konsisten: total jalur tersimpan{" "}
+            {formatLength(totalLengthM)}, jumlah panjang segmen{" "}
+            {formatLength(segmentSumM)}.
           </div>
         )}
 
@@ -387,10 +427,12 @@ export function RoutePanel({
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
             <div className="text-[11px] leading-tight space-y-1">
               <span className="font-semibold block">
-                Perhatian: {unsnappedSegments.length} segmen kabel belum menempel jalan
+                Perhatian: {unsnappedSegments.length} segmen kabel belum
+                menempel jalan
               </span>
               <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
-                Segmen di luar jaringan jalan ditandai dengan badge khusus dan perlu disesuaikan agar perhitungan jarak akurat.
+                Segmen di luar jaringan jalan ditandai dengan badge khusus dan
+                perlu disesuaikan agar perhitungan jarak akurat.
               </p>
             </div>
           </div>
@@ -420,19 +462,25 @@ export function RoutePanel({
             <div className="space-y-2.5">
               {sortedSegments.map((seg) => {
                 const fromDev = devMap.get(seg.fromDeviceId);
-                const toDev = seg.toDeviceId ? devMap.get(seg.toDeviceId) : null;
-                const cust = seg.customerId ? custMap.get(seg.customerId) : null;
+                const toDev = seg.toDeviceId
+                  ? devMap.get(seg.toDeviceId)
+                  : null;
+                const cust = seg.customerId
+                  ? custMap.get(seg.customerId)
+                  : null;
                 const isCustomerDrop = Boolean(seg.customerId);
 
                 const fromName = fromDev?.name || "Perangkat Asal";
                 const fromType = fromDev?.type?.toUpperCase() || "DEV";
 
                 const toName = isCustomerDrop
-                  ? (cust ? `${cust.name} (${cust.customerNumber})` : "Pelanggan Terhubung")
-                  : (toDev?.name || "Perangkat Tujuan");
+                  ? cust
+                    ? `${cust.name} (${cust.customerNumber})`
+                    : "Pelanggan Terhubung"
+                  : toDev?.name || "Perangkat Tujuan";
                 const toType = isCustomerDrop
                   ? "PELANGGAN"
-                  : (toDev?.type?.toUpperCase() || "DEV");
+                  : toDev?.type?.toUpperCase() || "DEV";
 
                 const status = seg.connectionStatus || cust?.status;
 
@@ -484,7 +532,10 @@ export function RoutePanel({
 
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         {isCustomerDrop ? (
-                          <DeviceBadge type="customer" color={connectionStyle(status).color} />
+                          <DeviceBadge
+                            type="customer"
+                            color={connectionStyle(status).color}
+                          />
                         ) : (
                           getDeviceIcon(toDev?.type)
                         )}
@@ -508,7 +559,9 @@ export function RoutePanel({
                         <span className="inline-flex items-center gap-1 font-medium text-foreground">
                           <span
                             className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: connectionStyle(status).color }}
+                            style={{
+                              background: connectionStyle(status).color,
+                            }}
                           />
                           {connectionStyle(status).label}
                         </span>
@@ -544,24 +597,24 @@ export function RoutePanel({
 
         {/* Tombol Tambah Segmen Lanjutan; jalur pusat hanya-baca */}
         {!route.readOnly && (
-        <div className="pt-2 space-y-2">
-          <button
-            onClick={() => onAddSegment(route)}
-            className="w-full py-2 px-3 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs flex items-center justify-center gap-1.5 shadow-sm transition-opacity"
-            type="button"
-          >
-            <Plus className="w-4 h-4" />
-            Tarik Segmen Kabel Lanjutan
-          </button>
-          <button
-            onClick={() => onAddDevice(route)}
-            className="w-full py-2 px-3 rounded-xl border border-border hover:bg-muted text-foreground font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
-            type="button"
-          >
-            <Plus className="w-4 h-4" />
-            Pasang ODP/ODC/Tiang di Jalur Ini
-          </button>
-        </div>
+          <div className="pt-2 space-y-2">
+            <button
+              onClick={() => onAddSegment(route)}
+              className="w-full py-2 px-3 rounded-xl bg-primary hover:opacity-90 text-primary-foreground font-medium text-xs flex items-center justify-center gap-1.5 shadow-sm transition-opacity"
+              type="button"
+            >
+              <Plus className="w-4 h-4" />
+              Tarik Segmen Kabel Lanjutan
+            </button>
+            <button
+              onClick={() => onAddDevice(route)}
+              className="w-full py-2 px-3 rounded-xl border border-border hover:bg-muted text-foreground font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+              type="button"
+            >
+              <Plus className="w-4 h-4" />
+              Pasang ODP/ODC/Tiang di Jalur Ini
+            </button>
+          </div>
         )}
       </div>
     </aside>

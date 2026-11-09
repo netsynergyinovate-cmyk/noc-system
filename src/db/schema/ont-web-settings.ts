@@ -28,7 +28,9 @@ export const ontWebSettings = pgTable(
     f609Username: text("f609_username"),
     f609PasswordEnc: text("f609_password_enc"),
     updatedBy: text("updated_by"),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     check("ont_web_settings_singleton", sql`${table.id} = 'default'`),

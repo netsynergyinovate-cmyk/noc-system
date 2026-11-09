@@ -19,7 +19,10 @@ import {
   type UnmatchedReason,
 } from "@/lib/dashboard/billing";
 import type { BillingStatus } from "@/db/schema/customers";
-import type { MismatchResolutionAction, UpdateMismatchInput } from "@/validators/billing";
+import type {
+  MismatchResolutionAction,
+  UpdateMismatchInput,
+} from "@/validators/billing";
 import { desc, eq, isNotNull, sql } from "drizzle-orm";
 
 const SYNC_INTERVAL_SECONDS = 3_600;
@@ -72,7 +75,9 @@ export async function updateMismatchResolution(
 /**
  * Mengambil semua penandaan ketidaksesuaian billing.
  */
-export async function getMismatchResolutions(): Promise<MismatchResolutionRecord[]> {
+export async function getMismatchResolutions(): Promise<
+  MismatchResolutionRecord[]
+> {
   return Array.from(mismatchResolutions.values());
 }
 
@@ -127,11 +132,15 @@ export async function getBillingSyncState(
     .orderBy(desc(billingSyncRuns.finishedAt), desc(billingSyncRuns.id))
     .limit(HISTORY_LIMIT);
 
-  const nextRunAt = (Math.floor(nowSec / SYNC_INTERVAL_SECONDS) + 1) * SYNC_INTERVAL_SECONDS + 300;
+  const nextRunAt =
+    (Math.floor(nowSec / SYNC_INTERVAL_SECONDS) + 1) * SYNC_INTERVAL_SECONDS +
+    300;
 
   const runs: BillingSyncRun[] = finishedRows.map((r) => {
     const startedAt = Math.floor(r.startedAt.getTime() / 1000);
-    const finishedAt = r.finishedAt ? Math.floor(r.finishedAt.getTime() / 1000) : startedAt;
+    const finishedAt = r.finishedAt
+      ? Math.floor(r.finishedAt.getTime() / 1000)
+      : startedAt;
     const status = r.status as "success" | "failed";
 
     return {
@@ -157,7 +166,9 @@ export async function getBillingSyncState(
 
   return {
     intervalSeconds: SYNC_INTERVAL_SECONDS,
-    running: runningRun ? { startedAt: Math.floor(runningRun.startedAt.getTime() / 1000) } : null,
+    running: runningRun
+      ? { startedAt: Math.floor(runningRun.startedAt.getTime() / 1000) }
+      : null,
     nextRunAt,
     runs,
   };
@@ -192,8 +203,12 @@ export async function getBillingOverview(
 
   const rows: BillingRow[] = rawRows.map((c) => {
     const isMatched = c.matchKind === "exact" || c.matchKind === "normalized";
-    const match: BillingMatch = isMatched ? (c.matchKind as BillingMatch) : "none";
-    const status: BillingStatus = (c.bsStatus ?? c.custStatus ?? "lunas") as BillingStatus;
+    const match: BillingMatch = isMatched
+      ? (c.matchKind as BillingMatch)
+      : "none";
+    const status: BillingStatus = (c.bsStatus ??
+      c.custStatus ??
+      "lunas") as BillingStatus;
 
     return {
       customerId: c.customerId,

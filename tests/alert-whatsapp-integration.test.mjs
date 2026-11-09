@@ -176,8 +176,13 @@ test("createAlert critical -> kirim ke semua penerima aktif + log tercatat", asy
   assert.equal(res.data.id, ID);
   assert.deepEqual(res.whatsapp, { sent: 2, failed: 0 });
   assert.equal(logs.length, 2);
-  assert.deepEqual(logs.map((l) => l.recipientTarget).sort(), ["628111111111", "628222222222"]);
-  assert.ok(logs.every((l) => l.status === "sent" && l.alertKind === "offline"));
+  assert.deepEqual(logs.map((l) => l.recipientTarget).sort(), [
+    "628111111111",
+    "628222222222",
+  ]);
+  assert.ok(
+    logs.every((l) => l.status === "sent" && l.alertKind === "offline"),
+  );
   assert.match(logs[0].message, /NOC ALERT/);
   assert.match(logs[0].message, /Jenis: offline/);
   assert.match(logs[0].message, /Perangkat: ODP-1/);
@@ -210,7 +215,12 @@ test("createAlert info -> tidak ada notifikasi", async () => {
 
 test("createAlert: input tidak valid ditolak tanpa menyimpan", async () => {
   reset();
-  const res = await svc.createAlert({ type: "x", severity: "y", title: " ", message: "" });
+  const res = await svc.createAlert({
+    type: "x",
+    severity: "y",
+    title: " ",
+    message: "",
+  });
   assert.equal(res.ok, false);
   assert.equal(res.error, "validation_error");
   assert.equal(alertRow, null);
@@ -260,7 +270,10 @@ test("notify tanpa sesi -> 401", async () => {
 test("notify: alert tidak ada -> 404", async () => {
   reset();
   await signedIn(async () => {
-    const res = await notify.POST(post(`/api/alerts/${MISSING}/notify`), ctx(MISSING));
+    const res = await notify.POST(
+      post(`/api/alerts/${MISSING}/notify`),
+      ctx(MISSING),
+    );
     assert.equal(res.status, 404);
     const bad = await notify.POST(post("/api/alerts/abc/notify"), ctx("abc"));
     assert.equal(bad.status, 404);

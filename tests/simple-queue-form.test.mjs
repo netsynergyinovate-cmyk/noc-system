@@ -23,20 +23,42 @@ test("validateQueueInput lolos dan menambah /32", () => {
   assert.equal(r.ok, true);
   assert.equal(r.clean.target, "10.20.1.5/32");
   assert.equal(r.clean.comment, "tes");
-  assert.equal(validateQueueInput({ ...valid, target: "10.20.1.0/24" }).clean.target, "10.20.1.0/24");
+  assert.equal(
+    validateQueueInput({ ...valid, target: "10.20.1.0/24" }).clean.target,
+    "10.20.1.0/24",
+  );
 });
 
 test("validateQueueInput menolak nama, target, limit, router salah", () => {
   assert.ok(validateQueueInput({ ...valid, name: "" }).errors.name);
   assert.ok(validateQueueInput({ ...valid, name: "a" }).errors.name);
   assert.ok(validateQueueInput({ ...valid, name: "x".repeat(65) }).errors.name);
-  for (const t of ["", "abc", "10.20.1", "300.1.1.1", "10.0.0.1/33", "10.0.0.1/"]) {
+  for (const t of [
+    "",
+    "abc",
+    "10.20.1",
+    "300.1.1.1",
+    "10.0.0.1/33",
+    "10.0.0.1/",
+  ]) {
     assert.ok(validateQueueInput({ ...valid, target: t }).errors.target, t);
   }
-  assert.ok(validateQueueInput({ ...valid, maxLimitUploadMbps: 0 }).errors.maxLimitUploadMbps);
-  assert.ok(validateQueueInput({ ...valid, maxLimitDownloadMbps: -1 }).errors.maxLimitDownloadMbps);
-  assert.ok(validateQueueInput({ ...valid, maxLimitDownloadMbps: 100001 }).errors.maxLimitDownloadMbps);
-  assert.ok(validateQueueInput({ ...valid, maxLimitUploadMbps: NaN }).errors.maxLimitUploadMbps);
+  assert.ok(
+    validateQueueInput({ ...valid, maxLimitUploadMbps: 0 }).errors
+      .maxLimitUploadMbps,
+  );
+  assert.ok(
+    validateQueueInput({ ...valid, maxLimitDownloadMbps: -1 }).errors
+      .maxLimitDownloadMbps,
+  );
+  assert.ok(
+    validateQueueInput({ ...valid, maxLimitDownloadMbps: 100001 }).errors
+      .maxLimitDownloadMbps,
+  );
+  assert.ok(
+    validateQueueInput({ ...valid, maxLimitUploadMbps: NaN }).errors
+      .maxLimitUploadMbps,
+  );
   assert.ok(validateQueueInput({ ...valid, routerId: "" }).errors.routerId);
   assert.equal(validateQueueInput({ ...valid, name: "" }).ok, false);
 });
@@ -75,15 +97,38 @@ test("applyQueueEdit mengubah field tanpa mengubah id", () => {
 });
 
 test("SimpleQueueFormDialog punya field yang tepat", () => {
-  const src = readFileSync(new URL("../src/components/dashboard/simple-queue-form-dialog.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL(
+      "../src/components/dashboard/simple-queue-form-dialog.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   assert.match(src, /export function SimpleQueueFormDialog/);
-  for (const s of ["Tambah Simple Queue", "Ubah Simple Queue", "mis. pppoe-budi", "10.20.1.5/32", "Pilih Preset Kecepatan", "Upload (Mbps)", "Download (Mbps)", "Nonaktifkan Queue", "Batal", "Simpan Queue"]) {
+  for (const s of [
+    "Tambah Simple Queue",
+    "Ubah Simple Queue",
+    "mis. pppoe-budi",
+    "10.20.1.5/32",
+    "Pilih Preset Kecepatan",
+    "Upload (Mbps)",
+    "Download (Mbps)",
+    "Nonaktifkan Queue",
+    "Batal",
+    "Simpan Queue",
+  ]) {
     assert.ok(src.includes(s), s);
   }
 });
 
 test("SimpleQueueBoard punya tombol Tambah Queue dan Ubah", () => {
-  const src = readFileSync(new URL("../src/components/dashboard/simple-queue-board.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL(
+      "../src/components/dashboard/simple-queue-board.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   assert.ok(src.includes("Tambah Queue"));
   assert.ok(src.includes("Ubah"));
   assert.ok(src.includes(">Aksi</TableHead>"));

@@ -81,7 +81,14 @@ const MIKROTIK_SYSTEM_RESOURCE: SourceInfo = {
   system: "MikroTik",
   path: "/system/resource",
   via: "REST GET /rest/system/resource?.proplist=cpu-load,free-memory,total-memory,uptime,version,board-name",
-  fields: ["cpu-load", "free-memory", "total-memory", "uptime", "version", "board-name"],
+  fields: [
+    "cpu-load",
+    "free-memory",
+    "total-memory",
+    "uptime",
+    "version",
+    "board-name",
+  ],
 };
 
 // verified: backend/internal/collector/backup.go line 20 (const interfaceProplist)
@@ -89,7 +96,16 @@ const MIKROTIK_INTERFACE_POLLER: SourceInfo = {
   system: "MikroTik",
   path: "/interface",
   via: "REST GET /rest/interface?.proplist=name,type,running,disabled,rx-error,tx-error,rx-drop,tx-drop",
-  fields: ["name", "type", "running", "disabled", "rx-error", "tx-error", "rx-drop", "tx-drop"],
+  fields: [
+    "name",
+    "type",
+    "running",
+    "disabled",
+    "rx-error",
+    "tx-error",
+    "rx-drop",
+    "tx-drop",
+  ],
 };
 
 // --- MikroTik: Service TypeScript (src/services/diagnostics.service.ts) ---
@@ -98,7 +114,15 @@ const MIKROTIK_PPP_ACTIVE_SERVICE: SourceInfo = {
   system: "MikroTik",
   path: "/ppp/active",
   via: "REST GET /rest/ppp/active",
-  fields: ["name", "service", "caller-id", "address", "uptime", "session-id", "radius"],
+  fields: [
+    "name",
+    "service",
+    "caller-id",
+    "address",
+    "uptime",
+    "session-id",
+    "radius",
+  ],
 };
 
 // verified: diagnostics.service.ts line 320, 328 (read("queue1"|"queue2", "/rest/queue/simple", { name: iface }))
@@ -114,7 +138,19 @@ const MIKROTIK_INTERFACE_SERVICE: SourceInfo = {
   system: "MikroTik",
   path: "/interface",
   via: "REST GET /rest/interface?name=<interface-name>",
-  fields: ["name", "type", "running", "disabled", "rx-byte", "tx-byte", "rx-error", "tx-error", "rx-drop", "tx-drop", "comment"],
+  fields: [
+    "name",
+    "type",
+    "running",
+    "disabled",
+    "rx-byte",
+    "tx-byte",
+    "rx-error",
+    "tx-error",
+    "rx-drop",
+    "tx-drop",
+    "comment",
+  ],
 };
 
 // verified: diagnostics.service.ts line 282 (read("route", "/rest/ip/route", { "dst-address": "0.0.0.0/0" }))
@@ -138,7 +174,16 @@ const MIKROTIK_PING_PROBE: SourceInfo = {
   system: "MikroTik",
   path: "/tool/ping",
   via: "REST POST /rest/tool/ping { address: '<target>', count: '10', interval: '0.2' }",
-  fields: ["seq", "host", "time", "packet-loss", "min-rtt", "avg-rtt", "max-rtt", "status"],
+  fields: [
+    "seq",
+    "host",
+    "time",
+    "packet-loss",
+    "min-rtt",
+    "avg-rtt",
+    "max-rtt",
+    "status",
+  ],
 };
 
 // verified: diagnostics.service.ts line 1491 (client.measure("/rest/tool/ping", { address: custIp, count: "10", interval: "0.2" }))
@@ -146,7 +191,16 @@ const MIKROTIK_PING_CUSTOMER: SourceInfo = {
   system: "MikroTik",
   path: "/tool/ping",
   via: "REST POST /rest/tool/ping { address: '<customer-ip>', count: '10', interval: '0.2' }",
-  fields: ["seq", "host", "time", "packet-loss", "min-rtt", "avg-rtt", "max-rtt", "status"],
+  fields: [
+    "seq",
+    "host",
+    "time",
+    "packet-loss",
+    "min-rtt",
+    "avg-rtt",
+    "max-rtt",
+    "status",
+  ],
 };
 
 // verified: diagnostics.service.ts line 1534 (client.measure("/rest/tool/ping", { address: DNS_PROBE_NAME, count: "2" }))
@@ -238,28 +292,66 @@ const MIKROTIK_FW_FILTER: SourceInfo = {
   system: "MikroTik",
   path: "/ip/firewall/filter",
   via: "REST GET /rest/ip/firewall/filter",
-  fields: ["chain", "action", "src-address", "dst-address", "src-address-list", "dst-address-list", "bytes", "packets", "disabled", "comment"],
+  fields: [
+    "chain",
+    "action",
+    "src-address",
+    "dst-address",
+    "src-address-list",
+    "dst-address-list",
+    "bytes",
+    "packets",
+    "disabled",
+    "comment",
+  ],
 };
 
 const MIKROTIK_FW_RAW: SourceInfo = {
   system: "MikroTik",
   path: "/ip/firewall/raw",
   via: "REST GET /rest/ip/firewall/raw",
-  fields: ["chain", "action", "src-address", "dst-address", "bytes", "packets", "disabled"],
+  fields: [
+    "chain",
+    "action",
+    "src-address",
+    "dst-address",
+    "bytes",
+    "packets",
+    "disabled",
+  ],
 };
 
 const MIKROTIK_FW_NAT: SourceInfo = {
   system: "MikroTik",
   path: "/ip/firewall/nat",
   via: "REST GET /rest/ip/firewall/nat",
-  fields: ["chain", "action", "src-address", "dst-address", "dst-port", "to-addresses", "to-ports", "protocol", "disabled", "bytes", "packets"],
+  fields: [
+    "chain",
+    "action",
+    "src-address",
+    "dst-address",
+    "dst-port",
+    "to-addresses",
+    "to-ports",
+    "protocol",
+    "disabled",
+    "bytes",
+    "packets",
+  ],
 };
 
 const MIKROTIK_FW_MANGLE: SourceInfo = {
   system: "MikroTik",
   path: "/ip/firewall/mangle",
   via: "REST GET /rest/ip/firewall/mangle",
-  fields: ["chain", "action", "new-connection-mark", "new-packet-mark", "bytes", "packets"],
+  fields: [
+    "chain",
+    "action",
+    "new-connection-mark",
+    "new-packet-mark",
+    "bytes",
+    "packets",
+  ],
 };
 
 // verified: diagnostics.service.ts line 349-357 (props: { ".proplist": "fasttrack,connection-mark,protocol" })
@@ -299,7 +391,17 @@ const DB_CUSTOMER_TRAFFIC_SAMPLES: SourceInfo = {
   system: "Database",
   path: "customer_traffic_samples",
   via: "SQL: customer_traffic_samples",
-  fields: ["customer_id", "bucket_start", "samples", "download_mbps_avg", "upload_mbps_avg", "download_mbps_max", "upload_mbps_max", "download_bytes", "upload_bytes"],
+  fields: [
+    "customer_id",
+    "bucket_start",
+    "samples",
+    "download_mbps_avg",
+    "upload_mbps_avg",
+    "download_mbps_max",
+    "upload_mbps_max",
+    "download_bytes",
+    "upload_bytes",
+  ],
 };
 
 // verified: src/db/schema/traffic-samples.ts
@@ -315,7 +417,18 @@ const DB_NETFLOW_SAMPLES: SourceInfo = {
   system: "NetFlow",
   path: "netflow_samples",
   via: "NetFlow v5 (UDP 2055) / SQL: netflow_samples",
-  fields: ["customer_id", "direction", "src_ip", "dst_ip", "dst_port", "protocol", "bytes", "packets", "flows", "captured_at"],
+  fields: [
+    "customer_id",
+    "direction",
+    "src_ip",
+    "dst_ip",
+    "dst_port",
+    "protocol",
+    "bytes",
+    "packets",
+    "flows",
+    "captured_at",
+  ],
 };
 
 // verified: src/db/schema/syslog-events.ts
@@ -323,7 +436,14 @@ const DB_SYSLOG_EVENTS: SourceInfo = {
   system: "Syslog",
   path: "syslog_events",
   via: "Syslog UDP listener / SQL: syslog_events",
-  fields: ["router_id", "received_at", "facility", "severity", "topics", "message"],
+  fields: [
+    "router_id",
+    "received_at",
+    "facility",
+    "severity",
+    "topics",
+    "message",
+  ],
 };
 
 // verified: src/db/schema/billing-status.ts
@@ -347,7 +467,15 @@ const DB_BILLING_MISMATCHES: SourceInfo = {
   system: "Database",
   path: "billing_mismatches",
   via: "SQL: billing_mismatches",
-  fields: ["run_id", "invoice_name", "invoice_ref", "invoice_status", "reason", "customer_ids", "created_at"],
+  fields: [
+    "run_id",
+    "invoice_name",
+    "invoice_ref",
+    "invoice_status",
+    "reason",
+    "customer_ids",
+    "created_at",
+  ],
 };
 
 // verified: src/db/schema/firewall-snapshots.ts
@@ -355,7 +483,19 @@ const DB_FIREWALL_SNAPSHOTS: SourceInfo = {
   system: "Database",
   path: "firewall_snapshots",
   via: "SQL: firewall_snapshots",
-  fields: ["run_id", "router_id", "customer_id", "taken_at", "customer_ip", "fasttrack_active", "conntrack_count", "conntrack_total", "conntrack_max", "raw_drop_matched", "address_list_matched"],
+  fields: [
+    "run_id",
+    "router_id",
+    "customer_id",
+    "taken_at",
+    "customer_ip",
+    "fasttrack_active",
+    "conntrack_count",
+    "conntrack_total",
+    "conntrack_max",
+    "raw_drop_matched",
+    "address_list_matched",
+  ],
 };
 
 // verified: src/db/schema/diagnostics.ts (diagnosticFindings)
@@ -363,7 +503,20 @@ const DB_DIAGNOSTIC_FINDINGS: SourceInfo = {
   system: "Database",
   path: "diagnostic_findings",
   via: "SQL: diagnostic_findings",
-  fields: ["run_id", "layer", "metric", "label", "value", "threshold", "comparator", "status", "detail", "source_ref", "sampled_at", "checked_at"],
+  fields: [
+    "run_id",
+    "layer",
+    "metric",
+    "label",
+    "value",
+    "threshold",
+    "comparator",
+    "status",
+    "detail",
+    "source_ref",
+    "sampled_at",
+    "checked_at",
+  ],
 };
 
 // verified: src/db/schema/olt-onus.ts & backend/internal/olt/
@@ -371,7 +524,18 @@ const OLT_ONUS: SourceInfo = {
   system: "OLT",
   path: "olt_onus",
   via: "OLT Poller (HSGQ REST/Telnet) / SQL: olt_onus",
-  fields: ["id", "olt_id", "pon_index", "onu_index", "customer_id", "rx_power", "tx_power", "attenuation", "status", "captured_at"],
+  fields: [
+    "id",
+    "olt_id",
+    "pon_index",
+    "onu_index",
+    "customer_id",
+    "rx_power",
+    "tx_power",
+    "attenuation",
+    "status",
+    "captured_at",
+  ],
 };
 
 // verified: GenieACS Client
@@ -379,7 +543,13 @@ const GENIEACS_DEVICES: SourceInfo = {
   system: "GenieACS",
   path: "/devices",
   via: "GenieACS NBI REST GET /devices (TR-069 data model)",
-  fields: ["_id", "_lastInform", "InternetGatewayDevice.DeviceInfo.UpTime", "InternetGatewayDevice.WANDevice.*", "InternetGatewayDevice.LANDevice.*.Hosts.HostNumberOfEntries"],
+  fields: [
+    "_id",
+    "_lastInform",
+    "InternetGatewayDevice.DeviceInfo.UpTime",
+    "InternetGatewayDevice.WANDevice.*",
+    "InternetGatewayDevice.LANDevice.*.Hosts.HostNumberOfEntries",
+  ],
 };
 
 /** Sumber angka "Gangguan per pelanggan" (src/lib/customer-incidents.ts); kolom = yang dibaca src/services/customer-incidents.service.ts. */
@@ -446,7 +616,10 @@ export const anomalyKindInfo: Record<
 // Diagnostic Layers Single Source of Truth
 // ---------------------------------------------------------------------------
 
-const LAYER_INFO_MAP: Record<string, { explain: string; sources: SourceInfo[] }> = {
+const LAYER_INFO_MAP: Record<
+  string,
+  { explain: string; sources: SourceInfo[] }
+> = {
   hulu: {
     explain:
       "Memeriksa jalur keluar router ke jaringan upstream (ISP/transit), mencakup default route, utilisasi fisik antarmuka uplink, latensi ke gateway dan internet global, riwayat beban 24 jam, status peer BGP, serta kesiapan IPv6.",
@@ -514,7 +687,12 @@ const LAYER_INFO_MAP: Record<string, { explain: string; sources: SourceInfo[] }>
   aktif: {
     explain:
       "Menjalankan pengujian proaktif langsung dari router saat diagnosa berlangsung (ping ke IP pelanggan, traceroute multi-hop upstream, resolusi DNS) dan membandingkan pemakaian p95 14 hari terhadap kapasitas paket.",
-    sources: [MIKROTIK_PING_CUSTOMER, MIKROTIK_PING_DNS, MIKROTIK_TRACEROUTE, DB_CUSTOMER_TRAFFIC_SAMPLES],
+    sources: [
+      MIKROTIK_PING_CUSTOMER,
+      MIKROTIK_PING_DNS,
+      MIKROTIK_TRACEROUTE,
+      DB_CUSTOMER_TRAFFIC_SAMPLES,
+    ],
   },
   billing: {
     explain:
@@ -523,7 +701,10 @@ const LAYER_INFO_MAP: Record<string, { explain: string; sources: SourceInfo[] }>
   },
 };
 
-export function layerInfo(layer: string): { explain: string; sources: SourceInfo[] } {
+export function layerInfo(layer: string): {
+  explain: string;
+  sources: SourceInfo[];
+} {
   return (
     LAYER_INFO_MAP[layer] ?? {
       explain: "Lapisan diagnosa belum terdaftar dalam katalog sumber sistem.",
@@ -542,7 +723,11 @@ const METRIC_REGISTRY: Record<string, Record<string, MetricInfo>> = {
       title: "Default Route & Link Uplink",
       explain:
         "Status rute keluar default gateway upstream dan kondisi antarmuka fisik uplink (running, kecepatan negosiasi). Memastikan router memiliki gateway aktif yang dapat dijangkau.",
-      sources: [MIKROTIK_IP_ROUTE, MIKROTIK_INTERFACE_SERVICE, MIKROTIK_ETHERNET_MONITOR],
+      sources: [
+        MIKROTIK_IP_ROUTE,
+        MIKROTIK_INTERFACE_SERVICE,
+        MIKROTIK_ETHERNET_MONITOR,
+      ],
     },
     uplink_util: {
       title: "Utilisasi Bandwidth Uplink",
@@ -558,8 +743,7 @@ const METRIC_REGISTRY: Record<string, Record<string, MetricInfo>> = {
     },
     upstream_internet: {
       title: "Kualitas Akses Internet Global",
-      explain:
-        `Pengukuran latensi dan packet loss dari router ke tujuan probe internet (INTERNET_PROBE, saat ini ${INTERNET_PROBE}). Membedakan apakah kelambatan terjadi di jaringan lokal/gateway ISP atau di interkoneksi transit internet.`,
+      explain: `Pengukuran latensi dan packet loss dari router ke tujuan probe internet (INTERNET_PROBE, saat ini ${INTERNET_PROBE}). Membedakan apakah kelambatan terjadi di jaringan lokal/gateway ISP atau di interkoneksi transit internet.`,
       sources: [MIKROTIK_PING_PROBE],
     },
     uplink_history: {
@@ -635,7 +819,11 @@ const METRIC_REGISTRY: Record<string, Record<string, MetricInfo>> = {
       title: "Utilisasi Jalur VLAN PON",
       explain:
         "Laju trafik gabungan pada antarmuka VLAN PON yang menghubungkan router ke OLT. Memastikan kapasitas uplink port PON tidak mengalami kepadatan (congestion).",
-      sources: [MIKROTIK_PPPOE_SERVER_BINDING, MIKROTIK_INTERFACE_SERVICE, MIKROTIK_VLAN_DEF],
+      sources: [
+        MIKROTIK_PPPOE_SERVER_BINDING,
+        MIKROTIK_INTERFACE_SERVICE,
+        MIKROTIK_VLAN_DEF,
+      ],
     },
     ip_conflict: {
       title: "Bentrok Alamat IP (ARP/DHCP)",
@@ -861,14 +1049,12 @@ const METRIC_REGISTRY: Record<string, Record<string, MetricInfo>> = {
     },
     traceroute_upstream: {
       title: "Traceroute ke Upstream Internet",
-      explain:
-        `Pelacakan rute hop-by-hop dari router menuju tujuan probe internet (INTERNET_PROBE, saat ini ${INTERNET_PROBE}) untuk mendeteksi hop yang mengalami lonjakan latensi atau rute terputus.`,
+      explain: `Pelacakan rute hop-by-hop dari router menuju tujuan probe internet (INTERNET_PROBE, saat ini ${INTERNET_PROBE}) untuk mendeteksi hop yang mengalami lonjakan latensi atau rute terputus.`,
       sources: [MIKROTIK_TRACEROUTE],
     },
     dns_resolve: {
       title: "Resolusi Domain DNS",
-      explain:
-        `Menguji kecepatan dan keberhasilan router dalam menyelesaikan nama domain internet (${DNS_PROBE_NAME}). Kegagalan DNS menyebabkan website tidak dapat dibuka meski link terhubung.`,
+      explain: `Menguji kecepatan dan keberhasilan router dalam menyelesaikan nama domain internet (${DNS_PROBE_NAME}). Kegagalan DNS menyebabkan website tidak dapat dibuka meski link terhubung.`,
       sources: [MIKROTIK_PING_DNS],
     },
     rate_baseline: {
@@ -902,7 +1088,11 @@ const METRIC_REGISTRY: Record<string, Record<string, MetricInfo>> = {
       title: "Keselarasan Status Billing dengan Jaringan",
       explain:
         "Memverifikasi keselarasan status billing dengan kondisi teknis jaringan di router (misalnya akun isolir yang masih memiliki koneksi internet aktif).",
-      sources: [DB_BILLING_STATUS, MIKROTIK_PPP_ACTIVE_SERVICE, MIKROTIK_ADDRESS_LIST],
+      sources: [
+        DB_BILLING_STATUS,
+        MIKROTIK_PPP_ACTIVE_SERVICE,
+        MIKROTIK_ADDRESS_LIST,
+      ],
     },
     billing_mismatch: {
       title: "Ketidaksesuaian Billing (Billing Mismatch)",
@@ -954,7 +1144,9 @@ export function metricInfo(layer: string, metric: string): MetricInfo {
   }
 
   // Fallback generik bila metrik belum terdaftar
-  const humanTitle = metric.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const humanTitle = metric
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
   return {
     title: humanTitle,
     explain: `Metrik ini belum memiliki deskripsi terdaftar dalam peta sumber diagnosa (${layer}.${metric}).`,

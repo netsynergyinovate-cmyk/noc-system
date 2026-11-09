@@ -69,7 +69,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 0,
     tag: "0000_auth",
     name: "Autentikasi & Akun Pengguna",
-    description: "Inisialisasi tabel Better Auth: user, session, account, verification",
+    description:
+      "Inisialisasi tabel Better Auth: user, session, account, verification",
     folderMillis: 1788829112625,
     appliedAt: "2026-09-01T08:00:00.000Z",
     status: "applied",
@@ -109,7 +110,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 2,
     tag: "0002_roles",
     name: "Peran & Hak Akses Pengguna",
-    description: "Penambahan kolom role pada tabel user untuk RBAC admin & viewer",
+    description:
+      "Penambahan kolom role pada tabel user untuk RBAC admin & viewer",
     folderMillis: 1788950762062,
     appliedAt: "2026-09-02T17:46:02.000Z",
     status: "applied",
@@ -127,7 +129,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 3,
     tag: "0003_noc_core",
     name: "Infrastruktur Inti NOC (Router, OLT, PON, ONU)",
-    description: "Tabel inventaris perangkat jaringan: routers, olts, olt_pon_ports, olt_onus",
+    description:
+      "Tabel inventaris perangkat jaringan: routers, olts, olt_pon_ports, olt_onus",
     folderMillis: 1791365722595,
     appliedAt: "2026-09-30T17:35:22.000Z",
     status: "applied",
@@ -149,7 +152,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 4,
     tag: "0004_traffic_archive",
     name: "Partisi Arsip Trafik & TimescaleDB",
-    description: "Tabel sampel trafik berkala traffic_samples dengan retensi 30 hari",
+    description:
+      "Tabel sampel trafik berkala traffic_samples dengan retensi 30 hari",
     folderMillis: 1791372737920,
     appliedAt: "2026-09-30T19:32:17.000Z",
     status: "applied",
@@ -169,7 +173,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 5,
     tag: "0005_customer_odp",
     name: "Pemetaan Pelanggan & Lokasi ODP",
-    description: "Tabel pelanggan customers dan pengikatan ke titik distribusi optik ODP",
+    description:
+      "Tabel pelanggan customers dan pengikatan ke titik distribusi optik ODP",
     folderMillis: 1791377323595,
     appliedAt: "2026-09-30T20:48:43.000Z",
     status: "applied",
@@ -189,7 +194,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 6,
     tag: "0006_billing_sync",
     name: "Sinkronisasi Status Tagihan Billing",
-    description: "Tabel log sinkron billing_sync_runs dan status pembayaran billing_status",
+    description:
+      "Tabel log sinkron billing_sync_runs dan status pembayaran billing_status",
     folderMillis: 1791536008927,
     appliedAt: "2026-10-02T16:53:28.000Z",
     status: "applied",
@@ -209,7 +215,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 7,
     tag: "0007_classy_doctor_doom",
     name: "Log Insiden & Ambang Alert",
-    description: "Pencatatan gangguan network_logs dan konfigurasi batas alert_thresholds",
+    description:
+      "Pencatatan gangguan network_logs dan konfigurasi batas alert_thresholds",
     folderMillis: 1791542109811,
     appliedAt: "2026-10-02T18:35:09.000Z",
     status: "applied",
@@ -229,7 +236,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 8,
     tag: "0008_chemical_black_queen",
     name: "Jejak Aktivitas Operator & Audit Log",
-    description: "Tabel audit_log untuk merekam tindakan operator dan perubahan data",
+    description:
+      "Tabel audit_log untuk merekam tindakan operator dan perubahan data",
     folderMillis: 1791550212450,
     appliedAt: "2026-10-02T20:50:12.000Z",
     status: "applied",
@@ -248,7 +256,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 9,
     tag: "0009_opposite_starhawk",
     name: "Notifikasi Alert WhatsApp",
-    description: "Penerima notifikasi whatsapp_recipients dan log riwayat whatsapp_logs",
+    description:
+      "Penerima notifikasi whatsapp_recipients dan log riwayat whatsapp_logs",
     folderMillis: 1791561009123,
     appliedAt: "2026-10-02T23:50:09.000Z",
     status: "applied",
@@ -268,7 +277,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 10,
     tag: "0010_naive_deathbird",
     name: "Inspeksi Aliran Trafik NetFlow",
-    description: "Tabel netflow_samples untuk menangkap aliran paket IP dan protokol",
+    description:
+      "Tabel netflow_samples untuk menangkap aliran paket IP dan protokol",
     folderMillis: 1791572341999,
     appliedAt: "2026-10-03T02:59:01.000Z",
     status: "applied",
@@ -287,7 +297,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 11,
     tag: "0011_modern_mongoose",
     name: "Kredensial Billing & Token",
-    description: "Penyimpanan kredensial billing terenkripsi dan token sesi penyelarasan",
+    description:
+      "Penyimpanan kredensial billing terenkripsi dan token sesi penyelarasan",
     folderMillis: 1791580120000,
     appliedAt: "2026-10-03T05:08:40.000Z",
     status: "applied",
@@ -305,7 +316,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 12,
     tag: "0012_mean_miek",
     name: "Log Hasil Uji Koneksi Perangkat",
-    description: "Tabel device_test_results untuk mencatat riwayat ping/preflight Router & OLT",
+    description:
+      "Tabel device_test_results untuk mencatat riwayat ping/preflight Router & OLT",
     folderMillis: 1791591112222,
     appliedAt: "2026-10-03T08:11:52.000Z",
     status: "applied",
@@ -324,7 +336,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 13,
     tag: "0013_public_spot",
     name: "Tugas Diagnostik CPE & Riwayat",
-    description: "Tabel cpe_tasks untuk manajemen pekerjaan teknisi lapangan & diagnostik",
+    description:
+      "Tabel cpe_tasks untuk manajemen pekerjaan teknisi lapangan & diagnostik",
     folderMillis: 1791602223333,
     appliedAt: "2026-10-03T11:17:03.000Z",
     status: "applied",
@@ -343,7 +356,8 @@ export const MOCK_SCHEMA_MIGRATIONS: readonly SchemaMigrationItem[] = [
     idx: 14,
     tag: "0014_rich_rhodey",
     name: "Indeks Laporan Terintegrasi & Pengarsipan",
-    description: "Penambahan indeks gabungan untuk agregasi ekspor dan audit performa",
+    description:
+      "Penambahan indeks gabungan untuk agregasi ekspor dan audit performa",
     folderMillis: 1791613334444,
     appliedAt: "2026-10-03T14:22:14.000Z",
     status: "applied",
@@ -363,7 +377,8 @@ export const MOCK_FAILED_MIGRATION_SAMPLE: SchemaMigrationItem = {
   idx: 15,
   tag: "0015_broken_constraint",
   name: "Constraint Unik Tambahan Pelanggan",
-  description: "Penambahan constraint unik customer_phone_unique pada tabel customers",
+  description:
+    "Penambahan constraint unik customer_phone_unique pada tabel customers",
   folderMillis: 1791624445555,
   appliedAt: "2026-10-03T16:00:00.000Z",
   status: "failed",
@@ -378,7 +393,7 @@ export const MOCK_FAILED_MIGRATION_SAMPLE: SchemaMigrationItem = {
   errorMessage:
     'Key (phone)=(+628123456789) is duplicated in table "customers". Violates unique constraint.',
   failedStatement:
-    'ALTER TABLE customers ADD CONSTRAINT customer_phone_unique UNIQUE (phone)',
+    "ALTER TABLE customers ADD CONSTRAINT customer_phone_unique UNIQUE (phone)",
   remediationHint:
     "Bersihkan atau gabungkan duplikat nomor telepon sebelum menerapkan constraint unik.",
   rollbackExecuted: true,
@@ -423,7 +438,8 @@ export function getMockMigrationOverview(
       ? {
           tag: failedItem.tag,
           name: failedItem.name,
-          error: failedItem.errorMessage || "Eksekusi SQL gagal dan di-rollback.",
+          error:
+            failedItem.errorMessage || "Eksekusi SQL gagal dan di-rollback.",
           failedStatement: failedItem.failedStatement,
           at: failedItem.appliedAt,
           remediationHint: failedItem.remediationHint,

@@ -3,8 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { getRouterStatusBadgeModel as m } from "../src/lib/dashboard/router-status.ts";
 
-const badgeSrc = readFileSync("src/components/dashboard/router-status-badge.tsx", "utf8");
-const tableSrc = readFileSync("src/components/dashboard/router-table.tsx", "utf8");
+const badgeSrc = readFileSync(
+  "src/components/dashboard/router-status-badge.tsx",
+  "utf8",
+);
+const tableSrc = readFileSync(
+  "src/components/dashboard/router-table.tsx",
+  "utf8",
+);
 
 test("active true -> connected / REST OK", () => {
   const r = m({ active: true });
@@ -20,9 +26,15 @@ test("active false -> error / Terputus", () => {
 });
 
 test("latency hanya muncul saat connected dan showLatency", () => {
-  assert.equal(m({ active: true, latencyMs: 42, showLatency: true }).label, "REST OK · 42 ms");
+  assert.equal(
+    m({ active: true, latencyMs: 42, showLatency: true }).label,
+    "REST OK · 42 ms",
+  );
   assert.equal(m({ active: true, latencyMs: 42 }).label, "REST OK");
-  assert.equal(m({ active: false, latencyMs: 42, showLatency: true }).label, "Terputus");
+  assert.equal(
+    m({ active: false, latencyMs: 42, showLatency: true }).label,
+    "Terputus",
+  );
 });
 
 test("isTesting menimpa status", () => {
@@ -56,5 +68,8 @@ test("komponen mengekspor RouterStatusBadge dengan atribut a11y", () => {
 test("router-table memakai RouterStatusBadge", () => {
   assert.match(tableSrc, /import \{ RouterStatusBadge \}/);
   assert.match(tableSrc, /<RouterStatusBadge active=\{router\.active\} \/>/);
-  assert.match(tableSrc, /<RouterStatusBadge active=\{selectedRouter\.active\} \/>/);
+  assert.match(
+    tableSrc,
+    /<RouterStatusBadge active=\{selectedRouter\.active\} \/>/,
+  );
 });

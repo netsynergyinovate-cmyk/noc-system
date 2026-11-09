@@ -14,7 +14,9 @@ export type RouteWithNames = NetworkRoute & {
   odcName: string | null;
 };
 
-export async function createRoute(input: CreateRouteInput): Promise<NetworkRoute> {
+export async function createRoute(
+  input: CreateRouteInput,
+): Promise<NetworkRoute> {
   const [route] = await db
     .insert(networkRoutes)
     .values({

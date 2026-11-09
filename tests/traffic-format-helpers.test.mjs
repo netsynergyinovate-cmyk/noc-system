@@ -64,7 +64,11 @@ test("TrafficEmptyState: ekspor, test id, dan pemakaian di papan", () => {
   const cmp = read("../src/components/dashboard/traffic-empty-state.tsx");
   assert.match(cmp, /^"use client"/);
   assert.match(cmp, /export function TrafficEmptyState/);
-  for (const id of ["traffic-empty-state", "reset-filter-btn", "retry-traffic-btn"]) {
+  for (const id of [
+    "traffic-empty-state",
+    "reset-filter-btn",
+    "retry-traffic-btn",
+  ]) {
     assert.match(cmp, new RegExp(`data-testid="${id}"`));
   }
 
@@ -79,11 +83,19 @@ test("TrafficEmptyState: ekspor, test id, dan pemakaian di papan", () => {
   assert.match(nf, /<TrafficEmptyState/);
   assert.match(nf, /data-testid="netflow-empty-state"/);
   assert.match(nf, /data-testid="netflow-no-match"/);
-  for (const fn of ["formatBandwidthRate", "formatDataVolume", "formatPacketCount", "formatTrafficDuration"]) {
+  for (const fn of [
+    "formatBandwidthRate",
+    "formatDataVolume",
+    "formatPacketCount",
+    "formatTrafficDuration",
+  ]) {
     assert.match(nf, new RegExp(fn));
   }
 });
 
 test("helper murni tanpa server-only", () => {
-  assert.doesNotMatch(read("../src/lib/dashboard/traffic-format-helpers.ts"), /server-only/);
+  assert.doesNotMatch(
+    read("../src/lib/dashboard/traffic-format-helpers.ts"),
+    /server-only/,
+  );
 });

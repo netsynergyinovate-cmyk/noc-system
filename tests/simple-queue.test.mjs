@@ -8,10 +8,42 @@ import {
 } from "../src/lib/dashboard/routers.ts";
 
 const customers = [
-  { id: "c1", name: "Budi", pppoeUsername: "budi01", routerId: "router-1", billingStatus: "lunas", isOnline: true, planMbps: 20 },
-  { id: "c2", name: "Dewi", pppoeUsername: "dewi02", routerId: "router-1", billingStatus: "lunas", isOnline: false, planMbps: 10 },
-  { id: "c3", name: "Eko", pppoeUsername: "eko03", routerId: "router-1", billingStatus: "isolir", isOnline: true, planMbps: 10 },
-  { id: "c4", name: "Sari", pppoeUsername: "sari04", routerId: "router-2", billingStatus: "lunas", isOnline: true, planMbps: 5 },
+  {
+    id: "c1",
+    name: "Budi",
+    pppoeUsername: "budi01",
+    routerId: "router-1",
+    billingStatus: "lunas",
+    isOnline: true,
+    planMbps: 20,
+  },
+  {
+    id: "c2",
+    name: "Dewi",
+    pppoeUsername: "dewi02",
+    routerId: "router-1",
+    billingStatus: "lunas",
+    isOnline: false,
+    planMbps: 10,
+  },
+  {
+    id: "c3",
+    name: "Eko",
+    pppoeUsername: "eko03",
+    routerId: "router-1",
+    billingStatus: "isolir",
+    isOnline: true,
+    planMbps: 10,
+  },
+  {
+    id: "c4",
+    name: "Sari",
+    pppoeUsername: "sari04",
+    routerId: "router-2",
+    billingStatus: "lunas",
+    isOnline: true,
+    planMbps: 5,
+  },
 ];
 
 test("formatBitrate", () => {
@@ -39,13 +71,18 @@ test("generateMockSimpleQueues", () => {
   assert.equal(generateMockSimpleQueues("router-1").length, 0);
   for (const q of qs) {
     assert.ok(q.maxLimit.upload > 0 && q.maxLimit.download > 0);
-    assert.ok(q.rate.upload <= q.maxLimit.upload && q.rate.download <= q.maxLimit.download);
+    assert.ok(
+      q.rate.upload <= q.maxLimit.upload &&
+        q.rate.download <= q.maxLimit.download,
+    );
     assert.match(q.target, /^10\.20\.1\.\d+\/32$/);
   }
   const [online, offline, isolir] = qs;
   assert.equal(online.maxLimit.download, 20e6);
   assert.equal(online.maxLimit.upload, 10e6);
-  assert.ok(online.rate.download >= 0.15 * 20e6 && online.rate.download <= 0.85 * 20e6);
+  assert.ok(
+    online.rate.download >= 0.15 * 20e6 && online.rate.download <= 0.85 * 20e6,
+  );
   assert.deepEqual(offline.rate, { upload: 0, download: 0 });
   assert.deepEqual(isolir.rate, { upload: 0, download: 0 });
   assert.equal(isolir.disabled, true);

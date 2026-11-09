@@ -1,8 +1,17 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployTarget,
+  detectConnectionPath,
+} from "@/services/deploy-targets.service";
 import { getDecryptedSshCredential } from "@/services/ssh-credentials.service";
-import { executeDeployRun, reconcileStaleDeployRuns } from "@/services/deploy-runner.service";
+import {
+  executeDeployRun,
+  reconcileStaleDeployRuns,
+} from "@/services/deploy-runner.service";
 import { getAppVersion } from "@/services/deploy-version.service";
 import { db } from "@/db";
 import { deployRuns } from "@/db/schema/deploy-runs";
@@ -53,7 +62,8 @@ export async function POST(request: Request) {
     if (activeRuns.length > 0) {
       return Response.json(
         {
-          error: "Ada proses deploy lain yang sedang berjalan. Tunggu hingga selesai.",
+          error:
+            "Ada proses deploy lain yang sedang berjalan. Tunggu hingga selesai.",
           runId: activeRuns[0].id,
         },
         { status: 409 },
@@ -96,7 +106,8 @@ export async function POST(request: Request) {
         data: {
           runId: run.id,
           version: versionInfo.fullVersion,
-          message: "Proses deploy dimulai. Progres tiap langkah dapat dipantau langsung.",
+          message:
+            "Proses deploy dimulai. Progres tiap langkah dapat dipantau langsung.",
         },
       },
       { status: 202 },

@@ -21,7 +21,10 @@ test("evaluateOptionalIntegrations mendeteksi modul belum terkonfigurasi pada en
   const overview = evaluateOptionalIntegrations({});
   assert.equal(overview.total, OPTIONAL_INTEGRATION_TEMPLATES.length);
   assert.equal(overview.configuredCount, 0);
-  assert.equal(overview.unconfiguredCount, OPTIONAL_INTEGRATION_TEMPLATES.length);
+  assert.equal(
+    overview.unconfiguredCount,
+    OPTIONAL_INTEGRATION_TEMPLATES.length,
+  );
   assert.equal(overview.completionPercentage, 0);
 });
 
@@ -52,5 +55,7 @@ test("evaluateOptionalIntegrations menghormati custom override state", () => {
 
 test("OPTIONAL_INTEGRATIONS_MOCK_ENTRY terdaftar dalam registry dummy", () => {
   assert.equal(OPTIONAL_INTEGRATIONS_MOCK_ENTRY.status, "dummy");
-  assert.ok(OPTIONAL_INTEGRATIONS_MOCK_ENTRY.readPath.includes("optional-integrations"));
+  assert.ok(
+    OPTIONAL_INTEGRATIONS_MOCK_ENTRY.readPath.includes("optional-integrations"),
+  );
 });

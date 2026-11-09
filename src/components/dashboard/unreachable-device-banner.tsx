@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Copy, Loader2, RefreshCw, Settings } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Copy,
+  Loader2,
+  RefreshCw,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { useNowSeconds } from "@/lib/dashboard/use-now";
@@ -41,11 +48,15 @@ const TYPE_MAP: Record<DeviceType, UnreachableDeviceType> = {
 };
 
 function endpointOf(c: DeviceConfig): string {
-  return c.type === "mikrotik" ? `${c.host}:${c.port}/rest/system/resource` : `${c.host}:${c.port}`;
+  return c.type === "mikrotik"
+    ? `${c.host}:${c.port}/rest/system/resource`
+    : `${c.host}:${c.port}`;
 }
 
 function routerConfig(id: string, name: string, host: string): DeviceConfig {
-  const known = MOCK_DEVICE_CONFIGS.find((d) => d.id === id && d.type === "mikrotik");
+  const known = MOCK_DEVICE_CONFIGS.find(
+    (d) => d.id === id && d.type === "mikrotik",
+  );
   if (known) return known;
   return {
     id,
@@ -81,7 +92,8 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
     endpoint: endpointOf(target.config),
     lastSeenEpoch: target.config.lastTestedAt,
     nowSec: now,
-    errorCode: st.code ?? (target.config.status === "timeout" ? "TIMEOUT" : undefined),
+    errorCode:
+      st.code ?? (target.config.status === "timeout" ? "TIMEOUT" : undefined),
     consecutiveFailures: st.failures,
   });
   const policy = computeRetryPolicy(st.failures, st.lastRetry, now);
@@ -89,7 +101,10 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
 
   if (st.recovered) {
     return (
-      <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm">
+      <div
+        role="status"
+        className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm"
+      >
         {target.name} kembali terjangkau.
       </div>
     );
@@ -99,9 +114,10 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
     if (busy || !policy.canRetryNow) return;
     setBusy(true);
     const at = Math.floor(Date.now() / 1000);
-    const r = await runDeviceTest(target.config).catch(
-      () => ({ ok: false, code: "UNKNOWN" as const }),
-    );
+    const r = await runDeviceTest(target.config).catch(() => ({
+      ok: false,
+      code: "UNKNOWN" as const,
+    }));
     setSt((p) =>
       r.ok
         ? { ...p, recovered: true }
@@ -132,10 +148,18 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden="true" />
+          <AlertTriangle
+            className="mt-0.5 size-5 shrink-0 text-destructive"
+            aria-hidden="true"
+          />
           <div>
-            <h2 className="text-sm font-semibold">{report.deviceName} tidak terjangkau</h2>
-            <p className="text-xs text-muted-foreground" data-testid="unreachable-downtime">
+            <h2 className="text-sm font-semibold">
+              {report.deviceName} tidak terjangkau
+            </h2>
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="unreachable-downtime"
+            >
               {target.config.lastTestedAt === null
                 ? "Lama mati belum diketahui"
                 : `Mati selama ${formatDowntime(report.downtimeSeconds)}`}
@@ -154,7 +178,10 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
             onClick={retry}
           >
             {busy ? (
-              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              <Loader2
+                className="size-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
             ) : (
               <RefreshCw className="size-4" aria-hidden="true" />
             )}
@@ -164,7 +191,13 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
                 ? `Uji ulang dalam ${wait} dtk`
                 : "Uji Ulang Koneksi Sekarang"}
           </Button>
-          <Button type="button" size="sm" variant="outline" className="gap-1.5" asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            asChild
+          >
             <Link href="/setup">
               <Settings className="size-4" aria-hidden="true" />
               Buka Setup Perangkat
@@ -212,12 +245,20 @@ function Card({ target, scope }: { target: Target; scope: Scope }) {
               <div className="rounded-md border bg-muted/40 p-2">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-muted-foreground">Perintah CLI</span>
-                  <Button type="button" size="sm" variant="ghost" className="h-6 gap-1 px-2 text-xs" onClick={copy}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 gap-1 px-2 text-xs"
+                    onClick={copy}
+                  >
                     <Copy className="size-3" aria-hidden="true" />
                     {copied ? "Tersalin" : "Salin"}
                   </Button>
                 </div>
-                <pre className="overflow-x-auto font-mono">{report.suggestedCliCommand}</pre>
+                <pre className="overflow-x-auto font-mono">
+                  {report.suggestedCliCommand}
+                </pre>
               </div>
             )}
           </div>
@@ -240,8 +281,16 @@ export function UnreachableDeviceBanner({ scope }: { scope: Scope }) {
             config: routerConfig(r.id, r.name, r.host),
           }))
       : MOCK_DEVICE_CONFIGS.filter(
-          (d) => d.type === "olt" && d.status !== "connected" && d.status !== "untested",
-        ).map((d) => ({ id: d.id, name: d.name, type: TYPE_MAP[d.type], config: d }));
+          (d) =>
+            d.type === "olt" &&
+            d.status !== "connected" &&
+            d.status !== "untested",
+        ).map((d) => ({
+          id: d.id,
+          name: d.name,
+          type: TYPE_MAP[d.type],
+          config: d,
+        }));
 
   if (targets.length === 0) return null;
   return (

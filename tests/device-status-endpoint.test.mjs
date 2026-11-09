@@ -15,38 +15,96 @@ register();
 const { auth } = await import("../src/lib/auth.ts");
 const { db } = await import("../src/db/index.ts");
 const { routers, olts } = await import("../src/db/schema/index.ts");
-const { GET: statusGET } = await import("../src/app/api/devices/status/route.ts");
+const { GET: statusGET } =
+  await import("../src/app/api/devices/status/route.ts");
 const { GET: routersGET } = await import("../src/app/api/routers/route.ts");
-const { computeReachability } = await import("../src/services/devices.service.ts");
+const { computeReachability } =
+  await import("../src/services/devices.service.ts");
 
 let authed = true;
-auth.api.getSession = async () => (authed ? { user: { id: "u1" }, session: {} } : null);
+auth.api.getSession = async () =>
+  authed ? { user: { id: "u1" }, session: {} } : null;
 
 const now = Date.now();
 const iso = (ms) => new Date(now - ms);
 const MIN = 60_000;
 
 const routerRows = [
-  { id: "r1", name: "R-A", host: "10.0.0.1", status: "aktif", lastSeenAt: iso(MIN) }, // connected test
-  { id: "r2", name: "R-B", host: "10.0.0.2", status: "aktif", lastSeenAt: iso(60 * MIN) }, // timeout
-  { id: "r3", name: "R-C", host: "10.0.0.3", status: "aktif", lastSeenAt: null }, // never tested
-  { id: "r4", name: "R-D", host: "10.0.0.4", status: "nonaktif", lastSeenAt: iso(MIN) },
+  {
+    id: "r1",
+    name: "R-A",
+    host: "10.0.0.1",
+    status: "aktif",
+    lastSeenAt: iso(MIN),
+  }, // connected test
+  {
+    id: "r2",
+    name: "R-B",
+    host: "10.0.0.2",
+    status: "aktif",
+    lastSeenAt: iso(60 * MIN),
+  }, // timeout
+  {
+    id: "r3",
+    name: "R-C",
+    host: "10.0.0.3",
+    status: "aktif",
+    lastSeenAt: null,
+  }, // never tested
+  {
+    id: "r4",
+    name: "R-D",
+    host: "10.0.0.4",
+    status: "nonaktif",
+    lastSeenAt: iso(MIN),
+  },
 ];
 const oltRows = [
-  { id: "o1", name: "O-A", host: "10.0.1.1", brand: "hsgq", driver: "x", username: "u", status: "aktif", lastSeenAt: iso(2 * MIN) },
-  { id: "o2", name: "O-B", host: "10.0.1.2", brand: "hsgq", driver: "x", username: "u", status: "aktif", lastSeenAt: null },
+  {
+    id: "o1",
+    name: "O-A",
+    host: "10.0.1.1",
+    brand: "hsgq",
+    driver: "x",
+    username: "u",
+    status: "aktif",
+    lastSeenAt: iso(2 * MIN),
+  },
+  {
+    id: "o2",
+    name: "O-B",
+    host: "10.0.1.2",
+    brand: "hsgq",
+    driver: "x",
+    username: "u",
+    status: "aktif",
+    lastSeenAt: null,
+  },
 ];
 const routerTests = [
   { host: "10.0.0.1", status: "connected", latencyMs: 42, testedAt: iso(MIN) },
-  { host: "10.0.0.2", status: "timeout", latencyMs: null, testedAt: iso(30 * MIN) },
+  {
+    host: "10.0.0.2",
+    status: "timeout",
+    latencyMs: null,
+    testedAt: iso(30 * MIN),
+  },
 ];
-const oltTests = [{ host: "10.0.1.2", status: "disconnected", latencyMs: null, testedAt: iso(10 * MIN) }];
+const oltTests = [
+  {
+    host: "10.0.1.2",
+    status: "disconnected",
+    latencyMs: null,
+    testedAt: iso(10 * MIN),
+  },
+];
 
 // DB palsu: select() per tabel, selectDistinctOn() urut panggilan (router lalu OLT).
 let distinctCalls = 0;
 db.select = () => ({
   from: (table) => ({
-    orderBy: async () => (table === routers ? routerRows : table === olts ? oltRows : []),
+    orderBy: async () =>
+      table === routers ? routerRows : table === olts ? oltRows : [],
   }),
 });
 db.selectDistinctOn = () => {
@@ -55,7 +113,11 @@ db.selectDistinctOn = () => {
 };
 
 const get = (handler, url) =>
-  handler(new Request(`http://localhost:3101${url}`, { headers: { origin: "http://localhost:3101" } }));
+  handler(
+    new Request(`http://localhost:3101${url}`, {
+      headers: { origin: "http://localhost:3101" },
+    }),
+  );
 
 test.beforeEach(() => {
   authed = true;
@@ -86,7 +148,10 @@ test("GET /api/devices/status: 200 dengan routers, olts, summary", async () => {
   assert.equal(c.lastCheckedAt, null);
   assert.equal(d.reachability, "unreachable"); // nonaktif
 
-  assert.deepEqual(data.olts.map((o) => o.reachability), ["reachable", "unreachable"]);
+  assert.deepEqual(
+    data.olts.map((o) => o.reachability),
+    ["reachable", "unreachable"],
+  );
   assert.equal(data.olts[0].lastCheckedAt, null); // reachable karena lastSeenAt < 5 menit
   assert.ok(!JSON.stringify(data).includes("passwordEnc"));
 });
@@ -116,7 +181,13 @@ test("GET /api/routers: 200 daftar router dengan status pemeriksaan", async () =
   const { data } = await res.json();
   assert.equal(data.length, 4);
   for (const r of data) {
-    for (const k of ["lastSeenAt", "lastCheckedAt", "lastTestStatus", "reachability", "latencyMs"]) {
+    for (const k of [
+      "lastSeenAt",
+      "lastCheckedAt",
+      "lastTestStatus",
+      "reachability",
+      "latencyMs",
+    ]) {
       assert.ok(k in r, k);
     }
   }
@@ -127,6 +198,12 @@ test("computeReachability: batas 5 menit", () => {
   const dev = (ms) => ({ status: "aktif", lastSeenAt: new Date(now - ms) });
   assert.equal(computeReachability(dev(5 * MIN), null, now), "reachable");
   assert.equal(computeReachability(dev(5 * MIN + 1), null, now), "unknown");
-  assert.equal(computeReachability(dev(5 * MIN + 1), { status: "error" }, now), "unreachable");
-  assert.equal(computeReachability(dev(5 * MIN + 1), { status: "untested" }, now), "unknown");
+  assert.equal(
+    computeReachability(dev(5 * MIN + 1), { status: "error" }, now),
+    "unreachable",
+  );
+  assert.equal(
+    computeReachability(dev(5 * MIN + 1), { status: "untested" }, now),
+    "unknown",
+  );
 });

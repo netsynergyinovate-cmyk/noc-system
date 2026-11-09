@@ -238,7 +238,9 @@ function FirewallRuleTable({
               <td className="px-2 py-1 text-right tabular-nums whitespace-nowrap">
                 {new Intl.NumberFormat("id-ID").format(r.matchedPackets)}
                 {r.isStale && (
-                  <span className="block text-warning text-[11px]">tidak pernah kena</span>
+                  <span className="block text-warning text-[11px]">
+                    tidak pernah kena
+                  </span>
                 )}
               </td>
             </tr>
@@ -281,7 +283,10 @@ function Timeline({ run }: { run: DiagnosticRunDto }) {
       aria-labelledby={`timeline-${run.id}`}
       className="rounded-lg border border-border bg-card/60 p-2.5"
     >
-      <h3 id={`timeline-${run.id}`} className="text-xs font-semibold text-foreground">
+      <h3
+        id={`timeline-${run.id}`}
+        className="text-xs font-semibold text-foreground"
+      >
         Garis waktu terhadap keluhan
       </h3>
       {items.length === 0 ? (
@@ -320,7 +325,8 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
   const isShared = run.verdictScope === "shared" || run.isSharedFault;
   const layer = run.verdictLayer;
   const optFinding = run.findings?.find(
-    (f) => f.layer === "optik" && (f.threshold !== null || f.comparator !== null),
+    (f) =>
+      f.layer === "optik" && (f.threshold !== null || f.comparator !== null),
   );
   const optThreshText = optFinding?.threshold
     ? `${optFinding.comparator ?? "ambang"} ${optFinding.threshold}`
@@ -439,7 +445,9 @@ export function getActionPlan(run: DiagnosticRunDto): ResolveAction {
     };
   }
 
-  const allUnchecked = !run.findings?.length || run.findings.every((f) => f.status === "unchecked");
+  const allUnchecked =
+    !run.findings?.length ||
+    run.findings.every((f) => f.status === "unchecked");
   const hasUnchecked = run.findings?.some((f) => f.status === "unchecked");
 
   if (allUnchecked) {
@@ -490,7 +498,8 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
   const primaryFinding = run.verdictLayer
     ? ((run.findings ?? [])
         .filter((f) => f.layer === run.verdictLayer)
-        .sort((a, b) => statusOrder[b.status] - statusOrder[a.status])[0] ?? null)
+        .sort((a, b) => statusOrder[b.status] - statusOrder[a.status])[0] ??
+      null)
     : null;
 
   const isFail = primaryFinding?.status === "fail" || isShared;
@@ -540,7 +549,10 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
           )}
           {LayerIcon && (
             <span className="inline-flex items-center gap-1 font-semibold text-foreground text-xs px-2 py-0.5 rounded-md bg-muted/60 border border-border/40">
-              <LayerIcon aria-hidden="true" className="size-3.5 text-primary shrink-0" />
+              <LayerIcon
+                aria-hidden="true"
+                className="size-3.5 text-primary shrink-0"
+              />
               {layerLabel(run.verdictLayer!)}
             </span>
           )}
@@ -551,7 +563,9 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
             if (!primary) return null;
             return (
               <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted/80 text-foreground border border-border/60 inline-flex items-center gap-1 font-medium">
-                <span>{primary.system === "MikroTik" ? "MikroTik" : primary.system}</span>
+                <span>
+                  {primary.system === "MikroTik" ? "MikroTik" : primary.system}
+                </span>
                 <span>{primary.path}</span>
               </span>
             );
@@ -573,7 +587,12 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
               <span>Masalah Utama</span>
             </div>
             {run.verdictLayer && (
-              <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded border", chipColor)}>
+              <span
+                className={cn(
+                  "text-[11px] font-medium px-2 py-0.5 rounded border",
+                  chipColor,
+                )}
+              >
                 {layerLabel(run.verdictLayer)}
               </span>
             )}
@@ -600,7 +619,9 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
               {/* (2) Threshold indicator chip */}
               {findingThresh && (
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-muted-foreground/80 font-medium">Ambang batas:</span>
+                  <span className="text-muted-foreground/80 font-medium">
+                    Ambang batas:
+                  </span>
                   <span className="font-mono text-muted-foreground tabular-nums px-1.5 py-0.5 rounded bg-muted/50 border border-border/40 text-[10px]">
                     {findingThresh}
                   </span>
@@ -637,7 +658,10 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
                   <div className="mt-1 text-[11px] text-muted-foreground/90 bg-muted/30 p-2 rounded border border-border/40 leading-relaxed">
                     <span className="font-semibold text-foreground">
                       Kesimpulan
-                      {run.verdictLayer ? `: ${layerLabel(run.verdictLayer)}` : ""}.
+                      {run.verdictLayer
+                        ? `: ${layerLabel(run.verdictLayer)}`
+                        : ""}
+                      .
                     </span>{" "}
                     {run.verdictDetail}
                   </div>
@@ -647,7 +671,8 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
           ) : (
             /* When verdictLayer is null: display verdictDetail directly without toggle */
             <div className="text-xs text-foreground leading-relaxed font-medium py-1">
-              <span className="font-semibold">Kesimpulan:</span> {run.verdictDetail}
+              <span className="font-semibold">Kesimpulan:</span>{" "}
+              {run.verdictDetail}
             </div>
           )}
 
@@ -658,13 +683,14 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
                   className="font-medium text-destructive"
                   data-testid="verdict-root"
                 >
-                  Sumber: {run.verdictRoot.name} — {run.verdictRoot.affected} dari{" "}
-                  {run.verdictRoot.served} pelanggan terganggu
+                  Sumber: {run.verdictRoot.name} — {run.verdictRoot.affected}{" "}
+                  dari {run.verdictRoot.served} pelanggan terganggu
                 </p>
               )}
               {isHulu && (
                 <span className="block font-medium text-foreground">
-                  Gangguan bersama di sisi hulu: bukan masalah perangkat pelanggan.
+                  Gangguan bersama di sisi hulu: bukan masalah perangkat
+                  pelanggan.
                 </span>
               )}
               {isSharedByEvidence && (
@@ -704,7 +730,10 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
             </p>
             <ol className="flex flex-col gap-1.5 list-none m-0 p-0 text-muted-foreground">
               {actionPlan.steps.map((step, idx) => (
-                <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                <li
+                  key={idx}
+                  className="flex items-start gap-2 leading-relaxed"
+                >
                   <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary font-bold text-[10px] mt-0.5">
                     {idx + 1}
                   </span>
@@ -718,7 +747,10 @@ export function VerdictConclusion({ run }: { run: DiagnosticRunDto }) {
 
       {/* Temuan Terkait */}
       {run.verdictSecondary && run.verdictSecondary.length > 0 && (
-        <div className="rounded-lg border border-border/70 bg-card/60 p-2.5" data-testid="verdict-secondary">
+        <div
+          className="rounded-lg border border-border/70 bg-card/60 p-2.5"
+          data-testid="verdict-secondary"
+        >
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-foreground">
               Temuan terkait ({run.verdictSecondary.length})
@@ -783,7 +815,10 @@ function getWorstFinding(findings: FindingDto[]): FindingDto | null {
   return worst;
 }
 
-function getLayerKeyFigure(layerId: string, findings: FindingDto[]): string | null {
+function getLayerKeyFigure(
+  layerId: string,
+  findings: FindingDto[],
+): string | null {
   if (!findings || findings.length === 0) return null;
   if (layerId === "optik") {
     const rx = findings.find(
@@ -813,9 +848,7 @@ function getLayerKeyFigure(layerId: string, findings: FindingDto[]): string | nu
   }
   if (layerId === "mikrotik") {
     const mk = findings.find(
-      (f) =>
-        f.value !== null &&
-        (f.metric === "cpu" || f.value.includes("%")),
+      (f) => f.value !== null && (f.metric === "cpu" || f.value.includes("%")),
     );
     if (mk?.value) return mk.value;
   }
@@ -825,7 +858,9 @@ function getLayerKeyFigure(layerId: string, findings: FindingDto[]): string | nu
 export function DiagnosticRunView({ runId }: { runId: string }) {
   const { run, error } = useDiagnosticRun(runId);
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
-  const [openFindingInfos, setOpenFindingInfos] = useState<Record<string, boolean>>({});
+  const [openFindingInfos, setOpenFindingInfos] = useState<
+    Record<string, boolean>
+  >({});
 
   const toggleFindingInfo = (id: string) => {
     setOpenFindingInfos((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -920,13 +955,19 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
       >
         {run.status === "queued" && (
           <span className="inline-flex items-center gap-2 text-foreground">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin text-primary motion-reduce:animate-none" />
+            <Loader2
+              aria-hidden="true"
+              className="size-4 animate-spin text-primary motion-reduce:animate-none"
+            />
             Menunggu antrean pemeriksaan router…
           </span>
         )}
         {run.status === "running" && (
           <span className="inline-flex items-center gap-2 text-foreground">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin text-primary motion-reduce:animate-none" />
+            <Loader2
+              aria-hidden="true"
+              className="size-4 animate-spin text-primary motion-reduce:animate-none"
+            />
             Memeriksa lapisan{" "}
             {Math.min(byLayer.size + 1, diagnosticLayers.length)} dari{" "}
             {diagnosticLayers.length}…
@@ -1032,11 +1073,16 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                   {worstStatus === "unchecked" ? (
                     <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
                       <span className="text-muted-foreground/90">
-                        tidak dapat diperiksa{worstFinding?.detail ? `: ${worstFinding.detail}` : ""}
+                        tidak dapat diperiksa
+                        {worstFinding?.detail ? `: ${worstFinding.detail}` : ""}
                       </span>
                       {lInfo.sources.length > 0 && (
                         <span className="font-mono text-[10px] text-muted-foreground/70">
-                          (sumber: {lInfo.sources.map((s) => `${s.system} ${s.path}`).join(", ")})
+                          (sumber:{" "}
+                          {lInfo.sources
+                            .map((s) => `${s.system} ${s.path}`)
+                            .join(", ")}
+                          )
                         </span>
                       )}
                     </div>
@@ -1058,7 +1104,8 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                       </span>
                       {worstFinding.threshold && (
                         <span className="text-muted-foreground text-[10px] font-mono">
-                          (ambang: {worstFinding.comparator} {worstFinding.threshold})
+                          (ambang: {worstFinding.comparator}{" "}
+                          {worstFinding.threshold})
                         </span>
                       )}
                       {worstFinding.detail && worstFinding.value && (
@@ -1068,9 +1115,14 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                       )}
                     </div>
                   ) : worstStatus === "ok" ? (
-                    <div className="flex items-center gap-1 text-muted-foreground/90 truncate" title={lInfo.explain}>
+                    <div
+                      className="flex items-center gap-1 text-muted-foreground/90 truncate"
+                      title={lInfo.explain}
+                    >
                       <span className="text-emerald-500 font-medium">✓</span>
-                      <span className="font-medium text-foreground/85">Semua metrik dalam batas normal</span>
+                      <span className="font-medium text-foreground/85">
+                        Semua metrik dalam batas normal
+                      </span>
                     </div>
                   ) : (
                     <span>
@@ -1095,11 +1147,24 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                       </caption>
                       <thead className="border-b border-border/40 text-[11px] text-muted-foreground">
                         <tr>
-                          <th scope="col" className="py-1 pr-2 font-medium">Metrik</th>
-                          <th scope="col" className="py-1 px-2 font-medium">Nilai</th>
-                          <th scope="col" className="py-1 px-2 font-medium">Ambang</th>
-                          <th scope="col" className="py-1 px-2 font-medium">Status</th>
-                          <th scope="col" className="py-1 pl-2 text-left font-medium">Sumber & Waktu</th>
+                          <th scope="col" className="py-1 pr-2 font-medium">
+                            Metrik
+                          </th>
+                          <th scope="col" className="py-1 px-2 font-medium">
+                            Nilai
+                          </th>
+                          <th scope="col" className="py-1 px-2 font-medium">
+                            Ambang
+                          </th>
+                          <th scope="col" className="py-1 px-2 font-medium">
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="py-1 pl-2 text-left font-medium"
+                          >
+                            Sumber & Waktu
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/30">
@@ -1118,7 +1183,9 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                               >
                                 <td className="py-2 pr-2">
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="font-medium text-foreground">{f.label}</span>
+                                    <span className="font-medium text-foreground">
+                                      {f.label}
+                                    </span>
                                     {primaryMk && (
                                       <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-foreground border border-border/60 font-semibold whitespace-nowrap">
                                         MikroTik {primaryMk.path}
@@ -1133,7 +1200,10 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                       className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline cursor-pointer"
                                       aria-label={`Apa ini: ${f.label}`}
                                     >
-                                      <Info aria-hidden="true" className="size-2.5" />
+                                      <Info
+                                        aria-hidden="true"
+                                        className="size-2.5"
+                                      />
                                       <span>Apa ini?</span>
                                     </button>
                                   </div>
@@ -1147,7 +1217,9 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                   {f.value ?? "—"}
                                 </td>
                                 <td className="py-2 px-2 font-mono tabular-nums text-muted-foreground">
-                                  {[f.comparator, f.threshold].filter(Boolean).join(" ") || "—"}
+                                  {[f.comparator, f.threshold]
+                                    .filter(Boolean)
+                                    .join(" ") || "—"}
                                 </td>
                                 <td className="py-2 px-2">
                                   <FindingStatusPill status={f.status} />
@@ -1163,7 +1235,8 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                   ) : (
                                     "—"
                                   )}
-                                  {f.sampledAt && ` · ${formatWhen(f.sampledAt)}`}
+                                  {f.sampledAt &&
+                                    ` · ${formatWhen(f.sampledAt)}`}
                                 </td>
                               </tr>
                               {/* Info disclosure panel */}
@@ -1172,10 +1245,14 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                   id={`finding-info-${f.id}`}
                                   className="bg-muted/30 border-b border-border/40"
                                 >
-                                  <td colSpan={5} className="p-2.5 space-y-2 text-xs">
+                                  <td
+                                    colSpan={5}
+                                    className="p-2.5 space-y-2 text-xs"
+                                  >
                                     <div className="flex flex-col gap-1">
                                       <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">
-                                        Penjelasan Metrik: {fInfo.title || f.label}
+                                        Penjelasan Metrik:{" "}
+                                        {fInfo.title || f.label}
                                       </span>
                                       <p className="text-xs text-foreground leading-relaxed">
                                         {fInfo.explain}
@@ -1189,14 +1266,19 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                         </span>
                                         <ul className="flex flex-col gap-1">
                                           {fInfo.sources.map((s, idx) => {
-                                            const isMk = s.system === "MikroTik";
+                                            const isMk =
+                                              s.system === "MikroTik";
                                             return (
                                               <li
                                                 key={idx}
                                                 className="flex flex-wrap items-center gap-1.5 text-xs bg-card p-1.5 rounded border border-border/50"
                                               >
                                                 <Badge
-                                                  variant={isMk ? "default" : "secondary"}
+                                                  variant={
+                                                    isMk
+                                                      ? "default"
+                                                      : "secondary"
+                                                  }
                                                   className="text-[10px] px-1.5 py-0 font-medium"
                                                 >
                                                   {s.system}
@@ -1213,11 +1295,13 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                                 <span className="text-[11px] text-muted-foreground">
                                                   via {s.via}
                                                 </span>
-                                                {s.fields && s.fields.length > 0 && (
-                                                  <span className="text-[11px] text-muted-foreground font-mono">
-                                                    (field: {s.fields.join(", ")})
-                                                  </span>
-                                                )}
+                                                {s.fields &&
+                                                  s.fields.length > 0 && (
+                                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                                      (field:{" "}
+                                                      {s.fields.join(", ")})
+                                                    </span>
+                                                  )}
                                               </li>
                                             );
                                           })}
@@ -1231,7 +1315,8 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                                           Dibaca dari:
                                         </span>{" "}
                                         {f.sourceRef ?? "—"}
-                                        {f.sampledAt && ` · sampel ${formatWhen(f.sampledAt)}`}
+                                        {f.sampledAt &&
+                                          ` · sampel ${formatWhen(f.sampledAt)}`}
                                       </div>
                                     )}
                                   </td>
@@ -1256,7 +1341,9 @@ export function DiagnosticRunView({ runId }: { runId: string }) {
                   )}
                   {lInfo.sources.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground pt-1.5 border-t border-border/40">
-                      <span className="font-semibold text-foreground">Sumber lapisan:</span>
+                      <span className="font-semibold text-foreground">
+                        Sumber lapisan:
+                      </span>
                       {lInfo.sources.map((s, idx) => (
                         <span
                           key={idx}

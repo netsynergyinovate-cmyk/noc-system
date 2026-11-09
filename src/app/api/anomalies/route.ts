@@ -1,8 +1,5 @@
 import { readJson, withApiSession } from "@/lib/api";
-import {
-  createAnomaly,
-  getAnomaliesList,
-} from "@/services/anomalies.service";
+import { createAnomaly, getAnomaliesList } from "@/services/anomalies.service";
 import {
   createAnomalyInputSchema,
   parseAnomalyQuery,

@@ -5,7 +5,8 @@ export interface SyncHistoryEntry {
   id: string;
   runAt: string;
   triggerType: "manual" | "scheduled" | "startup_seed" | "transfer_pipeline";
-  scope: "full" | "accounts" | "devices" | "customers" | "billing" | "thresholds";
+  scope:
+    "full" | "accounts" | "devices" | "customers" | "billing" | "thresholds";
   status: "success" | "partial" | "failed";
   recordsProcessed: number;
   recordsInserted: number;
@@ -31,7 +32,8 @@ export interface SyncHistoryOverview {
 
 export interface SyncHistoryFilter {
   status: "all" | "success" | "failed";
-  triggerType: "all" | "manual" | "scheduled" | "startup_seed" | "transfer_pipeline";
+  triggerType:
+    "all" | "manual" | "scheduled" | "startup_seed" | "transfer_pipeline";
   query: string;
 }
 
@@ -75,7 +77,8 @@ export const MOCK_SYNC_HISTORY_ENTRIES: readonly SyncHistoryEntry[] = [
     recordsSkipped: 205,
     durationMs: 820,
     actor: "Sistem (Scheduler)",
-    summaryMessage: "Penyelarasan berkala status billing dan telemetri perangkat sukses.",
+    summaryMessage:
+      "Penyelarasan berkala status billing dan telemetri perangkat sukses.",
     checksum: "sha256-sync-8820c741",
   },
   {
@@ -135,7 +138,8 @@ export const MOCK_SYNC_HISTORY_ENTRIES: readonly SyncHistoryEntry[] = [
     recordsSkipped: 0,
     durationMs: 340,
     actor: "Bootstrap Kontainer (Inisialisasi)",
-    summaryMessage: "Penyemaian awal akun Admin NOC dan Petugas Viewer idempoten.",
+    summaryMessage:
+      "Penyemaian awal akun Admin NOC dan Petugas Viewer idempoten.",
     checksum: "sha256-sync-acc9017a",
   },
 ];
@@ -149,7 +153,10 @@ export function createRefreshedSyncHistoryEntry(
   scope: SyncHistoryEntry["scope"] = "full",
 ): SyncHistoryEntry {
   const now = new Date();
-  const timeStr = now.toISOString().replace(/[-:T.]/g, "").slice(0, 14);
+  const timeStr = now
+    .toISOString()
+    .replace(/[-:T.]/g, "")
+    .slice(0, 14);
 
   return {
     id: `run-${timeStr}`,
@@ -233,8 +240,10 @@ export function getSyncHistoryFacetCounts(
     triggerType: {
       all: queryMatched.length,
       manual: queryMatched.filter((e) => e.triggerType === "manual").length,
-      scheduled: queryMatched.filter((e) => e.triggerType === "scheduled").length,
-      startup_seed: queryMatched.filter((e) => e.triggerType === "startup_seed").length,
+      scheduled: queryMatched.filter((e) => e.triggerType === "scheduled")
+        .length,
+      startup_seed: queryMatched.filter((e) => e.triggerType === "startup_seed")
+        .length,
       transfer_pipeline: queryMatched.filter(
         (e) => e.triggerType === "transfer_pipeline",
       ).length,
@@ -252,7 +261,10 @@ export function filterSyncHistoryEntries(
     if (filter.status !== "all" && item.status !== filter.status) {
       return false;
     }
-    if (filter.triggerType !== "all" && item.triggerType !== filter.triggerType) {
+    if (
+      filter.triggerType !== "all" &&
+      item.triggerType !== filter.triggerType
+    ) {
       return false;
     }
     if (!q) return true;

@@ -10,7 +10,10 @@ const base = z.object({
 
 // Target dinormalkan menurut tipe; null bila tidak valid.
 export function normalizeTarget(target: string, type: "individual" | "group") {
-  return normalizeRecipientPhone(target, type === "group" ? "group" : "personal") || null;
+  return (
+    normalizeRecipientPhone(target, type === "group" ? "group" : "personal") ||
+    null
+  );
 }
 
 export const createRecipientSchema = base.strict().superRefine((v, ctx) => {
@@ -18,7 +21,10 @@ export const createRecipientSchema = base.strict().superRefine((v, ctx) => {
     ctx.addIssue({
       code: "custom",
       path: ["target"],
-      message: v.type === "group" ? "ID grup tidak valid." : "Nomor telepon tidak valid.",
+      message:
+        v.type === "group"
+          ? "ID grup tidak valid."
+          : "Nomor telepon tidak valid.",
     });
 });
 
@@ -37,7 +43,11 @@ export const listWhatsappLogsSchema = z.object({
 
 export const sendWhatsappSchema = z
   .object({
-    message: z.string().trim().min(1, "Pesan wajib diisi.").max(2000, "Pesan maksimal 2000 karakter."),
+    message: z
+      .string()
+      .trim()
+      .min(1, "Pesan wajib diisi.")
+      .max(2000, "Pesan maksimal 2000 karakter."),
     target: z.string().trim().min(1, "Target tidak boleh kosong.").optional(),
     recipientId: z.string().uuid("recipientId harus UUID.").optional(),
     alertKind: z.string().trim().min(1).max(50).optional(),
@@ -55,7 +65,11 @@ export const sendWhatsappSchema = z
 export type SendWhatsappInput = z.infer<typeof sendWhatsappSchema>;
 
 // failureRate = gagal / (terkirim + gagal), persen 1 desimal; pending belum final jadi tak dihitung.
-export function summarizeLogCounts(c: { sent: number; failed: number; pending: number }) {
+export function summarizeLogCounts(c: {
+  sent: number;
+  failed: number;
+  pending: number;
+}) {
   const final = c.sent + c.failed;
   return {
     totalSent: c.sent,

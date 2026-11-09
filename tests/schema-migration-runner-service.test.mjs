@@ -83,7 +83,9 @@ test("runner: loadGeneratedSqlMigrationPlan membaca 15 berkas generated SQL teru
     assert.ok(item.folderMillis > 0);
     assert.match(item.hash, /^[0-9a-f]{64}$/);
     assert.ok(item.statements.length > 0);
-    assert.ok(item.statements.every((s) => !s.includes("statement-breakpoint")));
+    assert.ok(
+      item.statements.every((s) => !s.includes("statement-breakpoint")),
+    );
   }
 });
 
@@ -300,14 +302,8 @@ test("idempotensi: isMigrationApplied mengenali status berdasarkan created_at", 
   assert.equal(isMigrationApplied(1000, appliedRows), true);
   assert.equal(isMigrationApplied(2000, appliedRows), true);
   assert.equal(isMigrationApplied(3000, appliedRows), false);
-  assert.equal(
-    isMigrationApplied({ folderMillis: 2000 }, appliedRows),
-    true,
-  );
-  assert.equal(
-    isMigrationApplied({ folderMillis: 9999 }, appliedRows),
-    false,
-  );
+  assert.equal(isMigrationApplied({ folderMillis: 2000 }, appliedRows), true);
+  assert.equal(isMigrationApplied({ folderMillis: 9999 }, appliedRows), false);
 });
 
 test("idempotensi: recordMigrationHistory dan getMigrationHistoryRecords mencatat dan membaca data", async () => {
@@ -316,7 +312,11 @@ test("idempotensi: recordMigrationHistory dan getMigrationHistoryRecords mencata
     async query(sql, params) {
       if (sql.includes("to_regclass")) return { rows: [{ exists: true }] };
       if (sql.startsWith("INSERT INTO")) {
-        rows.push({ id: rows.length + 1, hash: params[0], created_at: params[1] });
+        rows.push({
+          id: rows.length + 1,
+          hash: params[0],
+          created_at: params[1],
+        });
         return { rows: [] };
       }
       if (sql.startsWith("SELECT id, hash, created_at")) {
@@ -326,7 +326,10 @@ test("idempotensi: recordMigrationHistory dan getMigrationHistoryRecords mencata
     },
   };
 
-  await recordMigrationHistory(client, { hash: "abc123hash", folderMillis: 1788829112625 });
+  await recordMigrationHistory(client, {
+    hash: "abc123hash",
+    folderMillis: 1788829112625,
+  });
   assert.equal(rows.length, 1);
   assert.equal(rows[0].hash, "abc123hash");
   assert.equal(rows[0].created_at, 1788829112625);
@@ -347,8 +350,12 @@ test("idempotensi: verifyMigrationIdempotency membuktikan eksekusi berulang tida
       if (sql.startsWith("SELECT id, hash, created_at")) {
         return { rows: [...rows] };
       }
-      if (sql.includes('__drizzle_migrations') && params) {
-        rows.push({ id: rows.length + 1, hash: params[0], created_at: params[1] });
+      if (sql.includes("__drizzle_migrations") && params) {
+        rows.push({
+          id: rows.length + 1,
+          hash: params[0],
+          created_at: params[1],
+        });
         return { rows: [] };
       }
       return { rows: [] };
@@ -386,7 +393,10 @@ test("API: POST /api/migrations/verify menolak anonim 401", async () => {
 
 test("upgrade versi: getCurrentAppVersion membaca dari env atau fallback", () => {
   assert.equal(getCurrentAppVersion({ APP_VERSION: "1.2.3" }), "1.2.3");
-  assert.equal(getCurrentAppVersion({ NEXT_PUBLIC_APP_VERSION: "2.0.0" }), "2.0.0");
+  assert.equal(
+    getCurrentAppVersion({ NEXT_PUBLIC_APP_VERSION: "2.0.0" }),
+    "2.0.0",
+  );
   assert.equal(getCurrentAppVersion({}), "1.0.0.0");
 });
 
@@ -445,11 +455,15 @@ test("upgrade versi: applyUpgradeMigrationsIfNeeded mendeteksi kenaikan versi da
       if (sql.includes("ORDER BY id DESC LIMIT 1")) {
         return { rows: versionRows.slice(-1) };
       }
-      if (sql.startsWith("INSERT INTO \"drizzle\".\"__drizzle_migrations\"")) {
-        migrationRows.push({ id: migrationRows.length + 1, hash: params[0], created_at: params[1] });
+      if (sql.startsWith('INSERT INTO "drizzle"."__drizzle_migrations"')) {
+        migrationRows.push({
+          id: migrationRows.length + 1,
+          hash: params[0],
+          created_at: params[1],
+        });
         return { rows: [] };
       }
-      if (sql.startsWith("INSERT INTO \"drizzle\".\"app_version_history\"")) {
+      if (sql.startsWith('INSERT INTO "drizzle"."app_version_history"')) {
         versionRows.push({ id: versionRows.length + 1, version: params[0] });
         return { rows: [] };
       }
@@ -532,26 +546,14 @@ test("galat & remediation: deriveRemediationHint mendeteksi konteks galat Postgr
     deriveRemediationHint("duplicate key value violates unique constraint"),
     /duplikasi data/,
   );
-  assert.match(
-    deriveRemediationHint("relation already exists"),
-    /sudah ada/,
-  );
-  assert.match(
-    deriveRemediationHint("relation does not exist"),
-    /belum ada/,
-  );
+  assert.match(deriveRemediationHint("relation already exists"), /sudah ada/);
+  assert.match(deriveRemediationHint("relation does not exist"), /belum ada/);
   assert.match(
     deriveRemediationHint("violates foreign key constraint"),
     /foreign key/,
   );
-  assert.match(
-    deriveRemediationHint("syntax error at or near"),
-    /sintaks SQL/,
-  );
-  assert.match(
-    deriveRemediationHint("deadlock detected"),
-    /lock contention/,
-  );
+  assert.match(deriveRemediationHint("syntax error at or near"), /sintaks SQL/);
+  assert.match(deriveRemediationHint("deadlock detected"), /lock contention/);
   assert.match(
     deriveRemediationHint("unknown unclassified error"),
     /log PostgreSQL/,

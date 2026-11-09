@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { describeConnectionTroubleshoot: d } = await import(
-  "../src/components/dashboard/connection-error-notice.tsx"
-);
+const { describeConnectionTroubleshoot: d } =
+  await import("../src/components/dashboard/connection-error-notice.tsx");
 
 test("TIMEOUT: tanpa command", () => {
   const r = d("TIMEOUT", "mikrotik");

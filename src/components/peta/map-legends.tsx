@@ -38,28 +38,40 @@ export function MapLegends() {
               <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium text-foreground">Terhubung</span>
-                <span className="text-[10px] text-muted-foreground">Layanan aktif normal</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Layanan aktif normal
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-amber-400 shadow-sm shrink-0" />
               <div className="flex flex-col">
                 <span className="font-medium text-foreground">Isolir</span>
-                <span className="text-[10px] text-muted-foreground">Pembayaran tertunda</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Pembayaran tertunda
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-rose-500 shadow-sm shrink-0" />
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">Loss / Gangguan</span>
-                <span className="text-[10px] text-muted-foreground">Sinyal optik putus/LOS</span>
+                <span className="font-medium text-foreground">
+                  Loss / Gangguan
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Sinyal optik putus/LOS
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-zinc-400 shadow-sm shrink-0" />
               <div className="flex flex-col">
-                <span className="font-medium text-foreground">Offline / Belum Aktif</span>
-                <span className="text-[10px] text-muted-foreground">Perangkat mati</span>
+                <span className="font-medium text-foreground">
+                  Offline / Belum Aktif
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  Perangkat mati
+                </span>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-border pt-2">

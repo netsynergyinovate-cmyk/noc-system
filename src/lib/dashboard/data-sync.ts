@@ -78,7 +78,8 @@ export const MOCK_DATA_SYNC_MODULES: readonly DataSyncModuleItem[] = [
   {
     id: "sync-customers",
     name: "Data Pelanggan & Pemetaan ODP",
-    description: "Database pelanggan internet, koordinat rumah, dan penomoran ODP",
+    description:
+      "Database pelanggan internet, koordinat rumah, dan penomoran ODP",
     entityType: "customers",
     status: "in_sync",
     recordsCount: 156,

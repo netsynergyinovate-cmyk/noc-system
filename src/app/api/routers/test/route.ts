@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { withApiPermission, readJson, ApiError } from "@/lib/api";
-import { DeviceConnectionError, runSimulatorDeviceTest, sanitizeHost } from "@/lib/device-connection";
+import {
+  DeviceConnectionError,
+  runSimulatorDeviceTest,
+  sanitizeHost,
+} from "@/lib/device-connection";
 import { redactSecrets } from "@/services/device-connection-tester";
 import { recordClientTestResult } from "@/services/device-test-results.service";
 import { testRouterSchema } from "@/validators/routers";
@@ -33,10 +37,15 @@ export const POST = (request: Request) =>
     const secrets = { username, password: password ?? "" };
     let probe: Awaited<ReturnType<typeof probeRouterApi>> | null = null;
     if (mode === "simulator") {
-      const sim = runSimulatorDeviceTest({ type: "mikrotik", mode: "simulator", host, port });
+      const sim = runSimulatorDeviceTest({
+        type: "mikrotik",
+        mode: "simulator",
+        host,
+        port,
+      });
       probe = {
         ok: sim.ok,
-        code: sim.ok ? "OK" : sim.code ?? "CONNECTION_FAILED",
+        code: sim.ok ? "OK" : (sim.code ?? "CONNECTION_FAILED"),
         message: sim.message,
         latencyMs: sim.latencyMs ?? 0,
         port: port ?? (protocol === "api" ? 8728 : 80),

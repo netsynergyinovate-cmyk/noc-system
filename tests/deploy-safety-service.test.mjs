@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { getRealSystemHealthChecks, getRealDeploySafetyOverview } = await import(
-  "../src/services/deploy-safety.service.ts"
-);
+const { getRealSystemHealthChecks, getRealDeploySafetyOverview } =
+  await import("../src/services/deploy-safety.service.ts");
 
 test("getRealSystemHealthChecks menghasilkan seluruh pemeriksaan sistem dasar", async () => {
   const checks = await getRealSystemHealthChecks();
@@ -37,6 +36,8 @@ test("getRealSystemHealthChecks menghasilkan seluruh pemeriksaan sistem dasar", 
 test("getRealDeploySafetyOverview mengevaluasi skor kesehatan sistem", async () => {
   const overview = await getRealDeploySafetyOverview();
   assert.ok(overview.totalChecks > 0);
-  assert.ok(overview.healthScorePercent >= 0 && overview.healthScorePercent <= 100);
+  assert.ok(
+    overview.healthScorePercent >= 0 && overview.healthScorePercent <= 100,
+  );
   assert.ok(overview.lastDeploymentAt);
 });

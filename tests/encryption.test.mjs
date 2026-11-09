@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { encryptWithKey, decryptWithKey } = await import(
-  "../src/lib/encryption-core.ts"
-);
+const { encryptWithKey, decryptWithKey } =
+  await import("../src/lib/encryption-core.ts");
 
 const key = "k".repeat(32);
 
@@ -38,19 +37,26 @@ test("auth tag dimanipulasi -> gagal", () => {
   const [iv, tag, ct] = encryptWithKey("abc", key).split(":");
   const b = Buffer.from(tag, "base64");
   b[0] ^= 1;
-  assert.throws(() => decryptWithKey(`${iv}:${b.toString("base64")}:${ct}`, key));
+  assert.throws(() =>
+    decryptWithKey(`${iv}:${b.toString("base64")}:${ct}`, key),
+  );
 });
 
 test("ciphertext dimanipulasi -> gagal", () => {
   const [iv, tag, ct] = encryptWithKey("abcdef", key).split(":");
   const b = Buffer.from(ct, "base64");
   b[0] ^= 1;
-  assert.throws(() => decryptWithKey(`${iv}:${tag}:${b.toString("base64")}`, key));
+  assert.throws(() =>
+    decryptWithKey(`${iv}:${tag}:${b.toString("base64")}`, key),
+  );
 });
 
 test("kunci salah & format rusak -> gagal", () => {
   const enc = encryptWithKey("abc", key);
   assert.throws(() => decryptWithKey(enc, "z".repeat(32)));
-  assert.throws(() => decryptWithKey("bukan-format", key), /Invalid encrypted format/);
+  assert.throws(
+    () => decryptWithKey("bukan-format", key),
+    /Invalid encrypted format/,
+  );
   assert.throws(() => decryptWithKey("a:b:c", key), /Invalid encrypted format/);
 });

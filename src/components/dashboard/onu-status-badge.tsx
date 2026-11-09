@@ -4,7 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getOnuStatusMeta, type OnuStatus } from "@/lib/dashboard/onu-status";
 
-export function OnuStatusBadge({ status, className }: { status: OnuStatus | string; className?: string }) {
+export function OnuStatusBadge({
+  status,
+  className,
+}: {
+  status: OnuStatus | string;
+  className?: string;
+}) {
   const meta = getOnuStatusMeta(status);
   return (
     <Badge
@@ -16,7 +22,11 @@ export function OnuStatusBadge({ status, className }: { status: OnuStatus | stri
     >
       <span
         aria-hidden="true"
-        className={cn("mr-1.5 inline-block size-2", status === "los" ? "rounded-sm" : "rounded-full", meta.dotClass)}
+        className={cn(
+          "mr-1.5 inline-block size-2",
+          status === "los" ? "rounded-sm" : "rounded-full",
+          meta.dotClass,
+        )}
       />
       {meta.label}
     </Badge>

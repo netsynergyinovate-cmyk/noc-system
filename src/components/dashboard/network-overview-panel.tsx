@@ -20,7 +20,9 @@ export function NetworkOverviewPanel() {
     const activeCount = routers.filter((r) => r.active).length;
     const readable = (resources.items ?? []).filter((item) => item.active);
     const liveCpu = readable.length
-      ? Math.round(readable.reduce((n, item) => n + item.cpuLoad, 0) / readable.length)
+      ? Math.round(
+          readable.reduce((n, item) => n + item.cpuLoad, 0) / readable.length,
+        )
       : 0;
     return {
       overview: {
@@ -28,9 +30,15 @@ export function NetworkOverviewPanel() {
         activeRouters: activeCount,
         offlineRouters: routers.length - activeCount,
         totalInterfaces: 0,
-        totalQueues: (resources.items ?? []).reduce((n, item) => n + (item.queueCount ?? 0), 0),
+        totalQueues: (resources.items ?? []).reduce(
+          (n, item) => n + (item.queueCount ?? 0),
+          0,
+        ),
         totalActivePppoe: customers.filter((c) => c.isOnline).length,
-        networkHealthScore: routers.length > 0 ? Math.round((activeCount / routers.length) * 100) : 0,
+        networkHealthScore:
+          routers.length > 0
+            ? Math.round((activeCount / routers.length) * 100)
+            : 0,
         sourceStatus: "nyata" as const,
         lastScannedAt: new Date().toISOString(),
       },
@@ -44,7 +52,6 @@ export function NetworkOverviewPanel() {
       data-testid="network-overview-panel"
       className="flex flex-col gap-3"
     >
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Router Online / Aktif"
@@ -71,7 +78,11 @@ export function NetworkOverviewPanel() {
           value={`${overview.networkHealthScore}%`}
           hint="Online penuh, degraded setengah, offline nol"
           Icon={Activity}
-          tone={overview.networkHealthScore >= HEALTH_OK_SCORE ? "success" : "warning"}
+          tone={
+            overview.networkHealthScore >= HEALTH_OK_SCORE
+              ? "success"
+              : "warning"
+          }
         />
       </div>
     </section>

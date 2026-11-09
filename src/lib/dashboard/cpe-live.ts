@@ -19,7 +19,9 @@ export interface LiveCpeResult {
   truncated: boolean;
 }
 
-async function getPage(query: string): Promise<{ data: CpeDevice[]; total: number }> {
+async function getPage(
+  query: string,
+): Promise<{ data: CpeDevice[]; total: number }> {
   let res: Response;
   try {
     res = await fetch(`/api/cpe?${query}`);
@@ -50,14 +52,19 @@ export async function fetchLiveCpe(): Promise<LiveCpeResult> {
 }
 
 // Modem milik satu pelanggan, dicari lewat username PPPoE (tanpa membedakan huruf).
-export async function fetchCpeByPppoe(pppoeUsername: string): Promise<CpeDevice | null> {
+export async function fetchCpeByPppoe(
+  pppoeUsername: string,
+): Promise<CpeDevice | null> {
   const needle = pppoeUsername.trim().toLowerCase();
   if (!needle) return null;
   const r = await getPage(`search=${encodeURIComponent(needle)}&limit=20`);
-  return r.data.find((d) => d.pppoeUsername.trim().toLowerCase() === needle) ?? null;
+  return (
+    r.data.find((d) => d.pppoeUsername.trim().toLowerCase() === needle) ?? null
+  );
 }
 
-export type RebootResult = { ok: true; message: string } | { ok: false; message: string };
+export type RebootResult =
+  { ok: true; message: string } | { ok: false; message: string };
 
 // Perintah reboot modem sungguhan: dikirim server ke GenieACS (butuh izin cpe:manage).
 export async function rebootCpeLive(customerId: string): Promise<RebootResult> {
@@ -69,37 +76,84 @@ export async function rebootCpeLive(customerId: string): Promise<RebootResult> {
       body: JSON.stringify({ customerId, action: "reboot_device" }),
     });
   } catch {
-    return { ok: false, message: "Server aplikasi tidak terjangkau. Perintah reboot tidak dikirim." };
+    return {
+      ok: false,
+      message:
+        "Server aplikasi tidak terjangkau. Perintah reboot tidak dikirim.",
+    };
   }
-  if (res.status === 403) return { ok: false, message: "Akun Anda tidak punya izin me-reboot modem (butuh peran admin)." };
-  if (res.status === 404) return { ok: false, message: "Pelanggan tidak ditemukan di database." };
+  if (res.status === 403)
+    return {
+      ok: false,
+      message:
+        "Akun Anda tidak punya izin me-reboot modem (butuh peran admin).",
+    };
+  if (res.status === 404)
+    return { ok: false, message: "Pelanggan tidak ditemukan di database." };
   if (res.status === 201 || res.status === 202) {
     // Server menjawab 201 walau tugasnya gagal; hasil sebenarnya ada di isi jawaban.
     const json = (await res.json().catch(() => null)) as {
       data?: { status?: string; payload?: { errorReason?: string } };
     } | null;
     if (json?.data?.status === "success") {
-      return { ok: true, message: "Perintah reboot diterima GenieACS. Modem mati sekitar 1-2 menit." };
+      return {
+        ok: true,
+        message:
+          "Perintah reboot diterima GenieACS. Modem mati sekitar 1-2 menit.",
+      };
     }
     return {
       ok: false,
-      message: json?.data?.payload?.errorReason ?? "GenieACS tidak menerima perintah reboot.",
+      message:
+        json?.data?.payload?.errorReason ??
+        "GenieACS tidak menerima perintah reboot.",
     };
   }
-  return { ok: false, message: `Server gagal mengirim perintah reboot (HTTP ${res.status}).` };
+  return {
+    ok: false,
+    message: `Server gagal mengirim perintah reboot (HTTP ${res.status}).`,
+  };
 }
 
 // Reboot ONU lewat OLT (CLI onu-reboot): jalan keluar saat modem tidak bisa dijangkau GenieACS. Server memeriksa izin
 // cpe:manage dan mencatat audit; backend hanya menerima nomor PON/ONU bilangan bulat.
-export async function rebootOnuViaOlt(onu: { oltId: string; ponIndex: number; onuIndex: number }): Promise<RebootResult> {
+export async function rebootOnuViaOlt(onu: {
+  oltId: string;
+  ponIndex: number;
+  onuIndex: number;
+}): Promise<RebootResult> {
   let res: Response;
   try {
-    res = await fetch(`/api/olts/${encodeURIComponent(onu.oltId)}/onus/${onu.ponIndex}/${onu.onuIndex}/reboot`, { method: "POST" });
+    res = await fetch(
+      `/api/olts/${encodeURIComponent(onu.oltId)}/onus/${onu.ponIndex}/${onu.onuIndex}/reboot`,
+      { method: "POST" },
+    );
   } catch {
-    return { ok: false, message: "Server aplikasi tidak terjangkau. Perintah reboot tidak dikirim." };
+    return {
+      ok: false,
+      message:
+        "Server aplikasi tidak terjangkau. Perintah reboot tidak dikirim.",
+    };
   }
-  const body: { ok?: boolean; message?: string; error?: { message?: string } } | null = await res.json().catch(() => null);
-  if (res.status === 403) return { ok: false, message: "Akun Anda tidak punya izin me-reboot perangkat (butuh peran admin)." };
-  if (res.ok && body?.ok) return { ok: true, message: body.message ?? "Perintah reboot diterima OLT." };
-  return { ok: false, message: body?.error?.message ?? `Perintah reboot gagal (HTTP ${res.status}).` };
+  const body: {
+    ok?: boolean;
+    message?: string;
+    error?: { message?: string };
+  } | null = await res.json().catch(() => null);
+  if (res.status === 403)
+    return {
+      ok: false,
+      message:
+        "Akun Anda tidak punya izin me-reboot perangkat (butuh peran admin).",
+    };
+  if (res.ok && body?.ok)
+    return {
+      ok: true,
+      message: body.message ?? "Perintah reboot diterima OLT.",
+    };
+  return {
+    ok: false,
+    message:
+      body?.error?.message ?? `Perintah reboot gagal (HTTP ${res.status}).`,
+  };
 }

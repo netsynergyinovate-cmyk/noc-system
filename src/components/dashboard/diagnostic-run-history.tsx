@@ -44,9 +44,12 @@ function RunList({
     let stopped = false;
     async function load() {
       try {
-        const res = await fetch(`/api/anomalies/diagnostics?limit=${PAGE_SIZE}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/anomalies/diagnostics?limit=${PAGE_SIZE}`,
+          {
+            cache: "no-store",
+          },
+        );
         if (!res.ok)
           throw new Error(
             await errorMessage(res, "Gagal memuat riwayat diagnosa"),
@@ -98,7 +101,9 @@ function RunList({
         {!runs ? (
           <p className="p-2 text-xs text-muted-foreground">Memuat…</p>
         ) : runs.length === 0 ? (
-          <p className="p-2 text-xs text-muted-foreground">Belum ada diagnosa.</p>
+          <p className="p-2 text-xs text-muted-foreground">
+            Belum ada diagnosa.
+          </p>
         ) : (
           <ul
             className="flex flex-col divide-y divide-border/40 max-h-[70vh] overflow-y-auto"

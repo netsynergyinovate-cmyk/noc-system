@@ -39,63 +39,101 @@ test("GET /api/v1/data: key berformat salah ditolak tanpa menyentuh database", a
 // Bagian berikut butuh PostgreSQL sekali pakai dari `npm test`.
 const withDb = process.env.STARTER_TEST_RUN?.startsWith("starter-pg-test-");
 
-test("API key: baca data tanpa rahasia, hanya-baca menolak tulis, cabut berlaku", { skip: !withDb && "jalankan lewat npm test" }, async () => {
-  const { db } = await import("../src/db/index.ts");
-  const { user, routers } = await import("../src/db/schema/index.ts");
-  const { createApiKey } = await import("../src/services/api-keys.service.ts");
+test(
+  "API key: baca data tanpa rahasia, hanya-baca menolak tulis, cabut berlaku",
+  { skip: !withDb && "jalankan lewat npm test" },
+  async () => {
+    const { db } = await import("../src/db/index.ts");
+    const { user, routers } = await import("../src/db/schema/index.ts");
+    const { createApiKey } =
+      await import("../src/services/api-keys.service.ts");
 
-  const suffix = randomBytes(4).toString("hex");
-  const userId = `apikey-test-${suffix}`;
-  await db.insert(user).values({ id: userId, name: "Uji Key", email: `${userId}@test.local`, role: "admin" });
-  await db.insert(routers).values({ name: `r-${suffix}`, host: `10.99.0.${Number.parseInt(suffix.slice(0, 2), 16)}`, username: "api", passwordEnc: "iv:tag:rahasia" });
+    const suffix = randomBytes(4).toString("hex");
+    const userId = `apikey-test-${suffix}`;
+    await db.insert(user).values({
+      id: userId,
+      name: "Uji Key",
+      email: `${userId}@test.local`,
+      role: "admin",
+    });
+    await db.insert(routers).values({
+      name: `r-${suffix}`,
+      host: `10.99.0.${Number.parseInt(suffix.slice(0, 2), 16)}`,
+      username: "api",
+      passwordEnc: "iv:tag:rahasia",
+    });
 
-  const { key: readKey } = await createApiKey(userId, { name: "baca", access: "read" });
-  const { key: rwKey, apiKey: rw } = await createApiKey(userId, { name: "tulis", access: "read-write" });
+    const { key: readKey } = await createApiKey(userId, {
+      name: "baca",
+      access: "read",
+    });
+    const { key: rwKey, apiKey: rw } = await createApiKey(userId, {
+      name: "tulis",
+      access: "read-write",
+    });
 
-  const list = await dataRoute.GET(bearer(readKey));
-  assert.equal(list.status, 200);
-  const names = (await list.json()).data;
-  assert.ok(names.includes("routers") && names.includes("customers"));
-  assert.ok(!names.includes("billing-credentials") && !names.includes("api-keys"));
+    const list = await dataRoute.GET(bearer(readKey));
+    assert.equal(list.status, 200);
+    const names = (await list.json()).data;
+    assert.ok(names.includes("routers") && names.includes("customers"));
+    assert.ok(
+      !names.includes("billing-credentials") && !names.includes("api-keys"),
+    );
 
-  const rows = await dataRoute.GET(bearer(readKey, { url: `${URL_DATA}?dataset=routers&limit=1000` }));
-  assert.equal(rows.status, 200);
-  const body = await rows.json();
-  const mine = body.data.find((r) => r.name === `r-${suffix}`);
-  assert.ok(mine, "router uji ikut terbaca");
-  assert.equal("passwordEnc" in mine, false);
-  assert.equal(JSON.stringify(body).includes("rahasia"), false);
+    const rows = await dataRoute.GET(
+      bearer(readKey, { url: `${URL_DATA}?dataset=routers&limit=1000` }),
+    );
+    assert.equal(rows.status, 200);
+    const body = await rows.json();
+    const mine = body.data.find((r) => r.name === `r-${suffix}`);
+    assert.ok(mine, "router uji ikut terbaca");
+    assert.equal("passwordEnc" in mine, false);
+    assert.equal(JSON.stringify(body).includes("rahasia"), false);
 
-  // Kunci utama gabungan juga bisa diurutkan.
-  const samples = await dataRoute.GET(bearer(readKey, { url: `${URL_DATA}?dataset=traffic-samples&limit=5` }));
-  assert.equal(samples.status, 200);
+    // Kunci utama gabungan juga bisa diurutkan.
+    const samples = await dataRoute.GET(
+      bearer(readKey, { url: `${URL_DATA}?dataset=traffic-samples&limit=5` }),
+    );
+    assert.equal(samples.status, 200);
 
-  const unknown = await dataRoute.GET(bearer(readKey, { url: `${URL_DATA}?dataset=account` }));
-  assert.equal(unknown.status, 404);
+    const unknown = await dataRoute.GET(
+      bearer(readKey, { url: `${URL_DATA}?dataset=account` }),
+    );
+    assert.equal(unknown.status, 404);
 
-  const post = { url: "http://localhost:3101/api/api-keys", method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "x" }) };
-  const readOnlyWrite = await keysRoute.POST(bearer(readKey, post));
-  assert.equal(readOnlyWrite.status, 403);
-  assert.equal((await readOnlyWrite.json()).error.code, "READ_ONLY_API_KEY");
+    const post = {
+      url: "http://localhost:3101/api/api-keys",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "x" }),
+    };
+    const readOnlyWrite = await keysRoute.POST(bearer(readKey, post));
+    assert.equal(readOnlyWrite.status, 403);
+    assert.equal((await readOnlyWrite.json()).error.code, "READ_ONLY_API_KEY");
 
-  // Key tidak boleh membuat key baru, walau baca+tulis dan pemiliknya admin.
-  const keyMakesKey = await keysRoute.POST(bearer(rwKey, post));
-  assert.equal(keyMakesKey.status, 403);
-  assert.equal((await keyMakesKey.json()).error.code, "SESSION_REQUIRED");
+    // Key tidak boleh membuat key baru, walau baca+tulis dan pemiliknya admin.
+    const keyMakesKey = await keysRoute.POST(bearer(rwKey, post));
+    assert.equal(keyMakesKey.status, 403);
+    assert.equal((await keyMakesKey.json()).error.code, "SESSION_REQUIRED");
 
-  const revoke = await keyRoute.DELETE(
-    bearer(rwKey, { url: `http://localhost:3101/api/api-keys/${rw.id}`, method: "DELETE" }),
-    { params: Promise.resolve({ id: rw.id }) },
-  );
-  assert.equal(revoke.status, 403, "pencabutan juga hanya dari sesi login");
+    const revoke = await keyRoute.DELETE(
+      bearer(rwKey, {
+        url: `http://localhost:3101/api/api-keys/${rw.id}`,
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ id: rw.id }) },
+    );
+    assert.equal(revoke.status, 403, "pencabutan juga hanya dari sesi login");
 
-  const { revokeApiKeyAny } = await import("../src/services/api-keys.service.ts");
-  assert.equal(await revokeApiKeyAny(rw.id), true);
-  const afterRevoke = await dataRoute.GET(bearer(rwKey));
-  assert.equal(afterRevoke.status, 401);
+    const { revokeApiKeyAny } =
+      await import("../src/services/api-keys.service.ts");
+    assert.equal(await revokeApiKeyAny(rw.id), true);
+    const afterRevoke = await dataRoute.GET(bearer(rwKey));
+    assert.equal(afterRevoke.status, 401);
 
-  const { eq } = await import("drizzle-orm");
-  await db.delete(routers).where(eq(routers.name, `r-${suffix}`));
-  await db.delete(user).where(eq(user.id, userId));
-  await (await import("../src/db/index.ts")).getRawPool().end();
-});
+    const { eq } = await import("drizzle-orm");
+    await db.delete(routers).where(eq(routers.name, `r-${suffix}`));
+    await db.delete(user).where(eq(user.id, userId));
+    await (await import("../src/db/index.ts")).getRawPool().end();
+  },
+);

@@ -71,7 +71,10 @@ function secretColumn(value: string | undefined) {
   return value === "" ? null : encryptDeviceCredential(value);
 }
 
-export async function saveOntWebSettings(input: OntWebSettingsInput, userId: string) {
+export async function saveOntWebSettings(
+  input: OntWebSettingsInput,
+  userId: string,
+) {
   const common = {
     acsUrl: input.acsUrl,
     acsUsername: input.acsUsername || null,

@@ -26,9 +26,7 @@ import {
 
 function subjectOf(item: BillingMismatch) {
   return (
-    item.invoice?.invoiceRef ??
-    item.customers[0]?.pppoeUsername ??
-    item.id
+    item.invoice?.invoiceRef ?? item.customers[0]?.pppoeUsername ?? item.id
   );
 }
 
@@ -84,7 +82,9 @@ function ActionForm({
         ))}
       </fieldset>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mismatch-action-notes">Catatan teknisi (opsional)</Label>
+        <Label htmlFor="mismatch-action-notes">
+          Catatan teknisi (opsional)
+        </Label>
         <textarea
           id="mismatch-action-notes"
           rows={3}
@@ -106,7 +106,11 @@ function ActionForm({
           </Button>
         )}
         <DialogClose asChild>
-          <Button type="button" variant="outline" data-testid="mismatch-action-close">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="mismatch-action-close"
+          >
             Batal
           </Button>
         </DialogClose>

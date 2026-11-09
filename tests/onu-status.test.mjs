@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getOnuStatusMeta, formatLastSeen } from "../src/lib/dashboard/onu-status.ts";
+import {
+  getOnuStatusMeta,
+  formatLastSeen,
+} from "../src/lib/dashboard/onu-status.ts";
 
 test("getOnuStatusMeta maps known statuses", () => {
   const on = getOnuStatusMeta("online");

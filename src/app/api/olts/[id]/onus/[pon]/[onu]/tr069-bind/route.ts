@@ -40,7 +40,8 @@ export function POST(request: Request, context: Context) {
           {
             error: {
               code: "BACKEND_UNAVAILABLE",
-              message: "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong).",
+              message:
+                "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong).",
             },
           },
           { status: 503 },
@@ -66,7 +67,12 @@ export function POST(request: Request, context: Context) {
         );
       } catch {
         return Response.json(
-          { error: { code: "BACKEND_UNREACHABLE", message: "Backend tidak dapat dihubungi." } },
+          {
+            error: {
+              code: "BACKEND_UNREACHABLE",
+              message: "Backend tidak dapat dihubungi.",
+            },
+          },
           { status: 502 },
         );
       }
@@ -78,11 +84,19 @@ export function POST(request: Request, context: Context) {
       } | null;
 
       if (res.status === 200) {
-        return Response.json({ ok: true, message: body?.message ?? "ONU diikat ke profil TR-069." });
+        return Response.json({
+          ok: true,
+          message: body?.message ?? "ONU diikat ke profil TR-069.",
+        });
       }
       if (res.status === 404) {
         return Response.json(
-          { error: { code: "OLT_NOT_FOUND", message: "OLT tidak ditemukan atau nonaktif." } },
+          {
+            error: {
+              code: "OLT_NOT_FOUND",
+              message: "OLT tidak ditemukan atau nonaktif.",
+            },
+          },
           { status: 404 },
         );
       }
@@ -91,7 +105,8 @@ export function POST(request: Request, context: Context) {
           {
             error: {
               code: "PROFILE_MISSING",
-              message: "Profil TR-069 belum dibuat di OLT. Buat dulu lewat CLI OLT.",
+              message:
+                "Profil TR-069 belum dibuat di OLT. Buat dulu lewat CLI OLT.",
             },
           },
           { status: 409 },
@@ -99,13 +114,23 @@ export function POST(request: Request, context: Context) {
       }
       if (res.status === 400) {
         return Response.json(
-          { error: { code: "BAD_REQUEST", message: body?.message ?? "Permintaan tidak sah." } },
+          {
+            error: {
+              code: "BAD_REQUEST",
+              message: body?.message ?? "Permintaan tidak sah.",
+            },
+          },
           { status: 400 },
         );
       }
       // 502 (ditolak OLT/gagal) dan selainnya: pesan umum, rincian hanya di log backend.
       return Response.json(
-        { error: { code: "BIND_FAILED", message: "OLT menolak atau gagal mengikat ONU ini." } },
+        {
+          error: {
+            code: "BIND_FAILED",
+            message: "OLT menolak atau gagal mengikat ONU ini.",
+          },
+        },
         { status: 502 },
       );
     }),

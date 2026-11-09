@@ -25,7 +25,10 @@ async function ensureDocker() {
     launch = () => spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
   } else if (process.platform === "darwin") {
     launch = () =>
-      spawn("open", ["-a", "Docker"], { detached: true, stdio: "ignore" }).unref();
+      spawn("open", ["-a", "Docker"], {
+        detached: true,
+        stdio: "ignore",
+      }).unref();
   }
   if (!launch) {
     console.error("Docker belum aktif. Nyalakan Docker daemon lalu coba lagi.");
@@ -36,7 +39,9 @@ async function ensureDocker() {
   try {
     launch();
   } catch {
-    console.error("Docker Desktop tidak bisa dibuka. Buka manual lalu coba lagi.");
+    console.error(
+      "Docker Desktop tidak bisa dibuka. Buka manual lalu coba lagi.",
+    );
     process.exit(1);
   }
   for (let waited = 0; waited < 180; waited += 3) {
@@ -46,7 +51,9 @@ async function ensureDocker() {
       return;
     }
   }
-  console.error("Docker belum siap setelah 3 menit. Cek Docker Desktop lalu coba lagi.");
+  console.error(
+    "Docker belum siap setelah 3 menit. Cek Docker Desktop lalu coba lagi.",
+  );
   process.exit(1);
 }
 await ensureDocker();

@@ -8,22 +8,32 @@ const aRegex = /<a\s+([^>]+)>([\s\S]*?)<\/a>/gi;
 let match;
 while ((match = aRegex.exec(html)) !== null) {
   const attrs = match[1];
-  const text = match[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const text = match[2]
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   const hrefMatch = attrs.match(/href=["']([^"']*)["']/i);
   const onclickMatch = attrs.match(/onclick=["']([^"']*)["']/i);
   links.push({
     text,
     href: hrefMatch ? hrefMatch[1] : null,
     onclick: onclickMatch ? onclickMatch[1] : null,
-    attrs
+    attrs,
   });
 }
 
 console.log(`Total links found: ${links.length}`);
-const relevant = links.filter(l => 
-  /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(l.text) ||
-  /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(l.onclick || "") ||
-  /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(l.href || "")
+const relevant = links.filter(
+  (l) =>
+    /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(
+      l.text,
+    ) ||
+    /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(
+      l.onclick || "",
+    ) ||
+    /pelanggan|customer|invoice|tagihan|payment|bayar|kasir|ftth|menu|order/i.test(
+      l.href || "",
+    ),
 );
 
 console.log("=== Relevant Links ===");
@@ -38,4 +48,3 @@ for (const s of scripts) {
     console.log("Script snippet:\n", s.slice(0, 1000));
   }
 }
-

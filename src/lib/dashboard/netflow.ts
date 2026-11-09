@@ -49,7 +49,12 @@ export interface NetflowRecord {
   endedAt: number;
 }
 
-const APPS: { app: string; protocol: FlowProtocol; port: number; weight: number }[] = [
+const APPS: {
+  app: string;
+  protocol: FlowProtocol;
+  port: number;
+  weight: number;
+}[] = [
   { app: "HTTPS", protocol: "TCP", port: 443, weight: 30 },
   { app: "YouTube", protocol: "TCP", port: 443, weight: 18 },
   { app: "TikTok", protocol: "TCP", port: 443, weight: 12 },
@@ -84,7 +89,9 @@ function flowInSlot(slot: number, n: number): NetflowRecord {
   const durationSec = 1 + Math.floor(r() * 240);
   const startedAt = slot * SLOT_SECONDS + Math.floor(r() * (SLOT_SECONDS - 1));
   // Ekor panjang: beberapa flow jauh lebih besar dari sisanya.
-  const bytes = Math.floor(2 ** (12 + r() * 18) * (app.app === "DNS" ? 0.01 : 1));
+  const bytes = Math.floor(
+    2 ** (12 + r() * 18) * (app.app === "DNS" ? 0.01 : 1),
+  );
   return {
     id: `flow-${slot}-${n}`,
     routerId: router.id,
@@ -104,7 +111,10 @@ function flowInSlot(slot: number, n: number): NetflowRecord {
 }
 
 // Semua flow yang berakhir dalam `windowSeconds` terakhir (bawaan 24 jam), terbaru dulu.
-export function mockNetflow(now: number, windowSeconds = 86_400): NetflowRecord[] {
+export function mockNetflow(
+  now: number,
+  windowSeconds = 86_400,
+): NetflowRecord[] {
   const out: NetflowRecord[] = [];
   const first = Math.floor((now - windowSeconds - 300) / SLOT_SECONDS);
   const last = Math.floor(now / SLOT_SECONDS);
@@ -245,7 +255,10 @@ export function buildNetflowTimeSeries(
   const counts = new Array<number>(TREND_POINTS).fill(0);
   for (const f of flows) {
     if (f.endedAt <= from || f.endedAt > now) continue;
-    const i = Math.min(TREND_POINTS - 1, Math.ceil((f.endedAt - from) / step) - 1);
+    const i = Math.min(
+      TREND_POINTS - 1,
+      Math.ceil((f.endedAt - from) / step) - 1,
+    );
     bytes[i] += f.bytes;
     counts[i] += 1;
   }
@@ -429,13 +442,19 @@ interface RawBackendNetflowSession {
   capturedAt?: number | null;
 }
 
-export async function loadNetflow(now: number, isDemo = false): Promise<NetflowRecord[]> {
+export async function loadNetflow(
+  now: number,
+  isDemo = false,
+): Promise<NetflowRecord[]> {
   if (!isDemo) {
     try {
-      const rawSessions = await backendGet<RawBackendNetflowSession[]>("/api/v1/netflow/sessions", {
-        range: "7d",
-        limit: 200,
-      });
+      const rawSessions = await backendGet<RawBackendNetflowSession[]>(
+        "/api/v1/netflow/sessions",
+        {
+          range: "7d",
+          limit: 200,
+        },
+      );
       if (Array.isArray(rawSessions)) {
         return rawSessions.map((s) => ({
           id: s.id,
@@ -443,7 +462,8 @@ export async function loadNetflow(now: number, isDemo = false): Promise<NetflowR
           routerName: s.routerName ?? "Router tidak dikenal",
           customerId: s.customerId ?? null,
           customerName: s.customerName ?? null,
-          direction: s.direction === "up" || s.direction === "down" ? s.direction : null,
+          direction:
+            s.direction === "up" || s.direction === "down" ? s.direction : null,
           ponPort: s.ponPort ?? null,
           srcIp: s.srcIp,
           srcPort: s.srcPort,
@@ -474,7 +494,10 @@ export function appForPort(protocol: string, dstPort: number): string {
 }
 
 // Flow dalam rentang `range` sampai `now`, terbaru dulu (sumber mock untuk API).
-export function getNetflowFlows(now: number, range: FlowRange): NetflowRecord[] {
+export function getNetflowFlows(
+  now: number,
+  range: FlowRange,
+): NetflowRecord[] {
   return mockNetflow(now, flowRangeSeconds[range]);
 }
 
@@ -575,7 +598,10 @@ export function summarizeDirectionalNetflow(
       rxBytes += Math.round(f.bytes / 2);
       txBytes += f.bytes - Math.round(f.bytes / 2);
     }
-    routerBytes.set(f.routerName, (routerBytes.get(f.routerName) ?? 0) + f.bytes);
+    routerBytes.set(
+      f.routerName,
+      (routerBytes.get(f.routerName) ?? 0) + f.bytes,
+    );
   }
 
   const totalBytes = rxBytes + txBytes;
@@ -648,15 +674,21 @@ export function getTopTalkers(
 ): TopTalker[] {
   const map = new Map<
     string,
-    { bytes: number; packets: number; duration: number; apps: Map<string, number>; count: number }
+    {
+      bytes: number;
+      packets: number;
+      duration: number;
+      apps: Map<string, number>;
+      count: number;
+    }
   >();
 
   for (const f of flows) {
     const clientIp = f.srcIp.startsWith("10.")
       ? f.srcIp
       : f.dstIp.startsWith("10.")
-      ? f.dstIp
-      : f.srcIp;
+        ? f.dstIp
+        : f.srcIp;
     let entry = map.get(clientIp);
     if (!entry) {
       entry = { bytes: 0, packets: 0, duration: 0, apps: new Map(), count: 0 };
@@ -713,7 +745,14 @@ export function buildCustomerFupUsage(
 ): CustomerFupUsage[] {
   const map = new Map<
     string,
-    { rx: number; tx: number; total: number; peakBps: number; peakTime: number; count: number }
+    {
+      rx: number;
+      tx: number;
+      total: number;
+      peakBps: number;
+      peakTime: number;
+      count: number;
+    }
   >();
 
   for (const f of flows) {
@@ -722,12 +761,29 @@ export function buildCustomerFupUsage(
 
     let rec = map.get(custId);
     if (!rec) {
-      rec = { rx: 0, tx: 0, total: 0, peakBps: 0, peakTime: f.startedAt, count: 0 };
+      rec = {
+        rx: 0,
+        tx: 0,
+        total: 0,
+        peakBps: 0,
+        peakTime: f.startedAt,
+        count: 0,
+      };
       map.set(custId, rec);
     }
 
-    const rx = f.direction === "down" ? f.bytes : f.direction === "up" ? 0 : Math.round(f.bytes / 2);
-    const tx = f.direction === "up" ? f.bytes : f.direction === "down" ? 0 : f.bytes - rx;
+    const rx =
+      f.direction === "down"
+        ? f.bytes
+        : f.direction === "up"
+          ? 0
+          : Math.round(f.bytes / 2);
+    const tx =
+      f.direction === "up"
+        ? f.bytes
+        : f.direction === "down"
+          ? 0
+          : f.bytes - rx;
     const flowBps = (f.bytes * 8) / Math.max(1, f.durationSec);
 
     rec.rx += rx;
@@ -809,17 +865,22 @@ export function mapGoExporterToView(
   nowMs = Date.now(),
 ): NetflowExporterStatus {
   const router = routers.find((r) => r.id === exp.routerId);
-  const routerName = router?.name ?? (exp.routerId ? `Router-${exp.routerId.slice(0, 8)}` : "Router tidak terdaftar");
+  const routerName =
+    router?.name ??
+    (exp.routerId
+      ? `Router-${exp.routerId.slice(0, 8)}`
+      : "Router tidak terdaftar");
   const host = exp.ip || router?.host || "-";
   const version = (
     exp.version === 9
       ? "NetFlow v9"
       : exp.version === 10
-      ? "IPFIX"
-      : "NetFlow v5"
+        ? "IPFIX"
+        : "NetFlow v5"
   ) as "NetFlow v5" | "NetFlow v9" | "IPFIX";
   const lastSeenDate = new Date(exp.lastSeen);
-  const diffMs = nowMs - (isNaN(lastSeenDate.getTime()) ? nowMs : lastSeenDate.getTime());
+  const diffMs =
+    nowMs - (isNaN(lastSeenDate.getTime()) ? nowMs : lastSeenDate.getTime());
   const isActive = diffMs < 15 * 60 * 1000;
   const multiplier = exp.samplingRate > 0 ? exp.samplingRate : 1;
   const samplingRate = multiplier > 1 ? `1:${multiplier}` : "1:1 (Penuh)";
@@ -836,13 +897,15 @@ export function mapGoExporterToView(
     lastSeenText: isActive
       ? `${Math.max(1, Math.round(diffMs / 60000))} mnt lalu`
       : isNaN(lastSeenDate.getTime())
-      ? "-"
-      : lastSeenDate.toLocaleDateString("id-ID"),
+        ? "-"
+        : lastSeenDate.toLocaleDateString("id-ID"),
     status: isActive ? "active" : "idle",
   };
 }
 
-export function getMockExporters(flows: NetflowRecord[]): NetflowExporterStatus[] {
+export function getMockExporters(
+  flows: NetflowRecord[],
+): NetflowExporterStatus[] {
   return [];
 }
 
@@ -932,21 +995,22 @@ export function exportFupToCsv(usages: CustomerFupUsage[]): string {
         u.rxBytes,
         u.txBytes,
         u.totalBytes,
-        u.peakThroughputBps !== null ? Math.round(u.peakThroughputBps) : "tidak dapat dibaca",
+        u.peakThroughputBps !== null
+          ? Math.round(u.peakThroughputBps)
+          : "tidak dapat dibaca",
         u.fupLimitBytes !== null ? u.fupLimitBytes : "Tidak ditetapkan",
         u.fupPercent !== null ? u.fupPercent.toFixed(1) : "-",
         csvCell(
           u.status === "exceeded"
             ? "Melewati Batas"
             : u.status === "warning"
-            ? "Mendekati Batas"
-            : u.status === "untracked"
-            ? "Belum dipantau"
-            : "Normal",
+              ? "Mendekati Batas"
+              : u.status === "untracked"
+                ? "Belum dipantau"
+                : "Normal",
         ),
       ].join(","),
     );
   });
   return lines.join("\n");
 }
-

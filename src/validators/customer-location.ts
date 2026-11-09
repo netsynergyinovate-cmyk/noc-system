@@ -36,11 +36,22 @@ export const updateCustomerLocationSchema = z.preprocess(
   }),
 );
 
-export type UpdateCustomerLocationInput = z.infer<typeof updateCustomerLocationSchema>;
+export type UpdateCustomerLocationInput = z.infer<
+  typeof updateCustomerLocationSchema
+>;
 
 export const geocodedCustomersQuerySchema = z.object({
   status: z
-    .enum(["all", "online", "offline", "weak", "isolir", "geocoded", "warning", "normal"])
+    .enum([
+      "all",
+      "online",
+      "offline",
+      "weak",
+      "isolir",
+      "geocoded",
+      "warning",
+      "normal",
+    ])
     .optional()
     .default("all"),
   odp: z.string().trim().optional(),
@@ -69,7 +80,9 @@ export const geocodedCustomersQuerySchema = z.object({
   forceMock: z.coerce.boolean().optional().default(false),
 });
 
-export type GeocodedCustomersQueryInput = z.infer<typeof geocodedCustomersQuerySchema>;
+export type GeocodedCustomersQueryInput = z.infer<
+  typeof geocodedCustomersQuerySchema
+>;
 
 export const viewportCustomersQuerySchema = z.object({
   minLat: z.coerce.number().min(-90).max(90).optional(),
@@ -84,7 +97,16 @@ export const viewportCustomersQuerySchema = z.object({
   buffer: z.coerce.number().min(0).max(1).optional().default(0.15),
   zoom: z.coerce.number().int().min(1).max(22).optional(),
   status: z
-    .enum(["all", "online", "offline", "weak", "isolir", "geocoded", "warning", "normal"])
+    .enum([
+      "all",
+      "online",
+      "offline",
+      "weak",
+      "isolir",
+      "geocoded",
+      "warning",
+      "normal",
+    ])
     .optional()
     .default("all"),
   odp: z.string().trim().optional(),
@@ -102,11 +124,14 @@ export const viewportCustomersQuerySchema = z.object({
   forceMock: z.coerce.boolean().optional().default(false),
 });
 
-export type ViewportCustomersQueryInput = z.infer<typeof viewportCustomersQuerySchema>;
+export type ViewportCustomersQueryInput = z.infer<
+  typeof viewportCustomersQuerySchema
+>;
 
 export const customerDetailQuerySchema = z.object({
   forceMock: z.coerce.boolean().optional().default(false),
 });
 
-export type CustomerDetailQueryInput = z.infer<typeof customerDetailQuerySchema>;
-
+export type CustomerDetailQueryInput = z.infer<
+  typeof customerDetailQuerySchema
+>;

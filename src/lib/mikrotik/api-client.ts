@@ -26,9 +26,15 @@ export class RouterOsApiError extends Error {
 function encodeLength(len: number): Buffer {
   if (len < 0x80) return Buffer.from([len]);
   if (len < 0x4000) return Buffer.from([(len >> 8) | 0x80, len & 0xff]);
-  if (len < 0x200000) return Buffer.from([(len >> 16) | 0xc0, (len >> 8) & 0xff, len & 0xff]);
+  if (len < 0x200000)
+    return Buffer.from([(len >> 16) | 0xc0, (len >> 8) & 0xff, len & 0xff]);
   if (len < 0x10000000) {
-    return Buffer.from([(len >> 24) | 0xe0, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
+    return Buffer.from([
+      (len >> 24) | 0xe0,
+      (len >> 16) & 0xff,
+      (len >> 8) & 0xff,
+      len & 0xff,
+    ]);
   }
   throw new RouterOsApiError("PROTOCOL", "Kata terlalu panjang.");
 }
@@ -36,7 +42,11 @@ function encodeLength(len: number): Buffer {
 export function encodeSentence(words: string[]): Buffer {
   const parts: Buffer[] = [];
   for (const w of words) {
-    if (w === "") throw new RouterOsApiError("PROTOCOL", "Kata kosong tidak valid (terminator kalimat).");
+    if (w === "")
+      throw new RouterOsApiError(
+        "PROTOCOL",
+        "Kata kosong tidak valid (terminator kalimat).",
+      );
     const b = Buffer.from(w, "utf8");
     parts.push(encodeLength(b.length), b);
   }
@@ -69,11 +79,16 @@ export class SentenceParser {
       } else if (b0 < 0xe0) {
         hdr = 3;
         if (pos + hdr > this.buf.length) break;
-        len = ((b0 & 0x1f) << 16) | (this.buf[pos + 1] << 8) | this.buf[pos + 2];
+        len =
+          ((b0 & 0x1f) << 16) | (this.buf[pos + 1] << 8) | this.buf[pos + 2];
       } else if (b0 < 0xf0) {
         hdr = 4;
         if (pos + hdr > this.buf.length) break;
-        len = ((b0 & 0x0f) << 24) | (this.buf[pos + 1] << 16) | (this.buf[pos + 2] << 8) | this.buf[pos + 3];
+        len =
+          ((b0 & 0x0f) << 24) |
+          (this.buf[pos + 1] << 16) |
+          (this.buf[pos + 2] << 8) |
+          this.buf[pos + 3];
       } else {
         throw new RouterOsApiError("PROTOCOL", "Panjang kata tidak didukung.");
       }
@@ -115,7 +130,10 @@ export class RouterOsApi {
       this.wake();
     });
     socket.on("close", () => {
-      this.failure ??= new RouterOsApiError("NETWORK_ERROR", "Koneksi ditutup router.");
+      this.failure ??= new RouterOsApiError(
+        "NETWORK_ERROR",
+        "Koneksi ditutup router.",
+      );
       this.wake();
     });
   }
@@ -161,18 +179,27 @@ export class RouterOsApi {
       else if (type === "!done") {
         if (trap !== null) throw new RouterOsApiError("TRAP", trap);
         return rows;
-      } else if (type === "!fatal") throw new RouterOsApiError("PROTOCOL", s.slice(1).join(" ") || "fatal");
+      } else if (type === "!fatal")
+        throw new RouterOsApiError("PROTOCOL", s.slice(1).join(" ") || "fatal");
     }
   }
 }
 
 function mapSocketError(e: Error): RouterOsApiError {
   const code = (e as NodeJS.ErrnoException).code;
-  if (code === "ECONNREFUSED") return new RouterOsApiError("CONNECTION_REFUSED", "Koneksi ditolak router.");
+  if (code === "ECONNREFUSED")
+    return new RouterOsApiError(
+      "CONNECTION_REFUSED",
+      "Koneksi ditolak router.",
+    );
   if (code === "EHOSTUNREACH" || code === "ENETUNREACH") {
-    return new RouterOsApiError("NETWORK_ERROR", "Router tidak terjangkau dari server.");
+    return new RouterOsApiError(
+      "NETWORK_ERROR",
+      "Router tidak terjangkau dari server.",
+    );
   }
-  if (code === "ETIMEDOUT") return new RouterOsApiError("TIMEOUT", "Waktu koneksi habis.");
+  if (code === "ETIMEDOUT")
+    return new RouterOsApiError("TIMEOUT", "Waktu koneksi habis.");
   if (/tls|ssl|certificate|handshake/i.test(`${code} ${e.message}`)) {
     return new RouterOsApiError("TLS_ERROR", e.message);
   }
@@ -188,7 +215,10 @@ export type RouterOsConn = {
   timeoutMs?: number;
 };
 
-export async function withRouterOsApi<T>(opts: RouterOsConn, fn: (api: RouterOsApi) => Promise<T>): Promise<T> {
+export async function withRouterOsApi<T>(
+  opts: RouterOsConn,
+  fn: (api: RouterOsApi) => Promise<T>,
+): Promise<T> {
   const port = opts.port ?? (opts.tls ? 8729 : 8728);
   const timeoutMs = opts.timeoutMs ?? 8000;
   // rejectUnauthorized:false: sertifikat API biasanya self-signed; ini hanya jalur bootstrap ke IP yang
@@ -201,16 +231,27 @@ export async function withRouterOsApi<T>(opts: RouterOsConn, fn: (api: RouterOsA
     const work = (async () => {
       const api = new RouterOsApi(socket);
       try {
-        await api.run(["/login", `=name=${opts.username}`, `=password=${opts.password}`]);
+        await api.run([
+          "/login",
+          `=name=${opts.username}`,
+          `=password=${opts.password}`,
+        ]);
       } catch (e) {
-        if (e instanceof RouterOsApiError && e.code === "TRAP") throw new RouterOsApiError("AUTH_FAILED", e.message);
+        if (e instanceof RouterOsApiError && e.code === "TRAP")
+          throw new RouterOsApiError("AUTH_FAILED", e.message);
         throw e;
       }
       return fn(api);
     })();
     work.catch(() => undefined); // cegah unhandled rejection bila timeout menang
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new RouterOsApiError("TIMEOUT", "Router tidak menjawab (timeout).")), timeoutMs);
+      timer = setTimeout(
+        () =>
+          reject(
+            new RouterOsApiError("TIMEOUT", "Router tidak menjawab (timeout)."),
+          ),
+        timeoutMs,
+      );
     });
     return await Promise.race([work, timeout]);
   } finally {

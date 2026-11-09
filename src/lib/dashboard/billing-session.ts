@@ -86,7 +86,12 @@ export function resolveBillingSession(syncState?: {
         : lastSuccess
           ? "active"
           : "not_logged_in",
-    csrfStatus: !isConfigured || backoff ? "missing" : lastSuccess ? "acquired" : "missing",
+    csrfStatus:
+      !isConfigured || backoff
+        ? "missing"
+        : lastSuccess
+          ? "acquired"
+          : "missing",
     lastLoginAt: lastSuccess?.finishedAt ?? null,
     consecutiveFailures: failures,
     isBackoffActive: backoff,

@@ -75,7 +75,9 @@ export function BackupRestorePanel() {
         const json = await res.json();
         if (json?.data) {
           setSnapshots((prev) => [json.data, ...prev]);
-          setNotice(`Backup baru "${json.data.label}" berhasil dibuat dan diverifikasi.`);
+          setNotice(
+            `Backup baru "${json.data.label}" berhasil dibuat dan diverifikasi.`,
+          );
           setTimeout(() => setNotice(null), 3500);
           return;
         }
@@ -99,10 +101,7 @@ export function BackupRestorePanel() {
   };
 
   return (
-    <div
-      data-testid="backup-restore-panel"
-      className="flex flex-col gap-6"
-    >
+    <div data-testid="backup-restore-panel" className="flex flex-col gap-6">
       {/* Kartu Ringkasan Backup & Restore */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 shadow-xs">
@@ -256,7 +255,9 @@ export function BackupRestorePanel() {
               {filtered.map((snap) => (
                 <tr key={snap.id} className="hover:bg-muted/20">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-foreground">{snap.label}</div>
+                    <div className="font-semibold text-foreground">
+                      {snap.label}
+                    </div>
                     <div className="font-mono text-[11px] text-muted-foreground truncate max-w-xs">
                       {snap.filename}
                     </div>
@@ -316,12 +317,12 @@ export function BackupRestorePanel() {
           <AlertDialogHeader>
             <div className="flex items-center gap-2 text-amber-600">
               <ShieldAlert className="h-5 w-5" />
-              <AlertDialogTitle>Konfirmasi Pemulihan Data (Restore)</AlertDialogTitle>
+              <AlertDialogTitle>
+                Konfirmasi Pemulihan Data (Restore)
+              </AlertDialogTitle>
             </div>
             <AlertDialogDescription className="space-y-2 pt-2 text-xs">
-              <p>
-                Anda akan memulihkan basis data menggunakan snapshot:
-              </p>
+              <p>Anda akan memulihkan basis data menggunakan snapshot:</p>
               <div className="rounded-md border bg-muted p-2 font-mono text-[11px]">
                 <div>Label: {restoreTarget?.label}</div>
                 <div>Berkas: {restoreTarget?.filename}</div>
@@ -329,7 +330,9 @@ export function BackupRestorePanel() {
                 <div>Checksum: {restoreTarget?.checksum}</div>
               </div>
               <p className="text-amber-600 font-medium">
-                Peringatan: Pemulihan akan menimpa data yang ada saat ini dengan status titik cadangan terpilih. Pastikan tidak ada transaksi penting yang sedang berlangsung.
+                Peringatan: Pemulihan akan menimpa data yang ada saat ini dengan
+                status titik cadangan terpilih. Pastikan tidak ada transaksi
+                penting yang sedang berlangsung.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

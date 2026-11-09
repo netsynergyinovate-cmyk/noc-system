@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Hanya data di aplikasi yang dihapus (OLT, ONU hasil polling, pemetaan pelanggan); perangkat OLT tidak disentuh.
 export function OltDeleteDialog({
@@ -25,11 +32,17 @@ export function OltDeleteDialog({
       // 404: sudah tidak ada di database (baris basi di layar); anggap selesai.
       if (!res.ok && res.status !== 404) {
         const json = await res.json().catch(() => null);
-        throw new Error(json?.error?.message ?? `Gagal menghapus OLT (HTTP ${res.status}).`);
+        throw new Error(
+          json?.error?.message ?? `Gagal menghapus OLT (HTTP ${res.status}).`,
+        );
       }
       onDeleted();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus OLT.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Terjadi kesalahan saat menghapus OLT.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -41,7 +54,8 @@ export function OltDeleteDialog({
         <DialogHeader>
           <DialogTitle>Hapus OLT {olt.name}?</DialogTitle>
           <DialogDescription>
-            OLT, daftar ONU hasil polling, dan pemetaan pelanggan ke ONU-nya dihapus dari aplikasi. Perangkat OLT sendiri tidak diubah.
+            OLT, daftar ONU hasil polling, dan pemetaan pelanggan ke ONU-nya
+            dihapus dari aplikasi. Perangkat OLT sendiri tidak diubah.
           </DialogDescription>
         </DialogHeader>
         {error && (
@@ -53,7 +67,12 @@ export function OltDeleteDialog({
           <Button variant="outline" onClick={onClose} disabled={deleting}>
             Batal
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={deleting} data-testid="olt-delete-confirm">
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={deleting}
+            data-testid="olt-delete-confirm"
+          >
             {deleting ? "Menghapus…" : "Hapus OLT"}
           </Button>
         </DialogFooter>

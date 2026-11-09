@@ -75,7 +75,10 @@ const initialFilter: WhatsappLogFilter = {
 export function WhatsappLogBoard() {
   // Waktu hanya ada di klien supaya HTML server dan render pertama sama.
   const now = useSyncExternalStore(noopSubscribe, getNow, () => null);
-  const base = useMemo(() => (now === null ? [] : loadWhatsappLogs(now)), [now]);
+  const base = useMemo(
+    () => (now === null ? [] : loadWhatsappLogs(now)),
+    [now],
+  );
   // Kirim ulang tiruan: id -> status baru.
   const [resent, setResent] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState(initialFilter);
@@ -85,13 +88,21 @@ export function WhatsappLogBoard() {
     () =>
       base.map((l) =>
         resent[l.id] !== undefined
-          ? { ...l, status: "sent" as const, latencyMs: resent[l.id], errorReason: undefined }
+          ? {
+              ...l,
+              status: "sent" as const,
+              latencyMs: resent[l.id],
+              errorReason: undefined,
+            }
           : l,
       ),
     [base, resent],
   );
   const summary = useMemo(() => summarizeWhatsappLogs(logs), [logs]);
-  const rows = useMemo(() => filterWhatsappLogs(logs, filter, now ?? 0), [logs, filter, now]);
+  const rows = useMemo(
+    () => filterWhatsappLogs(logs, filter, now ?? 0),
+    [logs, filter, now],
+  );
   const facets = useMemo(
     () => getWhatsappLogFacetCounts(logs, filter, now ?? 0),
     [logs, filter, now],
@@ -103,7 +114,9 @@ export function WhatsappLogBoard() {
     filter.query.trim() !== "";
 
   function exportCsv() {
-    const blob = new Blob([whatsappLogsToCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([whatsappLogsToCsv(rows)], {
+      type: "text/csv;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -113,7 +126,11 @@ export function WhatsappLogBoard() {
   }
 
   if (now === null) {
-    return <p role="status" className="text-sm text-muted-foreground">Memuat riwayat…</p>;
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Memuat riwayat…
+      </p>
+    );
   }
 
   const kpis = [
@@ -135,12 +152,17 @@ export function WhatsappLogBoard() {
       >
         {"Log Tiruan (Fase 2) \u00b7 Wajib beralih ke DB nyata di Fase 5"}
       </Badge>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="wa-log-kpi">
+      <div
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        data-testid="wa-log-kpi"
+      >
         {kpis.map((k) => (
           <Card key={k.label}>
             <CardContent className="p-4">
               <div className="text-xs text-muted-foreground">{k.label}</div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{k.value}</div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">
+                {k.value}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -154,11 +176,16 @@ export function WhatsappLogBoard() {
             className={selectClassName}
             value={filter.status}
             onChange={(e) =>
-              setFilter((f) => ({ ...f, status: e.target.value as WhatsappLogFilter["status"] }))
+              setFilter((f) => ({
+                ...f,
+                status: e.target.value as WhatsappLogFilter["status"],
+              }))
             }
           >
             <option value="all">Semua ({facets.status.all})</option>
-            <option value="delivered">Diterima ({facets.status.delivered})</option>
+            <option value="delivered">
+              Diterima ({facets.status.delivered})
+            </option>
             <option value="sent">Terkirim ({facets.status.sent})</option>
             <option value="failed">Gagal ({facets.status.failed})</option>
           </select>
@@ -177,8 +204,12 @@ export function WhatsappLogBoard() {
             }
           >
             <option value="all">Semua ({facets.severity.all})</option>
-            <option value="critical">Kritis ({facets.severity.critical})</option>
-            <option value="warning">Peringatan ({facets.severity.warning})</option>
+            <option value="critical">
+              Kritis ({facets.severity.critical})
+            </option>
+            <option value="warning">
+              Peringatan ({facets.severity.warning})
+            </option>
           </select>
         </div>
         <div className="w-48 space-y-1.5">
@@ -195,9 +226,15 @@ export function WhatsappLogBoard() {
             }
           >
             <option value="all">Semua Waktu ({facets.timeRange.all})</option>
-            <option value="1h">1 Jam Terakhir ({facets.timeRange["1h"]})</option>
-            <option value="24h">24 Jam Terakhir ({facets.timeRange["24h"]})</option>
-            <option value="7d">7 Hari Terakhir ({facets.timeRange["7d"]})</option>
+            <option value="1h">
+              1 Jam Terakhir ({facets.timeRange["1h"]})
+            </option>
+            <option value="24h">
+              24 Jam Terakhir ({facets.timeRange["24h"]})
+            </option>
+            <option value="7d">
+              7 Hari Terakhir ({facets.timeRange["7d"]})
+            </option>
           </select>
         </div>
         <div className="min-w-48 flex-1 space-y-1.5">
@@ -207,7 +244,9 @@ export function WhatsappLogBoard() {
             type="search"
             placeholder="Nama penerima, nomor, atau isi pesan"
             value={filter.query}
-            onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
+            onChange={(e) =>
+              setFilter((f) => ({ ...f, query: e.target.value }))
+            }
           />
         </div>
         <Button
@@ -268,25 +307,41 @@ export function WhatsappLogBoard() {
             <TableBody>
               {rows.map((l) => (
                 <TableRow key={l.id} data-testid="wa-log-row">
-                  <TableCell className="whitespace-nowrap text-xs">{formatWib(l.sentAt)}</TableCell>
-                  <TableCell>
-                    <div className="text-sm font-medium">{l.recipientName}</div>
-                    <div className="font-mono text-xs text-muted-foreground">{l.recipientPhone}</div>
+                  <TableCell className="whitespace-nowrap text-xs">
+                    {formatWib(l.sentAt)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={l.severity === "critical" ? "destructive" : "secondary"}>
+                    <div className="text-sm font-medium">{l.recipientName}</div>
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {l.recipientPhone}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        l.severity === "critical" ? "destructive" : "secondary"
+                      }
+                    >
                       {l.severity === "critical" ? "Kritis" : "Peringatan"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-64 truncate text-sm" title={l.kind}>
+                  <TableCell
+                    className="max-w-64 truncate text-sm"
+                    title={l.kind}
+                  >
                     {l.kind}
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusClass[l.status]} data-status={l.status}>
+                    <Badge
+                      className={statusClass[l.status]}
+                      data-status={l.status}
+                    >
                       {statusLabel[l.status]}
                     </Badge>
                     {l.errorReason && (
-                      <div className="mt-1 text-xs text-destructive">{l.errorReason}</div>
+                      <div className="mt-1 text-xs text-destructive">
+                        {l.errorReason}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
@@ -311,7 +366,9 @@ export function WhatsappLogBoard() {
                           size="sm"
                           className="gap-1.5"
                           onClick={async () => {
-                            await fetch("/api/alerts/whatsapp/resend", { method: "POST" }).catch(() => undefined);
+                            await fetch("/api/alerts/whatsapp/resend", {
+                              method: "POST",
+                            }).catch(() => undefined);
                             setResent((r) => ({ ...r, [l.id]: Date.now() }));
                           }}
                         >
@@ -333,7 +390,8 @@ export function WhatsappLogBoard() {
           <DialogHeader>
             <DialogTitle>Pesan WhatsApp</DialogTitle>
             <DialogDescription>
-              {open && `${open.recipientName} (${open.recipientPhone}) · ${formatWib(open.sentAt)}`}
+              {open &&
+                `${open.recipientName} (${open.recipientPhone}) · ${formatWib(open.sentAt)}`}
             </DialogDescription>
           </DialogHeader>
           <pre

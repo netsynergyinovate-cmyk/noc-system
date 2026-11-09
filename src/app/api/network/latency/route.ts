@@ -10,4 +10,3 @@ export function GET(request: Request) {
     return NextResponse.json({ ok: true, data: summary });
   });
 }
-

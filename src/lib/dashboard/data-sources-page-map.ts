@@ -172,7 +172,10 @@ export const PAGE_DATA_SOURCES: readonly PageDataSourceMapping[] = [
     pageTitle: "Pusat Onboarding & Tutorial Wajib",
     category: "Sistem",
     primaryModuleId: "onboarding-center-mock",
-    secondaryModuleIds: ["page-tips-mock-content", "optional-integrations-mock"],
+    secondaryModuleIds: [
+      "page-tips-mock-content",
+      "optional-integrations-mock",
+    ],
     status: "dummy",
     envKey: "DASHBOARD_DATA",
     readPath: "src/lib/dashboard/onboarding-data.ts",

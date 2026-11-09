@@ -46,7 +46,8 @@ async function testGenieacs(input: {
       body: JSON.stringify(payload),
     });
     const json = await res.json().catch(() => null);
-    if (res.ok && json?.success && json.data) return json.data as DeviceConnectionTestResult;
+    if (res.ok && json?.success && json.data)
+      return json.data as DeviceConnectionTestResult;
     if (input.mode === "simulator") return runSimulatorDeviceTest(payload);
     return {
       type: "genieacs",
@@ -62,7 +63,8 @@ async function testGenieacs(input: {
       mode: input.mode,
       ok: false,
       code: "NETWORK_ERROR",
-      message: "Tidak dapat menghubungi server NOC. Periksa koneksi lalu coba lagi.",
+      message:
+        "Tidak dapat menghubungi server NOC. Periksa koneksi lalu coba lagi.",
     };
   }
 }
@@ -83,7 +85,13 @@ export function GenieacsTestDialog() {
     setTesting(true);
     setResult(null);
     const portNum = port.trim() === "" ? undefined : Number(port);
-    const res = await testGenieacs({ host, port: portNum, username, password, mode });
+    const res = await testGenieacs({
+      host,
+      port: portNum,
+      username,
+      password,
+      mode,
+    });
     setResult(res);
     setTesting(false);
   }
@@ -104,7 +112,12 @@ export function GenieacsTestDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={runTest} className="space-y-3" noValidate data-testid="genieacs-test-form">
+        <form
+          onSubmit={runTest}
+          className="space-y-3"
+          noValidate
+          data-testid="genieacs-test-form"
+        >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="genieacs-host">Host / IP</Label>
@@ -165,7 +178,10 @@ export function GenieacsTestDialog() {
             className={testing ? "pointer-events-none opacity-70" : undefined}
           >
             {testing ? (
-              <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+              <Loader2
+                className="mr-2 size-4 animate-spin"
+                aria-hidden="true"
+              />
             ) : (
               <Activity className="mr-2 size-4" aria-hidden="true" />
             )}
@@ -173,14 +189,20 @@ export function GenieacsTestDialog() {
           </Button>
         </form>
 
-        <div role="status" aria-live="polite" data-testid="genieacs-test-result">
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="genieacs-test-result"
+        >
           {result?.ok && (
             <div className="space-y-2 rounded-lg border border-success bg-muted/50 p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="border-success/30 bg-success/10 text-success">
                   <CheckCircle2 /> Terhubung
                 </Badge>
-                <Badge variant="secondary">{result.mode === "real" ? "Real" : "Simulator"}</Badge>
+                <Badge variant="secondary">
+                  {result.mode === "real" ? "Real" : "Simulator"}
+                </Badge>
               </div>
               <dl className="grid grid-cols-3 gap-2">
                 <div>
@@ -188,8 +210,12 @@ export function GenieacsTestDialog() {
                   <dd className="font-medium">{result.latencyMs ?? "-"} ms</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-muted-foreground">Perangkat terkelola</dt>
-                  <dd className="font-medium">{result.data?.deviceCount ?? 42} CPE</dd>
+                  <dt className="text-xs text-muted-foreground">
+                    Perangkat terkelola
+                  </dt>
+                  <dd className="font-medium">
+                    {result.data?.deviceCount ?? 42} CPE
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Endpoint</dt>

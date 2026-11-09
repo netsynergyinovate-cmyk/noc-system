@@ -13,10 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const {
-  getRollbackHistoryEvents,
-  recordMigrationRollbackEvent,
-} = await import("../src/services/migration-rollback-runner.service.ts");
+const { getRollbackHistoryEvents, recordMigrationRollbackEvent } =
+  await import("../src/services/migration-rollback-runner.service.ts");
 
 test("Pencatatan kejadian rollback menyimpan field audit lengkap", async () => {
   const initial = await getRollbackHistoryEvents();

@@ -65,7 +65,9 @@ export async function getOnboardingMikrotikStatus(): Promise<OnboardingMikrotikC
           port: 443,
           username: top.username,
           status: top.status,
-          lastSeenAt: top.last_seen_at ? new Date(top.last_seen_at).toISOString() : null,
+          lastSeenAt: top.last_seen_at
+            ? new Date(top.last_seen_at).toISOString()
+            : null,
         };
       }
     } finally {
@@ -75,9 +77,9 @@ export async function getOnboardingMikrotikStatus(): Promise<OnboardingMikrotikC
     // Database mungkin belum aktif
   }
 
-
   // Router hanya dianggap configured jika ada router aktif yang terverifikasi (pernah terhubung / last_seen_at valid)
-  const hasVerifiedRouter = Boolean(primaryRouter?.lastSeenAt) || activeRouterCount > 0;
+  const hasVerifiedRouter =
+    Boolean(primaryRouter?.lastSeenAt) || activeRouterCount > 0;
   const configured = hasVerifiedRouter;
   const isGateUnlocked = configured;
 
@@ -114,7 +116,11 @@ export async function executeOnboardingMikrotikTest(
   // Angka hanya dari router; tidak ada nilai bawaan karangan bila resource kosong.
   const parsed = splitHostInput(input.host);
   const secrets = { username: input.username, password: input.password };
-  const fail = (code: string, message: string, latencyMs = 0): OnboardingMikrotikTestResult => ({
+  const fail = (
+    code: string,
+    message: string,
+    latencyMs = 0,
+  ): OnboardingMikrotikTestResult => ({
     ok: false,
     latencyMs,
     testedAt: new Date().toISOString(),
@@ -128,7 +134,14 @@ export async function executeOnboardingMikrotikTest(
     code?: string;
     message: string;
     latencyMs?: number;
-    resource?: { version: string; cpuLoad: number; freeMemory: number; totalMemory: number; uptime: string; boardName: string };
+    resource?: {
+      version: string;
+      cpuLoad: number;
+      freeMemory: number;
+      totalMemory: number;
+      uptime: string;
+      boardName: string;
+    };
   };
   if ((input.mode ?? "real") === "simulator") {
     // Mode demo: tidak ada jaringan, memakai simulator deterministik.
@@ -169,7 +182,11 @@ export async function executeOnboardingMikrotikTest(
     };
   }
   if (!result.ok || !result.resource) {
-    return fail(result.code ?? "CONNECTION_FAILED", result.message, result.latencyMs);
+    return fail(
+      result.code ?? "CONNECTION_FAILED",
+      result.message,
+      result.latencyMs,
+    );
   }
   const r = result.resource;
   const mb = (bytes: number) => Math.round(bytes / (1024 * 1024));

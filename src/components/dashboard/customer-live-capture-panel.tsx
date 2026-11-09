@@ -58,10 +58,13 @@ export function CustomerLiveCapturePanel({
   const [duration, setDuration] = useState<15 | 30 | 60>(15);
   const [isRecording, setIsRecording] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [latestCapture, setLatestCapture] = useState<CaptureRecordView | null>(null);
+  const [latestCapture, setLatestCapture] = useState<CaptureRecordView | null>(
+    null,
+  );
   const [history, setHistory] = useState<CaptureRecordView[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [selectedCapture, setSelectedCapture] = useState<CaptureRecordView | null>(null);
+  const [selectedCapture, setSelectedCapture] =
+    useState<CaptureRecordView | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Ambil riwayat rekaman tersimpan
@@ -120,7 +123,7 @@ export function CustomerLiveCapturePanel({
       if (res.status === 409) {
         setErrorMessage(
           json.error?.message ||
-            "Pelanggan ini sedang offline (sesi PPPoE tidak aktif di router). Perekaman Torch hanya dapat dijalankan saat pelanggan sedang online."
+            "Pelanggan ini sedang offline (sesi PPPoE tidak aktif di router). Perekaman Torch hanya dapat dijalankan saat pelanggan sedang online.",
         );
       } else if (json.data) {
         setLatestCapture(json.data);
@@ -130,7 +133,9 @@ export function CustomerLiveCapturePanel({
         setErrorMessage(json.error.message);
       }
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Gagal menghubungi server.");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Gagal menghubungi server.",
+      );
     } finally {
       setIsRecording(false);
       setCountdown(0);
@@ -146,31 +151,39 @@ export function CustomerLiveCapturePanel({
           <div>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Radio className="size-4.5 text-primary" />
-              <span>Inspeksi Akses Langsung (Live Torch / Platform Capture)</span>
+              <span>
+                Inspeksi Akses Langsung (Live Torch / Platform Capture)
+              </span>
             </CardTitle>
             <CardDescription className="text-xs">
               Merekam nama domain, website, dan platform yang dibuka oleh{" "}
-              <strong className="text-foreground">{customerName}</strong> ({pppoeUsername}) dalam jendela waktu pilihan.
+              <strong className="text-foreground">{customerName}</strong> (
+              {pppoeUsername}) dalam jendela waktu pilihan.
             </CardDescription>
           </div>
-          <Badge variant="outline" className="w-fit text-[11px] gap-1 text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="w-fit text-[11px] gap-1 text-muted-foreground"
+          >
             <Lock className="size-3" />
             <span>Bukti Berjejak Audit</span>
           </Badge>
         </div>
       </CardHeader>
-        {errorMessage && (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+      {errorMessage && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       <CardContent className="space-y-4">
         {/* Toggle Waktu & Tombol Aksi */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Durasi Rekam:</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              Durasi Rekam:
+            </span>
             <div
               role="group"
               aria-label="Pilihan Durasi Perekaman"
@@ -209,7 +222,10 @@ export function CustomerLiveCapturePanel({
             ) : (
               <>
                 <Play className="size-3.5 fill-current" />
-                <span>Mulai Rekam Akses ({duration === 60 ? "1 Mnt" : `${duration}s`})</span>
+                <span>
+                  Mulai Rekam Akses (
+                  {duration === 60 ? "1 Mnt" : `${duration}s`})
+                </span>
               </>
             )}
           </Button>
@@ -224,11 +240,14 @@ export function CustomerLiveCapturePanel({
                 Sedang menganalisis aliran trafik aktif pelanggan...
               </p>
               <p className="text-muted-foreground">
-                Menangkap DNS, SNI TLS, dan koneksi aktif dari router. Sisa waktu:{" "}
+                Menangkap DNS, SNI TLS, dan koneksi aktif dari router. Sisa
+                waktu:{" "}
                 <strong className="text-foreground">{countdown} detik</strong>.
               </p>
             </div>
-            <span className="font-mono text-sm font-bold text-primary">{countdown}s</span>
+            <span className="font-mono text-sm font-bold text-primary">
+              {countdown}s
+            </span>
           </div>
         )}
 
@@ -241,16 +260,30 @@ export function CustomerLiveCapturePanel({
                   Hasil Tangkapan ({activeDisplay.durationSeconds} Detik)
                 </span>
                 <span className="text-muted-foreground">
-                  · IP Klien: <code className="font-mono">{activeDisplay.customerIp}</code>
+                  · IP Klien:{" "}
+                  <code className="font-mono">{activeDisplay.customerIp}</code>
                 </span>
                 <span className="text-muted-foreground">
-                  · Waktu: {new Date(activeDisplay.startedAt).toLocaleTimeString("id-ID")}
+                  · Waktu:{" "}
+                  {new Date(activeDisplay.startedAt).toLocaleTimeString(
+                    "id-ID",
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
-                <span>Total: <strong>{formatDataVolume(activeDisplay.totalBytes)}</strong></span>
-                <span>Paket: <strong>{formatPacketCount(activeDisplay.totalPackets)}</strong></span>
-                <span>Aliran: <strong>{activeDisplay.flowCount}</strong></span>
+                <span>
+                  Total:{" "}
+                  <strong>{formatDataVolume(activeDisplay.totalBytes)}</strong>
+                </span>
+                <span>
+                  Paket:{" "}
+                  <strong>
+                    {formatPacketCount(activeDisplay.totalPackets)}
+                  </strong>
+                </span>
+                <span>
+                  Aliran: <strong>{activeDisplay.flowCount}</strong>
+                </span>
               </div>
             </div>
 
@@ -260,33 +293,53 @@ export function CustomerLiveCapturePanel({
                 <thead className="border-b bg-muted/40 text-[11px] text-muted-foreground uppercase">
                   <tr>
                     <th className="py-2 px-2.5 font-medium">No</th>
-                    <th className="py-2 px-2.5 font-medium">Website / Platform yang Dibuka</th>
-                    <th className="py-2 px-2.5 font-medium">Klasifikasi Kategori</th>
-                    <th className="py-2 px-2.5 font-medium">IP Tujuan : Port</th>
-                    <th className="py-2 px-2.5 text-right font-medium">Throughput</th>
-                    <th className="py-2 px-2.5 text-right font-medium">Volume Data</th>
+                    <th className="py-2 px-2.5 font-medium">
+                      Website / Platform yang Dibuka
+                    </th>
+                    <th className="py-2 px-2.5 font-medium">
+                      Klasifikasi Kategori
+                    </th>
+                    <th className="py-2 px-2.5 font-medium">
+                      IP Tujuan : Port
+                    </th>
+                    <th className="py-2 px-2.5 text-right font-medium">
+                      Throughput
+                    </th>
+                    <th className="py-2 px-2.5 text-right font-medium">
+                      Volume Data
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {activeDisplay.flows.map((f, i) => {
                     const catLower = (f.category || "").toLowerCase();
-                    const isPorn = catLower.includes("porn") || catLower.includes("dewasa");
+                    const isPorn =
+                      catLower.includes("porn") || catLower.includes("dewasa");
                     const isGambling = catLower.includes("judi");
-                    const isVideo = catLower.includes("video") || catLower.includes("stream");
-                    const isSocial = catLower.includes("sosial") || catLower.includes("chat") || catLower.includes("komunikasi");
+                    const isVideo =
+                      catLower.includes("video") || catLower.includes("stream");
+                    const isSocial =
+                      catLower.includes("sosial") ||
+                      catLower.includes("chat") ||
+                      catLower.includes("komunikasi");
                     const isLocal = catLower.includes("lokal");
-                    const isUnclassified = !f.category || f.category === "belum terklasifikasi";
+                    const isUnclassified =
+                      !f.category || f.category === "belum terklasifikasi";
 
                     return (
                       <tr key={i} className="hover:bg-muted/20">
-                        <td className="py-2 px-2.5 tabular-nums text-muted-foreground">{i + 1}</td>
+                        <td className="py-2 px-2.5 tabular-nums text-muted-foreground">
+                          {i + 1}
+                        </td>
                         <td className="py-2 px-2.5 font-medium text-foreground">
                           <div className="flex items-center gap-1.5">
                             <Globe className="size-3 text-muted-foreground shrink-0" />
                             <div className="flex flex-col">
                               <span>{f.platform}</span>
                               {f.domain && f.domain !== f.platform && (
-                                <span className="text-[10px] text-muted-foreground font-mono">{f.domain}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">
+                                  {f.domain}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -324,11 +377,17 @@ export function CustomerLiveCapturePanel({
                               Media Sosial
                             </Badge>
                           ) : isLocal ? (
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] text-muted-foreground"
+                            >
                               Jaringan Lokal
                             </Badge>
                           ) : isUnclassified ? (
-                            <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] text-muted-foreground"
+                            >
                               Belum Terklasifikasi
                             </Badge>
                           ) : (
@@ -338,7 +397,9 @@ export function CustomerLiveCapturePanel({
                           )}
                         </td>
                         <td className="py-2 px-2.5 font-mono text-[11px] text-muted-foreground">
-                          {f.peerIp}{f.port > 0 ? `:${f.port}` : ""}{f.protocol ? ` (${f.protocol})` : ""}
+                          {f.peerIp}
+                          {f.port > 0 ? `:${f.port}` : ""}
+                          {f.protocol ? ` (${f.protocol})` : ""}
                         </td>
                         <td className="py-2 px-2.5 text-right font-medium tabular-nums">
                           {formatBandwidthRate(f.throughputBps)}
@@ -355,7 +416,8 @@ export function CustomerLiveCapturePanel({
 
             {/* Catatan Batas Bukti Sesuai PRD */}
             <p className="text-[11px] text-muted-foreground">
-              * Batasan bukti: Rekaman hanya mencatat nama domain/host dan laju paket. Sistem tidak membongkar isi konten maupun URL terenkripsi.
+              * Batasan bukti: Rekaman hanya mencatat nama domain/host dan laju
+              paket. Sistem tidak membongkar isi konten maupun URL terenkripsi.
             </p>
           </div>
         )}
@@ -366,7 +428,9 @@ export function CustomerLiveCapturePanel({
             Riwayat Rekaman Inspeksi Pelanggan ({history.length} Catatan)
           </h4>
           {loadingHistory ? (
-            <p className="text-xs text-muted-foreground py-3">Memuat riwayat rekaman...</p>
+            <p className="text-xs text-muted-foreground py-3">
+              Memuat riwayat rekaman...
+            </p>
           ) : history.length === 0 ? (
             <p className="text-xs text-muted-foreground py-2 italic">
               Belum ada riwayat rekaman inspeksi langsung untuk pelanggan ini.
@@ -379,8 +443,12 @@ export function CustomerLiveCapturePanel({
                     <th className="py-2 px-2.5 font-medium">Waktu Rekam</th>
                     <th className="py-2 px-2.5 font-medium">Durasi</th>
                     <th className="py-2 px-2.5 font-medium">Operator</th>
-                    <th className="py-2 px-2.5 font-medium">Aplikasi / Domain Teratas</th>
-                    <th className="py-2 px-2.5 text-right font-medium">Total Volume</th>
+                    <th className="py-2 px-2.5 font-medium">
+                      Aplikasi / Domain Teratas
+                    </th>
+                    <th className="py-2 px-2.5 text-right font-medium">
+                      Total Volume
+                    </th>
                     <th className="py-2 px-2.5 text-right font-medium">Aksi</th>
                   </tr>
                 </thead>
@@ -403,7 +471,9 @@ export function CustomerLiveCapturePanel({
                           {h.durationSeconds}s
                         </Badge>
                       </td>
-                      <td className="py-2 px-2.5 text-muted-foreground">{h.recordedBy}</td>
+                      <td className="py-2 px-2.5 text-muted-foreground">
+                        {h.recordedBy}
+                      </td>
                       <td className="py-2 px-2.5 font-medium truncate max-w-[200px]">
                         {h.topApp}
                       </td>

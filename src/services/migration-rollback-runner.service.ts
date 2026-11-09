@@ -11,7 +11,9 @@ import {
   type QueryableClient,
 } from "@/services/schema-migration-runner.service";
 
-let inMemoryRollbackEvents: MigrationRollbackEvent[] = [...MOCK_ROLLBACK_HISTORY];
+let inMemoryRollbackEvents: MigrationRollbackEvent[] = [
+  ...MOCK_ROLLBACK_HISTORY,
+];
 
 export interface MigrationSafeRunnerOptions extends MigrationRunnerOptions {
   actor?: string;
@@ -68,7 +70,9 @@ export async function ensureRollbackEventsTable(): Promise<void> {
 /**
  * Mengambil daftar seluruh riwayat insiden rollback migrasi.
  */
-export async function getRollbackHistoryEvents(): Promise<MigrationRollbackEvent[]> {
+export async function getRollbackHistoryEvents(): Promise<
+  MigrationRollbackEvent[]
+> {
   try {
     const pool = getRawPool();
     const client = await pool.connect();
@@ -106,7 +110,8 @@ export async function getRollbackHistoryEvents(): Promise<MigrationRollbackEvent
   }
 
   return [...inMemoryRollbackEvents].sort(
-    (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
+    (a, b) =>
+      new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime(),
   );
 }
 

@@ -1,4 +1,11 @@
-import { index, jsonb, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import {
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 // Satu aksi tulis peta yang bisa dibatalkan: keadaan baris sebelum aksi (before null = baris baru)
 export const mapUndoEntries = pgTable(

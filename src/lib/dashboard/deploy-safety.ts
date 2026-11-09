@@ -89,7 +89,8 @@ export const MOCK_HEALTH_CHECKS: readonly HealthCheckItem[] = [
     category: "database",
     status: "healthy",
     latencyMs: 12,
-    message: "Semua 12 berkas migrasi SQL telah diaplikasikan tanpa selisih skema.",
+    message:
+      "Semua 12 berkas migrasi SQL telah diaplikasikan tanpa selisih skema.",
     checkedAt: "2026-10-13T09:30:00.000Z",
     requiredForDeploy: true,
   },
@@ -175,15 +176,18 @@ export const MOCK_PREFLIGHT_CHECKS: readonly PreflightCheckItem[] = [
   {
     id: "pf-env-vars",
     label: "Variabel Lingkungan Wajib",
-    description: "Memastikan DATABASE_URL, BETTER_AUTH_SECRET, dan kredensial perangkat terisi",
+    description:
+      "Memastikan DATABASE_URL, BETTER_AUTH_SECRET, dan kredensial perangkat terisi",
     passed: true,
     severity: "critical",
-    detail: "Semua 8 variabel lingkungan wajib tervalidasi dengan format benar.",
+    detail:
+      "Semua 8 variabel lingkungan wajib tervalidasi dengan format benar.",
   },
   {
     id: "pf-no-secret-leaks",
     label: "Pencegahan Kebocoran Kredensial",
-    description: "Memastikan kata sandi & token terenkripsi AES-256-GCM dan tidak bocor ke log",
+    description:
+      "Memastikan kata sandi & token terenkripsi AES-256-GCM dan tidak bocor ke log",
     passed: true,
     severity: "critical",
     detail: "Kredensial router & OLT tersimpan dalam bentuk terenkripsi.",
@@ -191,7 +195,8 @@ export const MOCK_PREFLIGHT_CHECKS: readonly PreflightCheckItem[] = [
   {
     id: "pf-schema-applied",
     label: "Status Migrasi Drizzle Terkini",
-    description: "Memastikan target database memiliki tabel skema terbaru sebelum lalu lintas masuk",
+    description:
+      "Memastikan target database memiliki tabel skema terbaru sebelum lalu lintas masuk",
     passed: true,
     severity: "critical",
     detail: "Tabel aplikasi telah terinisialisasi dan konsisten.",
@@ -199,7 +204,8 @@ export const MOCK_PREFLIGHT_CHECKS: readonly PreflightCheckItem[] = [
   {
     id: "pf-backup-ready",
     label: "Snapshot Pemulihan Tersedia",
-    description: "Memastikan titik pemulihan instan tersedia sebelum perintah rilis dijalankan",
+    description:
+      "Memastikan titik pemulihan instan tersedia sebelum perintah rilis dijalankan",
     passed: true,
     severity: "warning",
     detail: "Snapshot terbaru dibuat 10 menit yang lalu.",
@@ -233,7 +239,8 @@ export const MOCK_ROLLBACK_HISTORY: readonly MigrationRollbackEvent[] = [
     id: "rb-20261008-002",
     migrationFile: "0007_redundant_index_drop.sql",
     targetVersion: "0006_billing_sync",
-    reason: "Index unik terhapus secara tidak sengaja menyebabkan performa query menurun",
+    reason:
+      "Index unik terhapus secara tidak sengaja menyebabkan performa query menurun",
     remediationHint:
       "Pertahankan index pppoe_username_idx pada tabel billing_status untuk menjaga integritas pencarian.",
     status: "success",
@@ -247,7 +254,8 @@ export const MOCK_ROLLBACK_HISTORY: readonly MigrationRollbackEvent[] = [
     id: "rb-20261002-003",
     migrationFile: "0003_broken_foreign_key.sql",
     targetVersion: "0002_devices_and_credentials",
-    reason: "Foreign key router_id mereferensikan tabel yang belum terbentuk pada kontainer server",
+    reason:
+      "Foreign key router_id mereferensikan tabel yang belum terbentuk pada kontainer server",
     remediationHint:
       "Pastikan urutan dependensi tabel routers didefinisikan sebelum tabel customers.",
     status: "success",
@@ -264,8 +272,10 @@ export function getMockDeploySafetyOverview(): DeploySafetyOverview {
     overallStatus: "ready_to_deploy",
     healthScorePercent: 100,
     totalChecks: MOCK_HEALTH_CHECKS.length,
-    passedChecks: MOCK_HEALTH_CHECKS.filter((c) => c.status === "healthy").length,
-    failingChecks: MOCK_HEALTH_CHECKS.filter((c) => c.status === "failing").length,
+    passedChecks: MOCK_HEALTH_CHECKS.filter((c) => c.status === "healthy")
+      .length,
+    failingChecks: MOCK_HEALTH_CHECKS.filter((c) => c.status === "failing")
+      .length,
     activeSnapshotsCount: MOCK_BACKUP_SNAPSHOTS.length,
     latestSnapshotAt: MOCK_BACKUP_SNAPSHOTS[0]?.createdAt ?? null,
     rollbackReady: true,

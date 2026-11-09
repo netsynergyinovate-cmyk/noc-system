@@ -8,11 +8,9 @@ export function GET(request: Request) {
   return withApiSession(request, async () => {
     const url = new URL(request.url);
     const statusParam = (url.searchParams.get("status") || "all") as
-      | "all"
-      | "applied"
-      | "pending"
-      | "failed";
-    const queryParam = url.searchParams.get("q") || url.searchParams.get("query") || "";
+      "all" | "applied" | "pending" | "failed";
+    const queryParam =
+      url.searchParams.get("q") || url.searchParams.get("query") || "";
 
     const { overview, items } = await getRealSchemaMigrationsData();
 

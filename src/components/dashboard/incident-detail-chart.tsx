@@ -35,7 +35,6 @@ function formatWibClock(epochSec: number): string {
   );
 }
 
-
 export function IncidentDetailChart({
   customerId,
   incident,
@@ -47,7 +46,9 @@ export function IncidentDetailChart({
   cachedSeries?: IncidentSeriesPoint[];
   onSeriesLoaded?: (series: IncidentSeriesPoint[]) => void;
 }) {
-  const [localSeries, setLocalSeries] = useState<IncidentSeriesPoint[] | null>(null);
+  const [localSeries, setLocalSeries] = useState<IncidentSeriesPoint[] | null>(
+    null,
+  );
   const [loading, setLoading] = useState<boolean>(!cachedSeries);
   const [error, setError] = useState<string | null>(null);
   const chartId = useId();
@@ -114,7 +115,8 @@ export function IncidentDetailChart({
 
   // Waktu grafik: 1 jam sebelum mulai s.d. 1 jam setelah selesai/sekarang
   const { minT, maxT, maxMbps } = useMemo(() => {
-    const endSec = incident.to ?? incident.from + Math.max(incident.downSeconds, 300);
+    const endSec =
+      incident.to ?? incident.from + Math.max(incident.downSeconds, 300);
     let minTime = incident.from - 3600;
     let maxTime = endSec + 3600;
 
@@ -256,10 +258,12 @@ export function IncidentDetailChart({
             <span className="inline-block h-0.5 w-3 bg-primary" /> Unduh (Mbps)
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-3 bg-emerald-500" /> Unggah (Mbps)
+            <span className="inline-block h-0.5 w-3 bg-emerald-500" /> Unggah
+            (Mbps)
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-xs border border-destructive/40 bg-destructive/15" /> Blok Down
+            <span className="inline-block size-2.5 rounded-xs border border-destructive/40 bg-destructive/15" />{" "}
+            Blok Down
           </span>
         </div>
       </div>
@@ -267,7 +271,9 @@ export function IncidentDetailChart({
       {loading ? (
         <div className="flex h-44 flex-col items-center justify-center gap-2 rounded-md border border-border bg-background/50 text-muted-foreground">
           <RefreshCw className="size-4 animate-spin motion-reduce:animate-none" />
-          <span className="text-xs">Memuat data trafik di sekitar gangguan…</span>
+          <span className="text-xs">
+            Memuat data trafik di sekitar gangguan…
+          </span>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-center text-xs text-destructive">
@@ -454,8 +460,12 @@ export function IncidentDetailChart({
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
                       <TableHead className="py-1">Waktu (WIB)</TableHead>
-                      <TableHead className="py-1 text-right">Unduh (Rata / Puncak)</TableHead>
-                      <TableHead className="py-1 text-right">Unggah (Rata / Puncak)</TableHead>
+                      <TableHead className="py-1 text-right">
+                        Unduh (Rata / Puncak)
+                      </TableHead>
+                      <TableHead className="py-1 text-right">
+                        Unggah (Rata / Puncak)
+                      </TableHead>
                       <TableHead className="py-1 text-right">Sampel</TableHead>
                       <TableHead className="py-1 text-right">Posisi</TableHead>
                     </TableRow>
@@ -472,21 +482,29 @@ export function IncidentDetailChart({
                             {formatWibClock(pt.t)}
                           </TableCell>
                           <TableCell className="py-1 text-right font-mono">
-                            {pt.downMbps.toFixed(1)} / {pt.downMaxMbps.toFixed(1)} Mbps
+                            {pt.downMbps.toFixed(1)} /{" "}
+                            {pt.downMaxMbps.toFixed(1)} Mbps
                           </TableCell>
                           <TableCell className="py-1 text-right font-mono">
-                            {pt.upMbps.toFixed(1)} / {pt.upMaxMbps.toFixed(1)} Mbps
+                            {pt.upMbps.toFixed(1)} / {pt.upMaxMbps.toFixed(1)}{" "}
+                            Mbps
                           </TableCell>
                           <TableCell className="py-1 text-right font-mono">
                             {pt.samples}
                           </TableCell>
                           <TableCell className="py-1 text-right">
                             {isBefore ? (
-                              <span className="text-muted-foreground">Sebelum mulai</span>
+                              <span className="text-muted-foreground">
+                                Sebelum mulai
+                              </span>
                             ) : isDuring ? (
-                              <span className="font-medium text-destructive">Saat down</span>
+                              <span className="font-medium text-destructive">
+                                Saat down
+                              </span>
                             ) : (
-                              <span className="text-green-700 dark:text-green-400">Sesudah selesai</span>
+                              <span className="text-green-700 dark:text-green-400">
+                                Sesudah selesai
+                              </span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -503,7 +521,9 @@ export function IncidentDetailChart({
       {/* Fakta Insiden */}
       <div className="grid grid-cols-1 gap-2 rounded-md border border-border bg-card p-2.5 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <span className="text-[10px] text-muted-foreground">Waktu kejadian (WIB)</span>
+          <span className="text-[10px] text-muted-foreground">
+            Waktu kejadian (WIB)
+          </span>
           <p className="mt-0.5 font-medium text-foreground">
             {formatWibDateTime(incident.from)}
             <br />
@@ -511,20 +531,33 @@ export function IncidentDetailChart({
           </p>
         </div>
         <div>
-          <span className="text-[10px] text-muted-foreground">Durasi & Gabungan</span>
+          <span className="text-[10px] text-muted-foreground">
+            Durasi & Gabungan
+          </span>
           <p className="mt-0.5 font-medium text-foreground">
-            {formatDurationCompact(incident.downSeconds)} ({incident.outageCount}x putus digabung)
+            {formatDurationCompact(incident.downSeconds)} (
+            {incident.outageCount}x putus digabung)
           </p>
           <span className="text-[10px] text-muted-foreground">
-            Sampel antrean di bucket terkait (bucket 5 menit utuh, termasuk waktu hidup): {incident.queueSecondsDuring !== null ? `${incident.queueSecondsDuring} detik` : "–"}
+            Sampel antrean di bucket terkait (bucket 5 menit utuh, termasuk
+            waktu hidup):{" "}
+            {incident.queueSecondsDuring !== null
+              ? `${incident.queueSecondsDuring} detik`
+              : "–"}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-muted-foreground">Jam Sibuk & Trafik Sekitar</span>
+          <span className="text-[10px] text-muted-foreground">
+            Jam Sibuk & Trafik Sekitar
+          </span>
           <div className="mt-0.5 flex flex-wrap gap-1">
             {incident.windows.map((wId) => {
               const pw = peakWindows.find((p) => p.id === wId);
-              const label = pw ? pw.label : wId === OFF_PEAK_ID ? OFF_PEAK_LABEL : wId;
+              const label = pw
+                ? pw.label
+                : wId === OFF_PEAK_ID
+                  ? OFF_PEAK_LABEL
+                  : wId;
               const isStart = wId === incident.startWindow;
               return (
                 <Badge
@@ -538,15 +571,25 @@ export function IncidentDetailChart({
             })}
           </div>
           <span className="mt-1 block text-[10px] text-muted-foreground">
-            Rata unduh: {incident.beforeAvgDownMbps !== null ? `${incident.beforeAvgDownMbps.toFixed(1)} Mbps` : "–"} →{" "}
-            {incident.afterAvgDownMbps !== null ? `${incident.afterAvgDownMbps.toFixed(1)} Mbps` : "–"}
+            Rata unduh:{" "}
+            {incident.beforeAvgDownMbps !== null
+              ? `${incident.beforeAvgDownMbps.toFixed(1)} Mbps`
+              : "–"}{" "}
+            →{" "}
+            {incident.afterAvgDownMbps !== null
+              ? `${incident.afterAvgDownMbps.toFixed(1)} Mbps`
+              : "–"}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-muted-foreground">Cakupan & Status</span>
+          <span className="text-[10px] text-muted-foreground">
+            Cakupan & Status
+          </span>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             <Badge
-              variant={incident.scope.kind === "massal" ? "destructive" : "secondary"}
+              variant={
+                incident.scope.kind === "massal" ? "destructive" : "secondary"
+              }
               className="text-[10px]"
             >
               {incident.scope.kind === "massal"

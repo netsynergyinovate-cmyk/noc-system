@@ -18,13 +18,23 @@ test("Dockerfile runs as non-root user", () => {
   const d = read("Dockerfile");
   const users = [...d.matchAll(/^USER (\S+)$/gm)].map((m) => m[1]);
   assert.ok(users.length > 0);
-  for (const u of users) assert.ok(!["root", "0"].includes(u), `root user: ${u}`);
+  for (const u of users)
+    assert.ok(!["root", "0"].includes(u), `root user: ${u}`);
   assert.ok(users.includes("nextjs"));
 });
 
 test(".dockerignore blocks secrets and local state", () => {
-  const lines = read(".dockerignore").split(/\r?\n/).map((l) => l.trim());
-  for (const e of [".env", ".env.*", ".git", "node_modules", ".next", "backend/bin"]) {
+  const lines = read(".dockerignore")
+    .split(/\r?\n/)
+    .map((l) => l.trim());
+  for (const e of [
+    ".env",
+    ".env.*",
+    ".git",
+    "node_modules",
+    ".next",
+    "backend/bin",
+  ]) {
     assert.ok(lines.includes(e), `missing ${e}`);
   }
 });

@@ -16,7 +16,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConnectionTestPanel } from "@/components/dashboard/connection-test-panel";
@@ -50,7 +56,9 @@ export function DeviceConfigBoard() {
     getDeviceModeServerSnapshot,
   ).mode;
   const [testingId, setTestingId] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, TestOutcome>>({});
+  const [testResults, setTestResults] = useState<Record<string, TestOutcome>>(
+    {},
+  );
   const [editingDevice, setEditingDevice] = useState<DeviceConfig | null>(null);
   const [editErrors, setEditErrors] = useState<DeviceInputErrors>({});
   const [passwordOverride, setPasswordOverride] = useState("");
@@ -67,14 +75,18 @@ export function DeviceConfigBoard() {
     setTestingId(device.id);
     const result = await runTest(device);
     setTestResults((prev) => ({ ...prev, [device.id]: result }));
-    setDevices((prev) => prev.map((d) => (d.id === device.id ? applyOutcome(d, result) : d)));
+    setDevices((prev) =>
+      prev.map((d) => (d.id === device.id ? applyOutcome(d, result) : d)),
+    );
     setTestingId(null);
   };
 
   // Hasil uji simulasi lokal dari DeviceTestButton (tanpa memanggil backend)
   const handleLocalOutcome = (device: DeviceConfig, result: TestOutcome) => {
     setTestResults((prev) => ({ ...prev, [device.id]: result }));
-    setDevices((prev) => prev.map((d) => (d.id === device.id ? applyOutcome(d, result) : d)));
+    setDevices((prev) =>
+      prev.map((d) => (d.id === device.id ? applyOutcome(d, result) : d)),
+    );
   };
 
   // Uji semua koneksi terpadu
@@ -102,10 +114,18 @@ export function DeviceConfigBoard() {
   // di sini hanya menyelaraskan mode tiap perangkat dan hasil uji lama.
   const handleModeChange = (nextMode: DeviceMode) => {
     setDevices((prev) =>
-      prev.map((d) => ({ ...d, mode: nextMode, status: "untested", latencyMs: null, errorMessage: undefined })),
+      prev.map((d) => ({
+        ...d,
+        mode: nextMode,
+        status: "untested",
+        latencyMs: null,
+        errorMessage: undefined,
+      })),
     );
     setTestResults({});
-    setBannerNotice(`Mode beralih ke: ${nextMode === "simulator" ? "Simulator Lab Lokal" : "Perangkat Nyata Fisik"}. Jalankan uji koneksi ulang.`);
+    setBannerNotice(
+      `Mode beralih ke: ${nextMode === "simulator" ? "Simulator Lab Lokal" : "Perangkat Nyata Fisik"}. Jalankan uji koneksi ulang.`,
+    );
   };
 
   // Simpan hasil edit perangkat
@@ -115,7 +135,13 @@ export function DeviceConfigBoard() {
     const v = validateDeviceInput(editingDevice);
     setEditErrors(v.errors);
     if (!v.ok) return;
-    const next: DeviceConfig = { ...editingDevice, ...v.clean, status: "untested", latencyMs: null, errorMessage: undefined };
+    const next: DeviceConfig = {
+      ...editingDevice,
+      ...v.clean,
+      status: "untested",
+      latencyMs: null,
+      errorMessage: undefined,
+    };
     setDevices((prev) => prev.map((d) => (d.id === next.id ? next : d)));
     setTestResults((prev) => {
       const rest = { ...prev };
@@ -145,7 +171,9 @@ export function DeviceConfigBoard() {
     setEditingDevice(null);
     setBannerNotice(
       `Konfigurasi untuk ${next.name} berhasil disimpan${
-        passwordChanged ? " dengan kata sandi baru" : "; kata sandi tersimpan dipertahankan"
+        passwordChanged
+          ? " dengan kata sandi baru"
+          : "; kata sandi tersimpan dipertahankan"
       }. Jalankan uji koneksi ulang.`,
     );
   };
@@ -172,7 +200,9 @@ export function DeviceConfigBoard() {
             Pengaturan &amp; Integrasi Perangkat
           </h1>
           <Badge variant={globalMode === "simulator" ? "secondary" : "default"}>
-            {globalMode === "simulator" ? "Mode Simulator" : "Mode Perangkat Fisik"}
+            {globalMode === "simulator"
+              ? "Mode Simulator"
+              : "Mode Perangkat Fisik"}
           </Badge>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -181,18 +211,22 @@ export function DeviceConfigBoard() {
               disabled={isAllTesting}
               className="gap-2"
             >
-              <RefreshCw className={`size-4 ${isAllTesting ? "animate-spin" : ""}`} />
-              <span>{isAllTesting ? "Menguji Semua..." : "Uji Koneksi Terpadu"}</span>
+              <RefreshCw
+                className={`size-4 ${isAllTesting ? "animate-spin" : ""}`}
+              />
+              <span>
+                {isAllTesting ? "Menguji Semua..." : "Uji Koneksi Terpadu"}
+              </span>
             </Button>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Konfigurasi koneksi MikroTik REST, OLT HSGQ, GenieACS NBI, dan portal billing berbasis environment variable.
+          Konfigurasi koneksi MikroTik REST, OLT HSGQ, GenieACS NBI, dan portal
+          billing berbasis environment variable.
         </p>
       </div>
 
       <DeviceModeSwitch onModeChange={handleModeChange} />
-
 
       {/* Banner status feedback */}
       {bannerNotice && (
@@ -211,7 +245,9 @@ export function DeviceConfigBoard() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Integrasi</p>
-              <p className="text-2xl font-semibold tabular-nums">{devices.length}</p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {devices.length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -239,7 +275,8 @@ export function DeviceConfigBoard() {
               <p className="text-xs text-muted-foreground">Latensi Rata-Rata</p>
               <p className="text-2xl font-semibold tabular-nums">
                 {Math.round(
-                  devices.reduce((acc, cur) => acc + (cur.latencyMs || 0), 0) / (devices.length || 1),
+                  devices.reduce((acc, cur) => acc + (cur.latencyMs || 0), 0) /
+                    (devices.length || 1),
                 )}{" "}
                 ms
               </p>
@@ -253,7 +290,9 @@ export function DeviceConfigBoard() {
               <ShieldCheck className="size-5 text-purple-500" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Keamanan Kredensial</p>
+              <p className="text-xs text-muted-foreground">
+                Keamanan Kredensial
+              </p>
               <p className="text-sm font-semibold">Tersimpan di Env</p>
             </div>
           </CardContent>
@@ -273,7 +312,9 @@ export function DeviceConfigBoard() {
       {/* Daftar Kartu Konfigurasi Perangkat */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Daftar Endpoint Perangkat Jaringan</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Daftar Endpoint Perangkat Jaringan
+          </h2>
           <span className="text-xs text-muted-foreground">
             Semua alamat dapat dioverride melalui variabel lingkungan (.env)
           </span>
@@ -293,9 +334,12 @@ export function DeviceConfigBoard() {
                         {getDeviceIcon(device.type)}
                       </div>
                       <div>
-                        <CardTitle className="text-base">{device.name}</CardTitle>
+                        <CardTitle className="text-base">
+                          {device.name}
+                        </CardTitle>
                         <CardDescription className="text-xs mt-0.5">
-                          {getDeviceTypeLabel(device.type)} &bull; {device.protocol}
+                          {getDeviceTypeLabel(device.type)} &bull;{" "}
+                          {device.protocol}
                         </CardDescription>
                       </div>
                     </div>
@@ -315,11 +359,15 @@ export function DeviceConfigBoard() {
                   <div className="rounded-md border bg-muted/40 p-3 space-y-1.5 font-mono text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Host:</span>
-                      <span className="font-semibold">{device.host}:{device.port}</span>
+                      <span className="font-semibold">
+                        {device.host}:{device.port}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Env Host:</span>
-                      <span className="text-primary truncate max-w-[180px]">{device.envHostKey}</span>
+                      <span className="text-primary truncate max-w-[180px]">
+                        {device.envHostKey}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Akun:</span>
@@ -327,7 +375,9 @@ export function DeviceConfigBoard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Latensi:</span>
-                      <span className="tabular-nums">{device.latencyMs ? `${device.latencyMs} ms` : "-"}</span>
+                      <span className="tabular-nums">
+                        {device.latencyMs ? `${device.latencyMs} ms` : "-"}
+                      </span>
                     </div>
                   </div>
 
@@ -353,7 +403,9 @@ export function DeviceConfigBoard() {
                       disabled={isTesting}
                       className="gap-1.5 text-xs"
                     >
-                      <RefreshCw className={`size-3.5 ${isTesting ? "animate-spin" : ""}`} />
+                      <RefreshCw
+                        className={`size-3.5 ${isTesting ? "animate-spin" : ""}`}
+                      />
                       <span>{isTesting ? "Menguji..." : "Uji Koneksi"}</span>
                     </Button>
                   </div>
@@ -372,22 +424,47 @@ export function DeviceConfigBoard() {
             <span>Koneksi Aman Berbasis Variabel Environment</span>
           </CardTitle>
           <CardDescription className="text-xs">
-            Kredensial asli tidak pernah disimpan di repository. Gunakan berkas .env.local untuk lingkungan pengembangan.
+            Kredensial asli tidak pernah disimpan di repository. Gunakan berkas
+            .env.local untuk lingkungan pengembangan.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="rounded-lg bg-zinc-950 p-4 font-mono text-xs text-zinc-100 overflow-x-auto space-y-1">
-            <p className="text-zinc-500"># Konfigurasi Koneksi Perangkat Jaringan (Fase 1)</p>
-            <p><span className="text-blue-400">MIKROTIK_REST_HOST</span>=10.10.0.1</p>
-            <p><span className="text-blue-400">MIKROTIK_REST_USER</span>=noc-monitor</p>
-            <p><span className="text-blue-400">MIKROTIK_REST_PASSWORD</span>=&lt;isi-di-env-lokal&gt;</p>
+            <p className="text-zinc-500">
+              # Konfigurasi Koneksi Perangkat Jaringan (Fase 1)
+            </p>
+            <p>
+              <span className="text-blue-400">MIKROTIK_REST_HOST</span>
+              =10.10.0.1
+            </p>
+            <p>
+              <span className="text-blue-400">MIKROTIK_REST_USER</span>
+              =noc-monitor
+            </p>
+            <p>
+              <span className="text-blue-400">MIKROTIK_REST_PASSWORD</span>
+              =&lt;isi-di-env-lokal&gt;
+            </p>
             <p className="pt-1 text-zinc-500"># OLT HSGQ</p>
-            <p><span className="text-emerald-400">OLT_HSGQ_HOST</span>=10.10.1.1</p>
-            <p><span className="text-emerald-400">OLT_HSGQ_USER</span>=admin</p>
-            <p><span className="text-emerald-400">OLT_HSGQ_PASSWORD</span>=&lt;isi-di-env-lokal&gt;</p>
+            <p>
+              <span className="text-emerald-400">OLT_HSGQ_HOST</span>=10.10.1.1
+            </p>
+            <p>
+              <span className="text-emerald-400">OLT_HSGQ_USER</span>=admin
+            </p>
+            <p>
+              <span className="text-emerald-400">OLT_HSGQ_PASSWORD</span>
+              =&lt;isi-di-env-lokal&gt;
+            </p>
             <p className="pt-1 text-zinc-500"># GenieACS NBI &amp; Billing</p>
-            <p><span className="text-purple-400">GENIEACS_NBI_URL</span>=http://10.10.2.1:7557</p>
-            <p><span className="text-amber-400">BILLING_PORTAL_URL</span>=https://10.10.3.1</p>
+            <p>
+              <span className="text-purple-400">GENIEACS_NBI_URL</span>
+              =http://10.10.2.1:7557
+            </p>
+            <p>
+              <span className="text-amber-400">BILLING_PORTAL_URL</span>
+              =https://10.10.3.1
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -398,9 +475,12 @@ export function DeviceConfigBoard() {
           <Card className="w-full max-w-lg shadow-xl">
             <form onSubmit={handleSaveEdit} noValidate>
               <CardHeader>
-                <CardTitle className="text-lg">Ubah Konfigurasi Perangkat</CardTitle>
+                <CardTitle className="text-lg">
+                  Ubah Konfigurasi Perangkat
+                </CardTitle>
                 <CardDescription className="text-xs">
-                  Perbarui alamat host, port, atau kredensial untuk {editingDevice.name}.
+                  Perbarui alamat host, port, atau kredensial untuk{" "}
+                  {editingDevice.name}.
                 </CardDescription>
               </CardHeader>
 
@@ -410,7 +490,12 @@ export function DeviceConfigBoard() {
                   <Input
                     id="edit-name"
                     value={editingDevice.name}
-                    onChange={(e) => setEditingDevice({ ...editingDevice, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditingDevice({
+                        ...editingDevice,
+                        name: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
@@ -421,13 +506,26 @@ export function DeviceConfigBoard() {
                     <Input
                       id="edit-host"
                       value={editingDevice.host}
-                      onChange={(e) => setEditingDevice({ ...editingDevice, host: e.target.value })}
+                      onChange={(e) =>
+                        setEditingDevice({
+                          ...editingDevice,
+                          host: e.target.value,
+                        })
+                      }
                       aria-invalid={!!editErrors.host}
-                      aria-describedby={editErrors.host ? "edit-host-err" : undefined}
+                      aria-describedby={
+                        editErrors.host ? "edit-host-err" : undefined
+                      }
                       required
                     />
                     {editErrors.host && (
-                      <p id="edit-host-err" role="alert" className="text-xs text-destructive">{editErrors.host}</p>
+                      <p
+                        id="edit-host-err"
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {editErrors.host}
+                      </p>
                     )}
                   </div>
                   <div className="space-y-1.5">
@@ -437,19 +535,32 @@ export function DeviceConfigBoard() {
                       type="text"
                       inputMode="numeric"
                       autoComplete="off"
-                      value={editingDevice.port > 0 ? String(editingDevice.port) : ""}
+                      value={
+                        editingDevice.port > 0 ? String(editingDevice.port) : ""
+                      }
                       onChange={(e) =>
                         setEditingDevice({
                           ...editingDevice,
-                          port: Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0,
+                          port:
+                            Number(
+                              e.target.value.replace(/\D/g, "").slice(0, 5),
+                            ) || 0,
                         })
                       }
                       aria-invalid={!!editErrors.port}
-                      aria-describedby={editErrors.port ? "edit-port-err" : undefined}
+                      aria-describedby={
+                        editErrors.port ? "edit-port-err" : undefined
+                      }
                       required
                     />
                     {editErrors.port && (
-                      <p id="edit-port-err" role="alert" className="text-xs text-destructive">{editErrors.port}</p>
+                      <p
+                        id="edit-port-err"
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {editErrors.port}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -461,7 +572,10 @@ export function DeviceConfigBoard() {
                       id="edit-user"
                       value={editingDevice.username}
                       onChange={(e) =>
-                        setEditingDevice({ ...editingDevice, username: e.target.value })
+                        setEditingDevice({
+                          ...editingDevice,
+                          username: e.target.value,
+                        })
                       }
                       required
                     />
@@ -479,8 +593,18 @@ export function DeviceConfigBoard() {
                       }
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
                     >
-                      <option value="simulator" className="bg-popover text-popover-foreground">Simulator</option>
-                      <option value="real" className="bg-popover text-popover-foreground">Perangkat Fisik Asli</option>
+                      <option
+                        value="simulator"
+                        className="bg-popover text-popover-foreground"
+                      >
+                        Simulator
+                      </option>
+                      <option
+                        value="real"
+                        className="bg-popover text-popover-foreground"
+                      >
+                        Perangkat Fisik Asli
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -493,8 +617,10 @@ export function DeviceConfigBoard() {
                   envKey={editingDevice.envPassKey}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Sandi baru hanya berlaku sementara di sesi ini dan tidak ditampilkan lagi. Untuk
-                  permanen, isi <code>{editingDevice.envPassKey}</code> di .env.local lalu mulai ulang layanan.
+                  Sandi baru hanya berlaku sementara di sesi ini dan tidak
+                  ditampilkan lagi. Untuk permanen, isi{" "}
+                  <code>{editingDevice.envPassKey}</code> di .env.local lalu
+                  mulai ulang layanan.
                 </p>
               </CardContent>
 

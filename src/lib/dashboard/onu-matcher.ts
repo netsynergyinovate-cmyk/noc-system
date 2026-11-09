@@ -33,7 +33,12 @@ export type MatchStatus =
   | "unmatched";
 export type MatchResult =
   | {
-      status: "exact_sn" | "exact_pppoe" | "exact_name" | "name_pppoe" | "code_suffix";
+      status:
+        | "exact_sn"
+        | "exact_pppoe"
+        | "exact_name"
+        | "name_pppoe"
+        | "code_suffix";
       customerId: string;
     }
   | { status: "ambiguous"; candidateIds: string[] }
@@ -56,10 +61,18 @@ export function onuNameCode(name: string | null | undefined): string | null {
 }
 
 /** Kode di nama ONU tidak berekor sama dengan nomor PPPoE (semua angka): ONU itu milik orang lain. */
-export function codeContradictsPppoe(description: string | null | undefined, pppoeUsername: string): boolean {
+export function codeContradictsPppoe(
+  description: string | null | undefined,
+  pppoeUsername: string,
+): boolean {
   const code = onuNameCode(description);
   const id = pppoeLocal(pppoeUsername);
-  return code !== null && /^\d+$/.test(id) && id.length >= MIN_PPPOE_DIGITS && !id.endsWith(code);
+  return (
+    code !== null &&
+    /^\d+$/.test(id) &&
+    id.length >= MIN_PPPOE_DIGITS &&
+    !id.endsWith(code)
+  );
 }
 
 export type MatchContext = {
@@ -75,8 +88,15 @@ export function matchOnuToCustomer(
   const ids = [hw(onu.serialNumber), hw(onu.macAddress)].filter(Boolean);
   const desc = text(onu.description);
   const levels = [
-    ["exact_sn", (c: CustomerCandidate) => ids.length > 0 && ids.includes(hw(c.serialNumber))],
-    ["exact_pppoe", (c: CustomerCandidate) => desc !== "" && text(c.pppoeUsername) === desc],
+    [
+      "exact_sn",
+      (c: CustomerCandidate) =>
+        ids.length > 0 && ids.includes(hw(c.serialNumber)),
+    ],
+    [
+      "exact_pppoe",
+      (c: CustomerCandidate) => desc !== "" && text(c.pppoeUsername) === desc,
+    ],
     [
       "exact_name",
       // "1121-RATIMIN" -> "RATIMIN": kode di depan bukan bagian nama. Tetapi kode yang
@@ -92,7 +112,9 @@ export function matchOnuToCustomer(
       "name_pppoe",
       (c: CustomerCandidate) => {
         const id = pppoeLocal(c.pppoeUsername);
-        return /^\d+$/.test(id) && id.length >= MIN_PPPOE_DIGITS && desc.includes(id);
+        return (
+          /^\d+$/.test(id) && id.length >= MIN_PPPOE_DIGITS && desc.includes(id)
+        );
       },
     ],
     [
@@ -113,7 +135,8 @@ export function matchOnuToCustomer(
   for (const [status, test] of levels) {
     const hits = customers.filter(test);
     if (hits.length === 1) return { status, customerId: hits[0].id };
-    if (hits.length > 1) return { status: "ambiguous", candidateIds: hits.map((c) => c.id) };
+    if (hits.length > 1)
+      return { status: "ambiguous", candidateIds: hits.map((c) => c.id) };
   }
   return { status: "unmatched" };
 }

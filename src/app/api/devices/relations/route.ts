@@ -43,7 +43,8 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           error: "Gagal memuat daftar relasi perangkat.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );
@@ -91,7 +92,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Gagal menyimpan relasi perangkat.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );

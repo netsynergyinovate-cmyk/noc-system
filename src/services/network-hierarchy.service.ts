@@ -192,7 +192,8 @@ export async function getNetworkHierarchyData(options?: {
       longitude: i.longitude,
       parentId: null,
       capacity:
-        typeof i.details?.capacity === "string" && i.details.capacity.includes("16")
+        typeof i.details?.capacity === "string" &&
+        i.details.capacity.includes("16")
           ? 16
           : 8,
       usedCapacity:
@@ -263,8 +264,10 @@ export async function getNetworkHierarchyData(options?: {
   let odcItems = rawInfra.filter((i) => i.type === "odc");
   // Jika belum ada ODC eksplisit di data, bentuk simpul ODC virtual terdistribusi agar rantai Server -> ODC -> ODP -> Pelanggan tetap utuh
   if (odcItems.length === 0 && odpNodes.length > 0) {
-    const centerLat = odpNodes.reduce((acc, o) => acc + o.latitude, 0) / odpNodes.length;
-    const centerLng = odpNodes.reduce((acc, o) => acc + o.longitude, 0) / odpNodes.length;
+    const centerLat =
+      odpNodes.reduce((acc, o) => acc + o.latitude, 0) / odpNodes.length;
+    const centerLng =
+      odpNodes.reduce((acc, o) => acc + o.longitude, 0) / odpNodes.length;
 
     odcItems = [
       {
@@ -286,7 +289,10 @@ export async function getNetworkHierarchyData(options?: {
       (odp) =>
         odp.parentId === odc.id ||
         (!odp.parentId && odcItems.length === 1) ||
-        (!odp.parentId && odp.name.toLowerCase().includes(odc.name.split("-")[1]?.toLowerCase() || "")),
+        (!odp.parentId &&
+          odp.name
+            .toLowerCase()
+            .includes(odc.name.split("-")[1]?.toLowerCase() || "")),
     );
 
     return {
@@ -327,9 +333,7 @@ export async function getNetworkHierarchyData(options?: {
   const roots: HierarchyRootNode[] = rootItems.map((root) => {
     // Hubungkan ODC yang berinduk ke root ini
     const childOdcs = odcNodes.filter(
-      (odc) =>
-        odc.parentId === root.id ||
-        !odc.parentId, // Jika belum ada parentId, indukkan ke root utama
+      (odc) => odc.parentId === root.id || !odc.parentId, // Jika belum ada parentId, indukkan ke root utama
     );
 
     // ODP yang langsung terhubung ke root tanpa melalui ODC

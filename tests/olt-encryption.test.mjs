@@ -4,9 +4,8 @@ import { readFileSync } from "node:fs";
 import { register } from "tsx/esm/api";
 
 register();
-const { encryptWithKey, decryptWithKey } = await import(
-  "../src/lib/encryption-core.ts"
-);
+const { encryptWithKey, decryptWithKey } =
+  await import("../src/lib/encryption-core.ts");
 
 const KEY = "k".repeat(32);
 

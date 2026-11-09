@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { readJson, withApiPermission, withApiSession } from "@/lib/api";
 import { withAudit } from "@/lib/audit-middleware";
-import { getRouterById, updateRouter, deleteRouter } from "@/services/routers.service";
+import {
+  getRouterById,
+  updateRouter,
+  deleteRouter,
+} from "@/services/routers.service";
 import { updateRouterSchema } from "@/validators/routers";
 import { oltIdSchema as uuidSchema } from "@/validators/devices";
 import { ApiError } from "@/lib/api";
@@ -70,4 +74,3 @@ export async function DELETE(
     }),
   );
 }
-

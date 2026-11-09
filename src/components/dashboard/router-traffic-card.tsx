@@ -8,7 +8,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatBitrate, formatBytes } from "@/lib/dashboard/routers";
-import { isTrafficEmpty, type RouterTrafficStats } from "@/lib/dashboard/router-traffic";
+import {
+  isTrafficEmpty,
+  type RouterTrafficStats,
+} from "@/lib/dashboard/router-traffic";
 
 // Tidak ada data contoh: bila belum ada sampel dari backend, tampilkan kosong.
 const EMPTY_STATS: RouterTrafficStats = {
@@ -54,7 +57,9 @@ function Column({
         <Icon className="size-3.5" aria-hidden="true" />
         {label}
       </div>
-      <strong className="font-mono text-lg font-semibold tabular-nums">{formatBitrate(bps)}</strong>
+      <strong className="font-mono text-lg font-semibold tabular-nums">
+        {formatBitrate(bps)}
+      </strong>
       <dl className="mt-2 space-y-1">
         <div className="flex justify-between">
           <dt className="text-muted-foreground">Puncak (Peak)</dt>
@@ -86,18 +91,28 @@ export function RouterTrafficCard({
   const rxPct = sum > 0 ? Math.round((stats.rxBps / sum) * 100) : 0;
 
   return (
-    <Card className={className} aria-label={`Trafik ${routerName}`} data-router-id={routerId}>
+    <Card
+      className={className}
+      aria-label={`Trafik ${routerName}`}
+      data-router-id={routerId}
+    >
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Activity className="size-4" aria-hidden="true" />
           Trafik Interface &amp; Bandwidth
         </CardTitle>
         {empty ? (
-          <Badge variant="outline" className="border-destructive/50 text-destructive">
+          <Badge
+            variant="outline"
+            className="border-destructive/50 text-destructive"
+          >
             Data Kosong
           </Badge>
         ) : (
-          <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+          <Badge
+            variant="outline"
+            className="border-success/40 bg-success/10 text-success"
+          >
             Live Telemetri
           </Badge>
         )}
@@ -108,7 +123,10 @@ export function RouterTrafficCard({
             data-testid="traffic-empty-state"
             className="flex flex-col items-center gap-2 py-6 text-center"
           >
-            <RadioOff className="size-8 text-muted-foreground" aria-hidden="true" />
+            <RadioOff
+              className="size-8 text-muted-foreground"
+              aria-hidden="true"
+            />
             <p className="text-sm font-semibold">Belum Ada Sampel Trafik</p>
             <p className="max-w-sm text-xs text-muted-foreground">
               {active
@@ -120,7 +138,10 @@ export function RouterTrafficCard({
             </p>
             <Link
               href="/app/router/test"
-              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-1 h-8 text-xs")}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "mt-1 h-8 text-xs",
+              )}
             >
               Uji Koneksi Router
             </Link>
@@ -158,7 +179,11 @@ export function RouterTrafficCard({
                 aria-valuemax={100}
                 className="h-2 w-full overflow-hidden rounded-full bg-muted"
               >
-                <div className="h-full bg-primary" style={{ width: `${rxPct}%` }} aria-hidden="true" />
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${rxPct}%` }}
+                  aria-hidden="true"
+                />
               </div>
             </div>
           </div>

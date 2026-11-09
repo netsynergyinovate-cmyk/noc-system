@@ -67,7 +67,11 @@ function SourcedTime({
         )}
       >
         <Icon className="size-3 shrink-0" aria-hidden="true" />
-        {compact ? <span className="sr-only">{description.short}</span> : description.short}
+        {compact ? (
+          <span className="sr-only">{description.short}</span>
+        ) : (
+          description.short
+        )}
         <span className="sr-only">. {description.long}</span>
       </span>
     </span>

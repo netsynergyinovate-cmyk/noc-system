@@ -82,7 +82,8 @@ export function CustomerDetailPanel({
     customer.opticalPower <= -23.0;
 
   const handleCopyCoordinates = () => {
-    if (!hasCoords || customer.latitude === null || customer.longitude === null) return;
+    if (!hasCoords || customer.latitude === null || customer.longitude === null)
+      return;
     const text = `${customer.latitude.toFixed(6)}, ${customer.longitude.toFixed(6)}`;
     navigator.clipboard.writeText(text).then(() => {
       setIsCopied(true);
@@ -201,7 +202,9 @@ export function CustomerDetailPanel({
             data-testid="location-save-success"
           >
             <CheckCircle2 className="size-4 shrink-0" />
-            <span className="font-medium leading-tight">{saveSuccessMessage}</span>
+            <span className="font-medium leading-tight">
+              {saveSuccessMessage}
+            </span>
           </div>
         )}
 
@@ -211,7 +214,9 @@ export function CustomerDetailPanel({
             data-testid="location-save-error"
           >
             <AlertTriangle className="size-4 shrink-0" />
-            <span className="font-medium leading-tight">{saveErrorMessage}</span>
+            <span className="font-medium leading-tight">
+              {saveErrorMessage}
+            </span>
           </div>
         )}
 
@@ -226,12 +231,16 @@ export function CustomerDetailPanel({
                 <Move className="size-3.5 animate-pulse" />
                 <span>Mode Geser Posisi Aktif</span>
               </span>
-              <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/40 text-primary">
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1 py-0 border-primary/40 text-primary"
+              >
                 Seret Pin
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Tarik penanda pin di peta atau klik lokasi baru pada peta untuk menentukan koordinat pelanggan ini.
+              Tarik penanda pin di peta atau klik lokasi baru pada peta untuk
+              menentukan koordinat pelanggan ini.
             </p>
 
             <div className="bg-background/80 px-2 py-1.5 rounded border border-border/80 flex items-center justify-between text-xs">
@@ -296,7 +305,9 @@ export function CustomerDetailPanel({
             data-testid="customer-address"
           >
             <MapPin className="size-3.5 text-primary shrink-0 mt-0.5" />
-            <span className="line-clamp-2 leading-relaxed">{customer.address}</span>
+            <span className="line-clamp-2 leading-relaxed">
+              {customer.address}
+            </span>
           </div>
         )}
 
@@ -362,7 +373,9 @@ export function CustomerDetailPanel({
               className="font-mono text-[11px] text-foreground truncate block"
               data-testid="customer-coordinates"
             >
-              {hasCoords && customer.latitude !== null && customer.longitude !== null
+              {hasCoords &&
+              customer.latitude !== null &&
+              customer.longitude !== null
                 ? `${customer.latitude.toFixed(4)}, ${customer.longitude.toFixed(4)}`
                 : "Belum Ada"}
             </span>
@@ -386,10 +399,16 @@ export function CustomerDetailPanel({
                 </span>
               )}
             </div>
-            <p className="font-mono text-foreground font-medium" data-testid="customer-onu-sn">
+            <p
+              className="font-mono text-foreground font-medium"
+              data-testid="customer-onu-sn"
+            >
               SN: {customer.onuDetails.serialNumber || "—"}
             </p>
-            <p className="text-muted-foreground text-[10px]" data-testid="customer-onu-port">
+            <p
+              className="text-muted-foreground text-[10px]"
+              data-testid="customer-onu-port"
+            >
               PON Port: {customer.onuDetails.ponIndex ?? "—"} • Index ONU:{" "}
               {customer.onuDetails.onuIndex ?? "—"}
             </p>
@@ -430,47 +449,56 @@ export function CustomerDetailPanel({
           )}
 
           <div className="flex items-center gap-2">
-            {hasCoords && onFocus && customer.latitude !== null && customer.longitude !== null && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-1/2 text-xs h-7.5 gap-1.5 font-medium"
-                data-testid="focus-customer-button"
-                onClick={() => onFocus(customer.latitude!, customer.longitude!)}
-                title="Pusatkan kamera peta ke titik koordinat pelanggan ini"
-              >
-                <Crosshair className="size-3.5 text-primary" />
-                <span>Pusatkan</span>
-              </Button>
-            )}
+            {hasCoords &&
+              onFocus &&
+              customer.latitude !== null &&
+              customer.longitude !== null && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-1/2 text-xs h-7.5 gap-1.5 font-medium"
+                  data-testid="focus-customer-button"
+                  onClick={() =>
+                    onFocus(customer.latitude!, customer.longitude!)
+                  }
+                  title="Pusatkan kamera peta ke titik koordinat pelanggan ini"
+                >
+                  <Crosshair className="size-3.5 text-primary" />
+                  <span>Pusatkan</span>
+                </Button>
+              )}
 
-            {hasCoords && customer.latitude !== null && customer.longitude !== null && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "text-xs h-9 sm:h-8 gap-1.5 font-medium",
-                  onFocus ? "w-1/2" : "w-full",
-                )}
-                data-testid="copy-coordinates-button"
-                onClick={handleCopyCoordinates}
-                title="Salin koordinat GPS ke clipboard"
-              >
-                {isCopied ? (
-                  <>
-                    <Check className="size-3.5 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400">Tersalin!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="size-3.5 text-muted-foreground" />
-                    <span>Salin GPS</span>
-                  </>
-                )}
-              </Button>
-            )}
+            {hasCoords &&
+              customer.latitude !== null &&
+              customer.longitude !== null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "text-xs h-9 sm:h-8 gap-1.5 font-medium",
+                    onFocus ? "w-1/2" : "w-full",
+                  )}
+                  data-testid="copy-coordinates-button"
+                  onClick={handleCopyCoordinates}
+                  title="Salin koordinat GPS ke clipboard"
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="size-3.5 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Tersalin!
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3.5 text-muted-foreground" />
+                      <span>Salin GPS</span>
+                    </>
+                  )}
+                </Button>
+              )}
           </div>
 
           {gmapsUrl && (
@@ -517,7 +545,8 @@ export function CustomerDetailPanel({
                   <span>Hapus titik {customer.name}?</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Koordinat GPS pelanggan ini akan dihapus dari peta. Data pelanggan tidak ikut terhapus.
+                  Koordinat GPS pelanggan ini akan dihapus dari peta. Data
+                  pelanggan tidak ikut terhapus.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <Button

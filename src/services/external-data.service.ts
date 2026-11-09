@@ -1,6 +1,10 @@
 import "server-only";
 import { asc, getTableColumns } from "drizzle-orm";
-import { getTableConfig, type PgColumn, type PgTable } from "drizzle-orm/pg-core";
+import {
+  getTableConfig,
+  type PgColumn,
+  type PgTable,
+} from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 
@@ -58,7 +62,9 @@ export async function readExternalDataset(
 ) {
   const { table, omit = [] } = datasets[name];
   const columns = Object.fromEntries(
-    Object.entries(getTableColumns(table)).filter(([key]) => !omit.includes(key)),
+    Object.entries(getTableColumns(table)).filter(
+      ([key]) => !omit.includes(key),
+    ),
   );
   // Satu baris lebih untuk tahu ada halaman berikutnya tanpa count(*) di tabel besar.
   const rows = await db

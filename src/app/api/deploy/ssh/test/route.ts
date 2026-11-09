@@ -1,6 +1,12 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployTarget,
+  detectConnectionPath,
+} from "@/services/deploy-targets.service";
 import { getDecryptedSshCredential } from "@/services/ssh-credentials.service";
 import { testSshConnection } from "@/services/ssh-client.service";
 import { z } from "zod";
@@ -33,7 +39,8 @@ export async function POST(request: Request) {
     const port = parsed.data?.port || savedTarget?.port || 22;
     const sshUser = parsed.data?.sshUser || savedTarget?.sshUser;
     const mode = parsed.data?.mode || savedTarget?.mode || "lan";
-    const tailscaleHost = parsed.data?.tailscaleHost ?? savedTarget?.tailscaleHost;
+    const tailscaleHost =
+      parsed.data?.tailscaleHost ?? savedTarget?.tailscaleHost;
 
     if (!host || !sshUser) {
       return Response.json(
@@ -57,13 +64,22 @@ export async function POST(request: Request) {
 
     if (!privateKey && !password) {
       return Response.json(
-        { error: "Kredensial SSH (Password atau Kunci Privat) belum disimpan atau dimasukkan." },
+        {
+          error:
+            "Kredensial SSH (Password atau Kunci Privat) belum disimpan atau dimasukkan.",
+        },
         { status: 400 },
       );
     }
 
     // Tentukan jalur koneksi aktif
-    const targetObj = { host, port, mode, sshUser, tailscaleHost: tailscaleHost || null };
+    const targetObj = {
+      host,
+      port,
+      mode,
+      sshUser,
+      tailscaleHost: tailscaleHost || null,
+    };
     const detection = await detectConnectionPath(targetObj);
 
     const testResult = await testSshConnection(

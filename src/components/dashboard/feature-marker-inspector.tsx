@@ -52,8 +52,7 @@ export function FeatureMarkerInspector() {
   const [featureName, setFeatureName] = useState("");
   const [category, setCategory] =
     useState<FeatureMarkerCategory>("used_frequently");
-  const [frequency, setFrequency] =
-    useState<FeatureMarkerFrequency>("daily");
+  const [frequency, setFrequency] = useState<FeatureMarkerFrequency>("daily");
   const [notes, setNotes] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -100,68 +99,65 @@ export function FeatureMarkerInspector() {
     return el.tagName.toLowerCase();
   };
 
-  const handleOpenMarkerModal = useCallback(
-    (targetEl?: HTMLElement | null) => {
-      const currentPath = window.location.pathname || "/app";
-      const currentTitle = document.title || "Aplikasi NOC";
+  const handleOpenMarkerModal = useCallback((targetEl?: HTMLElement | null) => {
+    const currentPath = window.location.pathname || "/app";
+    const currentTitle = document.title || "Aplikasi NOC";
 
-      setPagePath(currentPath);
-      setPageTitle(currentTitle);
-      setErrorMsg(null);
+    setPagePath(currentPath);
+    setPageTitle(currentTitle);
+    setErrorMsg(null);
 
-      if (targetEl) {
-        const selector = getCleanSelector(targetEl);
-        const label = getElementLabel(targetEl);
-        const rawText = (targetEl.innerText || targetEl.textContent || "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 500);
+    if (targetEl) {
+      const selector = getCleanSelector(targetEl);
+      const label = getElementLabel(targetEl);
+      const rawText = (targetEl.innerText || targetEl.textContent || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 500);
 
-        setElementSelector(selector);
-        setElementText(rawText);
+      setElementSelector(selector);
+      setElementText(rawText);
 
-        const tag = targetEl.tagName.toLowerCase();
-        let defaultName = label;
-        if (tag === "button" || targetEl.getAttribute("role") === "button") {
-          defaultName = `Tombol ${label}`;
-        } else if (tag === "table" || targetEl.closest("table")) {
-          defaultName = `Tabel ${currentTitle}`;
-        } else if (tag === "form") {
-          defaultName = `Formulir ${currentTitle}`;
-        }
-
-        // Deteksi jika elemen berada di dalam pop-up / dialog yang sedang terbuka
-        const dialogParent = targetEl.closest(
-          "[role='dialog'], [data-slot='dialog-content'], .dialog-content",
-        );
-        if (dialogParent) {
-          const dialogHeading = dialogParent.querySelector(
-            "h1, h2, h3, [data-slot='dialog-title'], [role='heading']",
-          );
-          const popupTitle = dialogHeading?.textContent?.trim();
-          if (popupTitle) {
-            defaultName = `[Pop-up: ${popupTitle}] ${defaultName}`;
-          } else {
-            defaultName = `[Pop-up] ${defaultName}`;
-          }
-        }
-
-        setFeatureName(defaultName || `Fungsi pada ${currentPath}`);
-      } else {
-        // Mode tandai seluruh halaman
-        setElementSelector("halaman-penuh");
-        setElementText(
-          `Halaman ${currentTitle} (${currentPath}) secara keseluruhan`,
-        );
-        setFeatureName(`Halaman ${currentTitle}`);
+      const tag = targetEl.tagName.toLowerCase();
+      let defaultName = label;
+      if (tag === "button" || targetEl.getAttribute("role") === "button") {
+        defaultName = `Tombol ${label}`;
+      } else if (tag === "table" || targetEl.closest("table")) {
+        defaultName = `Tabel ${currentTitle}`;
+      } else if (tag === "form") {
+        defaultName = `Formulir ${currentTitle}`;
       }
 
-      setIsInspectorActive(false);
-      setHoveredBox(null);
-      setIsDialogOpen(true);
-    },
-    [],
-  );
+      // Deteksi jika elemen berada di dalam pop-up / dialog yang sedang terbuka
+      const dialogParent = targetEl.closest(
+        "[role='dialog'], [data-slot='dialog-content'], .dialog-content",
+      );
+      if (dialogParent) {
+        const dialogHeading = dialogParent.querySelector(
+          "h1, h2, h3, [data-slot='dialog-title'], [role='heading']",
+        );
+        const popupTitle = dialogHeading?.textContent?.trim();
+        if (popupTitle) {
+          defaultName = `[Pop-up: ${popupTitle}] ${defaultName}`;
+        } else {
+          defaultName = `[Pop-up] ${defaultName}`;
+        }
+      }
+
+      setFeatureName(defaultName || `Fungsi pada ${currentPath}`);
+    } else {
+      // Mode tandai seluruh halaman
+      setElementSelector("halaman-penuh");
+      setElementText(
+        `Halaman ${currentTitle} (${currentPath}) secara keseluruhan`,
+      );
+      setFeatureName(`Halaman ${currentTitle}`);
+    }
+
+    setIsInspectorActive(false);
+    setHoveredBox(null);
+    setIsDialogOpen(true);
+  }, []);
 
   // Shortcut keyboard global: Ctrl + ~ (atau Ctrl + `)
   useEffect(() => {
@@ -189,7 +185,10 @@ export function FeatureMarkerInspector() {
     };
     window.addEventListener("open-feature-marker-inspector", handleTrigger);
     return () => {
-      window.removeEventListener("open-feature-marker-inspector", handleTrigger);
+      window.removeEventListener(
+        "open-feature-marker-inspector",
+        handleTrigger,
+      );
     };
   }, []);
 
@@ -298,7 +297,9 @@ export function FeatureMarkerInspector() {
       setTimeout(() => setSuccessToast(null), 6000);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan.";
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menyimpan.";
       setErrorMsg(message);
     } finally {
       setIsSubmitting(false);
@@ -346,7 +347,8 @@ export function FeatureMarkerInspector() {
                 </span>
               </p>
               <p className="text-muted-foreground text-[11px]">
-                Arahkan kursor & klik elemen, badge, atau pop-up apa saja yang ingin ditandai untuk developer.
+                Arahkan kursor & klik elemen, badge, atau pop-up apa saja yang
+                ingin ditandai untuk developer.
               </p>
             </div>
           </div>
@@ -417,10 +419,14 @@ export function FeatureMarkerInspector() {
               <div>
                 <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1">
                   <MapPin className="h-5 w-5" />
-                  <h3 className="text-lg font-bold">Tandai Fitur untuk Developer</h3>
+                  <h3 className="text-lg font-bold">
+                    Tandai Fitur untuk Developer
+                  </h3>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Beri tahu tim pengembang bagaimana fitur/fungsi ini digunakan di lapangan, seberapa sering dipakai, kendala, atau saran perbaikan Anda.
+                  Beri tahu tim pengembang bagaimana fitur/fungsi ini digunakan
+                  di lapangan, seberapa sering dipakai, kendala, atau saran
+                  perbaikan Anda.
                 </p>
               </div>
               <button
@@ -443,13 +449,17 @@ export function FeatureMarkerInspector() {
               {/* Lokasi Halaman & Selektor Terdeteksi */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Lokasi Halaman</Label>
+                  <Label className="text-[11px] text-muted-foreground">
+                    Lokasi Halaman
+                  </Label>
                   <div className="mt-1 rounded-md border bg-muted/40 px-2.5 py-1.5 font-mono text-[11px] truncate">
                     {pagePath}
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Elemen Terdeteksi</Label>
+                  <Label className="text-[11px] text-muted-foreground">
+                    Elemen Terdeteksi
+                  </Label>
                   <div className="mt-1 rounded-md border bg-muted/40 px-2.5 py-1.5 font-mono text-[11px] truncate">
                     {elementSelector || "(Seluruh Halaman)"}
                   </div>
@@ -586,7 +596,9 @@ export function FeatureMarkerInspector() {
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => setFrequency(item.id as FeatureMarkerFrequency)}
+                      onClick={() =>
+                        setFrequency(item.id as FeatureMarkerFrequency)
+                      }
                       className={`rounded-md border py-1.5 px-2 text-center text-[11px] transition-all ${
                         frequency === item.id
                           ? "border-purple-500 bg-purple-500/15 font-semibold text-purple-600 dark:text-purple-300"

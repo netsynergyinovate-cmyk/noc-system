@@ -88,7 +88,15 @@ export function parseTarget(raw: string): ParsedTarget | null {
   if (/^[\d.]+$/.test(host)) {
     const o = host.split(".");
     if (o.length !== 4) return null;
-    if (!o.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255 && (p.length === 1 || p[0] !== "0"))) return null;
+    if (
+      !o.every(
+        (p) =>
+          /^\d{1,3}$/.test(p) &&
+          Number(p) <= 255 &&
+          (p.length === 1 || p[0] !== "0"),
+      )
+    )
+      return null;
     if (o[0] === "169" && o[1] === "254") return null;
   } else if (!host.split(".").every((l) => LABEL_RE.test(l))) {
     return null;
@@ -114,20 +122,38 @@ function pathFor(type: DeviceType, port: number): string {
   }
 }
 
-function endpointFor(type: DeviceType, host: string, port: number, tls: boolean): string {
+function endpointFor(
+  type: DeviceType,
+  host: string,
+  port: number,
+  tls: boolean,
+): string {
   if (type === "olt" && port === 23) return `TELNET handshake ${host}:23`;
   return `GET ${tls ? "https" : "http"}://${host}:${port}${pathFor(type, port)}`;
 }
 
-const SIM_LATENCY: Record<DeviceType, number> = { mikrotik: 12, olt: 24, genieacs: 18, billing: 45 };
+const SIM_LATENCY: Record<DeviceType, number> = {
+  mikrotik: 12,
+  olt: 24,
+  genieacs: 18,
+  billing: 45,
+};
 const SIM_DATA: Record<DeviceType, Record<string, unknown>> = {
-  mikrotik: { version: "7.14 (stable)", cpuLoad: 8, uptime: "3d4h12m", boardName: "RB4011iGS+" },
+  mikrotik: {
+    version: "7.14 (stable)",
+    cpuLoad: 8,
+    uptime: "3d4h12m",
+    boardName: "RB4011iGS+",
+  },
   olt: { info: "OLT simulator terhubung" },
   genieacs: { deviceCount: 42 },
   billing: { info: "Sistem billing simulator terhubung", csrf: true },
 };
 
-type Fail = Pick<DeviceTestResult, "status" | "code" | "message" | "latencyMs"> & { statusCode?: number };
+type Fail = Pick<
+  DeviceTestResult,
+  "status" | "code" | "message" | "latencyMs"
+> & { statusCode?: number };
 
 function timeoutFail(host: string, port: number, ms: number): Fail {
   return {
@@ -151,23 +177,46 @@ const authFail = (user: string, code: number, ms: number): Fail => ({
   message: `Autentikasi gagal ${code}: periksa username/password untuk ${user}.`,
 });
 
-function simulate(req: DeviceTestRequest, host: string, port: number, tls: boolean): Fail | null {
-  if (host.endsWith(".0")) return timeoutFail(host, port, DEVICE_TEST_TIMEOUT_MS);
+function simulate(
+  req: DeviceTestRequest,
+  host: string,
+  port: number,
+  tls: boolean,
+): Fail | null {
+  if (host.endsWith(".0"))
+    return timeoutFail(host, port, DEVICE_TEST_TIMEOUT_MS);
   if (port === 9999) return refusedFail(port, 5);
-  if (host.endsWith(".255") || req.username === "bad-user") return authFail(req.username, 401, 35);
+  if (host.endsWith(".255") || req.username === "bad-user")
+    return authFail(req.username, 401, 35);
   void tls;
   return null;
 }
 
 // --- Mode real --------------------------------------------------------------
 
-function mapError(error: unknown, host: string, port: number, timeoutMs: number, elapsed: number): Fail {
-  const err = error as { name?: string; message?: string; code?: string; cause?: { code?: string; message?: string } } | null;
+function mapError(
+  error: unknown,
+  host: string,
+  port: number,
+  timeoutMs: number,
+  elapsed: number,
+): Fail {
+  const err = error as {
+    name?: string;
+    message?: string;
+    code?: string;
+    cause?: { code?: string; message?: string };
+  } | null;
   const causeCode = err?.cause?.code ?? "";
   const causeMsg = err?.cause?.message ?? "";
   const code = err?.code ?? causeCode;
   const text = `${err?.message ?? ""} ${code} ${causeCode} ${causeMsg}`;
-  if (err?.name === "AbortError" || err?.name === "TimeoutError" || code === "ETIMEDOUT" || /timed? ?out/i.test(text)) {
+  if (
+    err?.name === "AbortError" ||
+    err?.name === "TimeoutError" ||
+    code === "ETIMEDOUT" ||
+    /timed? ?out/i.test(text)
+  ) {
     return timeoutFail(host, port, timeoutMs);
   }
   if (text.includes("ECONNRESET")) {
@@ -195,7 +244,11 @@ function mapError(error: unknown, host: string, port: number, timeoutMs: number,
   };
 }
 
-async function tcpProbe(host: string, port: number, timeoutMs: number): Promise<void> {
+async function tcpProbe(
+  host: string,
+  port: number,
+  timeoutMs: number,
+): Promise<void> {
   const { connect } = await import("node:net");
   await new Promise<void>((resolve, reject) => {
     const socket = connect({ host, port });
@@ -204,7 +257,9 @@ async function tcpProbe(host: string, port: number, timeoutMs: number): Promise<
       if (e) reject(e);
       else resolve();
     };
-    socket.setTimeout(timeoutMs, () => done(Object.assign(new Error("timeout"), { name: "TimeoutError" })));
+    socket.setTimeout(timeoutMs, () =>
+      done(Object.assign(new Error("timeout"), { name: "TimeoutError" })),
+    );
     socket.once("connect", () => done());
     socket.once("error", done);
   });
@@ -223,7 +278,12 @@ async function mikrotikApiProbe(
 
   return new Promise((resolve, reject) => {
     const socket = useTls
-      ? tlsConnect({ host, port, rejectUnauthorized: false, timeout: timeoutMs })
+      ? tlsConnect({
+          host,
+          port,
+          rejectUnauthorized: false,
+          timeout: timeoutMs,
+        })
       : netConnect({ host, port });
 
     socket.setTimeout(timeoutMs);
@@ -240,7 +300,9 @@ async function mikrotikApiProbe(
         } else if (len < 0x4000) {
           bufs.push(Buffer.from([(len >> 8) | 0x80, len & 0xff]));
         } else if (len < 0x200000) {
-          bufs.push(Buffer.from([(len >> 16) | 0xc0, (len >> 8) & 0xff, len & 0xff]));
+          bufs.push(
+            Buffer.from([(len >> 16) | 0xc0, (len >> 8) & 0xff, len & 0xff]),
+          );
         }
         bufs.push(Buffer.from(word));
       }
@@ -254,12 +316,22 @@ async function mikrotikApiProbe(
     };
 
     socket.on("connect", () => {
-      socket.write(encodeSentence(["/login", `=name=${username}`, `=password=${password}`]));
+      socket.write(
+        encodeSentence([
+          "/login",
+          `=name=${username}`,
+          `=password=${password}`,
+        ]),
+      );
     });
 
     socket.on("timeout", () => {
       cleanup();
-      reject(Object.assign(new Error("Timeout waiting for MikroTik API response"), { name: "TimeoutError" }));
+      reject(
+        Object.assign(new Error("Timeout waiting for MikroTik API response"), {
+          name: "TimeoutError",
+        }),
+      );
     });
 
     socket.on("error", (err) => {
@@ -295,7 +367,10 @@ async function mikrotikApiProbe(
               offset--;
               break;
             }
-            len = ((b1 & 0x1f) << 16) | (incoming[offset++] << 8) | incoming[offset++];
+            len =
+              ((b1 & 0x1f) << 16) |
+              (incoming[offset++] << 8) |
+              incoming[offset++];
           }
           if (offset + len > incoming.length) {
             offset -= 2;
@@ -339,8 +414,12 @@ async function mikrotikApiProbe(
                 boardName: res["board-name"] ?? "MikroTik",
                 cpuLoad: Number(res["cpu-load"] ?? 0),
                 uptime: res.uptime ?? "0s",
-                freeMemoryMb: Math.round(Number(res["free-memory"] ?? 0) / (1024 * 1024)),
-                totalMemoryMb: Math.round(Number(res["total-memory"] ?? 0) / (1024 * 1024)),
+                freeMemoryMb: Math.round(
+                  Number(res["free-memory"] ?? 0) / (1024 * 1024),
+                ),
+                totalMemoryMb: Math.round(
+                  Number(res["total-memory"] ?? 0) / (1024 * 1024),
+                ),
               },
             });
           } else if (type === "!done") {
@@ -365,12 +444,18 @@ async function mikrotikApiProbe(
  * base64 (dengan/tanpa awalan "Basic "), kredensial di URL (//user:pass@), dan
  * parameter query token/password/auth/secret.
  */
-export function redactSecrets(text: string, req: Pick<DeviceTestRequest, "username" | "password">): string {
+export function redactSecrets(
+  text: string,
+  req: Pick<DeviceTestRequest, "username" | "password">,
+): string {
   let out = text;
   if (req.password) {
-    const b64 = Buffer.from(`${req.username ?? ""}:${req.password}`).toString("base64");
+    const b64 = Buffer.from(`${req.username ?? ""}:${req.password}`).toString(
+      "base64",
+    );
     // Terpanjang dulu agar "Basic <b64>" tidak terpecah oleh penggantian lain.
-    for (const s of [`Basic ${b64}`, b64, req.password]) out = out.split(s).join("***");
+    for (const s of [`Basic ${b64}`, b64, req.password])
+      out = out.split(s).join("***");
   }
   return out
     .replace(/\/\/[^/@\s]*:[^/@\s]*@/g, "//***@")
@@ -387,7 +472,10 @@ export async function testDeviceConnection(
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const timestamp = Math.floor(Date.now() / 1000);
   const mode = request.mode ?? "real";
-  const finish = (r: Fail & { ok?: boolean; data?: Record<string, unknown> }, endpointTested: string): DeviceTestResult => ({
+  const finish = (
+    r: Fail & { ok?: boolean; data?: Record<string, unknown> },
+    endpointTested: string,
+  ): DeviceTestResult => ({
     ok: false,
     ...r,
     message: redactSecrets(r.message, request),
@@ -402,14 +490,16 @@ export async function testDeviceConnection(
         status: "error",
         code: "INVALID_HOST",
         latencyMs: null,
-        message: "Host tidak valid: gunakan IPv4 atau nama host tanpa path, kredensial, atau karakter khusus.",
+        message:
+          "Host tidak valid: gunakan IPv4 atau nama host tanpa path, kredensial, atau karakter khusus.",
       },
       "-",
     );
   }
   const { host } = target;
   const port = target.port ?? request.port;
-  const tls = target.useTls ?? request.useTls ?? (port === 443 || port === 8443);
+  const tls =
+    target.useTls ?? request.useTls ?? (port === 443 || port === 8443);
 
   // Simulator menyimulasikan port 0 sebagai "ditolak"; mode real menolaknya.
   const portZeroRefused = mode === "simulator" && port === 0;
@@ -427,7 +517,9 @@ export async function testDeviceConnection(
   const endpoint = endpointFor(request.type, host, port, tls);
 
   if (mode === "simulator") {
-    const fail = portZeroRefused ? refusedFail(port, 5) : simulate(request, host, port, tls);
+    const fail = portZeroRefused
+      ? refusedFail(port, 5)
+      : simulate(request, host, port, tls);
     if (fail) return finish(fail, endpoint);
     return {
       ok: true,
@@ -493,11 +585,20 @@ export async function testDeviceConnection(
     if (request.username && request.password) {
       headers.Authorization = `Basic ${Buffer.from(`${request.username}:${request.password}`).toString("base64")}`;
     }
-    const path = request.type === "genieacs" ? "/devices/?query=%7B%7D&projection=_id" : pathFor(request.type, port);
+    const path =
+      request.type === "genieacs"
+        ? "/devices/?query=%7B%7D&projection=_id"
+        : pathFor(request.type, port);
     const url = `${tls ? "https" : "http"}://${host}:${port}${path}`;
     // redirect "manual": jangan ikuti pengalihan ke host lain (SSRF).
     const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(new DOMException("The operation was timed out", "TimeoutError")), timeoutMs);
+    const timer = setTimeout(
+      () =>
+        ac.abort(
+          new DOMException("The operation was timed out", "TimeoutError"),
+        ),
+      timeoutMs,
+    );
     let res: Response;
     try {
       res = await fetchImpl(url, {
@@ -511,11 +612,27 @@ export async function testDeviceConnection(
     }
     const latencyMs = elapsed();
 
-    if (res.status === 401 || res.status === 403) return finish({ ...authFail(request.username, res.status, latencyMs) }, endpoint);
+    if (res.status === 401 || res.status === 403)
+      return finish(
+        { ...authFail(request.username, res.status, latencyMs) },
+        endpoint,
+      );
 
     const httpFail = (message: string): DeviceTestResult =>
-      finish({ status: "error", code: "HTTP_ERROR", statusCode: res.status, latencyMs, message }, endpoint);
-    const success = (message: string, data: Record<string, unknown>): DeviceTestResult => ({
+      finish(
+        {
+          status: "error",
+          code: "HTTP_ERROR",
+          statusCode: res.status,
+          latencyMs,
+          message,
+        },
+        endpoint,
+      );
+    const success = (
+      message: string,
+      data: Record<string, unknown>,
+    ): DeviceTestResult => ({
       ok: true,
       status: "connected",
       code: "OK",
@@ -530,12 +647,18 @@ export async function testDeviceConnection(
     switch (request.type) {
       case "mikrotik": {
         if (res.status === 404) {
-          return httpFail("Router menjawab HTTP 404: layanan REST (www/www-ssl) belum aktif atau RouterOS di bawah v7.1.");
+          return httpFail(
+            "Router menjawab HTTP 404: layanan REST (www/www-ssl) belum aktif atau RouterOS di bawah v7.1.",
+          );
         }
         if (!res.ok) return httpFail(`Router menjawab HTTP ${res.status}.`);
         const body = await res.json().catch(() => undefined);
-        if (body === undefined) return httpFail("Router menjawab dengan format yang tidak dikenal.");
-        return success("Sukses: REST RouterOS /rest/system/resource menjawab 200.", { ...parseMikrotikResource(body) });
+        if (body === undefined)
+          return httpFail("Router menjawab dengan format yang tidak dikenal.");
+        return success(
+          "Sukses: REST RouterOS /rest/system/resource menjawab 200.",
+          { ...parseMikrotikResource(body) },
+        );
       }
       case "genieacs": {
         if (!res.ok) return httpFail(`GenieACS menjawab HTTP ${res.status}.`);
@@ -545,16 +668,21 @@ export async function testDeviceConnection(
         });
       }
       case "billing": {
-        if (res.status >= 500) return httpFail(`Sistem billing menjawab HTTP ${res.status}.`);
+        if (res.status >= 500)
+          return httpFail(`Sistem billing menjawab HTTP ${res.status}.`);
         const html = await res.text().catch(() => "");
         const csrf = /csrf|_token|authenticity_token/i.test(html);
-        return success("Sukses: portal billing menjawab dan halaman login terbaca.", {
-          info: "Sistem billing terhubung",
-          csrf,
-        });
+        return success(
+          "Sukses: portal billing menjawab dan halaman login terbaca.",
+          {
+            info: "Sistem billing terhubung",
+            csrf,
+          },
+        );
       }
       default: {
-        if (res.status >= 500) return httpFail(`OLT menjawab HTTP ${res.status}.`);
+        if (res.status >= 500)
+          return httpFail(`OLT menjawab HTTP ${res.status}.`);
         // 404 bukan "OLT menjawab": alamat itu tidak ada. Biasanya yang menjawab perangkat lain
         // (mis. router yang meneruskan port 80) atau OLT ini hanya punya CLI telnet.
         if (res.status === 404) {
@@ -568,7 +696,9 @@ export async function testDeviceConnection(
             "Perangkat mengembalikan halaman HTML biasa (bukan REST API JSON). OLT seri XE ini hanya menyediakan antarmuka Web GUI biasa atau CLI telnet, tanpa REST API JSON. Gunakan driver hsgq-telnet.",
           );
         }
-        return success("Sukses: Web API OLT menjawab.", { info: "OLT terhubung" });
+        return success("Sukses: Web API OLT menjawab.", {
+          info: "OLT terhubung",
+        });
       }
     }
   } catch (error) {

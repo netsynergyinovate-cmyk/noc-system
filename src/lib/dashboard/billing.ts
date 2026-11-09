@@ -701,7 +701,9 @@ export async function loadBilling(_nowSec?: number): Promise<BillingOverview> {
 // Titik ganti ke backend: GET /api/v1/billing/sync. Hanya keadaan sinkron, tanpa
 // daftar pelanggan dan tagihan, untuk halaman yang cuma perlu tahu seberapa baru
 // data tagihannya (isinya sama dengan `sync` pada GET /api/v1/billing).
-export async function loadBillingSync(_nowSec?: number): Promise<BillingSyncState> {
+export async function loadBillingSync(
+  _nowSec?: number,
+): Promise<BillingSyncState> {
   const data = await fetchOk<BillingSyncState>("/api/billing/sync");
   if (data) return data;
   throw new Error("Gagal memuat status sinkronisasi billing dari server.");

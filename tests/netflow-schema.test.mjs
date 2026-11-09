@@ -28,7 +28,16 @@ test("netflow_samples columns", () => {
   ]);
   assert.ok(cols.id.primary);
   assert.equal(cols.router_id.notNull, false);
-  for (const n of ["src_ip", "dst_ip", "src_port", "dst_port", "protocol", "bytes", "packets", "captured_at"]) {
+  for (const n of [
+    "src_ip",
+    "dst_ip",
+    "src_port",
+    "dst_port",
+    "protocol",
+    "bytes",
+    "packets",
+    "captured_at",
+  ]) {
     assert.ok(cols[n].notNull, n);
   }
   assert.equal(cols.customer_id.notNull, false);
@@ -49,5 +58,8 @@ test("netflow_samples indexes, fk, dan check", () => {
   ]);
   assert.equal(cfg.foreignKeys.length, 2);
   for (const fk of cfg.foreignKeys) assert.equal(fk.onDelete, "set null");
-  assert.deepEqual(cfg.checks.map((c) => c.name), ["netflow_direction_check"]);
+  assert.deepEqual(
+    cfg.checks.map((c) => c.name),
+    ["netflow_direction_check"],
+  );
 });

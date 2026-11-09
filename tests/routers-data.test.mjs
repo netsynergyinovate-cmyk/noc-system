@@ -19,7 +19,10 @@ test("batas CPU, RAM dan queueCount", () => {
   for (const r of defaultRouterDetails) {
     assert.ok(r.cpuLoad >= 0 && r.cpuLoad <= 100, `${r.id} cpu`);
     assert.ok(r.memoryUsage >= 0 && r.memoryUsage <= 100, `${r.id} ram`);
-    assert.ok(Number.isInteger(r.queueCount) && r.queueCount >= 0, `${r.id} queue`);
+    assert.ok(
+      Number.isInteger(r.queueCount) && r.queueCount >= 0,
+      `${r.id} queue`,
+    );
   }
 });
 
@@ -34,10 +37,22 @@ test("pencarian teks: nama, host, model, banyak kata, huruf besar", () => {
   const all = defaultRouterDetails;
   assert.equal(filterRouterDetails(all, "").length, 3);
   assert.equal(filterRouterDetails(all, "   ").length, 3);
-  assert.deepEqual(filterRouterDetails(all, "core").map((r) => r.id), ["router-1"]);
-  assert.deepEqual(filterRouterDetails(all, "10.10.0.3").map((r) => r.id), ["router-3"]);
-  assert.deepEqual(filterRouterDetails(all, "RB5009").map((r) => r.id), ["router-2"]);
-  assert.deepEqual(filterRouterDetails(all, "rtr distribusi").map((r) => r.id), ["router-2"]);
+  assert.deepEqual(
+    filterRouterDetails(all, "core").map((r) => r.id),
+    ["router-1"],
+  );
+  assert.deepEqual(
+    filterRouterDetails(all, "10.10.0.3").map((r) => r.id),
+    ["router-3"],
+  );
+  assert.deepEqual(
+    filterRouterDetails(all, "RB5009").map((r) => r.id),
+    ["router-2"],
+  );
+  assert.deepEqual(
+    filterRouterDetails(all, "rtr distribusi").map((r) => r.id),
+    ["router-2"],
+  );
   assert.equal(filterRouterDetails(all, "tidak-ada").length, 0);
 });
 
@@ -48,11 +63,14 @@ test("filter status", () => {
     { id: "router-x", name: "RTR-Mati", host: "10.10.0.9", active: false },
   ]);
   assert.equal(filterRouterDetails(routers, "", "all").length, 3);
-  assert.deepEqual(filterRouterDetails(routers, "", "active").map((r) => r.id), [
-    "router-1",
-    "router-2",
-  ]);
-  assert.deepEqual(filterRouterDetails(routers, "", "disconnected").map((r) => r.id), ["router-x"]);
+  assert.deepEqual(
+    filterRouterDetails(routers, "", "active").map((r) => r.id),
+    ["router-1", "router-2"],
+  );
+  assert.deepEqual(
+    filterRouterDetails(routers, "", "disconnected").map((r) => r.id),
+    ["router-x"],
+  );
   assert.equal(filterRouterDetails(routers, "mati", "active").length, 0);
 });
 
@@ -115,9 +133,14 @@ test("summarizeRouterResources: router offline tidak masuk rata-rata", () => {
   assert.equal(s.avgCpuLoad, 34);
   assert.equal(s.avgMemoryUsage, 41);
   assert.equal(s.warningRouters, 0);
-  assert.deepEqual(s.peakCpuLoad, { routerName: "RTR-Core-CCR2004", value: 34 });
+  assert.deepEqual(s.peakCpuLoad, {
+    routerName: "RTR-Core-CCR2004",
+    value: 34,
+  });
   assert.equal(s.totalPppoe, 7);
-  const allOff = summarizeRouterResources(routers.map((r) => ({ ...r, active: false })));
+  const allOff = summarizeRouterResources(
+    routers.map((r) => ({ ...r, active: false })),
+  );
   assert.equal(allOff.avgCpuLoad, 0);
   assert.equal(allOff.peakCpuLoad, null);
 });

@@ -82,7 +82,9 @@ export const auth = betterAuth({
             return {
               email: devEmail,
               emailVerified: false,
-              name: rawName.includes("Developer") ? rawName : `${rawName} (Developer)`,
+              name: rawName.includes("Developer")
+                ? rawName
+                : `${rawName} (Developer)`,
               role: "developer",
             };
           },
@@ -119,7 +121,11 @@ export const auth = betterAuth({
               .from(schema.user)
               .where(eq(schema.user.id, account.userId))
               .limit(1);
-            if (target && !roleNames(target.role).includes("superadmin") && !roleNames(target.role).includes("admin")) {
+            if (
+              target &&
+              !roleNames(target.role).includes("superadmin") &&
+              !roleNames(target.role).includes("admin")
+            ) {
               await db
                 .update(schema.user)
                 .set({ role: "developer" })
@@ -149,8 +155,12 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      const body = typeof ctx.body === "object" && ctx.body !== null ? ctx.body : null;
-      const targetUserId = body && "userId" in body && typeof body.userId === "string" ? body.userId : undefined;
+      const body =
+        typeof ctx.body === "object" && ctx.body !== null ? ctx.body : null;
+      const targetUserId =
+        body && "userId" in body && typeof body.userId === "string"
+          ? body.userId
+          : undefined;
       const rawRole = body && "role" in body ? body.role : undefined;
       const parsedRoles = Array.isArray(rawRole)
         ? rawRole.map(String)
@@ -169,7 +179,9 @@ export const auth = betterAuth({
           const [countRow] = await db
             .select({ count: sql<number>`count(*)::int` })
             .from(schema.user)
-            .where(sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`);
+            .where(
+              sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`,
+            );
           if ((countRow?.count ?? 0) <= 1) {
             throw new APIError("BAD_REQUEST", {
               message: "Tidak dapat menurunkan peran Super Admin terakhir.",
@@ -178,7 +190,10 @@ export const auth = betterAuth({
         }
       }
 
-      if ((ctx.path === "/admin/remove-user" || ctx.path === "/admin/ban-user") && targetUserId) {
+      if (
+        (ctx.path === "/admin/remove-user" || ctx.path === "/admin/ban-user") &&
+        targetUserId
+      ) {
         const [target] = await db
           .select({ role: schema.user.role })
           .from(schema.user)
@@ -188,10 +203,13 @@ export const auth = betterAuth({
           const [countRow] = await db
             .select({ count: sql<number>`count(*)::int` })
             .from(schema.user)
-            .where(sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`);
+            .where(
+              sql`'superadmin' = ANY(string_to_array(coalesce(${schema.user.role}, ''), ','))`,
+            );
           if ((countRow?.count ?? 0) <= 1) {
             throw new APIError("BAD_REQUEST", {
-              message: "Tidak dapat menonaktifkan atau menghapus Super Admin terakhir.",
+              message:
+                "Tidak dapat menonaktifkan atau menghapus Super Admin terakhir.",
             });
           }
         }

@@ -55,7 +55,11 @@ export function ConfigValidationPanel() {
 
   const tiles = [
     { label: "Fatal Error", value: result.fatalCount, id: "fatal" },
-    { label: "Peringatan (Opsional)", value: result.warningCount, id: "warning" },
+    {
+      label: "Peringatan (Opsional)",
+      value: result.warningCount,
+      id: "warning",
+    },
     { label: "Valid", value: result.validCount, id: "valid" },
     { label: "Total Diperiksa", value: result.totalCount, id: "total" },
   ];

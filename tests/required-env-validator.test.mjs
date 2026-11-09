@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { REQUIRED_ENV_DEFINITIONS, validateRequiredEnv } = await import(
-  "../src/lib/required-env-validator.ts"
-);
+const { REQUIRED_ENV_DEFINITIONS, validateRequiredEnv } =
+  await import("../src/lib/required-env-validator.ts");
 
 test("REQUIRED_ENV_DEFINITIONS memuat seluruh kunci konfigurasi kritis", () => {
   const keys = REQUIRED_ENV_DEFINITIONS.map((d) => d.key);
@@ -66,9 +65,7 @@ test("validateRequiredEnv menolak secret yang masih berupa placeholder template"
   const result = validateRequiredEnv(placeholderEnv);
   assert.equal(result.valid, false);
   assert.ok(result.invalidRequired.includes("BETTER_AUTH_SECRET"));
-  assert.ok(
-    result.errors.some((e) => e.includes("placeholder")),
-  );
+  assert.ok(result.errors.some((e) => e.includes("placeholder")));
 });
 
 test("validateRequiredEnv pada live mode lulus jika semua kunci lengkap dan valid", () => {

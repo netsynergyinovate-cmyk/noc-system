@@ -19,7 +19,8 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           error: "Gagal memuat pohon hierarki perangkat.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );

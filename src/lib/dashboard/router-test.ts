@@ -56,9 +56,18 @@ const template = MOCK_DEVICE_CONFIGS.find((d) => d.type === "mikrotik")!;
 /** Ubah isian form menjadi DeviceConfig MikroTik; galat validasi dikembalikan per field. */
 export function buildRouterTestDevice(
   form: RouterTestForm,
-): { ok: true; device: DeviceConfig } | { ok: false; errors: Record<string, string> } {
-  const port = /^\d{1,5}$/.test(form.port.trim()) ? Number(form.port.trim()) : NaN;
-  const v = validateDeviceInput({ name: form.host || "router", host: form.host, port, username: form.username });
+):
+  | { ok: true; device: DeviceConfig }
+  | { ok: false; errors: Record<string, string> } {
+  const port = /^\d{1,5}$/.test(form.port.trim())
+    ? Number(form.port.trim())
+    : NaN;
+  const v = validateDeviceInput({
+    name: form.host || "router",
+    host: form.host,
+    port,
+    username: form.username,
+  });
   if (!v.ok) return { ok: false, errors: v.errors };
   return {
     ok: true,
@@ -85,7 +94,8 @@ export function runRouterTest(
   opts: { password?: string; fetchImpl?: typeof fetch } = {},
 ) {
   const built = buildRouterTestDevice(form);
-  if (!built.ok) return Promise.resolve({ ok: false as const, errors: built.errors });
+  if (!built.ok)
+    return Promise.resolve({ ok: false as const, errors: built.errors });
   return runDeviceTest(built.device, {
     forceLocal: form.forceLocal,
     fetchImpl: opts.fetchImpl,
@@ -100,7 +110,10 @@ export function runRouterTest(
 
 // Semua angka berasal dari jawaban router (resource REST/API). Tidak ada nilai
 // contoh: field yang tidak dikirim router menjadi null dan tampil "—".
-export function routerResourceFromOutcome(outcome: TestOutcome, device: DeviceConfig): RouterResource | null {
+export function routerResourceFromOutcome(
+  outcome: TestOutcome,
+  device: DeviceConfig,
+): RouterResource | null {
   if (!outcome.ok) return null;
   const raw = (outcome.data ?? {}) as Record<string, unknown>;
   const res = (
@@ -127,7 +140,8 @@ export function routerResourceFromOutcome(outcome: TestOutcome, device: DeviceCo
   const board = typeof res.boardName === "string" ? res.boardName : "";
   const uptime = typeof res.uptime === "string" ? res.uptime : "";
   // Tidak ada satu pun data resource: jangan tampilkan kartu contoh.
-  if (cpu === null && memoryPct === null && !version && !board && !uptime) return null;
+  if (cpu === null && memoryPct === null && !version && !board && !uptime)
+    return null;
   return {
     board: board || "—",
     version: version || "—",

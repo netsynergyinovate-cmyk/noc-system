@@ -82,7 +82,12 @@ function backendBase(): string | null {
   );
 }
 
-function failure(message: string, port?: number, tls?: boolean, code = "CONNECTION_FAILED"): ApiProbeResult {
+function failure(
+  message: string,
+  port?: number,
+  tls?: boolean,
+  code = "CONNECTION_FAILED",
+): ApiProbeResult {
   return {
     ok: false,
     code,
@@ -95,10 +100,15 @@ function failure(message: string, port?: number, tls?: boolean, code = "CONNECTI
   };
 }
 
-export async function probeRouterApi(input: ApiProbeInput): Promise<ApiProbeResult> {
+export async function probeRouterApi(
+  input: ApiProbeInput,
+): Promise<ApiProbeResult> {
   // Port API biner bukan layanan REST: tolak segera dengan pesan yang jelas,
   // bukan menunggu timeout 5 detik.
-  if ((input.protocol ?? "api") === "rest" && (input.port === 8728 || input.port === 8729)) {
+  if (
+    (input.protocol ?? "api") === "rest" &&
+    (input.port === 8728 || input.port === 8729)
+  ) {
     return failure(
       `Port ${input.port} adalah API biner, bukan REST. Aktifkan layanan www (80) atau www-ssl (443), atau pilih protokol Binary API.`,
       input.port,
@@ -115,13 +125,23 @@ export async function probeRouterApi(input: ApiProbeInput): Promise<ApiProbeResu
       input.useSsl,
     );
   }
-  const { token } = issueRealtimeTicket({ userId: "noc-server", secret, perms: ["router:manage"] });
+  const { token } = issueRealtimeTicket({
+    userId: "noc-server",
+    secret,
+    perms: ["router:manage"],
+  });
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), input.timeoutMs ?? API_PREFLIGHT_TIMEOUT_MS + 2000);
+  const timer = setTimeout(
+    () => controller.abort(),
+    input.timeoutMs ?? API_PREFLIGHT_TIMEOUT_MS + 2000,
+  );
   try {
     const res = await fetch(new URL("/api/v1/routers/preflight", base), {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         host: input.host,
         port: input.port ?? 0,
@@ -133,17 +153,31 @@ export async function probeRouterApi(input: ApiProbeInput): Promise<ApiProbeResu
       signal: controller.signal,
     });
     if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { message?: string; error?: string; code?: string } | null;
+      const json = (await res.json().catch(() => null)) as {
+        message?: string;
+        error?: string;
+        code?: string;
+      } | null;
       return failure(
-        json?.message ?? json?.error ?? `Backend Go menjawab HTTP ${res.status} untuk uji router.`,
+        json?.message ??
+          json?.error ??
+          `Backend Go menjawab HTTP ${res.status} untuk uji router.`,
         input.port,
         input.useSsl,
-        json?.code ?? (res.status === 408 || res.status === 504 ? "TIMEOUT" : "CONNECTION_FAILED"),
+        json?.code ??
+          (res.status === 408 || res.status === 504
+            ? "TIMEOUT"
+            : "CONNECTION_FAILED"),
       );
     }
     const json = (await res.json()) as { data?: BackendPreflight };
     const d = json.data;
-    if (!d) return failure("Backend Go tidak mengembalikan hasil uji router.", input.port, input.useSsl);
+    if (!d)
+      return failure(
+        "Backend Go tidak mengembalikan hasil uji router.",
+        input.port,
+        input.useSsl,
+      );
     return {
       ok: d.ok,
       code: d.code,

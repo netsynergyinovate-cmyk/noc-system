@@ -47,7 +47,10 @@ export function validateHierarchyTypes(
       };
     }
   } else if (childType === "odp") {
-    const allowedForOdp: InfrastructureDeviceType[] = ["odc", ...ROOT_DEVICE_TYPES];
+    const allowedForOdp: InfrastructureDeviceType[] = [
+      "odc",
+      ...ROOT_DEVICE_TYPES,
+    ];
     if (!allowedForOdp.includes(parentType)) {
       return {
         valid: false,

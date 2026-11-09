@@ -158,10 +158,7 @@ test("3 flaps of 1 min within gaps -> counted (instability) when traffic confirm
     },
   ];
 
-  const buckets = [
-    makeBucket(start - 300, 300),
-    makeBucket(start + 600, 300),
-  ];
+  const buckets = [makeBucket(start - 300, 300), makeBucket(start + 600, 300)];
 
   const { incidents, summary } = buildIncidents({
     nowSec,
@@ -234,8 +231,22 @@ test("alert-sourced outage gets the wider tolerance: 200 samples in a fully-down
       nowSec,
       from: FROM_24H,
       to: nowSec,
-      outages: [{ realStart: start, realEnd: end, from: start, to: end, seconds: 600, source, windows: [] }],
-      buckets: [makeBucket(start - 300, 300), makeBucket(start, 150), makeBucket(end + 300, 300)],
+      outages: [
+        {
+          realStart: start,
+          realEnd: end,
+          from: start,
+          to: end,
+          seconds: 600,
+          source,
+          windows: [],
+        },
+      ],
+      buckets: [
+        makeBucket(start - 300, 300),
+        makeBucket(start, 150),
+        makeBucket(end + 300, 300),
+      ],
     }).incidents[0];
   assert.equal(run("alert").verdict, "terbukti"); // 150 <= 0 + 180
   assert.equal(run("live").verdict, "tidak-terbukti"); // 150 > 0 + 60
@@ -261,9 +272,7 @@ test("no traffic before start -> belum-terverifikasi", () => {
   ];
 
   // Sampel hanya ada setelah selesai, tidak ada sebelum mulai
-  const buckets = [
-    makeBucket(end + 300, 300),
-  ];
+  const buckets = [makeBucket(end + 300, 300)];
 
   const { incidents, summary } = buildIncidents({
     nowSec,
@@ -275,7 +284,11 @@ test("no traffic before start -> belum-terverifikasi", () => {
 
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0].verdict, "belum-terverifikasi");
-  assert.ok(incidents[0].verdictReason.includes("Belum ada data trafik tepat sebelum gangguan"));
+  assert.ok(
+    incidents[0].verdictReason.includes(
+      "Belum ada data trafik tepat sebelum gangguan",
+    ),
+  );
   assert.equal(summary.real, 0);
   assert.equal(summary.belumTerverifikasi, 1);
 });
@@ -311,7 +324,11 @@ test("ongoing incident -> not counted, final=false", () => {
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0].final, false);
   assert.equal(incidents[0].verdict, "belum-terverifikasi");
-  assert.ok(incidents[0].verdictReason.includes("Belum final: gangguan masih berlangsung"));
+  assert.ok(
+    incidents[0].verdictReason.includes(
+      "Belum final: gangguan masih berlangsung",
+    ),
+  );
   assert.equal(summary.real, 0);
   assert.equal(summary.belumTerverifikasi, 1);
 });
@@ -336,10 +353,7 @@ test("ended 5 min ago -> not final", () => {
     },
   ];
 
-  const buckets = [
-    makeBucket(start - 300, 300),
-    makeBucket(end + 60, 300),
-  ];
+  const buckets = [makeBucket(start - 300, 300), makeBucket(end + 60, 300)];
 
   const { incidents, summary } = buildIncidents({
     nowSec,
@@ -352,7 +366,11 @@ test("ended 5 min ago -> not final", () => {
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0].final, false);
   assert.equal(incidents[0].verdict, "belum-terverifikasi");
-  assert.ok(incidents[0].verdictReason.includes("Belum final: gangguan baru selesai kurang dari 10 menit lalu"));
+  assert.ok(
+    incidents[0].verdictReason.includes(
+      "Belum final: gangguan baru selesai kurang dari 10 menit lalu",
+    ),
+  );
   assert.equal(summary.real, 0);
   assert.equal(summary.belumTerverifikasi, 1);
 });
@@ -444,10 +462,7 @@ test("massal vs sendiri thresholds", () => {
       windows: [],
     },
   ];
-  const buckets = [
-    makeBucket(start - 300, 300),
-    makeBucket(end + 300, 300),
-  ];
+  const buckets = [makeBucket(start - 300, 300), makeBucket(end + 300, 300)];
 
   // Kasus A: router 10 pelanggan, 3 pelanggan lain down bersamaan (3 >= 3 dan 3/10 = 0.3 >= 0.2) -> massal
   const scopeMassal = {
@@ -473,10 +488,7 @@ test("massal vs sendiri thresholds", () => {
   // Kasus B: router 10 pelanggan, hanya 2 pelanggan lain down (< 3) -> sendiri
   const scopeKurangPelanggan = {
     routerCustomers: 10,
-    others: [
-      [{ from: start, to: end }],
-      [{ from: start, to: end }],
-    ],
+    others: [[{ from: start, to: end }], [{ from: start, to: end }]],
   };
   const resKurang = buildIncidents({
     nowSec,
@@ -555,10 +567,7 @@ test("range filter (incident starting before from excluded)", () => {
     // (diuji terpisah jika berdiri sendiri)
   ];
 
-  const buckets = [
-    makeBucket(from + 3300, 300),
-    makeBucket(from + 4500, 300),
-  ];
+  const buckets = [makeBucket(from + 3300, 300), makeBucket(from + 4500, 300)];
 
   const { incidents } = buildIncidents({
     nowSec,
@@ -583,10 +592,7 @@ test("same-fixture list/detail parity", () => {
   ];
   const priorEvent = { at: from - 5000, kind: "up", source: "live" };
 
-  const buckets = [
-    makeBucket(from + 600, 300),
-    makeBucket(from + 1800, 300),
-  ];
+  const buckets = [makeBucket(from + 600, 300), makeBucket(from + 1800, 300)];
 
   const scope = {
     routerCustomers: 5,
@@ -815,11 +821,41 @@ test("nesting test across ranges on one fixture with a chain crossing the 3d bou
     makeBucket(inc5End + 300, 300),
   ];
 
-  const res24h = buildIncidents({ nowSec, from: from24h, to: nowSec, outages: allOutages, buckets });
-  const res3d = buildIncidents({ nowSec, from: from3d, to: nowSec, outages: allOutages, buckets });
-  const res7d = buildIncidents({ nowSec, from: from7d, to: nowSec, outages: allOutages, buckets });
-  const res30d = buildIncidents({ nowSec, from: from30d, to: nowSec, outages: allOutages, buckets });
-  const res90d = buildIncidents({ nowSec, from: from90d, to: nowSec, outages: allOutages, buckets });
+  const res24h = buildIncidents({
+    nowSec,
+    from: from24h,
+    to: nowSec,
+    outages: allOutages,
+    buckets,
+  });
+  const res3d = buildIncidents({
+    nowSec,
+    from: from3d,
+    to: nowSec,
+    outages: allOutages,
+    buckets,
+  });
+  const res7d = buildIncidents({
+    nowSec,
+    from: from7d,
+    to: nowSec,
+    outages: allOutages,
+    buckets,
+  });
+  const res30d = buildIncidents({
+    nowSec,
+    from: from30d,
+    to: nowSec,
+    outages: allOutages,
+    buckets,
+  });
+  const res90d = buildIncidents({
+    nowSec,
+    from: from90d,
+    to: nowSec,
+    outages: allOutages,
+    buckets,
+  });
 
   // Verifikasi nesting angka: real(24h) <= real(3d) <= real(7d) <= real(30d) <= real(90d)
   assert.equal(res24h.summary.real, 1);
@@ -835,8 +871,12 @@ test("nesting test across ranges on one fixture with a chain crossing the 3d bou
 
   // Verifikasi rantai flap di 7d, 30d, dan 90d memiliki id dan verdict yang sama persis
   const chainIn7d = res7d.incidents.find((i) => i.id === String(from3d - 3600));
-  const chainIn30d = res30d.incidents.find((i) => i.id === String(from3d - 3600));
-  const chainIn90d = res90d.incidents.find((i) => i.id === String(from3d - 3600));
+  const chainIn30d = res30d.incidents.find(
+    (i) => i.id === String(from3d - 3600),
+  );
+  const chainIn90d = res90d.incidents.find(
+    (i) => i.id === String(from3d - 3600),
+  );
 
   assert.ok(chainIn7d);
   assert.ok(chainIn30d);
@@ -865,7 +905,11 @@ test("list/detail parity for 24h/3d/90d on the same fixture", () => {
     { at: t1, kind: "down", source: "live" },
     { at: t1 + 600, kind: "up", source: "live" },
   ];
-  const priorEvent = { at: nowSec - 100 * 24 * 3600, kind: "up", source: "live" };
+  const priorEvent = {
+    at: nowSec - 100 * 24 * 3600,
+    kind: "up",
+    source: "live",
+  };
 
   const allBuckets = [
     makeBucket(t3 - 300, 300),
@@ -906,7 +950,13 @@ test("list/detail parity for 24h/3d/90d on the same fixture", () => {
 
     // Jalur List
     const lookbackStart = nowSec - 400 * 24 * 3600;
-    const outages = buildOutages(allEvents, priorEvent, lookbackStart, nowSec, nowSec);
+    const outages = buildOutages(
+      allEvents,
+      priorEvent,
+      lookbackStart,
+      nowSec,
+      nowSec,
+    );
     const listResult = buildIncidents({
       nowSec,
       from,

@@ -38,7 +38,9 @@ export function VlanPonTrafficBoard({
   >({});
   const router = useDashboardStore((s) => s.telemetry?.routers[0]);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
-  const [lastVlanReceivedAt, setLastVlanReceivedAt] = useState<number | null>(null);
+  const [lastVlanReceivedAt, setLastVlanReceivedAt] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (range !== "live") return;
@@ -138,7 +140,9 @@ export function VlanPonTrafficBoard({
                   <span
                     data-testid="vlan-rto-badge"
                     className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/50 text-[9px] font-mono text-rose-300 font-semibold animate-pulse"
-                    title={router?.lastError || "MikroTik tidak merespons (RTO)"}
+                    title={
+                      router?.lastError || "MikroTik tidak merespons (RTO)"
+                    }
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
                     RTO • TIDAK ADA RESPON ({secondsSinceLastSample}s)
@@ -167,8 +171,12 @@ export function VlanPonTrafficBoard({
             <div className="flex items-center gap-1.5 text-rose-400 font-medium">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
               <span>
-                Trafik terhenti: Tidak ada respon dari MikroTik Core CIARA ({secondsSinceLastSample}s lalu
-                {router?.lastError ? ` • ${router.lastError}` : " • RTO / Timeout"}).
+                Trafik terhenti: Tidak ada respon dari MikroTik Core CIARA (
+                {secondsSinceLastSample}s lalu
+                {router?.lastError
+                  ? ` • ${router.lastError}`
+                  : " • RTO / Timeout"}
+                ).
               </span>
             </div>
           ) : (
@@ -353,7 +361,11 @@ function VlanPonCard({
                 aria-hidden="true"
                 className={`w-3 border-t-[2.5px] border-solid rounded-full ${isTrafficDown ? "border-rose-400" : "border-sky-400"}`}
               />
-              {inspectedPoint ? "Unduh titik" : isTrafficDown ? "Unduh (RTO)" : "Unduh sekarang"}
+              {inspectedPoint
+                ? "Unduh titik"
+                : isTrafficDown
+                  ? "Unduh (RTO)"
+                  : "Unduh sekarang"}
             </span>
             <span className="font-mono text-muted-foreground text-[8.5px]">
               {inspectedPoint ? inspectedPoint.time : "WIB"}
@@ -361,7 +373,9 @@ function VlanPonCard({
           </div>
           <div className="mt-0.5 text-base font-bold text-foreground font-mono tabular-nums leading-tight">
             {currentDl.toFixed(1).replace(".", ",")}{" "}
-            <span className="text-[10px] text-muted-foreground font-normal">Mbps</span>
+            <span className="text-[10px] text-muted-foreground font-normal">
+              Mbps
+            </span>
           </div>
           <div className="flex items-center justify-between text-[8.5px] font-mono text-muted-foreground mt-1 pt-0.5 border-t border-border">
             <span>
@@ -393,7 +407,11 @@ function VlanPonCard({
                 aria-hidden="true"
                 className={`w-3 border-t-[2.5px] border-solid rounded-full ${isTrafficDown ? "border-rose-400" : "border-orange-400"}`}
               />
-              {inspectedPoint ? "Unggah titik" : isTrafficDown ? "Unggah (RTO)" : "Unggah sekarang"}
+              {inspectedPoint
+                ? "Unggah titik"
+                : isTrafficDown
+                  ? "Unggah (RTO)"
+                  : "Unggah sekarang"}
             </span>
             <span className="font-mono text-muted-foreground text-[8.5px]">
               {inspectedPoint ? inspectedPoint.time : "WIB"}
@@ -401,7 +419,9 @@ function VlanPonCard({
           </div>
           <div className="mt-0.5 text-base font-bold text-foreground font-mono tabular-nums leading-tight">
             {currentUl.toFixed(1).replace(".", ",")}{" "}
-            <span className="text-[10px] text-muted-foreground font-normal">Mbps</span>
+            <span className="text-[10px] text-muted-foreground font-normal">
+              Mbps
+            </span>
           </div>
           <div className="flex items-center justify-between text-[8.5px] font-mono text-muted-foreground mt-1 pt-0.5 border-t border-border">
             <span>

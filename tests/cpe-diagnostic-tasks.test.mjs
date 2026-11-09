@@ -15,28 +15,23 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 const { auth } = await import("../src/lib/auth.ts");
 const { db } = await import("../src/db/index.ts");
-const { cpeTasks, customers, auditLog } = await import("../src/db/schema/index.ts");
-const {
-  createDiagnosticTaskSchema,
-  listCpeTasksParamsSchema,
-} = await import("../src/validators/cpe.ts");
-const {
-  enqueueDiagnosticTask,
-  listCpeDiagnosticTasks,
-} = await import("../src/services/cpe.service.ts");
-const {
-  GET: getTasksRoute,
-  POST: postTasksRoute,
-} = await import("../src/app/api/cpe/tasks/route.ts");
-const {
-  GET: getCustomerTasksRoute,
-} = await import("../src/app/api/customers/[id]/cpe/tasks/route.ts");
+const { cpeTasks, customers, auditLog } =
+  await import("../src/db/schema/index.ts");
+const { createDiagnosticTaskSchema, listCpeTasksParamsSchema } =
+  await import("../src/validators/cpe.ts");
+const { enqueueDiagnosticTask, listCpeDiagnosticTasks } =
+  await import("../src/services/cpe.service.ts");
+const { GET: getTasksRoute, POST: postTasksRoute } =
+  await import("../src/app/api/cpe/tasks/route.ts");
+const { GET: getCustomerTasksRoute } =
+  await import("../src/app/api/customers/[id]/cpe/tasks/route.ts");
 
 const custId = "550e8400-e29b-41d4-a716-446655440000";
 const taskId = "660e8400-e29b-41d4-a716-446655440000";
 
 let role = "admin";
-auth.api.getSession = async () => (role === "anon" ? null : { user: { id: "u1" }, session: {} });
+auth.api.getSession = async () =>
+  role === "anon" ? null : { user: { id: "u1" }, session: {} };
 auth.api.userHasPermission = async () => ({ success: role === "admin" });
 
 test("validator: createDiagnosticTaskSchema validasi input", () => {
@@ -229,7 +224,10 @@ test("endpoint: POST & GET /api/cpe/tasks sukses", async () => {
   role = "admin";
   const postReq = new Request("http://localhost:3101/api/cpe/tasks", {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: "http://localhost:3101" },
+    headers: {
+      "Content-Type": "application/json",
+      origin: "http://localhost:3101",
+    },
     body: JSON.stringify({ customerId: custId, action: "check_optical" }),
   });
   const postRes = await postTasksRoute(postReq);
@@ -247,7 +245,9 @@ test("endpoint: POST & GET /api/cpe/tasks sukses", async () => {
 
 test("endpoint: GET /api/customers/[id]/cpe/tasks mengembalikan riwayat per pelanggan", async () => {
   role = "admin";
-  const getReq = new Request(`http://localhost:3101/api/customers/${custId}/cpe/tasks`);
+  const getReq = new Request(
+    `http://localhost:3101/api/customers/${custId}/cpe/tasks`,
+  );
   const getRes = await getCustomerTasksRoute(getReq, {
     params: Promise.resolve({ id: custId }),
   });

@@ -14,7 +14,10 @@ export interface VersionInfo {
 export async function getAppVersion(): Promise<VersionInfo> {
   let semver = "1.0.0.0";
   try {
-    const pkgRaw = await readFile(resolve(process.cwd(), "package.json"), "utf8");
+    const pkgRaw = await readFile(
+      resolve(process.cwd(), "package.json"),
+      "utf8",
+    );
     const pkg = JSON.parse(pkgRaw);
     if (pkg.version) {
       semver = pkg.version;

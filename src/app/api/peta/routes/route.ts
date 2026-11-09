@@ -6,20 +6,24 @@ import { ROUTE_COLORS } from "@/components/peta/map-style";
 
 export const runtime = "nodejs";
 
-const createRouteSchema = z.object({
-  code: z.string().min(1, "Kode jalur kabel wajib diisi"),
-  name: z.string().min(1, "Nama jalur wajib diisi"),
-  cableType: z.string().min(1, "Tipe kabel wajib diisi"),
-  fiberCapacity: z.number().int().positive("Kapasitas serat harus lebih dari 0"),
-  fromDeviceId: z.string().min(1, "ID perangkat asal tidak valid"),
-  toDeviceId: z.string().min(1, "ID perangkat tujuan tidak valid").optional(),
-  // Hanya palet jalur: kuning/merah/hijau dipesan untuk status sambungan (PRD)
-  color: z
-    .enum(ROUTE_COLORS.map((c) => c.value) as [string, ...string[]], {
-      message: "Warna jalur tidak tersedia di palet.",
-    })
-    .optional(),
-})
+const createRouteSchema = z
+  .object({
+    code: z.string().min(1, "Kode jalur kabel wajib diisi"),
+    name: z.string().min(1, "Nama jalur wajib diisi"),
+    cableType: z.string().min(1, "Tipe kabel wajib diisi"),
+    fiberCapacity: z
+      .number()
+      .int()
+      .positive("Kapasitas serat harus lebih dari 0"),
+    fromDeviceId: z.string().min(1, "ID perangkat asal tidak valid"),
+    toDeviceId: z.string().min(1, "ID perangkat tujuan tidak valid").optional(),
+    // Hanya palet jalur: kuning/merah/hijau dipesan untuk status sambungan (PRD)
+    color: z
+      .enum(ROUTE_COLORS.map((c) => c.value) as [string, ...string[]], {
+        message: "Warna jalur tidak tersedia di palet.",
+      })
+      .optional(),
+  })
   // strict: total_length_m & sampling_interval_m diisi server, bukan klien
   .strict();
 

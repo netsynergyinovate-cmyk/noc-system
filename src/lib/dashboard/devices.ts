@@ -26,12 +26,34 @@ export interface DeviceInput {
 export const MOCK_SEEN_AT = 1_760_000_000;
 
 export const mockSetupDevices: readonly SetupDevice[] = [
-  { id: "d-r1", kind: "router", name: "RTR-Pusat-01", host: "10.10.0.1", status: "aktif", lastSeenAt: MOCK_SEEN_AT },
-  { id: "d-r2", kind: "router", name: "RTR-Barat-02", host: "10.10.0.2", status: "aktif", lastSeenAt: MOCK_SEEN_AT },
-  { id: "d-o1", kind: "olt", name: "OLT-Pusat-01", host: "10.10.1.1", status: "nonaktif", lastSeenAt: null },
+  {
+    id: "d-r1",
+    kind: "router",
+    name: "RTR-Pusat-01",
+    host: "10.10.0.1",
+    status: "aktif",
+    lastSeenAt: MOCK_SEEN_AT,
+  },
+  {
+    id: "d-r2",
+    kind: "router",
+    name: "RTR-Barat-02",
+    host: "10.10.0.2",
+    status: "aktif",
+    lastSeenAt: MOCK_SEEN_AT,
+  },
+  {
+    id: "d-o1",
+    kind: "olt",
+    name: "OLT-Pusat-01",
+    host: "10.10.1.1",
+    status: "nonaktif",
+    lastSeenAt: null,
+  },
 ];
 
-const HOST = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)$/i;
+const HOST =
+  /^(?:\d{1,3}(?:\.\d{1,3}){3}|[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*)$/i;
 
 export type DeviceErrors = Partial<Record<keyof DeviceInput, string>>;
 
@@ -40,7 +62,11 @@ export function validateDevice(input: DeviceInput): DeviceErrors {
   if (!input.name.trim()) e.name = "Nama wajib diisi.";
   const host = input.host.trim();
   if (!host) e.host = "Alamat host wajib diisi.";
-  else if (!HOST.test(host) || /^\d+(\.\d+){3}$/.test(host) && host.split(".").some((n) => Number(n) > 255))
+  else if (
+    !HOST.test(host) ||
+    (/^\d+(\.\d+){3}$/.test(host) &&
+      host.split(".").some((n) => Number(n) > 255))
+  )
     e.host = "Alamat host tidak valid.";
   if (!input.username.trim()) e.username = "Username wajib diisi.";
   if (!input.password) e.password = "Password wajib diisi.";
@@ -67,13 +93,19 @@ export function mockTestConnection(input: DeviceInput): TestResult {
     return {
       ok: false,
       reason: "Host timeout setelah 3000ms",
-      diagnostics: { latencyMs: 3000, protocol: router ? "REST API v7 (443)" : "OLT CLI (23)" },
+      diagnostics: {
+        latencyMs: 3000,
+        protocol: router ? "REST API v7 (443)" : "OLT CLI (23)",
+      },
     };
   if (host.endsWith(".255"))
     return {
       ok: false,
       reason: "HTTP 401 Unauthorized: Username/Password salah",
-      diagnostics: { latencyMs: 18, protocol: router ? "REST API v7" : "OLT CLI" },
+      diagnostics: {
+        latencyMs: 18,
+        protocol: router ? "REST API v7" : "OLT CLI",
+      },
     };
   return {
     ok: true,

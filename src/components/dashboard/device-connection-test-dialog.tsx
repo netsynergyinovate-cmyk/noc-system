@@ -57,13 +57,19 @@ interface Props {
   initial: Omit<DeviceTestRequest, "password">;
 }
 
-export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Props) {
+export function DeviceConnectionTestDialog({
+  open,
+  onOpenChange,
+  initial,
+}: Props) {
   const [type, setType] = useState<TestableDeviceType>(initial.type);
   const [host, setHost] = useState(initial.host);
   const [port, setPort] = useState(String(initial.port));
   const [username, setUsername] = useState(initial.username);
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"simulator" | "real">(initial.mode ?? "simulator");
+  const [mode, setMode] = useState<"simulator" | "real">(
+    initial.mode ?? "simulator",
+  );
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<DeviceTestResultSummary | null>(null);
   const running = useRef(false);
@@ -94,16 +100,30 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
         });
         const json = await res.json().catch(() => null);
         if (res.ok && json?.success && json.data) raw = json.data;
-        else if (res.status === 401) raw = { ok: false, message: "Sesi berakhir, silakan masuk lagi." };
+        else if (res.status === 401)
+          raw = { ok: false, message: "Sesi berakhir, silakan masuk lagi." };
         else if (res.status === 403)
-          raw = { ok: false, message: "Akun ini tidak berhak menguji perangkat (butuh izin router:manage)." };
-        else raw = { ok: false, message: json?.error?.message ?? `Server menjawab HTTP ${res.status}.` };
+          raw = {
+            ok: false,
+            message:
+              "Akun ini tidak berhak menguji perangkat (butuh izin router:manage).",
+          };
+        else
+          raw = {
+            ok: false,
+            message:
+              json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
+          };
       } catch (e) {
-        const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+        const timeout =
+          e instanceof Error &&
+          (e.name === "TimeoutError" || e.name === "AbortError");
         raw = {
           ok: false,
           status: timeout ? "timeout" : "error",
-          message: timeout ? "Batas waktu pengujian terlampaui." : "Server NOC tidak dapat dihubungi.",
+          message: timeout
+            ? "Batas waktu pengujian terlampaui."
+            : "Server NOC tidak dapat dihubungi.",
         };
       }
       setResult(evaluateConnectionTestOutcome(raw, type));
@@ -117,7 +137,10 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid="device-connection-dialog" className="max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        data-testid="device-connection-dialog"
+        className="max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>Uji Koneksi Perangkat {initial.name}</DialogTitle>
           <DialogDescription>
@@ -141,16 +164,22 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
               value={type}
               onChange={(e) => setType(e.target.value as TestableDeviceType)}
             >
-              {(Object.keys(DEVICE_TYPE_LABEL) as TestableDeviceType[]).map((t) => (
-                <option key={t} value={t}>
-                  {DEVICE_TYPE_LABEL[t]}
-                </option>
-              ))}
+              {(Object.keys(DEVICE_TYPE_LABEL) as TestableDeviceType[]).map(
+                (t) => (
+                  <option key={t} value={t}>
+                    {DEVICE_TYPE_LABEL[t]}
+                  </option>
+                ),
+              )}
             </select>
           </div>
           <div className="col-span-2 grid gap-1.5">
             <Label htmlFor="dct-host">Host / IP Address</Label>
-            <Input id="dct-host" value={host} onChange={(e) => setHost(e.target.value)} />
+            <Input
+              id="dct-host"
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="dct-port">Port</Label>
@@ -194,7 +223,9 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
             />
           </div>
           <p className="col-span-2 break-all font-mono text-xs text-muted-foreground">
-            {canRun ? formatDeviceEndpoint(type, host, portNum) : "Isi host dan port (1-65535)."}
+            {canRun
+              ? formatDeviceEndpoint(type, host, portNum)
+              : "Isi host dan port (1-65535)."}
           </p>
           <Button
             type="submit"
@@ -211,7 +242,12 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
           </Button>
         </form>
 
-        <div role="status" aria-live="polite" data-testid="test-outcome-panel" className="grid gap-2">
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="test-outcome-panel"
+          className="grid gap-2"
+        >
           {result && (
             <>
               <div className="flex flex-wrap items-center gap-3">
@@ -226,7 +262,9 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
                   className={`font-mono text-sm font-semibold ${latencyClass(result.latencyMs)}`}
                   data-testid="test-latency"
                 >
-                  {result.latencyMs !== null ? `${result.latencyMs} ms` : "— ms"}
+                  {result.latencyMs !== null
+                    ? `${result.latencyMs} ms`
+                    : "— ms"}
                 </span>
               </div>
               <p className="text-sm">{result.message}</p>
@@ -234,7 +272,9 @@ export function DeviceConnectionTestDialog({ open, onOpenChange, initial }: Prop
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border bg-muted/40 p-2 text-xs">
                   {details.map(([k, v]) => (
                     <div key={k} className="contents">
-                      <dt className="text-muted-foreground">{DETAIL_LABEL[k] ?? k}</dt>
+                      <dt className="text-muted-foreground">
+                        {DETAIL_LABEL[k] ?? k}
+                      </dt>
                       <dd className="font-mono">{String(v)}</dd>
                     </div>
                   ))}

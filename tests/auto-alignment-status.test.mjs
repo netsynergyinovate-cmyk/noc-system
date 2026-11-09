@@ -8,9 +8,8 @@ const {
   getMockAlignmentOverview,
 } = await import("../src/lib/dashboard/auto-alignment.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 test("AUTO_ALIGNMENT_MOCK_ENTRY terdaftar di SETUP_DATA_SOURCE_REGISTRY", () => {
   assert.equal(AUTO_ALIGNMENT_MOCK_ENTRY.id, "auto-alignment-status");

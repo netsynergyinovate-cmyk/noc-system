@@ -5,7 +5,8 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import { register } from "tsx/esm/api";
 
 register();
-const { alertThresholds } = await import("../src/db/schema/alert-thresholds.ts");
+const { alertThresholds } =
+  await import("../src/db/schema/alert-thresholds.ts");
 const schema = await import("../src/db/schema/index.ts");
 
 const cfg = getTableConfig(alertThresholds);

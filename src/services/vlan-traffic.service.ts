@@ -9,7 +9,10 @@ import {
 } from "@/db/schema";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
-import { MikrotikRestClient, type MikrotikInterface } from "@/lib/mikrotik/client";
+import {
+  MikrotikRestClient,
+  type MikrotikInterface,
+} from "@/lib/mikrotik/client";
 import type { TrafficRangeId } from "@/lib/dashboard/ranges";
 
 export type VlanTrafficRange = TrafficRangeId;
@@ -65,7 +68,10 @@ interface VlanPrevReading {
 }
 
 // Konfigurasi spesifikasi rentang waktu (sama dengan dashboard utama)
-export const VLAN_RANGE_SPECS: Record<VlanTrafficRange, { seconds: number; stepSeconds: number }> = {
+export const VLAN_RANGE_SPECS: Record<
+  VlanTrafficRange,
+  { seconds: number; stepSeconds: number }
+> = {
   live: { seconds: 300, stepSeconds: 1 },
   "1h": { seconds: 3600, stepSeconds: 30 },
   "6h": { seconds: 6 * 3600, stepSeconds: 120 },
@@ -75,12 +81,60 @@ export const VLAN_RANGE_SPECS: Record<VlanTrafficRange, { seconds: number; stepS
 
 // Baseline konfigurasi fisik PON OLT & VLAN untuk fallback / initial seeding
 const BASE_PON_CONFIGS = [
-  { pon: 1, vlan: "vlan1101", id: 1101, onu: 20, rxPower: -20.37, baseDl: 49.5, baseUl: 6.0 },
-  { pon: 2, vlan: "vlan1102", id: 1102, onu: 15, rxPower: -18.73, baseDl: 22.5, baseUl: 1.0 },
-  { pon: 3, vlan: "vlan1103", id: 1103, onu: 5, rxPower: -16.25, baseDl: 1.7, baseUl: 0.3 },
-  { pon: 4, vlan: "vlan1104", id: 1104, onu: 13, rxPower: -21.10, baseDl: 10.6, baseUl: 1.8 },
-  { pon: 5, vlan: "vlan1105", id: 1105, onu: 16, rxPower: -20.54, baseDl: 34.0, baseUl: 2.4 },
-  { pon: 6, vlan: "vlan1106", id: 1106, onu: 0, rxPower: null, baseDl: 0.0, baseUl: 0.0 },
+  {
+    pon: 1,
+    vlan: "vlan1101",
+    id: 1101,
+    onu: 20,
+    rxPower: -20.37,
+    baseDl: 49.5,
+    baseUl: 6.0,
+  },
+  {
+    pon: 2,
+    vlan: "vlan1102",
+    id: 1102,
+    onu: 15,
+    rxPower: -18.73,
+    baseDl: 22.5,
+    baseUl: 1.0,
+  },
+  {
+    pon: 3,
+    vlan: "vlan1103",
+    id: 1103,
+    onu: 5,
+    rxPower: -16.25,
+    baseDl: 1.7,
+    baseUl: 0.3,
+  },
+  {
+    pon: 4,
+    vlan: "vlan1104",
+    id: 1104,
+    onu: 13,
+    rxPower: -21.1,
+    baseDl: 10.6,
+    baseUl: 1.8,
+  },
+  {
+    pon: 5,
+    vlan: "vlan1105",
+    id: 1105,
+    onu: 16,
+    rxPower: -20.54,
+    baseDl: 34.0,
+    baseUl: 2.4,
+  },
+  {
+    pon: 6,
+    vlan: "vlan1106",
+    id: 1106,
+    onu: 0,
+    rxPower: null,
+    baseDl: 0.0,
+    baseUl: 0.0,
+  },
 ];
 
 // Cache pembacaan byte sebelumnya per VLAN untuk menghitung delta bandwidth secara presisi
@@ -91,7 +145,10 @@ const vlanHistoryBuffer = new Map<string, VlanPonTrafficPoint[]>();
 
 const MAX_LIVE_POINTS = 60;
 
-function formatTimeLabel(timestampSec: number, range: VlanTrafficRange): string {
+function formatTimeLabel(
+  timestampSec: number,
+  range: VlanTrafficRange,
+): string {
   const d = new Date((timestampSec + 7 * 3600) * 1000); // Waktu Indonesia Barat (UTC+7)
   const p = (n: number) => String(n).padStart(2, "0");
   const hh = p(d.getUTCHours());
@@ -171,7 +228,10 @@ async function ensureVlanTrafficHistorySeeded(nowSec: number): Promise<void> {
         .onConflictDoNothing();
     }
   } catch (err) {
-    console.error("Gagal melakukan seeding histori awal vlan_traffic_samples:", err);
+    console.error(
+      "Gagal melakukan seeding histori awal vlan_traffic_samples:",
+      err,
+    );
   }
 }
 
@@ -192,10 +252,7 @@ async function persistLiveVlanSamples(
 ): Promise<void> {
   if (samples.length === 0) return;
   try {
-    await db
-      .insert(vlanTrafficSamples)
-      .values(samples)
-      .onConflictDoNothing();
+    await db.insert(vlanTrafficSamples).values(samples).onConflictDoNothing();
   } catch (err) {
     console.error("Gagal menyimpan sampel live vlan_traffic_samples:", err);
   }
@@ -313,7 +370,10 @@ async function queryRecentLiveVlanSamples(
 
     return { points, lastSample };
   } catch (err) {
-    console.error(`Gagal membaca rekaman riil vlan ${vlanName} dari database:`, err);
+    console.error(
+      `Gagal membaca rekaman riil vlan ${vlanName} dari database:`,
+      err,
+    );
     return { points: [], lastSample: null };
   }
 }
@@ -359,7 +419,10 @@ export async function getVlanPonTraffic(
         .orderBy(asc(oltPonPorts.ponIndex))
     : [];
 
-  const ponMap = new Map<number, { rxPower: number | null; onuCount: number }>();
+  const ponMap = new Map<
+    number,
+    { rxPower: number | null; onuCount: number }
+  >();
   for (const p of ponPortRows) {
     ponMap.set(p.ponIndex, {
       rxPower: p.rxPower !== null ? Number(p.rxPower) : null,
@@ -455,16 +518,16 @@ export async function getVlanPonTraffic(
 
     // Ambil histori streaming dari buffer memori
     let liveHistory = (vlanHistoryBuffer.get(cacheKey) ?? []).filter(
-      (pt) => pt.downloadMbps <= MAX_PHYSICAL_DL_MBPS && pt.uploadMbps <= MAX_PHYSICAL_UL_MBPS,
+      (pt) =>
+        pt.downloadMbps <= MAX_PHYSICAL_DL_MBPS &&
+        pt.uploadMbps <= MAX_PHYSICAL_UL_MBPS,
     );
 
     // JIKA BUFFER MEMORI KOSONG (setelah refresh browser atau restart worker):
     // Muat 60 titik rekaman riil terakhir langsung dari tabel PostgreSQL vlan_traffic_samples!
     if (liveHistory.length === 0) {
-      const { points: dbLivePoints, lastSample } = await queryRecentLiveVlanSamples(
-        vlanName,
-        MAX_LIVE_POINTS,
-      );
+      const { points: dbLivePoints, lastSample } =
+        await queryRecentLiveVlanSamples(vlanName, MAX_LIVE_POINTS);
       if (dbLivePoints.length > 0) {
         liveHistory = dbLivePoints;
       }
@@ -494,28 +557,31 @@ export async function getVlanPonTraffic(
           const calcUl = (deltaRx * 8) / (deltaSec * 1_000_000);
 
           // Validasi batas fisik: jika melompat di luar batas hardware, buang sebagai counter glitch
-          if (calcDl <= MAX_PHYSICAL_DL_MBPS && calcUl <= MAX_PHYSICAL_UL_MBPS) {
+          if (
+            calcDl <= MAX_PHYSICAL_DL_MBPS &&
+            calcUl <= MAX_PHYSICAL_UL_MBPS
+          ) {
             dlMbps = Math.max(0, Math.round(calcDl * 10) / 10);
             ulMbps = Math.max(0, Math.round(calcUl * 10) / 10);
           } else {
             // Anomali lonjakan counter; gunakan estimasi proporsional aman
-            dlMbps = Math.round((onuCount * 2.3) * 10) / 10;
-            ulMbps = Math.round((onuCount * 0.35) * 10) / 10;
+            dlMbps = Math.round(onuCount * 2.3 * 10) / 10;
+            ulMbps = Math.round(onuCount * 0.35 * 10) / 10;
           }
         } else {
           // Counter reset/reboot router; reset baseline tanpa menganggap currTx sebagai delta
-          dlMbps = Math.round((onuCount * 2.3) * 10) / 10;
-          ulMbps = Math.round((onuCount * 0.35) * 10) / 10;
+          dlMbps = Math.round(onuCount * 2.3 * 10) / 10;
+          ulMbps = Math.round(onuCount * 0.35 * 10) / 10;
         }
       } else {
         // Jeda waktu terlalu lama; gunakan estimasi proporsional aman
-        dlMbps = Math.round((onuCount * 2.3) * 10) / 10;
-        ulMbps = Math.round((onuCount * 0.35) * 10) / 10;
+        dlMbps = Math.round(onuCount * 2.3 * 10) / 10;
+        ulMbps = Math.round(onuCount * 0.35 * 10) / 10;
       }
     } else if (iface && iface.running && onuCount > 0) {
       // Inisialisasi awal saat belum ada sampel pembanding sebelumnya
-      dlMbps = Math.round((onuCount * 2.3) * 10) / 10;
-      ulMbps = Math.round((onuCount * 0.35) * 10) / 10;
+      dlMbps = Math.round(onuCount * 2.3 * 10) / 10;
+      ulMbps = Math.round(onuCount * 0.35 * 10) / 10;
     }
 
     // Selalu perbarui cache dengan nilai pembacaan terakhir
@@ -584,8 +650,14 @@ export async function getVlanPonTraffic(
         for (let i = pointsCount; i >= 0; i--) {
           const ptTime = nowSec - i * step;
           const variance = Math.sin(ptTime / (step * 4)) * 0.18;
-          const ptDl = Math.max(0, Math.round((dlMbps * (1 + variance)) * 10) / 10);
-          const ptUl = Math.max(0, Math.round((ulMbps * (1 + variance)) * 10) / 10);
+          const ptDl = Math.max(
+            0,
+            Math.round(dlMbps * (1 + variance) * 10) / 10,
+          );
+          const ptUl = Math.max(
+            0,
+            Math.round(ulMbps * (1 + variance) * 10) / 10,
+          );
           series.push({
             timestamp: ptTime,
             timeLabel: formatTimeLabel(ptTime, range),
@@ -600,8 +672,18 @@ export async function getVlanPonTraffic(
     const uploads = series.map((h) => h.uploadMbps);
     const peakDl = downloads.length > 0 ? Math.max(...downloads) : dlMbps;
     const peakUl = uploads.length > 0 ? Math.max(...uploads) : ulMbps;
-    const avgDl = downloads.length > 0 ? Math.round((downloads.reduce((a, b) => a + b, 0) / downloads.length) * 10) / 10 : dlMbps;
-    const avgUl = uploads.length > 0 ? Math.round((uploads.reduce((a, b) => a + b, 0) / uploads.length) * 10) / 10 : ulMbps;
+    const avgDl =
+      downloads.length > 0
+        ? Math.round(
+            (downloads.reduce((a, b) => a + b, 0) / downloads.length) * 10,
+          ) / 10
+        : dlMbps;
+    const avgUl =
+      uploads.length > 0
+        ? Math.round(
+            (uploads.reduce((a, b) => a + b, 0) / uploads.length) * 10,
+          ) / 10
+        : ulMbps;
 
     items.push({
       ponIndex: pon,
@@ -649,7 +731,8 @@ function generateDemoVlanPonTraffic(
 ): VlanPonTrafficSummary {
   const spec = VLAN_RANGE_SPECS[range];
   const step = spec.stepSeconds;
-  const count = range === "live" ? 20 : Math.min(60, Math.floor(spec.seconds / step));
+  const count =
+    range === "live" ? 20 : Math.min(60, Math.floor(spec.seconds / step));
 
   let totalDl = 0;
   let totalUl = 0;
@@ -665,8 +748,12 @@ function generateDemoVlanPonTraffic(
     const series: VlanPonTrafficPoint[] = [];
     for (let i = count - 1; i >= 0; i--) {
       const ptTime = nowSec - i * step;
-      const wave = cfg.baseDl > 0 ? Math.sin(ptTime / (step * 4)) * (cfg.baseDl * 0.12) : 0;
-      const waveUl = cfg.baseUl > 0 ? Math.cos(ptTime / (step * 4)) * (cfg.baseUl * 0.1) : 0;
+      const wave =
+        cfg.baseDl > 0
+          ? Math.sin(ptTime / (step * 4)) * (cfg.baseDl * 0.12)
+          : 0;
+      const waveUl =
+        cfg.baseUl > 0 ? Math.cos(ptTime / (step * 4)) * (cfg.baseUl * 0.1) : 0;
       series.push({
         timestamp: ptTime,
         timeLabel: formatTimeLabel(ptTime, range),
@@ -679,8 +766,18 @@ function generateDemoVlanPonTraffic(
     const uploads = series.map((s) => s.uploadMbps);
     const peakDl = downloads.length > 0 ? Math.max(...downloads) : cfg.baseDl;
     const peakUl = uploads.length > 0 ? Math.max(...uploads) : cfg.baseUl;
-    const avgDl = downloads.length > 0 ? Math.round((downloads.reduce((a, b) => a + b, 0) / downloads.length) * 10) / 10 : cfg.baseDl;
-    const avgUl = uploads.length > 0 ? Math.round((uploads.reduce((a, b) => a + b, 0) / uploads.length) * 10) / 10 : cfg.baseUl;
+    const avgDl =
+      downloads.length > 0
+        ? Math.round(
+            (downloads.reduce((a, b) => a + b, 0) / downloads.length) * 10,
+          ) / 10
+        : cfg.baseDl;
+    const avgUl =
+      uploads.length > 0
+        ? Math.round(
+            (uploads.reduce((a, b) => a + b, 0) / uploads.length) * 10,
+          ) / 10
+        : cfg.baseUl;
 
     return {
       ponIndex: cfg.pon,

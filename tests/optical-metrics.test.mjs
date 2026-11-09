@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateOpticalLoss, getOnuTxStatus } from "../src/lib/dashboard/optical.ts";
+import {
+  calculateOpticalLoss,
+  getOnuTxStatus,
+} from "../src/lib/dashboard/optical.ts";
 
 test("calculateOpticalLoss", () => {
   assert.equal(calculateOpticalLoss(2.5, -22.0), 24.5);

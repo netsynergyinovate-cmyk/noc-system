@@ -118,7 +118,10 @@ export const LOCAL_MOCK_NETWORK_MAP_DATA: NetworkMapData = {
       status: "active",
       latitude: MUKOMUKO_CENTER.lat,
       longitude: MUKOMUKO_CENTER.lng,
-      details: { role: "Core Gateway BGP & PPPoE Server", model: "MikroTik CCR2004" },
+      details: {
+        role: "Core Gateway BGP & PPPoE Server",
+        model: "MikroTik CCR2004",
+      },
     },
     {
       id: "infra-olt-hsgq",
@@ -128,7 +131,10 @@ export const LOCAL_MOCK_NETWORK_MAP_DATA: NetworkMapData = {
       status: "active",
       latitude: MUKOMUKO_CENTER.lat + 0.0015,
       longitude: MUKOMUKO_CENTER.lng + 0.0018,
-      details: { brand: "HSGQ EPON/GPON 8-Port", uplink: "SFP+ 10G to Core CIARA" },
+      details: {
+        brand: "HSGQ EPON/GPON 8-Port",
+        uplink: "SFP+ 10G to Core CIARA",
+      },
     },
     {
       id: "infra-odp-01",
@@ -162,7 +168,7 @@ export const LOCAL_MOCK_NETWORK_MAP_DATA: NetworkMapData = {
       name: "ODP-TTJ-04",
       type: "odp",
       status: "active",
-      latitude: MUKOMUKO_CENTER.lat + 0.0010,
+      latitude: MUKOMUKO_CENTER.lat + 0.001,
       longitude: MUKOMUKO_CENTER.lng - 0.0025,
       details: { capacity: "1:8 Splitter", connectedCustomers: 1 },
     },

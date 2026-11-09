@@ -17,7 +17,9 @@ export function quoteLiteral(s) {
 
 function walk(value, id, key, rawArray, out) {
   if (Array.isArray(value)) {
-    value.forEach((item, i) => walk(item, `${id}.${i}`, key, RAW_ARRAY_KEYS.has(key), out));
+    value.forEach((item, i) =>
+      walk(item, `${id}.${i}`, key, RAW_ARRAY_KEYS.has(key), out),
+    );
     return;
   }
   if (value !== null && typeof value === "object") {
@@ -28,7 +30,10 @@ function walk(value, id, key, rawArray, out) {
     return;
   }
   if (typeof value === "string") {
-    out.push({ _id: id, value: RAW_KEYS.has(key) || rawArray ? value : quoteLiteral(value) });
+    out.push({
+      _id: id,
+      value: RAW_KEYS.has(key) || rawArray ? value : quoteLiteral(value),
+    });
   } else if (typeof value === "boolean" || typeof value === "number") {
     out.push({ _id: id, value: String(value) });
   } else {
@@ -43,7 +48,8 @@ export function flattenUi(json) {
   const prefixes = [];
   for (const [top, v] of Object.entries(json)) {
     if (top.startsWith("_")) continue;
-    if (!/^ui\.[a-z]+$/.test(top)) throw new Error(`kunci tingkat atas tidak sah: ${top}`);
+    if (!/^ui\.[a-z]+$/.test(top))
+      throw new Error(`kunci tingkat atas tidak sah: ${top}`);
     prefixes.push(top);
     walk(v, top, top, false, docs);
   }

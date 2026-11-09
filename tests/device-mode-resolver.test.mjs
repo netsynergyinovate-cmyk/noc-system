@@ -12,13 +12,21 @@ const MT = {
 };
 
 test("requestedMode simulator", () => {
-  const r = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "simulator", envSource: MT });
+  const r = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "simulator",
+    envSource: MT,
+  });
   assert.equal(r.effectiveMode, "simulator");
   assert.equal(r.fallback, false);
 });
 
 test("real dengan env lengkap", () => {
-  const r = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "real", envSource: MT });
+  const r = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "real",
+    envSource: MT,
+  });
   assert.equal(r.effectiveMode, "real");
   assert.equal(r.fallback, false);
   assert.equal(r.ready, true);
@@ -26,7 +34,11 @@ test("real dengan env lengkap", () => {
 });
 
 test("real dengan env kosong fallback ke simulator", () => {
-  const r = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "real", envSource: {} });
+  const r = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "real",
+    envSource: {},
+  });
   assert.equal(r.effectiveMode, "simulator");
   assert.equal(r.fallback, true);
   assert.equal(r.reason, "ENV_INCOMPLETE");
@@ -35,7 +47,12 @@ test("real dengan env kosong fallback ke simulator", () => {
 });
 
 test("allowFallback false: fail-fast tetap real", () => {
-  const r = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "real", envSource: {}, allowFallback: false });
+  const r = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "real",
+    envSource: {},
+    allowFallback: false,
+  });
   assert.equal(r.effectiveMode, "real");
   assert.equal(r.fallback, false);
   assert.equal(r.ready, false);
@@ -43,17 +60,34 @@ test("allowFallback false: fail-fast tetap real", () => {
 });
 
 test("default dashboardData demo vs live", () => {
-  const demo = resolveDeviceOperationMode({ kind: "mikrotik", dashboardData: "demo", envSource: MT });
+  const demo = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    dashboardData: "demo",
+    envSource: MT,
+  });
   assert.equal(demo.effectiveMode, "simulator");
   assert.equal(demo.reason, "DEMO_DEFAULT");
   assert.equal(demo.fallback, false);
-  const live = resolveDeviceOperationMode({ kind: "mikrotik", dashboardData: "live", envSource: MT });
+  const live = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    dashboardData: "live",
+    envSource: MT,
+  });
   assert.equal(live.effectiveMode, "real");
-  const liveEmpty = resolveDeviceOperationMode({ kind: "mikrotik", dashboardData: "live", envSource: {} });
+  const liveEmpty = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    dashboardData: "live",
+    envSource: {},
+  });
   assert.equal(liveEmpty.effectiveMode, "simulator");
   assert.equal(liveEmpty.fallback, true);
   // requestedMode menang atas dashboardData
-  const sim = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "simulator", dashboardData: "live", envSource: MT });
+  const sim = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "simulator",
+    dashboardData: "live",
+    envSource: MT,
+  });
   assert.equal(sim.effectiveMode, "simulator");
 });
 
@@ -62,12 +96,24 @@ test("isolasi antar perangkat", () => {
   assert.equal(all.mikrotik.effectiveMode, "real");
   assert.equal(all.olt.effectiveMode, "simulator");
   assert.equal(all.olt.fallback, true);
-  assert.deepEqual(Object.keys(all).sort(), ["billing", "genieacs", "mikrotik", "olt"]);
+  assert.deepEqual(Object.keys(all).sort(), [
+    "billing",
+    "genieacs",
+    "mikrotik",
+    "olt",
+  ]);
 });
 
 test("missingEnv hanya nama variabel, bukan kredensial", () => {
-  const src = { MIKROTIK_REST_HOST: "10.0.0.1", MIKROTIK_REST_USER: "admin-user" };
-  const r = resolveDeviceOperationMode({ kind: "mikrotik", requestedMode: "real", envSource: src });
+  const src = {
+    MIKROTIK_REST_HOST: "10.0.0.1",
+    MIKROTIK_REST_USER: "admin-user",
+  };
+  const r = resolveDeviceOperationMode({
+    kind: "mikrotik",
+    requestedMode: "real",
+    envSource: src,
+  });
   assert.deepEqual(r.missingEnv, ["MIKROTIK_REST_PASSWORD"]);
   const text = JSON.stringify(r);
   assert.ok(!text.includes("10.0.0.1"));

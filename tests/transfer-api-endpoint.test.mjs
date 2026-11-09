@@ -13,12 +13,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { GET: getRun, POST: postRun } = await import(
-  "../src/app/api/transfer/run/route.ts"
-);
-const { GET: getTransfer, POST: postTransfer } = await import(
-  "../src/app/api/transfer/route.ts"
-);
+const { GET: getRun, POST: postRun } =
+  await import("../src/app/api/transfer/run/route.ts");
+const { GET: getTransfer, POST: postTransfer } =
+  await import("../src/app/api/transfer/route.ts");
 
 test("handler GET & POST route transfer terdefinisi", () => {
   assert.equal(typeof getRun, "function");

@@ -5,7 +5,9 @@ const IV_LENGTH = 12;
 
 function normalizeKey(secret) {
   const raw = Buffer.from(secret, "utf-8");
-  return raw.length === 32 ? raw : crypto.createHash("sha256").update(raw).digest();
+  return raw.length === 32
+    ? raw
+    : crypto.createHash("sha256").update(raw).digest();
 }
 
 function decryptWithKey(data, key) {
@@ -13,7 +15,9 @@ function decryptWithKey(data, key) {
   const [iv, tag, enc] = parts.map((p) => Buffer.from(p, "base64"));
   const decipher = crypto.createDecipheriv(ALGORITHM, normalizeKey(key), iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+  return Buffer.concat([decipher.update(enc), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 const secretKey = "noc-device-secret-key-32chars-ok";
@@ -34,51 +38,63 @@ async function inspectMikrotik() {
   }
   const ifaces = await res.json();
   console.log(`Total interfaces found: ${ifaces.length}`);
-  
-  const vlanIfaces = ifaces.filter(i => i.type === "vlan" || i.name.toLowerCase().includes("vlan") || i.name.toLowerCase().includes("pon"));
+
+  const vlanIfaces = ifaces.filter(
+    (i) =>
+      i.type === "vlan" ||
+      i.name.toLowerCase().includes("vlan") ||
+      i.name.toLowerCase().includes("pon"),
+  );
   console.log("\n=== VLAN / PON Interfaces ===");
-  console.log(vlanIfaces.map(i => ({
-    name: i.name,
-    type: i.type,
-    running: i.running,
-    disabled: i.disabled,
-    "rx-byte": i["rx-byte"],
-    "tx-byte": i["tx-byte"],
-    comment: i.comment
-  })));
+  console.log(
+    vlanIfaces.map((i) => ({
+      name: i.name,
+      type: i.type,
+      running: i.running,
+      disabled: i.disabled,
+      "rx-byte": i["rx-byte"],
+      "tx-byte": i["tx-byte"],
+      comment: i.comment,
+    })),
+  );
 
   console.log("\n=== All Non-PPPoE Interfaces ===");
-  const nonPppoe = ifaces.filter(i => !i.name.startsWith("<pppoe-"));
-  console.log(nonPppoe.map(i => ({
-    name: i.name,
-    type: i.type,
-    running: i.running,
-    disabled: i.disabled,
-    "rx-byte": i["rx-byte"],
-    "tx-byte": i["tx-byte"],
-    comment: i.comment
-  })));
+  const nonPppoe = ifaces.filter((i) => !i.name.startsWith("<pppoe-"));
+  console.log(
+    nonPppoe.map((i) => ({
+      name: i.name,
+      type: i.type,
+      running: i.running,
+      disabled: i.disabled,
+      "rx-byte": i["rx-byte"],
+      "tx-byte": i["tx-byte"],
+      comment: i.comment,
+    })),
+  );
 
   // Also check /rest/interface/vlan
   try {
-    const resVlan = await fetch(`http://${host}/rest/interface/vlan`, { headers });
+    const resVlan = await fetch(`http://${host}/rest/interface/vlan`, {
+      headers,
+    });
     if (resVlan.ok) {
       const vlans = await resVlan.json();
       console.log("\n=== /rest/interface/vlan ===");
-      console.log(vlans.map(v => ({
-        name: v.name,
-        "vlan-id": v["vlan-id"],
-        interface: v.interface,
-        disabled: v.disabled,
-        comment: v.comment
-      })));
+      console.log(
+        vlans.map((v) => ({
+          name: v.name,
+          "vlan-id": v["vlan-id"],
+          interface: v.interface,
+          disabled: v.disabled,
+          comment: v.comment,
+        })),
+      );
     }
   } catch (e) {
     console.log("Could not fetch /rest/interface/vlan:", e.message);
   }
 }
 
-inspectMikrotik().catch(err => {
+inspectMikrotik().catch((err) => {
   console.error("Error inspecting MikroTik:", err);
 });
-

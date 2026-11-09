@@ -53,7 +53,8 @@ export function parseArgs(argv = []) {
     const key = flags[arg];
     if (!key) throw new Error(`Argumen tidak dikenal: ${arg}`);
     const value = argv[++i];
-    if (!value || value.startsWith("--")) throw new Error(`${arg} butuh nilai.`);
+    if (!value || value.startsWith("--"))
+      throw new Error(`${arg} butuh nilai.`);
     if (key === "phase" && !PHASES.includes(value))
       throw new Error(`--phase harus salah satu: ${PHASES.join(", ")}.`);
     if (key === "format" && !FORMATS.includes(value))
@@ -118,7 +119,12 @@ export async function verifyPhase1Env(options = {}) {
     return result(1, name, "failed", "Gagal membaca berkas env.", [errMsg(e)]);
   }
   if (templateText === null)
-    return result(1, name, "failed", `Template ${templateFile} tidak ditemukan.`);
+    return result(
+      1,
+      name,
+      "failed",
+      `Template ${templateFile} tidak ditemukan.`,
+    );
   if (envText === null)
     return result(1, name, "pending", `${envFile} belum dibuat.`, [
       `Salin ${templateFile} ke ${envFile}, lalu isi semua placeholder <...>.`,
@@ -127,9 +133,14 @@ export async function verifyPhase1Env(options = {}) {
   const env = parseEnv(envText);
   const template = parseEnv(templateText);
   const missing = [...template.keys()].filter((k) => !env.has(k));
-  const placeholders = [...env].filter(([, v]) => hasPlaceholder(v)).map(([k]) => k);
+  const placeholders = [...env]
+    .filter(([, v]) => hasPlaceholder(v))
+    .map(([k]) => k);
   const short = SECRET_KEYS.filter(
-    (k) => env.has(k) && !hasPlaceholder(env.get(k)) && env.get(k).length < MIN_SECRET_LENGTH,
+    (k) =>
+      env.has(k) &&
+      !hasPlaceholder(env.get(k)) &&
+      env.get(k).length < MIN_SECRET_LENGTH,
   );
 
   const problems = [
@@ -138,8 +149,17 @@ export async function verifyPhase1Env(options = {}) {
   ];
   // Kunci hilang atau secret lemah = salah; placeholder = belum diisi.
   if (problems.length) {
-    const details = [...problems, ...placeholders.map((k) => `Placeholder belum diganti: ${k}`)];
-    return result(1, name, "failed", `${problems.length} masalah pada ${envFile}.`, details);
+    const details = [
+      ...problems,
+      ...placeholders.map((k) => `Placeholder belum diganti: ${k}`),
+    ];
+    return result(
+      1,
+      name,
+      "failed",
+      `${problems.length} masalah pada ${envFile}.`,
+      details,
+    );
   }
   if (placeholders.length)
     return result(
@@ -154,9 +174,16 @@ export async function verifyPhase1Env(options = {}) {
 
 async function defaultCreateClient(url) {
   const { Pool } = await import("pg");
-  const pool = new Pool({ connectionString: url, max: 1, connectionTimeoutMillis: 5000 });
+  const pool = new Pool({
+    connectionString: url,
+    max: 1,
+    connectionTimeoutMillis: 5000,
+  });
   pool.on("error", () => {});
-  return { query: (sql, params) => pool.query(sql, params), end: () => pool.end() };
+  return {
+    query: (sql, params) => pool.query(sql, params),
+    end: () => pool.end(),
+  };
 }
 
 /**
@@ -180,20 +207,33 @@ export async function verifyPhase2Database(options = {}) {
   if (!url) {
     try {
       const text = await readOptional(readFileFn, resolve(cwd, envFile));
-      if (text !== null) url = parseEnv(text).get("MIGRATION_DATABASE_URL") || parseEnv(text).get("DATABASE_URL");
+      if (text !== null)
+        url =
+          parseEnv(text).get("MIGRATION_DATABASE_URL") ||
+          parseEnv(text).get("DATABASE_URL");
     } catch (e) {
-      return result(2, name, "failed", "Gagal membaca berkas env.", [errMsg(e)]);
+      return result(2, name, "failed", "Gagal membaca berkas env.", [
+        errMsg(e),
+      ]);
     }
   }
   url ||= env.MIGRATION_DATABASE_URL || env.DATABASE_URL;
   if (!url) return result(2, name, "pending", "DATABASE_URL belum tersedia.");
   if (hasPlaceholder(url))
-    return result(2, name, "pending", "DATABASE_URL masih berisi placeholder <...>.");
+    return result(
+      2,
+      name,
+      "pending",
+      "DATABASE_URL masih berisi placeholder <...>.",
+    );
 
   let client;
   try {
     client = await createClient(url);
-    const s = await migrationStatusFn(client, migrationsFolder ? { migrationsFolder } : {});
+    const s = await migrationStatusFn(
+      client,
+      migrationsFolder ? { migrationsFolder } : {},
+    );
     if (!s.hashValid)
       return result(
         2,
@@ -208,9 +248,17 @@ export async function verifyPhase2Database(options = {}) {
         name,
         "pending",
         `${s.pendingCount} migrasi tertunda dari ${s.totalCount}.`,
-        [...s.pending.map((t) => `Tertunda: ${t}`), "Jalankan: npm run db:migrate:server"],
+        [
+          ...s.pending.map((t) => `Tertunda: ${t}`),
+          "Jalankan: npm run db:migrate:server",
+        ],
       );
-    return result(2, name, "ready", `Semua ${s.totalCount} migrasi sudah diterapkan.`);
+    return result(
+      2,
+      name,
+      "ready",
+      `Semua ${s.totalCount} migrasi sudah diterapkan.`,
+    );
   } catch (e) {
     // Pesan driver bisa memuat host/kredensial; hanya kode/ringkasan pendek yang ditampilkan.
     return result(2, name, "failed", "Koneksi database gagal.", [
@@ -229,7 +277,10 @@ export async function verifyPhase3Images(options = {}) {
   const name = "Image Docker";
   const args = spawnFn ? [spawnFn] : [];
   const daemon = await checkDockerDaemon(...args);
-  if (!daemon.ok) return result(3, name, "failed", "Docker daemon tidak tersedia.", [daemon.error]);
+  if (!daemon.ok)
+    return result(3, name, "failed", "Docker daemon tidak tersedia.", [
+      daemon.error,
+    ]);
 
   const images = [`noc-web:${tag}`, `noc-backend:${tag}`];
   const missing = [];
@@ -243,10 +294,22 @@ export async function verifyPhase3Images(options = {}) {
     details.push(...v.problems.map((p) => `${image}: ${p}`));
   }
   if (invalid.length)
-    return result(3, name, "failed", `Image tidak sesuai: ${invalid.join(", ")}.`, details);
+    return result(
+      3,
+      name,
+      "failed",
+      `Image tidak sesuai: ${invalid.join(", ")}.`,
+      details,
+    );
   if (missing.length) {
     details.push(`Jalankan: node scripts/build-images.mjs --tag ${tag}`);
-    return result(3, name, "pending", `Image belum dibuild: ${missing.join(", ")}.`, details);
+    return result(
+      3,
+      name,
+      "pending",
+      `Image belum dibuild: ${missing.join(", ")}.`,
+      details,
+    );
   }
   return result(3, name, "ready", `Image siap: ${images.join(", ")}.`);
 }
@@ -280,18 +343,36 @@ export async function verifyPhase4Health(options = {}) {
     ["Backend", new URL("/healthz", backendUrl).href],
   ];
   const probes = await Promise.all(
-    targets.map(async ([label, url]) => ({ label, url, ...(await probe(fetchFn, url, timeoutMs)) })),
+    targets.map(async ([label, url]) => ({
+      label,
+      url,
+      ...(await probe(fetchFn, url, timeoutMs)),
+    })),
   );
   const details = probes.map((p) =>
-    p.reached ? `${p.label} ${p.url}: HTTP ${p.status}` : `${p.label} ${p.url}: tidak terjangkau (${p.error})`,
+    p.reached
+      ? `${p.label} ${p.url}: HTTP ${p.status}`
+      : `${p.label} ${p.url}: tidak terjangkau (${p.error})`,
   );
   // Respons non-2xx (termasuk 5xx) = layanan hidup tapi sakit; tak terjangkau = belum jalan.
   const bad = probes.filter((p) => p.reached && !p.ok);
   if (bad.length)
-    return result(4, name, "failed", `Health gagal: ${bad.map((p) => p.label).join(", ")}.`, details);
+    return result(
+      4,
+      name,
+      "failed",
+      `Health gagal: ${bad.map((p) => p.label).join(", ")}.`,
+      details,
+    );
   const down = probes.filter((p) => !p.reached);
   if (down.length)
-    return result(4, name, "pending", `Belum terjangkau: ${down.map((p) => p.label).join(", ")}.`, details);
+    return result(
+      4,
+      name,
+      "pending",
+      `Belum terjangkau: ${down.map((p) => p.label).join(", ")}.`,
+      details,
+    );
   return result(4, name, "ready", "Web dan Backend sehat.", details);
 }
 
@@ -318,14 +399,27 @@ export function formatReport(report) {
  * @param {ReturnType<typeof parseArgs> & { runners?: Record<string, Function>, logFn?: (s: string) => void }} [options]
  */
 export async function runDeployVerify(options = {}) {
-  const { phase = "all", format = "text", logFn = console.log, runners = RUNNERS } = options;
+  const {
+    phase = "all",
+    format = "text",
+    logFn = console.log,
+    runners = RUNNERS,
+  } = options;
   const selected = phase === "all" ? ["1", "2", "3", "4"] : [phase];
   const phases = [];
   for (const id of selected) {
     try {
       phases.push(await runners[id](options));
     } catch (e) {
-      phases.push(result(Number(id), `Fase ${id}`, "failed", "Verifikasi gagal dijalankan.", [errMsg(e)]));
+      phases.push(
+        result(
+          Number(id),
+          `Fase ${id}`,
+          "failed",
+          "Verifikasi gagal dijalankan.",
+          [errMsg(e)],
+        ),
+      );
     }
   }
   const status = phases.some((p) => p.status === "failed")
@@ -334,11 +428,16 @@ export async function runDeployVerify(options = {}) {
       ? "pending"
       : "ready";
   const report = { status, exitCode: status === "ready" ? 0 : 1, phases };
-  logFn(format === "json" ? JSON.stringify(report, null, 2) : formatReport(report));
+  logFn(
+    format === "json" ? JSON.stringify(report, null, 2) : formatReport(report),
+  );
   return report;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     const report = await runDeployVerify(parseArgs(process.argv.slice(2)));
     process.exitCode = report.exitCode;

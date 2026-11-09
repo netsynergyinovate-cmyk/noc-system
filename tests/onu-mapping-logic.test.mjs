@@ -90,7 +90,13 @@ const onu = (over) => ({
   currentCustomerId: null,
   ...over,
 });
-const cust = (over) => ({ id: "c1", name: "Orang Lain", pppoeUsername: "x@noc", address: "Jl. A", ...over });
+const cust = (over) => ({
+  id: "c1",
+  name: "Orang Lain",
+  pppoeUsername: "x@noc",
+  address: "Jl. A",
+  ...over,
+});
 
 test("suggestAutoMapping: high pada username di serial", () => {
   const r = suggestAutoMapping(
@@ -113,25 +119,43 @@ test("suggestAutoMapping: medium pada nama mirip", () => {
 
 test("suggestAutoMapping: abaikan yang sudah terpetakan, tanpa duplikat, tanpa kecocokan", () => {
   assert.deepEqual(
-    suggestAutoMapping([onu({ currentCustomerId: "c1", serialNumber: "budi0001" })], [cust({ pppoeUsername: "budi0001@noc" })]),
+    suggestAutoMapping(
+      [onu({ currentCustomerId: "c1", serialNumber: "budi0001" })],
+      [cust({ pppoeUsername: "budi0001@noc" })],
+    ),
     [],
   );
-  assert.deepEqual(suggestAutoMapping([onu()], [cust({ assignedOnuId: "o9", pppoeUsername: "budi0001@noc" })]), []);
+  assert.deepEqual(
+    suggestAutoMapping(
+      [onu()],
+      [cust({ assignedOnuId: "o9", pppoeUsername: "budi0001@noc" })],
+    ),
+    [],
+  );
   assert.deepEqual(suggestAutoMapping([onu()], [cust()]), []);
   const r = suggestAutoMapping(
-    [onu({ onuId: "a", serialNumber: "budi0001" }), onu({ onuId: "b", serialNumber: "budi0001" })],
+    [
+      onu({ onuId: "a", serialNumber: "budi0001" }),
+      onu({ onuId: "b", serialNumber: "budi0001" }),
+    ],
     [cust({ pppoeUsername: "budi0001@noc" })],
   );
   assert.equal(r.length, 1);
 });
 
 test("komponen panel diekspor dan terpasang di halaman CPE", () => {
-  const panel = readFileSync("src/components/dashboard/onu-customer-mapping-panel.tsx", "utf8");
+  const panel = readFileSync(
+    "src/components/dashboard/onu-customer-mapping-panel.tsx",
+    "utf8",
+  );
   assert.match(panel, /export function OnuCustomerMappingPanel/);
   assert.match(panel, /data-testid="onu-mapping-panel"/);
   assert.match(panel, /data-testid="onu-mapping-mock-badge"/);
   assert.match(panel, /data-testid="save-mapping-btn"/);
-  assert.match(panel, /Pemetaan Tiruan \(Fase 2\) · Wajib sinkronisasi DB di Fase 5/);
+  assert.match(
+    panel,
+    /Pemetaan Tiruan \(Fase 2\) · Wajib sinkronisasi DB di Fase 5/,
+  );
   const board = readFileSync("src/components/dashboard/cpe-board.tsx", "utf8");
   assert.match(board, /<OnuCustomerMappingPanel \/>/);
   assert.match(board, /Kelola Pemetaan ONU/);

@@ -46,11 +46,26 @@ const validStatuses = new Set(["ok", "warn", "fail", "unchecked"]);
 
 function assertFindingInvariants(f, context = "") {
   assert.ok(f, `${context}: finding harus terdefinisi`);
-  assert.ok(validLayers.has(f.layer), `${context}: layer '${f.layer}' harus ada di diagnosticLayers`);
-  assert.ok(validStatuses.has(f.status), `${context}: status '${f.status}' harus valid`);
-  assert.ok(typeof f.metric === "string" && f.metric.trim().length > 0, `${context}: metric tidak boleh kosong`);
-  assert.ok(typeof f.label === "string" && f.label.trim().length > 0, `${context}: label tidak boleh kosong`);
-  assert.ok(typeof f.detail === "string" && f.detail.trim().length > 0, `${context}: detail tidak boleh kosong`);
+  assert.ok(
+    validLayers.has(f.layer),
+    `${context}: layer '${f.layer}' harus ada di diagnosticLayers`,
+  );
+  assert.ok(
+    validStatuses.has(f.status),
+    `${context}: status '${f.status}' harus valid`,
+  );
+  assert.ok(
+    typeof f.metric === "string" && f.metric.trim().length > 0,
+    `${context}: metric tidak boleh kosong`,
+  );
+  assert.ok(
+    typeof f.label === "string" && f.label.trim().length > 0,
+    `${context}: label tidak boleh kosong`,
+  );
+  assert.ok(
+    typeof f.detail === "string" && f.detail.trim().length > 0,
+    `${context}: detail tidak boleh kosong`,
+  );
 }
 
 test("unchecked() selalu menghasilkan status unchecked dan detail non-kosong", () => {
@@ -216,8 +231,8 @@ test("invarian: input kosong/null menghasilkan temuan unchecked dengan detail no
     },
     {
       name: "evaluateTrafficTrend(buckets 0)",
-      run: () =>
-        [evaluateTrafficTrend(
+      run: () => [
+        evaluateTrafficTrend(
           {
             buckets: 0,
             windowDown: null,
@@ -227,7 +242,8 @@ test("invarian: input kosong/null menghasilkan temuan unchecked dengan detail no
           },
           src,
           now,
-        )],
+        ),
+      ],
     },
     {
       name: "evaluateFlows(rows kosong)",
@@ -288,7 +304,11 @@ test("invarian: semua temuan dari masukan normal memenuhi aturan detail, layer, 
       evaluatePppoe({
         routerName: "R1",
         username: "budi",
-        session: { address: "10.0.0.2", uptime: "1d", callerId: "00:11:22:33:44:55" },
+        session: {
+          address: "10.0.0.2",
+          uptime: "1d",
+          callerId: "00:11:22:33:44:55",
+        },
         error: null,
         readAt: now,
       }),
@@ -482,5 +502,8 @@ test("invarian: semua temuan dari masukan normal memenuhi aturan detail, layer, 
     }
   }
 
-  assert.ok(totalFindingsChecked >= 25, `Harus memeriksa setidaknya 25 temuan normal, terperiksa: ${totalFindingsChecked}`);
+  assert.ok(
+    totalFindingsChecked >= 25,
+    `Harus memeriksa setidaknya 25 temuan normal, terperiksa: ${totalFindingsChecked}`,
+  );
 });

@@ -5,7 +5,8 @@ import { stripTelnet } from "./hsgq-telnet";
 // Port telnet OLT yang lazim dipakai (23 bawaan, sisanya hasil port-forward operator). Daftar tetap dan pendek:
 // ini mencari port telnet OLT yang operator lupa, bukan pemindai port umum.
 export const TELNET_CANDIDATE_PORTS = [
-  23, 2323, 23023, 8023, 9023, 10023, 1023, 3023, 5023, 6023, 7023, 2222, 2223, 1001, 1002, 1003, 1004, 1005, 1022,
+  23, 2323, 23023, 8023, 9023, 10023, 1023, 3023, 5023, 6023, 7023, 2222, 2223,
+  1001, 1002, 1003, 1004, 1005, 1022,
 ] as const;
 
 export interface TelnetPortScan {
@@ -16,7 +17,10 @@ export interface TelnetPortScan {
 
 const LOGIN_RE = /(user ?name|login)\s*:/i;
 
-type Probe = { port: number; kind: "telnet"; banner: string } | { port: number; kind: "other" } | null;
+type Probe =
+  | { port: number; kind: "telnet"; banner: string }
+  | { port: number; kind: "other" }
+  | null;
 
 // Hanya membaca: telnet mengirim negosiasi (IAC) atau prompt login sendiri begitu tersambung, jadi tidak ada
 // satu byte pun yang dikirim ke perangkat.
@@ -31,8 +35,13 @@ function probe(host: string, port: number, timeoutMs: number): Promise<Probe> {
     if (!open) return resolve(null);
     const { text } = stripTelnet(raw);
     const isTelnet = raw.includes(0xff) || LOGIN_RE.test(text);
-    const banner = /^\s*(.*?\bOperating System)\s*$/im.exec(text)?.[1]?.trim() ?? "";
-    resolve(isTelnet ? { port, kind: "telnet", banner: banner.slice(0, 80) } : { port, kind: "other" });
+    const banner =
+      /^\s*(.*?\bOperating System)\s*$/im.exec(text)?.[1]?.trim() ?? "";
+    resolve(
+      isTelnet
+        ? { port, kind: "telnet", banner: banner.slice(0, 80) }
+        : { port, kind: "other" },
+    );
   };
   const timer = setTimeout(finish, timeoutMs);
   sock.on("connect", () => {
@@ -40,7 +49,12 @@ function probe(host: string, port: number, timeoutMs: number): Promise<Probe> {
   });
   sock.on("data", (d: Buffer) => {
     raw = Buffer.concat([raw, d]);
-    if (raw.includes(0xff) || LOGIN_RE.test(stripTelnet(raw).text) || raw.length > 512) finish();
+    if (
+      raw.includes(0xff) ||
+      LOGIN_RE.test(stripTelnet(raw).text) ||
+      raw.length > 512
+    )
+      finish();
   });
   sock.on("error", () => {
     open = false;
@@ -54,10 +68,16 @@ export async function scanTelnetPorts(
   ip: string,
   opts: { ports?: readonly number[]; timeoutMs?: number } = {},
 ): Promise<TelnetPortScan> {
-  const results = await Promise.all((opts.ports ?? TELNET_CANDIDATE_PORTS).map((p) => probe(ip, p, opts.timeoutMs ?? 4000)));
+  const results = await Promise.all(
+    (opts.ports ?? TELNET_CANDIDATE_PORTS).map((p) =>
+      probe(ip, p, opts.timeoutMs ?? 4000),
+    ),
+  );
   const found = results.filter((r): r is NonNullable<Probe> => r !== null);
   return {
-    telnet: found.flatMap((r) => (r.kind === "telnet" ? [{ port: r.port, banner: r.banner }] : [])),
+    telnet: found.flatMap((r) =>
+      r.kind === "telnet" ? [{ port: r.port, banner: r.banner }] : [],
+    ),
     otherOpen: found.filter((r) => r.kind === "other").map((r) => r.port),
   };
 }
@@ -75,12 +95,17 @@ export function isForbiddenScanAddress(ip: string): boolean {
   const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(v6);
   if (mapped) return ipv4Forbidden(mapped[1]);
   // ::, ::1, fe80::/10 link-local, ff00::/8 multicast.
-  return v6 === "::" || v6 === "::1" || /^fe[89ab]/.test(v6) || v6.startsWith("ff");
+  return (
+    v6 === "::" || v6 === "::1" || /^fe[89ab]/.test(v6) || v6.startsWith("ff")
+  );
 }
 
 /** Satu kali resolusi DNS; port dipindai lewat IP hasilnya supaya nama host tidak bisa berubah di tengah jalan. */
 export async function resolveScanTarget(host: string): Promise<string> {
   const ip = isIP(host) ? host : (await lookup(host)).address;
-  if (isForbiddenScanAddress(ip)) throw new Error("Alamat ini tidak boleh dipindai (loopback, link-local, atau multicast).");
+  if (isForbiddenScanAddress(ip))
+    throw new Error(
+      "Alamat ini tidak boleh dipindai (loopback, link-local, atau multicast).",
+    );
   return ip;
 }

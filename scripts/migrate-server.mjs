@@ -13,11 +13,16 @@ export const MIGRATION_LOCK_KEY = "727274001";
 
 /** Membaca journal + berkas .sql. Hasil terurut menurut idx journal. */
 export async function loadMigrationPlan(drizzleFolder) {
-  const journal = JSON.parse(await readFile(resolve(drizzleFolder, "meta", "_journal.json"), "utf8"));
+  const journal = JSON.parse(
+    await readFile(resolve(drizzleFolder, "meta", "_journal.json"), "utf8"),
+  );
   const entries = [...journal.entries].sort((a, b) => a.idx - b.idx);
   const migrations = [];
   for (const entry of entries) {
-    const sql = await readFile(resolve(drizzleFolder, `${entry.tag}.sql`), "utf8");
+    const sql = await readFile(
+      resolve(drizzleFolder, `${entry.tag}.sql`),
+      "utf8",
+    );
     migrations.push({
       idx: entry.idx,
       tag: entry.tag,
@@ -39,8 +44,13 @@ export async function loadMigrationPlan(drizzleFolder) {
  * @param {{ created_at: number|string }[]} appliedMigrations
  */
 export function getPendingMigrations(allMigrations, appliedMigrations) {
-  const last = appliedMigrations.reduce((max, m) => Math.max(max, Number(m.created_at)), -Infinity);
-  return allMigrations.filter((m) => m.folderMillis > last).sort((a, b) => a.idx - b.idx);
+  const last = appliedMigrations.reduce(
+    (max, m) => Math.max(max, Number(m.created_at)),
+    -Infinity,
+  );
+  return allMigrations
+    .filter((m) => m.folderMillis > last)
+    .sort((a, b) => a.idx - b.idx);
 }
 
 const isPool = (x) => typeof x.connect === "function" && "totalCount" in x;
@@ -52,11 +62,14 @@ const isPool = (x) => typeof x.connect === "function" && "totalCount" in x;
  */
 export async function migrateServer(clientOrPool, options = {}) {
   const log = options.logger ?? ((line) => console.log(line));
-  const folder = options.migrationsFolder ?? resolve(import.meta.dirname, "..", "drizzle");
+  const folder =
+    options.migrationsFolder ?? resolve(import.meta.dirname, "..", "drizzle");
   const all = await loadMigrationPlan(folder);
 
   // Lock bersifat per-sesi: pada pool, pakai satu client khusus sampai selesai.
-  const client = isPool(clientOrPool) ? await clientOrPool.connect() : clientOrPool;
+  const client = isPool(clientOrPool)
+    ? await clientOrPool.connect()
+    : clientOrPool;
   const owned = client !== clientOrPool;
   let locked = false;
   try {
@@ -65,11 +78,16 @@ export async function migrateServer(clientOrPool, options = {}) {
         `SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS exists`,
       );
       const applied = exists.rows[0]?.exists
-        ? (await client.query(`SELECT id, hash, created_at FROM "drizzle"."__drizzle_migrations"`)).rows
+        ? (
+            await client.query(
+              `SELECT id, hash, created_at FROM "drizzle"."__drizzle_migrations"`,
+            )
+          ).rows
         : [];
       const pending = getPendingMigrations(all, applied);
       log(`[DRY-RUN] ${pending.length} migrasi tertunda dari ${all.length}`);
-      for (const m of pending) log(`[DRY-RUN] ${m.tag} (${m.statements.length} statement)`);
+      for (const m of pending)
+        log(`[DRY-RUN] ${m.tag} (${m.statements.length} statement)`);
       return { dryRun: true, pending, applied: [] };
     }
 
@@ -97,7 +115,9 @@ export async function migrateServer(clientOrPool, options = {}) {
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK").catch(() => {});
-        log(`[GAGAL] ${m.tag}: ${error instanceof Error ? error.message : String(error)}`);
+        log(
+          `[GAGAL] ${m.tag}: ${error instanceof Error ? error.message : String(error)}`,
+        );
         throw error;
       }
       log(`[SUKSES] ${m.tag}`);
@@ -112,11 +132,18 @@ export async function migrateServer(clientOrPool, options = {}) {
         enabled: true,
         retentionDays: options.retentionDays,
       });
-      log(timescale.enabled ? "[SUKSES] timescaledb" : `[GAGAL] timescaledb: ${timescale.reason}`);
+      log(
+        timescale.enabled
+          ? "[SUKSES] timescaledb"
+          : `[GAGAL] timescaledb: ${timescale.reason}`,
+      );
     }
     return { dryRun: false, pending, applied, timescale };
   } finally {
-    if (locked) await client.query("SELECT pg_advisory_unlock($1)", [MIGRATION_LOCK_KEY]).catch(() => {});
+    if (locked)
+      await client
+        .query("SELECT pg_advisory_unlock($1)", [MIGRATION_LOCK_KEY])
+        .catch(() => {});
     if (owned) client.release();
   }
 }
@@ -129,14 +156,19 @@ export async function migrateServer(clientOrPool, options = {}) {
  * @param {{ migrationsFolder?: string }} [options]
  */
 export async function getMigrationStatus(clientOrPool, options = {}) {
-  const folder = options.migrationsFolder ?? resolve(import.meta.dirname, "..", "drizzle");
+  const folder =
+    options.migrationsFolder ?? resolve(import.meta.dirname, "..", "drizzle");
   const all = await loadMigrationPlan(folder);
   const exists = await clientOrPool.query(
     `SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS exists`,
   );
   const trackerExists = Boolean(exists.rows[0]?.exists);
   const rows = trackerExists
-    ? (await clientOrPool.query(`SELECT id, hash, created_at FROM "drizzle"."__drizzle_migrations"`)).rows
+    ? (
+        await clientOrPool.query(
+          `SELECT id, hash, created_at FROM "drizzle"."__drizzle_migrations"`,
+        )
+      ).rows
     : [];
   const pending = getPendingMigrations(all, rows);
   const byMillis = new Map(all.map((m) => [m.folderMillis, m]));
@@ -144,10 +176,17 @@ export async function getMigrationStatus(clientOrPool, options = {}) {
   for (const row of rows) {
     const local = byMillis.get(Number(row.created_at));
     if (local && local.hash !== row.hash) {
-      hashMismatches.push({ tag: local.tag, expected: local.hash, actual: row.hash });
+      hashMismatches.push({
+        tag: local.tag,
+        expected: local.hash,
+        actual: row.hash,
+      });
     }
   }
-  const lastMillis = rows.reduce((max, r) => Math.max(max, Number(r.created_at)), -Infinity);
+  const lastMillis = rows.reduce(
+    (max, r) => Math.max(max, Number(r.created_at)),
+    -Infinity,
+  );
   return {
     trackerExists,
     totalCount: all.length,
@@ -155,7 +194,9 @@ export async function getMigrationStatus(clientOrPool, options = {}) {
     pendingCount: pending.length,
     pending: pending.map((m) => m.tag),
     isUpToDate: pending.length === 0,
-    lastAppliedAt: Number.isFinite(lastMillis) ? new Date(lastMillis).toISOString() : null,
+    lastAppliedAt: Number.isFinite(lastMillis)
+      ? new Date(lastMillis).toISOString()
+      : null,
     hashValid: hashMismatches.length === 0,
     hashMismatches,
   };
@@ -185,7 +226,9 @@ export async function migrateServerWithRetry(clientOrPool, options = {}) {
     } catch (error) {
       if (attempt >= maxAttempts) throw error;
       const reason = error instanceof Error ? error.message : String(error);
-      log(`[RETRY ${attempt}/${maxAttempts}] Gagal (${reason}), coba lagi dalam ${delay}ms`);
+      log(
+        `[RETRY ${attempt}/${maxAttempts}] Gagal (${reason}), coba lagi dalam ${delay}ms`,
+      );
       await sleepFn(delay);
       delay *= backoffFactor;
     }
@@ -197,14 +240,21 @@ const USAGE =
 
 /** Parser argumen CLI; mengembalikan { error } bila tidak valid. */
 export function parseArgs(args) {
-  const o = { dryRun: false, timescale: false, status: false, json: false, retry: 3 };
+  const o = {
+    dryRun: false,
+    timescale: false,
+    status: false,
+    json: false,
+    retry: 3,
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === "--dry-run") o.dryRun = true;
     else if (a === "--timescale") o.timescale = true;
     else if (a === "--status") o.status = true;
     else if (a === "--format") {
-      if (args[++i] !== "json") return { error: "--format hanya mendukung: json" };
+      if (args[++i] !== "json")
+        return { error: "--format hanya mendukung: json" };
       o.json = true;
     } else if (a === "--retry") {
       if (/^\d+$/.test(args[i + 1] ?? "")) {
@@ -230,16 +280,22 @@ async function main() {
   let pool;
   try {
     pool = new Pool({
-      connectionString: databaseUrl(process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL),
+      connectionString: databaseUrl(
+        process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL,
+      ),
       max: 1,
       connectionTimeoutMillis: 5000,
     });
-    pool.on("error", () => console.error("Koneksi migrasi PostgreSQL terputus."));
+    pool.on("error", () =>
+      console.error("Koneksi migrasi PostgreSQL terputus."),
+    );
     if (args.status) {
       const s = await getMigrationStatus(pool);
       if (args.json) console.log(JSON.stringify(s, null, 2));
       else {
-        console.log(`Migrasi: ${s.appliedCount}/${s.totalCount} diterapkan, ${s.pendingCount} tertunda`);
+        console.log(
+          `Migrasi: ${s.appliedCount}/${s.totalCount} diterapkan, ${s.pendingCount} tertunda`,
+        );
         console.log(`Terakhir diterapkan: ${s.lastAppliedAt ?? "-"}`);
         console.log(`Integritas hash: ${s.hashValid ? "OK" : "TIDAK COCOK"}`);
         for (const m of s.hashMismatches) console.log(`  ! ${m.tag}`);
@@ -262,4 +318,5 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  await main();

@@ -8,12 +8,13 @@ export const runtime = "nodejs";
 
 const idSchema = z.string().min(1, "ID rute wajib diisi");
 
-const createSegmentSchema = z.object({
-  fromDeviceId: z.string().min(1, "ID perangkat asal tidak valid"),
-  toDeviceId: z.string().min(1, "ID perangkat tujuan tidak valid").optional(),
-  customerId: z.string().min(1, "ID pelanggan tidak valid").optional(),
-  geometry: geometrySchema,
-})
+const createSegmentSchema = z
+  .object({
+    fromDeviceId: z.string().min(1, "ID perangkat asal tidak valid"),
+    toDeviceId: z.string().min(1, "ID perangkat tujuan tidak valid").optional(),
+    customerId: z.string().min(1, "ID pelanggan tidak valid").optional(),
+    geometry: geometrySchema,
+  })
   // strict: length_m, sequence, dan jejak snapping dari klien ditolak, bukan diabaikan
   .strict();
 

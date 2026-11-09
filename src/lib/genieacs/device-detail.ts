@@ -8,7 +8,8 @@
 
 type Raw = Record<string, unknown>;
 
-const isObj = (v: unknown): v is Raw => typeof v === "object" && v !== null && !Array.isArray(v);
+const isObj = (v: unknown): v is Raw =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Nilai satu parameter pada path bertitik, atau undefined. Kunci berawalan "_" adalah metadata. */
 export function readParam(raw: unknown, path: string): unknown {
@@ -44,14 +45,19 @@ function instances(raw: unknown, path: string): { index: string; node: Raw }[] {
     .map((k) => ({ index: k, node: (node as Raw)[k] as Raw }));
 }
 
-const text = (v: unknown): string => (v === undefined || v === null ? "" : String(v).trim());
+const text = (v: unknown): string =>
+  v === undefined || v === null ? "" : String(v).trim();
 const num = (v: unknown): number | null => {
   const f = parseFloat(text(v));
   return Number.isFinite(f) ? f : null;
 };
-const bool = (v: unknown): boolean => v === true || v === "true" || v === 1 || v === "1";
+const bool = (v: unknown): boolean =>
+  v === true || v === "true" || v === 1 || v === "1";
 const sub = (node: Raw, path: string): unknown => readParam(node, path);
-export const isJunkMac = (mac: string): boolean => Boolean(mac) && (/^00:00:00:00:00:/i.test(mac) || /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac));
+export const isJunkMac = (mac: string): boolean =>
+  Boolean(mac) &&
+  (/^00:00:00:00:00:/i.test(mac) ||
+    /^00[:-]00[:-]00[:-]00[:-]00[:-]00$/i.test(mac));
 
 const IGD = "InternetGatewayDevice";
 
@@ -112,7 +118,13 @@ export interface CpeDetail {
   uptimeSeconds: number | null;
   lastInform: string;
   registered: string;
-  acs: { url: string; username: string; informEnabled: boolean; informInterval: number | null; connectionRequestUrl: string };
+  acs: {
+    url: string;
+    username: string;
+    informEnabled: boolean;
+    informInterval: number | null;
+    connectionRequestUrl: string;
+  };
   optical: {
     rxDbm: number | null;
     txDbm: number | null;
@@ -122,7 +134,12 @@ export interface CpeDetail {
     biasMa: number | null;
     voltageV: number | null;
   };
-  health: { cpuPercent: number | null; memoryFreeKb: number | null; memoryTotalKb: number | null; temperatures: { name: string; celsius: number }[] };
+  health: {
+    cpuPercent: number | null;
+    memoryFreeKb: number | null;
+    memoryTotalKb: number | null;
+    temperatures: { name: string; celsius: number }[];
+  };
   wans: DetailWan[];
   wlans: DetailWlan[];
   hosts: DetailHost[];
@@ -160,10 +177,14 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
       }
     }
   }
-  const pppoe = wans.find((w) => w.kind === "PPPoE" && w.username) ?? wans.find((w) => w.username);
+  const pppoe =
+    wans.find((w) => w.kind === "PPPoE" && w.username) ??
+    wans.find((w) => w.username);
   const wanWithIp = wans.find((w) => w.ip && w.ip !== "0.0.0.0");
 
-  const connReq = text(readParam(r, `${IGD}.ManagementServer.ConnectionRequestURL`));
+  const connReq = text(
+    readParam(r, `${IGD}.ManagementServer.ConnectionRequestURL`),
+  );
   const tr069Ip = /^https?:\/\/([^:/]+)/i.exec(connReq)?.[1] ?? "";
 
   const wlans: DetailWlan[] = [];
@@ -181,7 +202,10 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
         status,
         linkUp: /^up$/i.test(status),
         speedMbps: speed,
-        enabled: sub(e.node, "Enable") === undefined ? true : bool(sub(e.node, "Enable")),
+        enabled:
+          sub(e.node, "Enable") === undefined
+            ? true
+            : bool(sub(e.node, "Enable")),
       });
     }
   }
@@ -189,11 +213,18 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     const associatedMacs = new Set<string>();
     const associatedHosts: DetailHost[] = [];
     for (const w of instances(lan.node, "WLANConfiguration")) {
-      const pass = text(sub(w.node, "X_CMS_KeyPassphrase")) || text(sub(w.node, "KeyPassphrase"));
+      const pass =
+        text(sub(w.node, "X_CMS_KeyPassphrase")) ||
+        text(sub(w.node, "KeyPassphrase"));
       const assocs = instances(w.node, "AssociatedDevice");
       for (const a of assocs) {
-        const mac = (text(sub(a.node, "AssociatedDeviceMACAddress")) || text(sub(a.node, "MACAddress"))).toLowerCase();
-        const ip = text(sub(a.node, "AssociatedDeviceIPAddress")) || text(sub(a.node, "IPAddress"));
+        const mac = (
+          text(sub(a.node, "AssociatedDeviceMACAddress")) ||
+          text(sub(a.node, "MACAddress"))
+        ).toLowerCase();
+        const ip =
+          text(sub(a.node, "AssociatedDeviceIPAddress")) ||
+          text(sub(a.node, "IPAddress"));
         const rssi = num(sub(a.node, "RSSI"));
         if (mac && !isJunkMac(mac)) {
           associatedMacs.add(mac);
@@ -207,7 +238,10 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
           });
         }
       }
-      const clientCount = Math.max(assocs.length, num(sub(w.node, "TotalAssociations")) ?? 0);
+      const clientCount = Math.max(
+        assocs.length,
+        num(sub(w.node, "TotalAssociations")) ?? 0,
+      );
       wlans.push({
         index: Number(w.index),
         ssid: text(sub(w.node, "SSID")),
@@ -225,7 +259,9 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
       const ip = text(sub(h.node, "IPAddress"));
       const hostname = text(sub(h.node, "HostName"));
       const activeRaw = sub(h.node, "Active");
-      const isActive = associatedMacs.has(mac) || (activeRaw === undefined ? true : bool(activeRaw));
+      const isActive =
+        associatedMacs.has(mac) ||
+        (activeRaw === undefined ? true : bool(activeRaw));
       hosts.push({
         hostname,
         ip,
@@ -246,8 +282,14 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     }
   }
 
-  const temps = instances(r, `${IGD}.DeviceInfo.TemperatureStatus.TemperatureSensor`)
-    .map((s) => ({ name: text(sub(s.node, "Name")) || `Sensor ${s.index}`, celsius: num(sub(s.node, "Value")) }))
+  const temps = instances(
+    r,
+    `${IGD}.DeviceInfo.TemperatureStatus.TemperatureSensor`,
+  )
+    .map((s) => ({
+      name: text(sub(s.node, "Name")) || `Sensor ${s.index}`,
+      celsius: num(sub(s.node, "Value")),
+    }))
     .filter((t): t is { name: string; celsius: number } => t.celsius !== null);
 
   const epon = `${IGD}.WANDevice.1.X_CT-COM_EponInterfaceConfig`;
@@ -255,9 +297,11 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
   const cmccEpon = `${IGD}.WANDevice.1.X_CMCC_EponInterfaceConfig`;
   const cmccGpon = `${IGD}.WANDevice.1.X_CMCC_GponInterfaceConfig`;
   const ponType =
-    readParam(r, `${epon}.Status`) !== undefined || readParam(r, `${cmccEpon}.Status`) !== undefined
+    readParam(r, `${epon}.Status`) !== undefined ||
+    readParam(r, `${cmccEpon}.Status`) !== undefined
       ? "EPON"
-      : readParam(r, `${gpon}.Status`) !== undefined || readParam(r, `${cmccGpon}.Status`) !== undefined
+      : readParam(r, `${gpon}.Status`) !== undefined ||
+          readParam(r, `${cmccGpon}.Status`) !== undefined
         ? "GPON"
         : "";
 
@@ -265,7 +309,9 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
   const xpon = `${IGD}.DeviceInfo.XponInterface`;
   const rawDbm = (path: string): number | null => {
     const v = num(readParam(r, path));
-    return v !== null && v > 0 ? Math.round(10 * Math.log10(v * 0.0001) * 100) / 100 : null;
+    return v !== null && v > 0
+      ? Math.round(10 * Math.log10(v * 0.0001) * 100) / 100
+      : null;
   };
   const rx =
     dbm(readParam(r, `${alu}.RXPower`)) ??
@@ -281,19 +327,32 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     rawDbm(`${gpon}.TXPower`) ??
     rawDbm(`${cmccEpon}.TXPower`) ??
     rawDbm(`${cmccGpon}.TXPower`);
-  const rawTemp = num(readParam(r, `${epon}.TransceiverTemperature`)) ?? num(readParam(r, `${cmccEpon}.TransceiverTemperature`));
+  const rawTemp =
+    num(readParam(r, `${epon}.TransceiverTemperature`)) ??
+    num(readParam(r, `${cmccEpon}.TransceiverTemperature`));
   const aluTemp = dbm(readParam(r, `${alu}.TransceiverTemperature`));
-  const temp = aluTemp ?? num(readParam(r, `${xpon}.TransceiverTemperature`)) ?? (rawTemp !== null && rawTemp !== 0 ? Math.round((rawTemp / 256) * 100) / 100 : null);
+  const temp =
+    aluTemp ??
+    num(readParam(r, `${xpon}.TransceiverTemperature`)) ??
+    (rawTemp !== null && rawTemp !== 0
+      ? Math.round((rawTemp / 256) * 100) / 100
+      : null);
   const aluBias = num(readParam(r, `${alu}.BiasCurrent`));
   const aluVolt = num(readParam(r, `${alu}.SupplyVottage`));
 
   const lastInform = text(r._lastInform);
-  const informInterval = num(readParam(r, `${IGD}.ManagementServer.PeriodicInformInterval`));
+  const informInterval = num(
+    readParam(r, `${IGD}.ManagementServer.PeriodicInformInterval`),
+  );
 
   return {
     deviceId: text(r._id),
-    serialNumber: text(readParam(r, `${IGD}.DeviceInfo.SerialNumber`)) || rid("SerialNumber"),
-    manufacturer: text(readParam(r, `${IGD}.DeviceInfo.Manufacturer`)) || rid("Manufacturer"),
+    serialNumber:
+      text(readParam(r, `${IGD}.DeviceInfo.SerialNumber`)) ||
+      rid("SerialNumber"),
+    manufacturer:
+      text(readParam(r, `${IGD}.DeviceInfo.Manufacturer`)) ||
+      rid("Manufacturer"),
     oui: rid("OUI"),
     productClass: rid("ProductClass"),
     hardwareVersion: text(readParam(r, `${IGD}.DeviceInfo.HardwareVersion`)),
@@ -303,43 +362,63 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     wanIp: pppoe?.ip || wanWithIp?.ip || "",
     tr069Ip,
     macAddress:
-      text(readParam(r, `${IGD}.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress`)).toLowerCase() || (wans[0]?.mac ?? ""),
+      text(
+        readParam(
+          r,
+          `${IGD}.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress`,
+        ),
+      ).toLowerCase() ||
+      (wans[0]?.mac ?? ""),
     uptimeSeconds: num(readParam(r, `${IGD}.DeviceInfo.UpTime`)),
     lastInform,
     registered: text(r._registered),
     acs: {
       url: text(readParam(r, `${IGD}.ManagementServer.URL`)),
       username: text(readParam(r, `${IGD}.ManagementServer.Username`)),
-      informEnabled: bool(readParam(r, `${IGD}.ManagementServer.PeriodicInformEnable`)),
+      informEnabled: bool(
+        readParam(r, `${IGD}.ManagementServer.PeriodicInformEnable`),
+      ),
       informInterval,
       connectionRequestUrl: connReq,
     },
     optical: {
       rxDbm: rx,
       txDbm: tx,
-      lossDb: rx !== null && tx !== null ? Math.round((tx - rx) * 100) / 100 : null,
+      lossDb:
+        rx !== null && tx !== null ? Math.round((tx - rx) * 100) / 100 : null,
       temperatureC: temp,
-      biasMa: aluBias !== null ? Math.round((aluBias > 1000 ? aluBias / 1000 : aluBias) * 100) / 100 : (() => {
-        const b = num(readParam(r, `${epon}.BiasCurrent`));
-        return b === null ? null : Math.round((b / 1000) * 100) / 100;
-      })(),
-      voltageV: aluVolt !== null ? Math.round(aluVolt * 100) / 100 : (() => {
-        const v = num(readParam(r, `${epon}.SupplyVottage`));
-        return v === null ? null : Math.round((v / 10000) * 100) / 100;
-      })(),
+      biasMa:
+        aluBias !== null
+          ? Math.round((aluBias > 1000 ? aluBias / 1000 : aluBias) * 100) / 100
+          : (() => {
+              const b = num(readParam(r, `${epon}.BiasCurrent`));
+              return b === null ? null : Math.round((b / 1000) * 100) / 100;
+            })(),
+      voltageV:
+        aluVolt !== null
+          ? Math.round(aluVolt * 100) / 100
+          : (() => {
+              const v = num(readParam(r, `${epon}.SupplyVottage`));
+              return v === null ? null : Math.round((v / 10000) * 100) / 100;
+            })(),
     },
     health: {
       cpuPercent: num(readParam(r, `${IGD}.DeviceInfo.ProcessStatus.CPUUsage`)),
       memoryFreeKb: num(readParam(r, `${IGD}.DeviceInfo.MemoryStatus.Free`)),
       memoryTotalKb: num(readParam(r, `${IGD}.DeviceInfo.MemoryStatus.Total`)),
       // Tanpa sensor terpisah (mis. ZL-2113X), pakai suhu modul optik supaya tidak kosong.
-      temperatures: temps.length === 0 && temp !== null ? [{ name: "Modul optik", celsius: temp }] : temps,
+      temperatures:
+        temps.length === 0 && temp !== null
+          ? [{ name: "Modul optik", celsius: temp }]
+          : temps,
     },
     wans,
     wlans,
     hosts,
     ethernet,
-    activeClients: wlans.reduce((n, w) => n + w.clients, 0) + hosts.filter((h) => h.active && !/802\.11/.test(h.interfaceType)).length,
+    activeClients:
+      wlans.reduce((n, w) => n + w.clients, 0) +
+      hosts.filter((h) => h.active && !/802\.11/.test(h.interfaceType)).length,
   };
 }
 
@@ -361,22 +440,57 @@ export interface DeviceSecrets {
 export function parseDeviceSecrets(raw: unknown): DeviceSecrets {
   const r = isObj(raw) ? raw : {};
   const accounts: SecretAccount[] = [];
-  const add = (source: string, label: string, userPath: string, passPath: string, usedByApp = false) => {
+  const add = (
+    source: string,
+    label: string,
+    userPath: string,
+    passPath: string,
+    usedByApp = false,
+  ) => {
     const username = text(readParam(r, userPath));
     const password = text(readParam(r, passPath));
-    if (username !== "" || password !== "") accounts.push({ source, label, username, password, usedByApp });
+    if (username !== "" || password !== "")
+      accounts.push({ source, label, username, password, usedByApp });
   };
-  add("X_Authentication.WebAccount", "Admin web modem", `${IGD}.X_Authentication.WebAccount.UserName`, `${IGD}.X_Authentication.WebAccount.Password`, true);
-  add("X_CT-COM_UserInfo", "Akun telekom (UserInfo)", `${IGD}.X_CT-COM_UserInfo.UserName`, `${IGD}.X_CT-COM_UserInfo.Password`);
-  add("X_Authentication.Account", "Akun pengguna web modem", `${IGD}.X_Authentication.Account.UserName`, `${IGD}.X_Authentication.Account.ModifyPassword`);
-  add("ManagementServer", "Akun ACS di modem", `${IGD}.ManagementServer.Username`, `${IGD}.ManagementServer.Password`);
+  add(
+    "X_Authentication.WebAccount",
+    "Admin web modem",
+    `${IGD}.X_Authentication.WebAccount.UserName`,
+    `${IGD}.X_Authentication.WebAccount.Password`,
+    true,
+  );
+  add(
+    "X_CT-COM_UserInfo",
+    "Akun telekom (UserInfo)",
+    `${IGD}.X_CT-COM_UserInfo.UserName`,
+    `${IGD}.X_CT-COM_UserInfo.Password`,
+  );
+  add(
+    "X_Authentication.Account",
+    "Akun pengguna web modem",
+    `${IGD}.X_Authentication.Account.UserName`,
+    `${IGD}.X_Authentication.Account.ModifyPassword`,
+  );
+  add(
+    "ManagementServer",
+    "Akun ACS di modem",
+    `${IGD}.ManagementServer.Username`,
+    `${IGD}.ManagementServer.Password`,
+  );
 
   const wifi: DeviceSecrets["wifi"] = [];
   const lan = instances(r, `${IGD}.LANDevice`)[0];
   if (lan) {
     for (const w of instances(lan.node, "WLANConfiguration")) {
-      const passphrase = text(sub(w.node, "X_CMS_KeyPassphrase")) || text(sub(w.node, "KeyPassphrase"));
-      if (passphrase !== "") wifi.push({ index: Number(w.index), ssid: text(sub(w.node, "SSID")), passphrase });
+      const passphrase =
+        text(sub(w.node, "X_CMS_KeyPassphrase")) ||
+        text(sub(w.node, "KeyPassphrase"));
+      if (passphrase !== "")
+        wifi.push({
+          index: Number(w.index),
+          ssid: text(sub(w.node, "SSID")),
+          passphrase,
+        });
     }
   }
   return { accounts, wifi };
@@ -389,7 +503,10 @@ export function parseDeviceSecrets(raw: unknown): DeviceSecrets {
 export class WifiChangeError extends Error {
   // Field eksplisit (bukan parameter property): node --test memakai mode strip-only.
   code: "WLAN_NOT_FOUND" | "NO_PASSPHRASE_PARAM" | "NOTHING_TO_CHANGE";
-  constructor(code: "WLAN_NOT_FOUND" | "NO_PASSPHRASE_PARAM" | "NOTHING_TO_CHANGE", message: string) {
+  constructor(
+    code: "WLAN_NOT_FOUND" | "NO_PASSPHRASE_PARAM" | "NOTHING_TO_CHANGE",
+    message: string,
+  ) {
     super(message);
     this.name = "WifiChangeError";
     this.code = code;
@@ -408,7 +525,11 @@ export interface WifiChangePlan {
 
 // Urutan penting: parameter vendor tempat modem menyimpan sandi aslinya dulu, lalu yang standar.
 // Keduanya ditulis bila ADA dan bisa ditulis supaya tidak saling menimpa dengan nilai lama.
-const PASSPHRASE_PARAMS = ["X_CMS_KeyPassphrase", "KeyPassphrase", "PreSharedKey.1.KeyPassphrase"] as const;
+const PASSPHRASE_PARAMS = [
+  "X_CMS_KeyPassphrase",
+  "KeyPassphrase",
+  "PreSharedKey.1.KeyPassphrase",
+] as const;
 
 function node(raw: unknown, path: string): Raw | null {
   let n: unknown = raw;
@@ -423,12 +544,23 @@ function node(raw: unknown, path: string): Raw | null {
  * Menyusun perubahan Wi-Fi dari data modem. Hanya parameter yang benar-benar ada dan
  * writable di modem ini yang ditulis; tidak menebak path.
  */
-export function planWifiChange(raw: unknown, input: { index: number; ssid?: string; password?: string }): WifiChangePlan {
+export function planWifiChange(
+  raw: unknown,
+  input: { index: number; ssid?: string; password?: string },
+): WifiChangePlan {
   const base = `${IGD}.LANDevice.1.WLANConfiguration.${input.index}`;
   const wlan = node(raw, base);
-  if (!wlan) throw new WifiChangeError("WLAN_NOT_FOUND", `Modem ini tidak punya SSID nomor ${input.index}.`);
+  if (!wlan)
+    throw new WifiChangeError(
+      "WLAN_NOT_FOUND",
+      `Modem ini tidak punya SSID nomor ${input.index}.`,
+    );
 
-  const plan: WifiChangePlan = { index: input.index, parameterValues: [], readBack: [] };
+  const plan: WifiChangePlan = {
+    index: input.index,
+    parameterValues: [],
+    readBack: [],
+  };
   if (input.ssid !== undefined) {
     const path = `${base}.SSID`;
     plan.parameterValues.push([path, input.ssid, "xsd:string"]);
@@ -439,17 +571,25 @@ export function planWifiChange(raw: unknown, input: { index: number; ssid?: stri
     const paths: string[] = [];
     for (const rel of PASSPHRASE_PARAMS) {
       const n = node(wlan, rel);
-      if (n && "_value" in n && n._writable !== false) paths.push(`${base}.${rel}`);
+      if (n && "_value" in n && n._writable !== false)
+        paths.push(`${base}.${rel}`);
     }
     if (paths.length === 0) {
-      throw new WifiChangeError("NO_PASSPHRASE_PARAM", "Modem ini tidak punya parameter sandi Wi-Fi yang bisa diubah lewat TR-069.");
+      throw new WifiChangeError(
+        "NO_PASSPHRASE_PARAM",
+        "Modem ini tidak punya parameter sandi Wi-Fi yang bisa diubah lewat TR-069.",
+      );
     }
-    for (const p of paths) plan.parameterValues.push([p, input.password, "xsd:string"]);
+    for (const p of paths)
+      plan.parameterValues.push([p, input.password, "xsd:string"]);
     plan.readBack.push(...paths);
     plan.passphrase = { paths, value: input.password };
   }
   if (plan.parameterValues.length === 0) {
-    throw new WifiChangeError("NOTHING_TO_CHANGE", "Isi SSID baru atau sandi baru.");
+    throw new WifiChangeError(
+      "NOTHING_TO_CHANGE",
+      "Isi SSID baru atau sandi baru.",
+    );
   }
   return plan;
 }
@@ -463,13 +603,22 @@ export interface WifiVerification {
  * Membandingkan data modem (sesudah dibaca ulang) dengan yang diminta. null = tidak diminta
  * atau tidak bisa dibuktikan (modem melaporkan sandi kosong).
  */
-export function verifyWifiChange(raw: unknown, plan: WifiChangePlan): WifiVerification {
+export function verifyWifiChange(
+  raw: unknown,
+  plan: WifiChangePlan,
+): WifiVerification {
   const result: WifiVerification = { ssid: null, password: null };
-  if (plan.ssid) result.ssid = text(readParam(raw, plan.ssid.path)) === plan.ssid.value;
+  if (plan.ssid)
+    result.ssid = text(readParam(raw, plan.ssid.path)) === plan.ssid.value;
   if (plan.passphrase) {
     // Parameter yang melaporkan kosong (KeyPassphrase standar) tidak bisa membuktikan apa pun.
-    const reported = plan.passphrase.paths.map((p) => text(readParam(raw, p))).filter((v) => v !== "");
-    result.password = reported.length === 0 ? null : reported.every((v) => v === plan.passphrase!.value);
+    const reported = plan.passphrase.paths
+      .map((p) => text(readParam(raw, p)))
+      .filter((v) => v !== "");
+    result.password =
+      reported.length === 0
+        ? null
+        : reported.every((v) => v === plan.passphrase!.value);
   }
   return result;
 }

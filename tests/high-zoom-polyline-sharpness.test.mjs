@@ -65,7 +65,10 @@ test("Task: Pertajam Render Polilin Jalur Saat Zoom Tinggi", async (t) => {
         "map",
         "network-map.tsx",
       );
-      assert.ok(fs.existsSync(networkMapPath), "File network-map.tsx harus ada");
+      assert.ok(
+        fs.existsSync(networkMapPath),
+        "File network-map.tsx harus ada",
+      );
 
       const content = fs.readFileSync(networkMapPath, "utf-8");
 

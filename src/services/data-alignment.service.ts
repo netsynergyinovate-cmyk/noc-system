@@ -59,7 +59,9 @@ export async function runDataAlignmentIdempotent(
     client = await pool.connect();
   } catch (connErr) {
     const msg = connErr instanceof Error ? connErr.message : String(connErr);
-    log(`[ALIGNMENT][WARN] Gagal terhubung ke database untuk penyelarasan: ${msg}`);
+    log(
+      `[ALIGNMENT][WARN] Gagal terhubung ke database untuk penyelarasan: ${msg}`,
+    );
     return {
       success: false,
       totalSteps: activeSteps.length,
@@ -96,7 +98,9 @@ export async function runDataAlignmentIdempotent(
     lockAcquired = Boolean(lockRes.rows[0]?.acquired);
 
     if (!lockAcquired) {
-      log("[ALIGNMENT] Lock sedang digunakan proses lain, dilewati dengan aman.");
+      log(
+        "[ALIGNMENT] Lock sedang digunakan proses lain, dilewati dengan aman.",
+      );
       return {
         success: true,
         totalSteps: 0,
@@ -185,7 +189,8 @@ export async function runDataAlignmentIdempotent(
           });
         }
       } catch (stepErr) {
-        const msg = stepErr instanceof Error ? stepErr.message : String(stepErr);
+        const msg =
+          stepErr instanceof Error ? stepErr.message : String(stepErr);
         results.push({
           step,
           recordsProcessed: 0,
@@ -265,9 +270,8 @@ export async function runDataAlignmentIdempotent(
  * Mengambil status dan riwayat penyelarasan data terkini.
  */
 export async function getAlignmentStatusAndHistory() {
-  const { getMockAlignmentJobs, getMockAlignmentOverview } = await import(
-    "@/lib/dashboard/auto-alignment"
-  );
+  const { getMockAlignmentJobs, getMockAlignmentOverview } =
+    await import("@/lib/dashboard/auto-alignment");
 
   const pool = getRawPool();
   let recentRuns: unknown[] = [];
@@ -296,4 +300,3 @@ export async function getAlignmentStatusAndHistory() {
     checkedAt: new Date().toISOString(),
   };
 }
-

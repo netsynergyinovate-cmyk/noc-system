@@ -14,7 +14,11 @@ export interface BuildResult {
   durationMs: number;
 }
 
-function runCommand(cmd: string, cwd: string, envOverrides: Record<string, string> = {}): Promise<string> {
+function runCommand(
+  cmd: string,
+  cwd: string,
+  envOverrides: Record<string, string> = {},
+): Promise<string> {
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   exec(
     cmd,
@@ -49,7 +53,10 @@ export async function buildReleaseBundle(
   const rootDir = process.cwd();
   const cacheDir = resolve(os.tmpdir(), "noc-deploy-cache");
   const distDir = resolve(cacheDir, version);
-  const tarPath = resolve(cacheDir, `release-${version.replace(/[^a-zA-Z0-9._-]/g, "_")}.tar.gz`);
+  const tarPath = resolve(
+    cacheDir,
+    `release-${version.replace(/[^a-zA-Z0-9._-]/g, "_")}.tar.gz`,
+  );
 
   onLog?.(`Menyiapkan direktori build: ${distDir}`);
   await rm(distDir, { recursive: true, force: true });
@@ -59,7 +66,9 @@ export async function buildReleaseBundle(
   const goOutput = resolve(distDir, "noc-backend");
   const prebuiltGo = resolve(rootDir, "noc-backend");
   if (existsSync(prebuiltGo)) {
-    onLog?.("Menyalin biner Go noc-backend linux/amd64 yang sudah terkompilasi...");
+    onLog?.(
+      "Menyalin biner Go noc-backend linux/amd64 yang sudah terkompilasi...",
+    );
     await copyFile(prebuiltGo, goOutput);
   } else {
     onLog?.("Mengompilasi backend Go untuk target linux/amd64...");
@@ -75,25 +84,37 @@ export async function buildReleaseBundle(
   // 2. Next.js Standalone Build
   const isPrebuiltContainer =
     process.env.NOC_PREBUILT_RELEASE === "1" ||
-    (existsSync(resolve(rootDir, "server.js")) && existsSync(resolve(rootDir, "noc-backend")));
+    (existsSync(resolve(rootDir, "server.js")) &&
+      existsSync(resolve(rootDir, "noc-backend")));
   if (isPrebuiltContainer) {
     onLog?.("Menyalin artefak Next.js standalone dari kontainer lokal...");
     await cp(resolve(rootDir, "server.js"), resolve(distDir, "server.js"));
     if (existsSync(resolve(rootDir, "package.json"))) {
-      await copyFile(resolve(rootDir, "package.json"), resolve(distDir, "package.json"));
+      await copyFile(
+        resolve(rootDir, "package.json"),
+        resolve(distDir, "package.json"),
+      );
     }
     if (existsSync(resolve(rootDir, "node_modules"))) {
-      await cp(resolve(rootDir, "node_modules"), resolve(distDir, "node_modules"), {
-        recursive: true,
-      });
+      await cp(
+        resolve(rootDir, "node_modules"),
+        resolve(distDir, "node_modules"),
+        {
+          recursive: true,
+        },
+      );
     }
     if (existsSync(resolve(rootDir, ".next"))) {
-      await cp(resolve(rootDir, ".next"), resolve(distDir, ".next"), { recursive: true });
+      await cp(resolve(rootDir, ".next"), resolve(distDir, ".next"), {
+        recursive: true,
+      });
     }
   } else {
     onLog?.("Membangun frontend Next.js standalone...");
     // Selalu build ulang agar artefak rilis mencerminkan kode terbaru
-    await runCommand("npm run build", rootDir, { NEXT_TELEMETRY_DISABLED: "1" });
+    await runCommand("npm run build", rootDir, {
+      NEXT_TELEMETRY_DISABLED: "1",
+    });
     const standaloneDir = resolve(rootDir, ".next", "standalone");
     await cp(standaloneDir, distDir, { recursive: true });
   }
@@ -168,14 +189,13 @@ export async function buildReleaseBundle(
   await mkdir(cacheDir, { recursive: true });
 
   // Gunakan tar sistem (Windows 10/11 dan Linux sama-sama memiliki binary tar bawaan)
-  await runCommand(
-    `tar -czf "${tarPath}" -C "${distDir}" .`,
-    cacheDir,
-  );
+  await runCommand(`tar -czf "${tarPath}" -C "${distDir}" .`, cacheDir);
 
   const fileStat = await stat(tarPath);
   const durationMs = Date.now() - startTime;
-  onLog?.(`Paket rilis selesai (${(fileStat.size / 1024 / 1024).toFixed(2)} MB, ${durationMs}ms).`);
+  onLog?.(
+    `Paket rilis selesai (${(fileStat.size / 1024 / 1024).toFixed(2)} MB, ${durationMs}ms).`,
+  );
 
   return {
     tarPath,
@@ -196,7 +216,11 @@ export async function uploadReleaseFile(
   onLog?: (msg: string) => void,
 ): Promise<void> {
   const host = effectiveHost || target.host;
-  const { promise, resolve: resolveAll, reject: rejectAll } = Promise.withResolvers<void>();
+  const {
+    promise,
+    resolve: resolveAll,
+    reject: rejectAll,
+  } = Promise.withResolvers<void>();
 
   const conn = new Client();
   let settled = false;
@@ -204,8 +228,12 @@ export async function uploadReleaseFile(
   const timer = setTimeout(() => {
     if (!settled) {
       settled = true;
-      try { conn.end(); } catch {}
-      rejectAll(new Error("Unggahan SFTP melebihi batas waktu (timeout 5 menit)."));
+      try {
+        conn.end();
+      } catch {}
+      rejectAll(
+        new Error("Unggahan SFTP melebihi batas waktu (timeout 5 menit)."),
+      );
     }
   }, 300000);
 
@@ -213,7 +241,9 @@ export async function uploadReleaseFile(
     clearTimeout(timer);
     if (!settled) {
       settled = true;
-      try { conn.end(); } catch {}
+      try {
+        conn.end();
+      } catch {}
     }
   };
 
@@ -254,9 +284,12 @@ export async function uploadReleaseFile(
   });
 
   if (credential.password) {
-    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
-      finish(prompts.map(() => credential.password || ""));
-    });
+    conn.on(
+      "keyboard-interactive",
+      (_name, _instructions, _lang, prompts, finish) => {
+        finish(prompts.map(() => credential.password || ""));
+      },
+    );
   }
 
   const connectConfig: ConnectConfig = {
@@ -288,7 +321,14 @@ export async function uploadAndExtractRelease(
   const host = effectiveHost || target.host;
   const remoteTarPath = `${remoteReleasePath}/release.tar.gz`;
 
-  await uploadReleaseFile(target, credential, localTarPath, remoteTarPath, host, onLog);
+  await uploadReleaseFile(
+    target,
+    credential,
+    localTarPath,
+    remoteTarPath,
+    host,
+    onLog,
+  );
 
   onLog?.("Unggahan paket rilis selesai. Mengekstrak paket di server...");
   const extractCmd = [
@@ -303,12 +343,21 @@ export async function uploadAndExtractRelease(
     `test -f /srv/noc/shared/.env && ln -sfn /srv/noc/shared/.env "${remoteReleasePath}/.env" || true`,
   ].join(" && ");
 
-  const extractRes = await executeSshCommand(target, credential, extractCmd, host, 60000, (chunk) => {
-    onLog?.(chunk);
-  });
+  const extractRes = await executeSshCommand(
+    target,
+    credential,
+    extractCmd,
+    host,
+    60000,
+    (chunk) => {
+      onLog?.(chunk);
+    },
+  );
 
   if (extractRes.code !== 0) {
-    throw new Error(`Ekstraksi rilis gagal (exit code ${extractRes.code}): ${extractRes.stderr || extractRes.stdout}`);
+    throw new Error(
+      `Ekstraksi rilis gagal (exit code ${extractRes.code}): ${extractRes.stderr || extractRes.stdout}`,
+    );
   }
 
   onLog?.(`Rilis berhasil diekstrak dan disiapkan di ${remoteReleasePath}.`);

@@ -110,8 +110,7 @@ const fieldLabels: Record<
 const blockedButton =
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-60";
 
-const forbiddenReason =
-  "Hanya admin yang dapat mengubah ambang batas";
+const forbiddenReason = "Hanya admin yang dapat mengubah ambang batas";
 
 export function ThresholdSettings() {
   const baseId = useId();
@@ -283,11 +282,11 @@ export function ThresholdSettings() {
         >
           Nilai ini tersimpan di database (tabel alert_thresholds) dan berlaku
           untuk semua petugas. Rule engine di backend membacanya saat backend
-          dinyalakan, jadi ambang baru dipakai setelah backend di-restart. Daftar
-          anomali dan alert tiruan mode demo tetap memakai aturan bawaan. Tombol{" "}
-          <strong>Simpan Perubahan</strong> dan <strong>Reset Bawaan</strong> di
-          bagian atas halaman tidak mencakup tab ini; pakai tombol di bawah
-          kartu.
+          dinyalakan, jadi ambang baru dipakai setelah backend di-restart.
+          Daftar anomali dan alert tiruan mode demo tetap memakai aturan bawaan.
+          Tombol <strong>Simpan Perubahan</strong> dan{" "}
+          <strong>Reset Bawaan</strong> di bagian atas halaman tidak mencakup
+          tab ini; pakai tombol di bawah kartu.
         </p>
         {status === "error" && (
           <div
@@ -295,7 +294,10 @@ export function ThresholdSettings() {
             data-testid="threshold-load-error"
             className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
           >
-            <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+            <CircleAlert
+              className="size-4 shrink-0 text-destructive"
+              aria-hidden="true"
+            />
             <span className="flex-1">
               Ambang tidak bisa dimuat dari database. Yang tampil adalah nilai
               bawaan; menyimpan diblokir sampai berhasil dimuat.
@@ -379,7 +381,8 @@ export function ThresholdSettings() {
                     : "Ambang dikembalikan ke bawaan di database"}
                 </p>
                 <p className="pl-6">
-                  Rule engine backend memakai nilai ini setelah backend di-restart.
+                  Rule engine backend memakai nilai ini setelah backend
+                  di-restart.
                 </p>
                 {notice.changes.length > 0 ? (
                   <ul

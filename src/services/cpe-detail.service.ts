@@ -30,7 +30,10 @@ export function deviceIdCandidates(id: string): string[] {
   return out;
 }
 
-async function loadRaw(id: string, client: GenieAcsClient): Promise<unknown | null> {
+async function loadRaw(
+  id: string,
+  client: GenieAcsClient,
+): Promise<unknown | null> {
   for (const candidate of deviceIdCandidates(id)) {
     const raw = await client.getRawDevice(candidate);
     if (raw) return raw;
@@ -38,7 +41,10 @@ async function loadRaw(id: string, client: GenieAcsClient): Promise<unknown | nu
   return null;
 }
 
-export async function getCpeDetail(id: string, client = new GenieAcsClient()): Promise<CpeDetail | null> {
+export async function getCpeDetail(
+  id: string,
+  client = new GenieAcsClient(),
+): Promise<CpeDetail | null> {
   const raw = await loadRaw(id, client);
   return raw ? parseDeviceDetail(raw) : null;
 }
@@ -49,7 +55,10 @@ export async function getCpeSecrets(
 ): Promise<{ deviceId: string; secrets: DeviceSecrets } | null> {
   const raw = await loadRaw(id, client);
   if (!raw) return null;
-  return { deviceId: parseDeviceDetail(raw).deviceId, secrets: parseDeviceSecrets(raw) };
+  return {
+    deviceId: parseDeviceDetail(raw).deviceId,
+    secrets: parseDeviceSecrets(raw),
+  };
 }
 
 export interface RefreshRealtimeResult {
@@ -74,34 +83,69 @@ export async function refreshCpeRealtime(
     const raw = await client.getRawDevice(candidate);
     if (!raw) continue;
     const resolvedId =
-      raw !== null && typeof raw === "object" && "_id" in raw && typeof raw._id === "string"
+      raw !== null &&
+      typeof raw === "object" &&
+      "_id" in raw &&
+      typeof raw._id === "string"
         ? raw._id
         : candidate;
 
     // Kumpulkan parameter leaf yang benar-benar ada di pohon modem ini
     const paramNames: string[] = [];
-    if (readParam(raw, "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower") !== undefined) {
+    if (
+      readParam(raw, "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower") !==
+      undefined
+    ) {
       paramNames.push(
         "InternetGatewayDevice.X_ALU_OntOpticalParam.RXPower",
         "InternetGatewayDevice.X_ALU_OntOpticalParam.TXPower",
       );
-      if (readParam(raw, "InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature") !== undefined) {
-        paramNames.push("InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature");
+      if (
+        readParam(
+          raw,
+          "InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature",
+        ) !== undefined
+      ) {
+        paramNames.push(
+          "InternetGatewayDevice.X_ALU_OntOpticalParam.TransceiverTemperature",
+        );
       }
-    } else if (readParam(raw, "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower") !== undefined) {
+    } else if (
+      readParam(
+        raw,
+        "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
+      ) !== undefined
+    ) {
       paramNames.push(
         "InternetGatewayDevice.DeviceInfo.XponInterface.RXPower",
         "InternetGatewayDevice.DeviceInfo.XponInterface.TXPower",
       );
-      if (readParam(raw, "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature") !== undefined) {
-        paramNames.push("InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature");
+      if (
+        readParam(
+          raw,
+          "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature",
+        ) !== undefined
+      ) {
+        paramNames.push(
+          "InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature",
+        );
       }
-    } else if (readParam(raw, "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower") !== undefined) {
+    } else if (
+      readParam(
+        raw,
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
+      ) !== undefined
+    ) {
       paramNames.push(
         "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower",
         "InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.TXPower",
       );
-    } else if (readParam(raw, "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower") !== undefined) {
+    } else if (
+      readParam(
+        raw,
+        "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
+      ) !== undefined
+    ) {
       paramNames.push(
         "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower",
         "InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.TXPower",
@@ -109,8 +153,15 @@ export async function refreshCpeRealtime(
     }
 
     for (const i of [1, 2, 3, 4, 5]) {
-      if (readParam(raw, `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`) !== undefined) {
-        paramNames.push(`InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`);
+      if (
+        readParam(
+          raw,
+          `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`,
+        ) !== undefined
+      ) {
+        paramNames.push(
+          `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.TotalAssociations`,
+        );
       }
     }
     // Port Ethernet LAN: link naik/turun dan kecepatan ikut dibaca langsung (bukan hanya Wi-Fi).
@@ -120,7 +171,9 @@ export async function refreshCpeRealtime(
         if (readParam(raw, path) !== undefined) paramNames.push(path);
       }
     }
-    if (readParam(raw, "InternetGatewayDevice.DeviceInfo.UpTime") !== undefined) {
+    if (
+      readParam(raw, "InternetGatewayDevice.DeviceInfo.UpTime") !== undefined
+    ) {
       paramNames.push("InternetGatewayDevice.DeviceInfo.UpTime");
     }
 
@@ -132,17 +185,30 @@ export async function refreshCpeRealtime(
     }
 
     for (const i of [1, 2, 3, 4, 5]) {
-      if (hasNode(raw, `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`)) {
-        objectsToRefresh.push(`InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`);
+      if (
+        hasNode(
+          raw,
+          `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`,
+        )
+      ) {
+        objectsToRefresh.push(
+          `InternetGatewayDevice.LANDevice.1.WLANConfiguration.${i}.AssociatedDevice`,
+        );
       }
     }
 
     const tasks: Array<{ task: Record<string, unknown>; desc: string }> = [];
     if (paramNames.length > 0) {
-      tasks.push({ task: { name: "getParameterValues", parameterNames: paramNames }, desc: "getParameterValues" });
+      tasks.push({
+        task: { name: "getParameterValues", parameterNames: paramNames },
+        desc: "getParameterValues",
+      });
     }
     for (const obj of objectsToRefresh) {
-      tasks.push({ task: { name: "refreshObject", objectName: obj }, desc: `refreshObject:${obj}` });
+      tasks.push({
+        task: { name: "refreshObject", objectName: obj },
+        desc: `refreshObject:${obj}`,
+      });
     }
 
     if (tasks.length === 0) {
@@ -239,8 +305,17 @@ export async function changeDeviceWifi(
   // Melempar WifiChangeError (WLAN tidak ada / tak ada parameter sandi): dipetakan route ke 4xx.
   const plan = planWifiChange(raw, input);
 
-  const sent = await client.postTask(deviceId, { name: "setParameterValues", parameterValues: plan.parameterValues }, true, WIFI_WAIT_MS);
-  if (!sent.ok) throw new WifiChangeFailed(sent.error ?? "GenieACS menolak perintah.", sent.status);
+  const sent = await client.postTask(
+    deviceId,
+    { name: "setParameterValues", parameterValues: plan.parameterValues },
+    true,
+    WIFI_WAIT_MS,
+  );
+  if (!sent.ok)
+    throw new WifiChangeFailed(
+      sent.error ?? "GenieACS menolak perintah.",
+      sent.status,
+    );
 
   // 200 = modem sudah menjalankan; 202 = diantre (modem belum bisa dihubungi sekarang).
   if (sent.status === 202) {
@@ -248,18 +323,26 @@ export async function changeDeviceWifi(
       status: "queued",
       verified: { ssid: null, password: null },
       deviceId,
-      message: "Perintah tersimpan di GenieACS dan akan dijalankan saat modem menghubungi ACS (modem tidak menjawab sekarang).",
+      message:
+        "Perintah tersimpan di GenieACS dan akan dijalankan saat modem menghubungi ACS (modem tidak menjawab sekarang).",
     };
   }
 
   // Baca ulang dari modem lalu bandingkan: 200 dari NBI tidak membuktikan nilainya berubah
   // (fault dari modem ikut menjadi 200 pada sebagian versi).
-  await client.postTask(deviceId, { name: "getParameterValues", parameterNames: plan.readBack }, true, READBACK_WAIT_MS);
+  await client.postTask(
+    deviceId,
+    { name: "getParameterValues", parameterNames: plan.readBack },
+    true,
+    READBACK_WAIT_MS,
+  );
   const after = await client.getRawDevice(deviceId);
   const verified = verifyWifiChange(after, plan);
   const failed = verified.ssid === false || verified.password === false;
   if (failed) {
-    throw new WifiChangeFailed("Modem menerima perintah tetapi nilainya tidak berubah. Periksa karakter SSID/sandi atau coba lagi.");
+    throw new WifiChangeFailed(
+      "Modem menerima perintah tetapi nilainya tidak berubah. Periksa karakter SSID/sandi atau coba lagi.",
+    );
   }
   return {
     status: "applied",

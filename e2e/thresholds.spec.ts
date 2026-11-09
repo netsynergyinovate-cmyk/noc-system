@@ -935,7 +935,8 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
     const calls: string[] = [];
     const sent: unknown[] = [];
     const state = { failLoad: false, failWrite: false };
-    const answer = () => JSON.parse(JSON.stringify(stored ?? defaultThresholds()));
+    const answer = () =>
+      JSON.parse(JSON.stringify(stored ?? defaultThresholds()));
     const remote = {
       load: async () => {
         calls.push("load");
@@ -945,7 +946,8 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
       save: async (values: ThresholdValues) => {
         calls.push("save");
         sent.push(JSON.parse(JSON.stringify(values)));
-        if (state.failWrite) throw new Error("Akun Anda tidak punya izin mengubah ambang batas.");
+        if (state.failWrite)
+          throw new Error("Akun Anda tidak punya izin mengubah ambang batas.");
         stored = values;
         return answer();
       },
@@ -1020,7 +1022,10 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
     registry.subscribe(() => {});
     await flush();
     expect(server.calls).toEqual(["load"]);
-    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
+    expect(registry.getSnapshot()).toEqual({
+      values: custom(),
+      status: "ready",
+    });
     expect(notified).toBe(1);
     expect(registry.getServerSnapshot().values).toEqual(defaultThresholds());
   });
@@ -1042,11 +1047,17 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
     server.state.failLoad = true;
     registry.subscribe(() => {});
     await flush();
-    expect(registry.getSnapshot()).toEqual({ values: defaultThresholds(), status: "error" });
+    expect(registry.getSnapshot()).toEqual({
+      values: defaultThresholds(),
+      status: "error",
+    });
     server.state.failLoad = false;
     server.setStored(custom());
     await registry.refresh();
-    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
+    expect(registry.getSnapshot()).toEqual({
+      values: custom(),
+      status: "ready",
+    });
   });
 
   test("gagal memuat sesudah pernah berhasil: nilai terakhir tetap, status tetap ready", async () => {
@@ -1072,7 +1083,10 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
     expect(await registry.save(values)).toEqual({ ok: true });
     expect(server.sent).toEqual([custom()]);
     expect(notified).toBe(1);
-    expect(registry.getSnapshot()).toEqual({ values: custom(), status: "ready" });
+    expect(registry.getSnapshot()).toEqual({
+      values: custom(),
+      status: "ready",
+    });
     // Mengubah argumen sesudah menyimpan tidak mengubah yang tersimpan.
     values.cpu.threshold = 99;
     expect(registry.getSnapshot().values.cpu.threshold).toBe(70);
@@ -1100,7 +1114,8 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
     values.optical.forSeconds = 5;
     const result = await registry.save(values);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(Object.keys(result.errors)).toEqual(["queue", "optical"]);
+    if (!result.ok)
+      expect(Object.keys(result.errors)).toEqual(["queue", "optical"]);
     expect(server.calls).not.toContain("save");
     expect(notified).toBe(0);
     expect(registry.getSnapshot()).toBe(before);
@@ -1117,7 +1132,11 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
       errors: {},
       message: "Akun Anda tidak punya izin mengubah ambang batas.",
     });
-    expect(await registry.reset()).toEqual({ ok: false, errors: {}, message: "offline" });
+    expect(await registry.reset()).toEqual({
+      ok: false,
+      errors: {},
+      message: "offline",
+    });
     expect(registry.getSnapshot()).toBe(before);
   });
 
@@ -1141,7 +1160,10 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
       const { registry, server } = makeRegistry();
       server.setStored(junk);
       await registry.refresh();
-      expect(registry.getSnapshot()).toEqual({ values: defaultThresholds(), status: "ready" });
+      expect(registry.getSnapshot()).toEqual({
+        values: defaultThresholds(),
+        status: "ready",
+      });
     }
     const { registry, server } = makeRegistry();
     server.setStored({
@@ -1149,8 +1171,14 @@ test.describe("registry (tabel alert_thresholds lewat /api/thresholds)", () => {
       cpu: { threshold: 1, forSeconds: 1 },
     });
     await registry.refresh();
-    expect(registry.getSnapshot().values.queue).toEqual({ threshold: 80, forSeconds: 20 });
-    expect(registry.getSnapshot().values.cpu).toEqual({ threshold: 85, forSeconds: 180 });
+    expect(registry.getSnapshot().values.queue).toEqual({
+      threshold: 80,
+      forSeconds: 20,
+    });
+    expect(registry.getSnapshot().values.cpu).toEqual({
+      threshold: 85,
+      forSeconds: 180,
+    });
   });
 
   test("mendengarkan fokus hanya selama ada pelanggan", () => {

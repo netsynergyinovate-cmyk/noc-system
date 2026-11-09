@@ -81,19 +81,18 @@ export async function runStartupMigrations(
     options.strict ??
     (env.NODE_ENV === "production" && env.STRICT_STARTUP !== "false");
 
-  log("[MIGRASI STARTUP] Memeriksa versi dan menerapkan skema sebelum melayani request...");
+  log(
+    "[MIGRASI STARTUP] Memeriksa versi dan menerapkan skema sebelum melayani request...",
+  );
 
   try {
-    const upgradeReport = await applyUpgradeMigrationsIfNeeded(
-      undefined,
-      {
-        migrationsFolder: options.migrationsFolder,
-        appVersion: options.appVersion,
-        timescale: true,
-        retentionDays: env.TRAFFIC_RETENTION_DAYS,
-        logger: log,
-      },
-    );
+    const upgradeReport = await applyUpgradeMigrationsIfNeeded(undefined, {
+      migrationsFolder: options.migrationsFolder,
+      appVersion: options.appVersion,
+      timescale: true,
+      retentionDays: env.TRAFFIC_RETENTION_DAYS,
+      logger: log,
+    });
 
     if (upgradeReport.migrationsApplied.length > 0) {
       log(
@@ -111,8 +110,7 @@ export async function runStartupMigrations(
       upgradeReport,
     };
   } catch (error) {
-    const errorMsg =
-      error instanceof Error ? error.message : String(error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
     log(`[FATAL] Migrasi skema saat startup gagal: ${errorMsg}`);
 
     if (strict) {

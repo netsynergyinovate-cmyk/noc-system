@@ -8,7 +8,10 @@ import { DashboardFeed } from "@/components/dashboard/dashboard-feed";
 import { RouterHealthBanner } from "@/components/dashboard/router-health-banner";
 import { FeatureMarkerInspector } from "@/components/dashboard/feature-marker-inspector";
 import { env } from "@/lib/env";
-import { evaluateOnboardingGate, isPathExemptFromGate } from "@/lib/dashboard/onboarding-gate";
+import {
+  evaluateOnboardingGate,
+  isPathExemptFromGate,
+} from "@/lib/dashboard/onboarding-gate";
 import { NEXT_PATH_HEADER } from "@/lib/route-guard";
 import { requireSession } from "@/lib/session";
 import { hasConnectedDevice } from "@/services/devices.service";
@@ -36,7 +39,11 @@ export default async function DashboardLayout({
   const appVersion = getAppDisplayVersion();
 
   return (
-    <AppShell user={{ email: user.email }} locked={gateState.isLocked} appVersion={appVersion}>
+    <AppShell
+      user={{ email: user.email }}
+      locked={gateState.isLocked}
+      appVersion={appVersion}
+    >
       {/* Satu sambungan data untuk semua halaman aplikasi. */}
       <DashboardFeed />
       {/* Bunyi gangguan baru, terdengar di halaman mana pun yang dibuka. */}

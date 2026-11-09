@@ -6,7 +6,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type AlertCategoryKey = "all" | "customer" | "optical" | "core" | "other";
+export type AlertCategoryKey =
+  "all" | "customer" | "optical" | "core" | "other";
 
 export interface AlertCategoryMeta {
   key: Exclude<AlertCategoryKey, "all">;

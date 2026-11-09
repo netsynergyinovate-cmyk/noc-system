@@ -38,8 +38,7 @@ export function BillingSyncHistory({
   intervalSeconds: number;
   now: number;
 }) {
-  const [statusFilter, setStatusFilter] =
-    useState<SyncRunStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<SyncRunStatusFilter>("all");
   const all = runs ? sortRuns(runs) : null;
   const summary = all ? summarizeSyncHistory(all) : null;
   const sorted = all ? filterSyncRuns(all, statusFilter) : null;

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { testDeviceConnectionSchema: s } = await import("../src/validators/devices.ts");
+const { testDeviceConnectionSchema: s } =
+  await import("../src/validators/devices.ts");
 
 const ok = { type: "mikrotik", host: "10.0.0.1" };
 

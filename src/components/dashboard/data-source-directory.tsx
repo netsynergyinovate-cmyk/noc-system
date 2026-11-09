@@ -39,8 +39,7 @@ export function DataSourceDirectory() {
       item.pagePath.toLowerCase().includes(search.toLowerCase()) ||
       item.envKey.toLowerCase().includes(search.toLowerCase()) ||
       item.goLiveCriterion.toLowerCase().includes(search.toLowerCase());
-    const matchStatus =
-      statusFilter === "all" || item.status === statusFilter;
+    const matchStatus = statusFilter === "all" || item.status === statusFilter;
     const matchCategory =
       categoryFilter === "all" || item.category === categoryFilter;
     return matchSearch && matchStatus && matchCategory;
@@ -67,10 +66,7 @@ export function DataSourceDirectory() {
   };
 
   return (
-    <div
-      data-testid="data-source-directory"
-      className="flex flex-col gap-6"
-    >
+    <div data-testid="data-source-directory" className="flex flex-col gap-6">
       {/* Kartu Ringkasan Status Sumber Data */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 shadow-xs">

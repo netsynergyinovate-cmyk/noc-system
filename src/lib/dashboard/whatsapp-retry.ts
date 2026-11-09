@@ -22,7 +22,10 @@ export async function retryRows(
     try {
       result = await send(row);
     } catch (e) {
-      result = { ok: false, error: e instanceof Error ? e.message : "Gagal mengirim." };
+      result = {
+        ok: false,
+        error: e instanceof Error ? e.message : "Gagal mengirim.",
+      };
     }
     await save(row.id, result);
     summary.retried++;

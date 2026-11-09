@@ -18,10 +18,15 @@ export function GET(request: Request, context: Context) {
     });
     const customer = await customerExists(id);
     if (!customer) {
-      return Response.json({ error: "Pelanggan tidak ditemukan." }, { status: 404 });
+      return Response.json(
+        { error: "Pelanggan tidak ditemukan." },
+        { status: 404 },
+      );
     }
     if (range !== "live") {
-      return Response.json({ data: await getCustomerTrafficHistory(id, range) });
+      return Response.json({
+        data: await getCustomerTrafficHistory(id, range),
+      });
     }
     try {
       return Response.json({ data: await getCustomerLiveTraffic(customer) });

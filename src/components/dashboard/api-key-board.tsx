@@ -33,7 +33,10 @@ type ApiKeyRow = {
   createdAt: string;
 };
 
-const accessLabel = { read: "Hanya baca", "read-write": "Baca + tulis" } as const;
+const accessLabel = {
+  read: "Hanya baca",
+  "read-write": "Baca + tulis",
+} as const;
 
 function formatTime(value: string | null) {
   return value ? new Date(value).toLocaleString("id-ID") : "—";
@@ -67,7 +70,8 @@ export function ApiKeyBoard() {
     fetchKeys()
       .then((rows) => active && setKeys(rows))
       .catch((e: unknown) => {
-        if (active) setError(e instanceof Error ? e.message : "Gagal memuat API key.");
+        if (active)
+          setError(e instanceof Error ? e.message : "Gagal memuat API key.");
       });
     return () => {
       active = false;
@@ -89,7 +93,8 @@ export function ApiKeyBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), access }),
       });
-      if (!res.ok) throw new Error(await errorMessage(res, "Gagal membuat API key"));
+      if (!res.ok)
+        throw new Error(await errorMessage(res, "Gagal membuat API key"));
       const { data } = (await res.json()) as { data: { key: string } };
       setNewKey(data.key);
       setCopied(false);
@@ -104,7 +109,11 @@ export function ApiKeyBoard() {
 
   async function handleRevoke(row: ApiKeyRow) {
     if (revokingId) return;
-    if (!window.confirm(`Cabut API key "${row.name}"? Aplikasi yang memakainya langsung ditolak.`))
+    if (
+      !window.confirm(
+        `Cabut API key "${row.name}"? Aplikasi yang memakainya langsung ditolak.`,
+      )
+    )
       return;
     setRevokingId(row.id);
     setError(null);
@@ -112,7 +121,8 @@ export function ApiKeyBoard() {
       const res = await fetch(`/api/api-keys/${encodeURIComponent(row.id)}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error(await errorMessage(res, "Gagal mencabut API key"));
+      if (!res.ok)
+        throw new Error(await errorMessage(res, "Gagal mencabut API key"));
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mencabut API key.");
@@ -137,12 +147,16 @@ export function ApiKeyBoard() {
         <CardHeader>
           <CardTitle>Buat API key</CardTitle>
           <CardDescription>
-            Key bertindak atas nama akun Anda. &quot;Hanya baca&quot; cuma boleh GET;
-            &quot;Baca + tulis&quot; boleh mengubah data sebatas peran akun Anda.
+            Key bertindak atas nama akun Anda. &quot;Hanya baca&quot; cuma boleh
+            GET; &quot;Baca + tulis&quot; boleh mengubah data sebatas peran akun
+            Anda.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <form onSubmit={handleCreate} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <form
+            onSubmit={handleCreate}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
             <div className="flex flex-1 flex-col gap-1.5">
               <Label htmlFor="api-key-name">Nama aplikasi</Label>
               <Input
@@ -158,7 +172,9 @@ export function ApiKeyBoard() {
               <select
                 id="api-key-access"
                 value={access}
-                onChange={(e) => setAccess(e.target.value as ApiKeyRow["access"])}
+                onChange={(e) =>
+                  setAccess(e.target.value as ApiKeyRow["access"])
+                }
                 className="h-9 rounded-md border bg-background px-3 text-sm"
               >
                 <option value="read">{accessLabel.read}</option>
@@ -172,7 +188,10 @@ export function ApiKeyBoard() {
           </form>
 
           {newKey && (
-            <div role="status" className="flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+            <div
+              role="status"
+              className="flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3"
+            >
               <p className="text-sm font-medium">
                 Simpan key ini sekarang. Key tidak bisa ditampilkan lagi.
               </p>
@@ -180,7 +199,12 @@ export function ApiKeyBoard() {
                 <code className="flex-1 break-all rounded bg-background px-2 py-1.5 text-xs">
                   {newKey}
                 </code>
-                <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                >
                   <Copy className="size-4" aria-hidden="true" />
                   {copied ? "Tersalin" : "Salin"}
                 </Button>
@@ -200,9 +224,12 @@ export function ApiKeyBoard() {
         <CardHeader>
           <CardTitle>Daftar API key</CardTitle>
           <CardDescription>
-            Kirim sebagai header <code>Authorization: Bearer &lt;key&gt;</code>. Daftar
-            dataset: <code>GET /api/v1/data</code>; isi tabel:{" "}
-            <code>GET /api/v1/data?dataset=customers&amp;limit=500&amp;offset=0</code>.
+            Kirim sebagai header <code>Authorization: Bearer &lt;key&gt;</code>.
+            Daftar dataset: <code>GET /api/v1/data</code>; isi tabel:{" "}
+            <code>
+              GET /api/v1/data?dataset=customers&amp;limit=500&amp;offset=0
+            </code>
+            .
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -234,7 +261,11 @@ export function ApiKeyBoard() {
                       {row.revokedAt ? (
                         <Badge variant="outline">Dicabut</Badge>
                       ) : (
-                        <Badge variant={row.access === "read" ? "secondary" : "default"}>
+                        <Badge
+                          variant={
+                            row.access === "read" ? "secondary" : "default"
+                          }
+                        >
                           {accessLabel[row.access]}
                         </Badge>
                       )}

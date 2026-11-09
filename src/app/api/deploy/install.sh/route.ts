@@ -18,10 +18,14 @@ export async function GET() {
       },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Skrip install.sh tidak ditemukan";
-    return new Response(`#!/usr/bin/env bash\necho "Error: ${message}" >&2\nexit 1\n`, {
-      status: 500,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    const message =
+      err instanceof Error ? err.message : "Skrip install.sh tidak ditemukan";
+    return new Response(
+      `#!/usr/bin/env bash\necho "Error: ${message}" >&2\nexit 1\n`,
+      {
+        status: 500,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      },
+    );
   }
 }

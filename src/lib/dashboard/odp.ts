@@ -69,7 +69,9 @@ export function getOdpCoordinates(odpName: string): [number, number] | null {
 }
 
 export function getOdpList(
-  customers: Array<Pick<DashboardCustomer, "odpName" | "latitude" | "longitude">>,
+  customers: Array<
+    Pick<DashboardCustomer, "odpName" | "latitude" | "longitude">
+  >,
 ): OdpPoint[] {
   const odpMap = new Map<string, { count: number; coords: [number, number] }>();
 

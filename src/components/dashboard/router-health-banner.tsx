@@ -28,16 +28,23 @@ export function RouterHealthBanner() {
   // muncul. Dipakai untuk menyusun perintah TAMBAH, bukan ganti.
   const [existing, setExisting] = useState<Record<string, string>>({});
 
-  const downKey = down.map((r) => `${r.routerId}:${r.protocol ?? ""}:${r.lastError}`).join("|");
+  const downKey = down
+    .map((r) => `${r.routerId}:${r.protocol ?? ""}:${r.lastError}`)
+    .join("|");
   useEffect(() => {
     let cancelled = false;
     for (const r of down) {
       const service = r.protocol === "api" ? "api" : "www";
-      fetch(`/api/routers/${encodeURIComponent(r.routerId)}/service?name=${service}`)
+      fetch(
+        `/api/routers/${encodeURIComponent(r.routerId)}/service?name=${service}`,
+      )
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
           if (cancelled || !json?.data) return;
-          setExisting((prev) => ({ ...prev, [r.routerId]: String(json.data.address ?? "") }));
+          setExisting((prev) => ({
+            ...prev,
+            [r.routerId]: String(json.data.address ?? ""),
+          }));
         })
         .catch(() => {
           // Gagal membaca daftar lama: perintah tetap memakai versi ganti.
@@ -55,10 +62,16 @@ export function RouterHealthBanner() {
       await navigator.clipboard.writeText(text);
       if (help) {
         setHelpCopiedId(key);
-        window.setTimeout(() => setHelpCopiedId((id) => (id === key ? null : id)), 2000);
+        window.setTimeout(
+          () => setHelpCopiedId((id) => (id === key ? null : id)),
+          2000,
+        );
       } else {
         setCopiedId(key);
-        window.setTimeout(() => setCopiedId((id) => (id === key ? null : id)), 2000);
+        window.setTimeout(
+          () => setCopiedId((id) => (id === key ? null : id)),
+          2000,
+        );
       }
     } catch {
       // Clipboard tidak tersedia (HTTP non-localhost): teks tetap bisa diseleksi.
@@ -114,7 +127,9 @@ export function RouterHealthBanner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGuideFor((id) => (id === r.routerId ? null : r.routerId))}
+                  onClick={() =>
+                    setGuideFor((id) => (id === r.routerId ? null : r.routerId))
+                  }
                   className="rounded border bg-background px-2 py-1 text-xs hover:bg-muted"
                   aria-expanded={guideFor === r.routerId}
                 >
@@ -122,10 +137,14 @@ export function RouterHealthBanner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void copyText(`${r.routerId}:help`, helpText, true)}
+                  onClick={() =>
+                    void copyText(`${r.routerId}:help`, helpText, true)
+                  }
                   className="rounded border bg-background px-2 py-1 text-xs hover:bg-muted"
                 >
-                  {helpCopiedId === `${r.routerId}:help` ? "Pesan tersalin" : "Minta bantuan admin"}
+                  {helpCopiedId === `${r.routerId}:help`
+                    ? "Pesan tersalin"
+                    : "Minta bantuan admin"}
                 </button>
               </div>
             )}
@@ -133,19 +152,28 @@ export function RouterHealthBanner() {
               <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
                 <li>Buka Winbox atau SSH ke MikroTik.</li>
                 <li>Tempel perintah di atas apa adanya.</li>
-                <li>Tunggu ±30 detik; backend mencoba ulang otomatis tanpa restart aplikasi.</li>
-                <li>Kalau masih gagal, klik “Minta bantuan admin” lalu kirim pesannya.</li>
+                <li>
+                  Tunggu ±30 detik; backend mencoba ulang otomatis tanpa restart
+                  aplikasi.
+                </li>
+                <li>
+                  Kalau masih gagal, klik “Minta bantuan admin” lalu kirim
+                  pesannya.
+                </li>
               </ol>
             )}
             {d.cause === "closed" && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Setelah perintah ditempel, backend mencoba lagi otomatis (tidak perlu restart aplikasi). Verifikasi dengan{" "}
+                Setelah perintah ditempel, backend mencoba lagi otomatis (tidak
+                perlu restart aplikasi). Verifikasi dengan{" "}
                 <code className="font-mono">
-                  /ip service print where name~&quot;{r.protocol === "api" ? "api" : "www"}&quot;
+                  /ip service print where name~&quot;
+                  {r.protocol === "api" ? "api" : "www"}&quot;
                 </code>
-                : kolom ADDRESS harus memuat IP server di atas. Jika masih ditutup, periksa{" "}
-                <code className="font-mono">/ip firewall filter</code> rantai <code className="font-mono">input</code> untuk
-                port layanan.
+                : kolom ADDRESS harus memuat IP server di atas. Jika masih
+                ditutup, periksa{" "}
+                <code className="font-mono">/ip firewall filter</code> rantai{" "}
+                <code className="font-mono">input</code> untuk port layanan.
               </p>
             )}
             <p className="mt-2 text-xs text-muted-foreground">

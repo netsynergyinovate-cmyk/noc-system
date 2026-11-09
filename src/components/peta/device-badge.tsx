@@ -17,7 +17,10 @@ export function DeviceBadge({
   /** Warna pelanggan (status layanan); perangkat memakai warna jenisnya */
   color?: string;
 }) {
-  const style = type === "customer" ? null : (DEVICE_TYPE_STYLE[type] ?? DEVICE_TYPE_STYLE.odp);
+  const style =
+    type === "customer"
+      ? null
+      : (DEVICE_TYPE_STYLE[type] ?? DEVICE_TYPE_STYLE.odp);
   const Icon = style?.Icon ?? CustomerIcon;
   const s = SIZES[size];
   return (

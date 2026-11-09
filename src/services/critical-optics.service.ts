@@ -20,7 +20,9 @@ export interface CriticalOpticalItem {
  * dari tabel PostgreSQL olt_onus yang dipolling langsung dari HSGQ OLT.
  * Menyediakan data nomor port PON riil, indeks ONU riil, dan Serial Number perangkat.
  */
-export async function getCriticalOpticalOnus(limit = 6): Promise<CriticalOpticalItem[]> {
+export async function getCriticalOpticalOnus(
+  limit = 6,
+): Promise<CriticalOpticalItem[]> {
   const rows = await db
     .select({
       id: oltOnus.id,
@@ -45,7 +47,9 @@ export async function getCriticalOpticalOnus(limit = 6): Promise<CriticalOptical
     const user =
       r.pppoeUsername ||
       r.customerName ||
-      (r.serialNumber ? `ONT ${r.serialNumber}` : `ONU ${r.ponIndex}/${r.onuIndex}`);
+      (r.serialNumber
+        ? `ONT ${r.serialNumber}`
+        : `ONU ${r.ponIndex}/${r.onuIndex}`);
     const pon = `PON ${r.ponIndex} • ONU ${r.onuIndex}`;
     const odp =
       r.odpName ||
@@ -67,4 +71,3 @@ export async function getCriticalOpticalOnus(limit = 6): Promise<CriticalOptical
     };
   });
 }
-

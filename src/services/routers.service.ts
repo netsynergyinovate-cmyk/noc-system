@@ -3,7 +3,12 @@ import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
-import { impliesTls, runSimulatorDeviceTest, sanitizeHost, storedRouterHost } from "@/lib/device-connection";
+import {
+  impliesTls,
+  runSimulatorDeviceTest,
+  sanitizeHost,
+  storedRouterHost,
+} from "@/lib/device-connection";
 import { assertNoSimulatorInProduction } from "@/lib/mode-switch";
 import { alerts, customers, networkLogs, routers } from "@/db/schema";
 import { CreateRouterInput, UpdateRouterInput } from "@/validators/routers";
@@ -15,7 +20,10 @@ import type { RouterProtocol } from "@/db/schema/routers";
 const PREFLIGHT_TIMEOUT_MS = 5000;
 const API_PORTS = new Set([8728, 8729]);
 
-function protocolFor(input: { protocol?: RouterProtocol }, url: URL): RouterProtocol {
+function protocolFor(
+  input: { protocol?: RouterProtocol },
+  url: URL,
+): RouterProtocol {
   if (input.protocol) return input.protocol;
   return API_PORTS.has(url.port ? Number(url.port) : 0) ? "api" : "rest";
 }
@@ -57,7 +65,8 @@ async function assertReachable(opts: {
   password: string;
   mode?: "real" | "simulator";
 }) {
-  const mode = opts.mode ?? (env.DASHBOARD_DATA === "demo" ? "simulator" : "real");
+  const mode =
+    opts.mode ?? (env.DASHBOARD_DATA === "demo" ? "simulator" : "real");
   if (mode === "simulator") {
     assertNoSimulatorInProduction("mikrotik");
     const result = runSimulatorDeviceTest({
@@ -66,7 +75,12 @@ async function assertReachable(opts: {
       host: opts.host,
       port: opts.port,
     });
-    if (!result.ok) throw new ApiError(400, result.code ?? "CONNECTION_FAILED", result.message);
+    if (!result.ok)
+      throw new ApiError(
+        400,
+        result.code ?? "CONNECTION_FAILED",
+        result.message,
+      );
     return;
   }
   const result = await probeRouterApi({
@@ -130,7 +144,11 @@ export async function createRouter(input: CreateRouterInput) {
     .where(eq(routers.host, normalizedHost))
     .limit(1);
   if (dup)
-    throw new ApiError(409, "DUPLICATE_HOST", "Router dengan host ini sudah terdaftar.");
+    throw new ApiError(
+      409,
+      "DUPLICATE_HOST",
+      "Router dengan host ini sudah terdaftar.",
+    );
 
   // Pre-flight: pastikan router bisa dihubungi sebelum disimpan.
   if (input.validateConnection !== false) {
@@ -200,10 +218,18 @@ export async function updateRouter(id: string, input: UpdateRouterInput) {
   let targetProtocol = input.protocol ?? existing.protocol;
   let targetPort: number | undefined;
   let targetUseSsl = false;
-  if (input.host || input.protocol || input.port !== undefined || input.useSsl !== undefined) {
+  if (
+    input.host ||
+    input.protocol ||
+    input.port !== undefined ||
+    input.useSsl !== undefined
+  ) {
     try {
       const url = sanitizeHost(input.host ?? existing.host, input.port);
-      targetProtocol = protocolFor({ protocol: input.protocol ?? existing.protocol }, url);
+      targetProtocol = protocolFor(
+        { protocol: input.protocol ?? existing.protocol },
+        url,
+      );
       targetUseSsl = input.useSsl ?? impliesTls(url);
       if (targetProtocol === "api") normalizeApiUrl(url, targetUseSsl);
       else if (normalizeRestUrl(url)) targetUseSsl = true;
@@ -222,7 +248,11 @@ export async function updateRouter(id: string, input: UpdateRouterInput) {
         .where(eq(routers.host, targetHost))
         .limit(1);
       if (dup && dup.id !== id) {
-        throw new ApiError(409, "DUPLICATE_HOST", "Router dengan host ini sudah terdaftar.");
+        throw new ApiError(
+          409,
+          "DUPLICATE_HOST",
+          "Router dengan host ini sudah terdaftar.",
+        );
       }
     }
   }
@@ -260,13 +290,25 @@ export async function updateRouter(id: string, input: UpdateRouterInput) {
 // Pelanggan, alert, dan log jaringan memakai FK `restrict`: router yang masih dipakai TIDAK terhapus diam-diam.
 // Tanpa `force` jawabannya 409 berisi jumlah datanya; dengan `force` semuanya dihapus dalam satu transaksi
 // (gagal di tengah = tidak ada yang terhapus). Data deret waktu, syslog, dan exporter ikut terhapus lewat cascade.
-export async function deleteRouter(id: string, { force = false }: { force?: boolean } = {}) {
+export async function deleteRouter(
+  id: string,
+  { force = false }: { force?: boolean } = {},
+) {
   return db.transaction(async (tx) => {
-    const used = async (table: typeof customers | typeof alerts | typeof networkLogs) => {
-      const [row] = await tx.select({ n: count() }).from(table).where(eq(table.routerId, id));
+    const used = async (
+      table: typeof customers | typeof alerts | typeof networkLogs,
+    ) => {
+      const [row] = await tx
+        .select({ n: count() })
+        .from(table)
+        .where(eq(table.routerId, id));
       return row.n;
     };
-    const usage = { pelanggan: await used(customers), alert: await used(alerts), logJaringan: await used(networkLogs) };
+    const usage = {
+      pelanggan: await used(customers),
+      alert: await used(alerts),
+      logJaringan: await used(networkLogs),
+    };
     const inUse = Object.values(usage).some((n) => n > 0);
     if (inUse && !force) {
       throw new ApiError(
@@ -280,7 +322,10 @@ export async function deleteRouter(id: string, { force = false }: { force?: bool
       await tx.delete(alerts).where(eq(alerts.routerId, id));
       await tx.delete(customers).where(eq(customers.routerId, id));
     }
-    const [deleted] = await tx.delete(routers).where(eq(routers.id, id)).returning({ id: routers.id });
+    const [deleted] = await tx
+      .delete(routers)
+      .where(eq(routers.id, id))
+      .returning({ id: routers.id });
     if (!deleted) {
       throw new ApiError(404, "ROUTER_NOT_FOUND", "Router tidak ditemukan.");
     }

@@ -34,11 +34,14 @@ export function RouterPingTool({
     ]);
 
     try {
-      const res = await fetch(`/api/routers/${encodeURIComponent(routerId)}/ping`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target: target.trim(), count }),
-      });
+      const res = await fetch(
+        `/api/routers/${encodeURIComponent(routerId)}/ping`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target: target.trim(), count }),
+        },
+      );
       const json = (await res.json().catch(() => null)) as {
         data?: RouterPingResult;
         error?: { message?: string };
@@ -54,7 +57,10 @@ export function RouterPingTool({
         setTerminalLog((prev) => [...prev, ...pingData.terminalLines]);
       }
     } catch {
-      setTerminalLog((prev) => [...prev, "[ERROR] Server aplikasi tidak merespons permintaan ping."]);
+      setTerminalLog((prev) => [
+        ...prev,
+        "[ERROR] Server aplikasi tidak merespons permintaan ping.",
+      ]);
     } finally {
       setRunning(false);
     }
@@ -70,15 +76,26 @@ export function RouterPingTool({
     ]);
 
     try {
-      const res = await fetch(`/api/routers/${encodeURIComponent(routerId)}/test`, { method: "POST" });
+      const res = await fetch(
+        `/api/routers/${encodeURIComponent(routerId)}/test`,
+        { method: "POST" },
+      );
       const json = (await res.json().catch(() => null)) as {
-        data?: { ok?: boolean; message?: string; latencyMs?: number; code?: string };
+        data?: {
+          ok?: boolean;
+          message?: string;
+          latencyMs?: number;
+          code?: string;
+        };
         error?: { message?: string };
       } | null;
 
       const restData = json?.data;
       if (res.status === 403) {
-        setTerminalLog((prev) => [...prev, "[REST] 403 Forbidden: Izin router:manage dibutuhkan."]);
+        setTerminalLog((prev) => [
+          ...prev,
+          "[REST] 403 Forbidden: Izin router:manage dibutuhkan.",
+        ]);
       } else if (!res.ok || !restData) {
         setTerminalLog((prev) => [
           ...prev,
@@ -96,7 +113,10 @@ export function RouterPingTool({
         ]);
       }
     } catch {
-      setTerminalLog((prev) => [...prev, "[REST] Gagal menghubungi endpoint server aplikasi."]);
+      setTerminalLog((prev) => [
+        ...prev,
+        "[REST] Gagal menghubungi endpoint server aplikasi.",
+      ]);
     } finally {
       setRestTesting(false);
     }
@@ -108,7 +128,9 @@ export function RouterPingTool({
       <div className="p-3.5 rounded-xl bg-card border border-border flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-1 items-center gap-2">
-            <span className="text-muted-foreground font-semibold text-[11px] whitespace-nowrap">Target Host / IP:</span>
+            <span className="text-muted-foreground font-semibold text-[11px] whitespace-nowrap">
+              Target Host / IP:
+            </span>
             <Input
               type="text"
               value={target}
@@ -147,7 +169,9 @@ export function RouterPingTool({
               disabled={restTesting}
               className="h-8 px-2.5 text-xs gap-1.5"
             >
-              <Activity className={`size-3 text-cyan-400 ${restTesting ? "animate-pulse" : ""}`} />
+              <Activity
+                className={`size-3 text-cyan-400 ${restTesting ? "animate-pulse" : ""}`}
+              />
               <span>{restTesting ? "Menguji..." : "Uji REST API"}</span>
             </Button>
           </div>
@@ -185,7 +209,9 @@ export function RouterPingTool({
         <div className="flex items-center justify-between pb-2 border-b border-zinc-800/60">
           <div className="flex items-center gap-2 text-zinc-400 text-[11px]">
             <Terminal className="size-3.5 text-emerald-400" />
-            <span className="font-semibold text-white">Terminal Ping RouterOS: {routerHost}</span>
+            <span className="font-semibold text-white">
+              Terminal Ping RouterOS: {routerHost}
+            </span>
           </div>
           <button
             type="button"
@@ -204,7 +230,8 @@ export function RouterPingTool({
               className={`${
                 line.includes("[ERROR]")
                   ? "text-rose-400 font-medium"
-                  : line.includes("[REST] OK") || line.includes("0% packet loss")
+                  : line.includes("[REST] OK") ||
+                      line.includes("0% packet loss")
                     ? "text-emerald-400"
                     : line.startsWith("---")
                       ? "text-cyan-400"

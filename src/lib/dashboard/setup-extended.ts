@@ -90,7 +90,8 @@ export const SETUP_DATA_SOURCE_REGISTRY: readonly DataSourceEntry[] = [
     module: "Papan Metrik Dashboard",
     targetDevice: "Router & OLT & Billing Aggregator",
     status: "dummy",
-    readPath: "src/lib/dashboard/metric-board-data.ts (generateMockDashboardMetrics)",
+    readPath:
+      "src/lib/dashboard/metric-board-data.ts (generateMockDashboardMetrics)",
     writePath: "-",
     envKey: "DASHBOARD_DATA",
     notes:

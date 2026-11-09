@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { ApiError, readJson, withApiPermission, withApiSession } from "@/lib/api";
+import {
+  ApiError,
+  readJson,
+  withApiPermission,
+  withApiSession,
+} from "@/lib/api";
 import { alertKinds, alertSeverities } from "@/db/schema";
 import {
   DEFAULT_LIMIT,
@@ -36,8 +41,10 @@ export const POST = (request: Request) =>
       raw && typeof raw === "object" && !Array.isArray(raw)
         ? (raw as Record<string, unknown>)
         : {};
-    const str = (k: string) => (typeof body[k] === "string" ? (body[k] as string) : undefined);
-    const num = (k: string) => (typeof body[k] === "number" ? (body[k] as number) : undefined);
+    const str = (k: string) =>
+      typeof body[k] === "string" ? (body[k] as string) : undefined;
+    const num = (k: string) =>
+      typeof body[k] === "number" ? (body[k] as number) : undefined;
     const result = await createAlert({
       type: body.type as CreateAlertInput["type"],
       severity: body.severity as CreateAlertInput["severity"],

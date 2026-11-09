@@ -46,76 +46,76 @@ export async function getCustomerEvidence(
     minEventRows,
     customerRow,
   ] = await Promise.all([
-      db
-        .select({
-          bucketStart: customerTrafficSamples.bucketStart,
-          samples: customerTrafficSamples.samples,
-          downloadMbpsAvg: customerTrafficSamples.downloadMbpsAvg,
-          uploadMbpsAvg: customerTrafficSamples.uploadMbpsAvg,
-          downloadMbpsMax: customerTrafficSamples.downloadMbpsMax,
-          uploadMbpsMax: customerTrafficSamples.uploadMbpsMax,
-        })
-        .from(customerTrafficSamples)
-        .where(
-          and(
-            eq(customerTrafficSamples.customerId, customerId),
-            gte(customerTrafficSamples.bucketStart, trafficFromDate),
-            lt(customerTrafficSamples.bucketStart, toDate),
-          ),
-        )
-        .orderBy(asc(customerTrafficSamples.bucketStart)),
+    db
+      .select({
+        bucketStart: customerTrafficSamples.bucketStart,
+        samples: customerTrafficSamples.samples,
+        downloadMbpsAvg: customerTrafficSamples.downloadMbpsAvg,
+        uploadMbpsAvg: customerTrafficSamples.uploadMbpsAvg,
+        downloadMbpsMax: customerTrafficSamples.downloadMbpsMax,
+        uploadMbpsMax: customerTrafficSamples.uploadMbpsMax,
+      })
+      .from(customerTrafficSamples)
+      .where(
+        and(
+          eq(customerTrafficSamples.customerId, customerId),
+          gte(customerTrafficSamples.bucketStart, trafficFromDate),
+          lt(customerTrafficSamples.bucketStart, toDate),
+        ),
+      )
+      .orderBy(asc(customerTrafficSamples.bucketStart)),
 
-      db
-        .select({
-          at: customerConnectionEvents.occurredAt,
-          kind: customerConnectionEvents.kind,
-          source: customerConnectionEvents.source,
-        })
-        .from(customerConnectionEvents)
-        .where(
-          and(
-            eq(customerConnectionEvents.customerId, customerId),
-            gte(customerConnectionEvents.occurredAt, lookbackFromDate),
-            lte(customerConnectionEvents.occurredAt, toDate),
-          ),
-        )
-        .orderBy(asc(customerConnectionEvents.occurredAt)),
+    db
+      .select({
+        at: customerConnectionEvents.occurredAt,
+        kind: customerConnectionEvents.kind,
+        source: customerConnectionEvents.source,
+      })
+      .from(customerConnectionEvents)
+      .where(
+        and(
+          eq(customerConnectionEvents.customerId, customerId),
+          gte(customerConnectionEvents.occurredAt, lookbackFromDate),
+          lte(customerConnectionEvents.occurredAt, toDate),
+        ),
+      )
+      .orderBy(asc(customerConnectionEvents.occurredAt)),
 
-      db
-        .select({
-          at: customerConnectionEvents.occurredAt,
-          kind: customerConnectionEvents.kind,
-          source: customerConnectionEvents.source,
-        })
-        .from(customerConnectionEvents)
-        .where(
-          and(
-            eq(customerConnectionEvents.customerId, customerId),
-            lt(customerConnectionEvents.occurredAt, lookbackFromDate),
-          ),
-        )
-        .orderBy(desc(customerConnectionEvents.occurredAt))
-        .limit(1),
+    db
+      .select({
+        at: customerConnectionEvents.occurredAt,
+        kind: customerConnectionEvents.kind,
+        source: customerConnectionEvents.source,
+      })
+      .from(customerConnectionEvents)
+      .where(
+        and(
+          eq(customerConnectionEvents.customerId, customerId),
+          lt(customerConnectionEvents.occurredAt, lookbackFromDate),
+        ),
+      )
+      .orderBy(desc(customerConnectionEvents.occurredAt))
+      .limit(1),
 
-      db
-        .select({
-          min: min(customerTrafficSamples.bucketStart),
-        })
-        .from(customerTrafficSamples)
-        .where(eq(customerTrafficSamples.customerId, customerId)),
+    db
+      .select({
+        min: min(customerTrafficSamples.bucketStart),
+      })
+      .from(customerTrafficSamples)
+      .where(eq(customerTrafficSamples.customerId, customerId)),
 
-      db
-        .select({
-          min: min(customerConnectionEvents.occurredAt),
-        })
-        .from(customerConnectionEvents)
-        .where(eq(customerConnectionEvents.customerId, customerId)),
-      db
-        .select({ routerId: customers.routerId })
-        .from(customers)
-        .where(eq(customers.id, customerId))
-        .limit(1),
-    ]);
+    db
+      .select({
+        min: min(customerConnectionEvents.occurredAt),
+      })
+      .from(customerConnectionEvents)
+      .where(eq(customerConnectionEvents.customerId, customerId)),
+    db
+      .select({ routerId: customers.routerId })
+      .from(customers)
+      .where(eq(customers.id, customerId))
+      .limit(1),
+  ]);
 
   const allBuckets: TrafficBucketInput[] = bucketRows.map((r) => ({
     bucketStart: Math.floor(r.bucketStart.getTime() / 1000),
@@ -244,7 +244,13 @@ export async function getCustomerEvidence(
       for (const oId of otherIds) {
         const cEvents = eventsByCust.get(oId) ?? [];
         const cPrior = priorByCust.get(oId) ?? null;
-        const cOutages = buildOutages(cEvents, cPrior, lookbackStart, to, nowSec);
+        const cOutages = buildOutages(
+          cEvents,
+          cPrior,
+          lookbackStart,
+          to,
+          nowSec,
+        );
         othersDownIntervals.push(
           cOutages.map((o) => ({ from: o.from, to: o.to })),
         );

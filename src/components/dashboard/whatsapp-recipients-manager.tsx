@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,7 +47,15 @@ import {
   subscribeWhatsappConfig,
 } from "@/lib/dashboard/whatsapp-registry";
 
-function Stat({ label, value, testId }: { label: string; value: string | number; testId: string }) {
+function Stat({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string | number;
+  testId: string;
+}) {
   return (
     <Card>
       <CardContent className="space-y-1 p-4">
@@ -69,16 +83,24 @@ export function WhatsappRecipientsManager() {
   const [formError, setFormError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<WhatsappRecipient | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
-  const personalActive = recipients.filter((r) => r.type === "personal" && r.active).length;
-  const groupActive = recipients.filter((r) => r.type === "group" && r.active).length;
+  const personalActive = recipients.filter(
+    (r) => r.type === "personal" && r.active,
+  ).length;
+  const groupActive = recipients.filter(
+    (r) => r.type === "group" && r.active,
+  ).length;
 
   // Validasi instan nomor/ID grup selagi mengetik.
   const normalized = normalizeRecipientPhone(phone, type);
   const phoneInvalid = touched && phone.trim() !== "" && normalized === "";
 
-  const persist = (list: WhatsappRecipient[]) => saveWhatsappConfig({ ...config, recipients: list });
+  const persist = (list: WhatsappRecipient[]) =>
+    saveWhatsappConfig({ ...config, recipients: list });
 
   function add() {
     const r = addRecipient(recipients, { name, phone, type });
@@ -131,12 +153,26 @@ export function WhatsappRecipientsManager() {
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Total Penerima" value={recipients.length} testId="wa-stat-total" />
-        <Stat label="Kontak Personal Aktif" value={personalActive} testId="wa-stat-personal" />
-        <Stat label="Grup WhatsApp Aktif" value={groupActive} testId="wa-stat-group" />
+        <Stat
+          label="Total Penerima"
+          value={recipients.length}
+          testId="wa-stat-total"
+        />
+        <Stat
+          label="Kontak Personal Aktif"
+          value={personalActive}
+          testId="wa-stat-personal"
+        />
+        <Stat
+          label="Grup WhatsApp Aktif"
+          value={groupActive}
+          testId="wa-stat-group"
+        />
         <Card>
           <CardContent className="space-y-1 p-4">
-            <p className="text-xs text-muted-foreground">Status Notifikasi Sistem</p>
+            <p className="text-xs text-muted-foreground">
+              Status Notifikasi Sistem
+            </p>
             <p data-testid="wa-stat-enabled">
               <Badge
                 variant="outline"
@@ -201,7 +237,11 @@ export function WhatsappRecipientsManager() {
                 id="waMgrPhone"
                 value={phone}
                 inputMode={type === "personal" ? "tel" : "text"}
-                placeholder={type === "personal" ? "081234567890" : "120363012345678901@g.us"}
+                placeholder={
+                  type === "personal"
+                    ? "081234567890"
+                    : "120363012345678901@g.us"
+                }
                 aria-invalid={phoneInvalid || formError ? true : undefined}
                 onChange={(e) => {
                   setPhone(e.target.value);
@@ -217,17 +257,27 @@ export function WhatsappRecipientsManager() {
             </Button>
           </form>
           {phoneInvalid && !formError && (
-            <p role="alert" data-testid="wa-phone-invalid" className="text-xs text-destructive">
+            <p
+              role="alert"
+              data-testid="wa-phone-invalid"
+              className="text-xs text-destructive"
+            >
               {type === "group"
                 ? "ID grup tidak valid. Contoh: 120363012345678901@g.us"
                 : "Nomor tidak valid. Contoh: 081234567890 atau +6281234567890."}
             </p>
           )}
-          {phone.trim() !== "" && normalized !== "" && normalized !== phone.trim() && (
-            <p data-testid="wa-phone-normalized" className="text-xs text-muted-foreground">
-              Akan disimpan sebagai <span className="font-mono">{normalized}</span>
-            </p>
-          )}
+          {phone.trim() !== "" &&
+            normalized !== "" &&
+            normalized !== phone.trim() && (
+              <p
+                data-testid="wa-phone-normalized"
+                className="text-xs text-muted-foreground"
+              >
+                Akan disimpan sebagai{" "}
+                <span className="font-mono">{normalized}</span>
+              </p>
+            )}
           {formError && (
             <p role="alert" className="text-xs text-destructive">
               {formError}
@@ -265,9 +315,13 @@ export function WhatsappRecipientsManager() {
                     <TableRow key={r.id} data-testid="wa-recipient-row">
                       <TableCell className="font-medium">{r.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{r.type === "group" ? "Grup" : "Personal"}</Badge>
+                        <Badge variant="outline">
+                          {r.type === "group" ? "Grup" : "Personal"}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{r.phone}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {r.phone}
+                      </TableCell>
                       <TableCell>
                         <label className="inline-flex items-center gap-2 text-xs">
                           <input
@@ -275,7 +329,9 @@ export function WhatsappRecipientsManager() {
                             role="switch"
                             checked={r.active}
                             aria-label={`Aktifkan ${r.name}`}
-                            onChange={() => persist(toggleRecipient(recipients, r.id))}
+                            onChange={() =>
+                              persist(toggleRecipient(recipients, r.id))
+                            }
                             className="size-4"
                           />
                           {r.active ? "Aktif" : "Nonaktif"}
@@ -324,12 +380,16 @@ export function WhatsappRecipientsManager() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={toDelete !== null} onOpenChange={(o) => !o && setToDelete(null)}>
+      <AlertDialog
+        open={toDelete !== null}
+        onOpenChange={(o) => !o && setToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus penerima?</AlertDialogTitle>
             <AlertDialogDescription>
-              {toDelete?.name} ({toDelete?.phone}) tidak akan lagi menerima notifikasi alert.
+              {toDelete?.name} ({toDelete?.phone}) tidak akan lagi menerima
+              notifikasi alert.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

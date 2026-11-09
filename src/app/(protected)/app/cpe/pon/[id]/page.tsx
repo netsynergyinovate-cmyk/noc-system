@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, AlertTriangle, ArrowLeft, CheckCircle2, Radio, TrendingDown, Zap } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Radio,
+  TrendingDown,
+  Zap,
+} from "lucide-react";
 import { requireSession } from "@/lib/session";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -18,26 +26,39 @@ const syncFormat = new Intl.DateTimeFormat("id-ID", {
 
 export const metadata: Metadata = { title: "Detail Port PON" };
 
-export default async function PonPortPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PonPortPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   await requireSession();
   const { id } = await params;
   const pon = await resolvePonPortDetail(id);
   if (!pon) {
     return (
       <div className="mx-auto flex max-w-xl flex-col items-center gap-4 py-16 text-center">
-        <AlertTriangle className="size-10 text-destructive" aria-hidden="true" />
-        <h1 className="text-2xl font-semibold tracking-tight">Port PON Tidak Ditemukan</h1>
+        <AlertTriangle
+          className="size-10 text-destructive"
+          aria-hidden="true"
+        />
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Port PON Tidak Ditemukan
+        </h1>
         <p className="text-sm text-muted-foreground">
           ID port PON tidak valid atau port tidak terdaftar pada OLT mana pun.
         </p>
-        <Link href="/app/cpe" className={buttonVariants({ variant: "outline" })}>
+        <Link
+          href="/app/cpe"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Kembali ke OLT &amp; CPE
         </Link>
       </div>
     );
   }
   const port = getPonPortOpticalStatus(pon.rxPowerDbm, pon.txPowerDbm);
-  const ratio = pon.totalOnu > 0 ? Math.round((pon.onlineOnu / pon.totalOnu) * 100) : 0;
+  const ratio =
+    pon.totalOnu > 0 ? Math.round((pon.onlineOnu / pon.totalOnu) * 100) : 0;
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -70,7 +91,10 @@ export default async function PonPortPage({ params }: { params: Promise<{ id: st
           <span className="font-mono text-xs">Host: {pon.oltHost}</span>
           <span className="text-xs">
             Waktu sinkronisasi data:{" "}
-            <time dateTime={new Date(pon.syncedAt * 1000).toISOString()} className="font-medium text-foreground">
+            <time
+              dateTime={new Date(pon.syncedAt * 1000).toISOString()}
+              className="font-medium text-foreground"
+            >
               {syncFormat.format(new Date(pon.syncedAt * 1000))} WIB
             </time>
           </span>
@@ -83,28 +107,44 @@ export default async function PonPortPage({ params }: { params: Promise<{ id: st
           className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
         >
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-          Port PON sedang nonaktif (down). Data optik dan ONU mungkin tidak terbaru.
+          Port PON sedang nonaktif (down). Data optik dan ONU mungkin tidak
+          terbaru.
         </div>
       )}
 
-      <section aria-label="Ringkasan port PON" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        aria-label="Ringkasan port PON"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         <MetricCard
           label="TX Power OLT"
           value={pon.txPowerDbm != null ? formatDbm(pon.txPowerDbm) : "�"}
-          hint={port.isTxNormal ? "Daya pancar port" : "Di luar ambang (normal +1.5 s/d +5.0 dBm)"}
+          hint={
+            port.isTxNormal
+              ? "Daya pancar port"
+              : "Di luar ambang (normal +1.5 s/d +5.0 dBm)"
+          }
           Icon={port.isTxNormal ? Zap : AlertTriangle}
           tone={port.isTxNormal ? "neutral" : "danger"}
         />
         <MetricCard
           label="RX Power SFP"
           value={pon.rxPowerDbm != null ? formatDbm(pon.rxPowerDbm) : "�"}
-          hint={port.isRxNormal ? "Rata-rata dari ONU online" : "Di luar ambang (normal -28.0 s/d -8.0 dBm)"}
+          hint={
+            port.isRxNormal
+              ? "Rata-rata dari ONU online"
+              : "Di luar ambang (normal -28.0 s/d -8.0 dBm)"
+          }
           Icon={port.isRxNormal ? Activity : AlertTriangle}
           tone={port.isRxNormal ? "neutral" : "danger"}
         />
         <MetricCard
           label="Redaman Rata-rata"
-          value={pon.attenuationDb != null ? `${pon.attenuationDb.toFixed(1)} dB` : "�"}
+          value={
+            pon.attenuationDb != null
+              ? `${pon.attenuationDb.toFixed(1)} dB`
+              : "�"
+          }
           hint="TX dikurangi RX"
           Icon={TrendingDown}
         />

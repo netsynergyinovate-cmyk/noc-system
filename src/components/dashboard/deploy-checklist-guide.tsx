@@ -34,7 +34,13 @@ function CommandResultCard({
   result,
   onClear,
 }: {
-  result: { ok: boolean; code?: number; stdout?: string; stderr?: string; error?: string };
+  result: {
+    ok: boolean;
+    code?: number;
+    stdout?: string;
+    stderr?: string;
+    error?: string;
+  };
   onClear: () => void;
 }) {
   return (
@@ -43,11 +49,13 @@ function CommandResultCard({
         <div className="flex items-center gap-2">
           {result.ok ? (
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Berhasil (Exit Code {result.code ?? 0})
+              <CheckCircle2 className="h-3.5 w-3.5" /> Berhasil (Exit Code{" "}
+              {result.code ?? 0})
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-red-400 font-bold">
-              <AlertTriangle className="h-3.5 w-3.5" /> Gagal (Exit Code {result.code ?? 1})
+              <AlertTriangle className="h-3.5 w-3.5" /> Gagal (Exit Code{" "}
+              {result.code ?? 1})
             </span>
           )}
         </div>
@@ -61,25 +69,48 @@ function CommandResultCard({
       </div>
 
       <div className="p-3 space-y-1.5 max-h-56 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
-        {result.stdout && <div className="text-emerald-300 font-mono">{result.stdout}</div>}
-        {result.stderr && <div className="text-amber-300/90 border-t border-zinc-800/60 pt-1 font-mono">{result.stderr}</div>}
-        {result.error && <div className="text-red-400 font-bold">{result.error}</div>}
+        {result.stdout && (
+          <div className="text-emerald-300 font-mono">{result.stdout}</div>
+        )}
+        {result.stderr && (
+          <div className="text-amber-300/90 border-t border-zinc-800/60 pt-1 font-mono">
+            {result.stderr}
+          </div>
+        )}
+        {result.error && (
+          <div className="text-red-400 font-bold">{result.error}</div>
+        )}
         {!result.stdout && !result.stderr && !result.error && (
-          <div className="text-zinc-500 italic">Perintah selesai dieksekusi tanpa keluaran teks.</div>
+          <div className="text-zinc-500 italic">
+            Perintah selesai dieksekusi tanpa keluaran teks.
+          </div>
         )}
       </div>
     </div>
   );
 }
-export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployChecklistGuideProps) {
+export function DeployChecklistGuide({
+  vpsHost = "192.168.0.220",
+}: DeployChecklistGuideProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<string | null>("quick-exec");
+  const [expandedSection, setExpandedSection] = useState<string | null>(
+    "quick-exec",
+  );
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
 
   // State Eksekusi SSH Langsung dari UI
   const [executingKey, setExecutingKey] = useState<string | null>(null);
   const [commandOutputs, setCommandOutputs] = useState<
-    Record<string, { ok: boolean; code?: number; stdout?: string; stderr?: string; error?: string }>
+    Record<
+      string,
+      {
+        ok: boolean;
+        code?: number;
+        stdout?: string;
+        stderr?: string;
+        error?: string;
+      }
+    >
   >({});
   const [customCommand, setCustomCommand] = useState("");
 
@@ -93,7 +124,9 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
   function generateSecureKey() {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    const hex = Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const hex = Array.from(array, (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
     setGeneratedKey(hex);
   }
 
@@ -110,7 +143,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
       if (!res.ok) {
         setCommandOutputs((prev) => ({
           ...prev,
-          [keyId]: { ok: false, error: json.error || `HTTP ${res.status} gagal mengeksekusi perintah.` },
+          [keyId]: {
+            ok: false,
+            error:
+              json.error || `HTTP ${res.status} gagal mengeksekusi perintah.`,
+          },
         }));
       } else {
         setCommandOutputs((prev) => ({
@@ -126,7 +163,10 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
     } catch (err: unknown) {
       setCommandOutputs((prev) => ({
         ...prev,
-        [keyId]: { ok: false, error: err instanceof Error ? err.message : String(err) },
+        [keyId]: {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
       }));
     } finally {
       setExecutingKey(null);
@@ -160,11 +200,16 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                 Pusat Kontrol Eksekusi SSH & Panduan Kredensial OAuth
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Kirim perintah konfigurasi langsung ke VPS via SSH, panduan penyetelan OAuth (Logto / Google / GitHub), dan generator kunci rahasia.
+                Kirim perintah konfigurasi langsung ke VPS via SSH, panduan
+                penyetelan OAuth (Logto / Google / GitHub), dan generator kunci
+                rahasia.
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="border-primary/30 text-primary text-xs w-fit">
+          <Badge
+            variant="outline"
+            className="border-primary/30 text-primary text-xs w-fit"
+          >
             SSH Controller & Guide
           </Badge>
         </div>
@@ -175,24 +220,34 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-emerald-400" />
-            <h4 className="text-sm font-bold">Kirim Perintah Langsung ke VPS via SSH</h4>
+            <h4 className="text-sm font-bold">
+              Kirim Perintah Langsung ke VPS via SSH
+            </h4>
           </div>
-          <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-400">
+          <Badge
+            variant="outline"
+            className="text-[10px] border-zinc-700 text-zinc-400"
+          >
             Target: netsi@{vpsHost}
           </Badge>
         </div>
 
         {/* Input Bar Perintah Bebas Custom */}
         <div className="space-y-1.5">
-          <span className="text-xs font-semibold text-zinc-300">Jalankan Perintah Kustom di VPS:</span>
+          <span className="text-xs font-semibold text-zinc-300">
+            Jalankan Perintah Kustom di VPS:
+          </span>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <span className="absolute left-2.5 top-2 font-mono text-emerald-400 text-xs">$</span>
+              <span className="absolute left-2.5 top-2 font-mono text-emerald-400 text-xs">
+                $
+              </span>
               <Input
                 value={customCommand}
                 onChange={(e) => setCustomCommand(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") runSshCommand(customCommand, "custom-cmd");
+                  if (e.key === "Enter")
+                    runSshCommand(customCommand, "custom-cmd");
                 }}
                 placeholder="misal: sudo systemctl status noc-web atau uname -a"
                 className="pl-6 h-8 font-mono text-xs bg-zinc-900 border-zinc-800 text-zinc-100 focus:border-emerald-500"
@@ -204,26 +259,40 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
               onClick={() => runSshCommand(customCommand, "custom-cmd")}
               className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-500 font-semibold shrink-0"
             >
-              {executingKey === "custom-cmd" ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              {executingKey === "custom-cmd" ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
               Kirim ke VPS
             </Button>
           </div>
           {commandOutputs["custom-cmd"] && (
             <CommandResultCard
               result={commandOutputs["custom-cmd"]}
-              onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["custom-cmd"]; return n; })}
+              onClear={() =>
+                setCommandOutputs((prev) => {
+                  const n = { ...prev };
+                  delete n["custom-cmd"];
+                  return n;
+                })
+              }
             />
           )}
         </div>
 
         {/* Daftar Tombol Perintah 1-Klik Siap Eksekusi */}
         <div className="space-y-3 pt-2 border-t border-zinc-800/80">
-          <span className="text-xs font-semibold text-zinc-300 block">Perintah Konfigurasi 1-Klik:</span>
+          <span className="text-xs font-semibold text-zinc-300 block">
+            Perintah Konfigurasi 1-Klik:
+          </span>
 
           {/* Perintah 1: Buka Port Firewall UFW */}
           <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span className="font-semibold text-zinc-200">A. Buka Port Firewall VPS (3000, 8080, 2055, 514, 22)</span>
+              <span className="font-semibold text-zinc-200">
+                A. Buka Port Firewall VPS (3000, 8080, 2055, 514, 22)
+              </span>
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="ghost"
@@ -231,7 +300,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   className="h-6 text-[10px] gap-1 px-2 border border-zinc-700 text-zinc-300"
                   onClick={() => copyText(cmdUfwAll, "ufw-cmd")}
                 >
-                  {copiedKey === "ufw-cmd" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedKey === "ufw-cmd" ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                   Salin
                 </Button>
                 <Button
@@ -240,7 +313,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   onClick={() => runSshCommand(cmdUfwAll, "cmd-ufw")}
                   className="h-6 text-[10px] gap-1 px-2.5 bg-primary font-semibold"
                 >
-                  {executingKey === "cmd-ufw" ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  {executingKey === "cmd-ufw" ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
                   Jalankan via SSH
                 </Button>
               </div>
@@ -251,7 +328,13 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
             {commandOutputs["cmd-ufw"] && (
               <CommandResultCard
                 result={commandOutputs["cmd-ufw"]}
-                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-ufw"]; return n; })}
+                onClear={() =>
+                  setCommandOutputs((prev) => {
+                    const n = { ...prev };
+                    delete n["cmd-ufw"];
+                    return n;
+                  })
+                }
               />
             )}
           </div>
@@ -259,7 +342,9 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
           {/* Perintah 2: Setel URL Server ke .env VPS */}
           <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span className="font-semibold text-zinc-200">B. Setel URL Server ({appBaseUrl}) ke .env VPS & Restart Web</span>
+              <span className="font-semibold text-zinc-200">
+                B. Setel URL Server ({appBaseUrl}) ke .env VPS & Restart Web
+              </span>
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="ghost"
@@ -267,7 +352,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   className="h-6 text-[10px] gap-1 px-2 border border-zinc-700 text-zinc-300"
                   onClick={() => copyText(cmdSetUrl, "set-url-cmd")}
                 >
-                  {copiedKey === "set-url-cmd" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedKey === "set-url-cmd" ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                   Salin
                 </Button>
                 <Button
@@ -276,7 +365,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   onClick={() => runSshCommand(cmdSetUrl, "cmd-set-url")}
                   className="h-6 text-[10px] gap-1 px-2.5 bg-primary font-semibold"
                 >
-                  {executingKey === "cmd-set-url" ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  {executingKey === "cmd-set-url" ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
                   Jalankan via SSH
                 </Button>
               </div>
@@ -287,7 +380,13 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
             {commandOutputs["cmd-set-url"] && (
               <CommandResultCard
                 result={commandOutputs["cmd-set-url"]}
-                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-set-url"]; return n; })}
+                onClear={() =>
+                  setCommandOutputs((prev) => {
+                    const n = { ...prev };
+                    delete n["cmd-set-url"];
+                    return n;
+                  })
+                }
               />
             )}
           </div>
@@ -295,7 +394,9 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
           {/* Perintah 3: Cek Status Layanan di Server */}
           <div className="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span className="font-semibold text-zinc-200">C. Periksa Status Layanan, Versi, dan Token Monitor</span>
+              <span className="font-semibold text-zinc-200">
+                C. Periksa Status Layanan, Versi, dan Token Monitor
+              </span>
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="ghost"
@@ -303,7 +404,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   className="h-6 text-[10px] gap-1 px-2 border border-zinc-700 text-zinc-300"
                   onClick={() => copyText(cmdStatus, "status-cmd")}
                 >
-                  {copiedKey === "status-cmd" ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedKey === "status-cmd" ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                   Salin
                 </Button>
                 <Button
@@ -312,7 +417,11 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
                   onClick={() => runSshCommand(cmdStatus, "cmd-status")}
                   className="h-6 text-[10px] gap-1 px-2.5 bg-primary font-semibold"
                 >
-                  {executingKey === "cmd-status" ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                  {executingKey === "cmd-status" ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Play className="h-3 w-3" />
+                  )}
                   Jalankan via SSH
                 </Button>
               </div>
@@ -323,7 +432,13 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
             {commandOutputs["cmd-status"] && (
               <CommandResultCard
                 result={commandOutputs["cmd-status"]}
-                onClear={() => setCommandOutputs((prev) => { const n = { ...prev }; delete n["cmd-status"]; return n; })}
+                onClear={() =>
+                  setCommandOutputs((prev) => {
+                    const n = { ...prev };
+                    delete n["cmd-status"];
+                    return n;
+                  })
+                }
               />
             )}
           </div>
@@ -335,28 +450,43 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2">
             <Key className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-bold text-foreground">Tautan Pendaftaran OAuth Provider & Generator Kunci</h4>
+            <h4 className="text-sm font-bold text-foreground">
+              Tautan Pendaftaran OAuth Provider & Generator Kunci
+            </h4>
           </div>
-          <Badge variant="outline" className="text-xs">Tautan Langsung</Badge>
+          <Badge variant="outline" className="text-xs">
+            Tautan Langsung
+          </Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           {/* Card A: Google Cloud Console */}
           <div className="p-3.5 rounded-lg border bg-background space-y-2 flex flex-col justify-between">
             <div className="space-y-1.5">
-              <span className="font-bold text-foreground block">1. Google Cloud Credentials</span>
+              <span className="font-bold text-foreground block">
+                1. Google Cloud Credentials
+              </span>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Buat OAuth 2.0 Client ID untuk autentikasi Google login pengguna atau agen.
+                Buat OAuth 2.0 Client ID untuk autentikasi Google login pengguna
+                atau agen.
               </p>
               <div className="font-mono text-[10px] bg-muted/40 p-1.5 rounded border break-all">
-                Redirect URI: <span className="text-primary">{logtoEndpointSample}/callback/google</span>
+                Redirect URI:{" "}
+                <span className="text-primary">
+                  {logtoEndpointSample}/callback/google
+                </span>
               </div>
             </div>
             <Button
               size="sm"
               variant="outline"
               className="w-full text-xs gap-1.5 h-8 mt-2"
-              onClick={() => window.open("https://console.cloud.google.com/apis/credentials", "_blank")}
+              onClick={() =>
+                window.open(
+                  "https://console.cloud.google.com/apis/credentials",
+                  "_blank",
+                )
+              }
             >
               <ExternalLink className="h-3.5 w-3.5" /> Buka Google Console
             </Button>
@@ -365,19 +495,27 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
           {/* Card B: GitHub Developer Settings */}
           <div className="p-3.5 rounded-lg border bg-background space-y-2 flex flex-col justify-between">
             <div className="space-y-1.5">
-              <span className="font-bold text-foreground block">2. GitHub Developer OAuth Apps</span>
+              <span className="font-bold text-foreground block">
+                2. GitHub Developer OAuth Apps
+              </span>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Buat OAuth App untuk login otomatis akun Developer NOC System via GitHub.
+                Buat OAuth App untuk login otomatis akun Developer NOC System
+                via GitHub.
               </p>
               <div className="font-mono text-[10px] bg-muted/40 p-1.5 rounded border break-all">
-                Callback URL: <span className="text-primary">{logtoEndpointSample}/callback/github</span>
+                Callback URL:{" "}
+                <span className="text-primary">
+                  {logtoEndpointSample}/callback/github
+                </span>
               </div>
             </div>
             <Button
               size="sm"
               variant="outline"
               className="w-full text-xs gap-1.5 h-8 mt-2"
-              onClick={() => window.open("https://github.com/settings/developers", "_blank")}
+              onClick={() =>
+                window.open("https://github.com/settings/developers", "_blank")
+              }
             >
               <ExternalLink className="h-3.5 w-3.5" /> Buka GitHub Settings
             </Button>
@@ -386,12 +524,16 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
           {/* Card C: Logto Admin Console */}
           <div className="p-3.5 rounded-lg border bg-background space-y-2 flex flex-col justify-between">
             <div className="space-y-1.5">
-              <span className="font-bold text-foreground block">3. Logto Admin Console (SSO)</span>
+              <span className="font-bold text-foreground block">
+                3. Logto Admin Console (SSO)
+              </span>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Kelola aplikasi SSO dan konektor sosial terpusat di instance Logto Anda.
+                Kelola aplikasi SSO dan konektor sosial terpusat di instance
+                Logto Anda.
               </p>
               <div className="font-mono text-[10px] bg-muted/40 p-1.5 rounded border break-all">
-                Redirect URI: <span className="text-primary">{logtoCallback}</span>
+                Redirect URI:{" "}
+                <span className="text-primary">{logtoCallback}</span>
               </div>
             </div>
             <Button
@@ -410,22 +552,41 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Generator Kunci Enkripsi 32-Byte Acak (AES-256 / Secret)
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> Generator
+                Kunci Enkripsi 32-Byte Acak (AES-256 / Secret)
               </span>
               <p className="text-[11px] text-muted-foreground">
-                Gunakan string acak 32-byte ini untuk nilai <code className="font-mono">BETTER_AUTH_SECRET</code>, <code className="font-mono">DEVICE_SECRET</code>, atau <code className="font-mono">REALTIME_TOKEN_SECRET</code>.
+                Gunakan string acak 32-byte ini untuk nilai{" "}
+                <code className="font-mono">BETTER_AUTH_SECRET</code>,{" "}
+                <code className="font-mono">DEVICE_SECRET</code>, atau{" "}
+                <code className="font-mono">REALTIME_TOKEN_SECRET</code>.
               </p>
             </div>
-            <Button size="sm" onClick={generateSecureKey} className="h-7 text-xs gap-1 font-semibold">
+            <Button
+              size="sm"
+              onClick={generateSecureKey}
+              className="h-7 text-xs gap-1 font-semibold"
+            >
               <Sparkles className="h-3 w-3" /> Buat Kunci Acak
             </Button>
           </div>
 
           {generatedKey && (
             <div className="flex items-center justify-between font-mono text-xs bg-background p-2 rounded border gap-2">
-              <code className="text-primary font-bold break-all select-all">{generatedKey}</code>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={() => copyText(generatedKey, "gen-key")}>
-                {copiedKey === "gen-key" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              <code className="text-primary font-bold break-all select-all">
+                {generatedKey}
+              </code>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 shrink-0"
+                onClick={() => copyText(generatedKey, "gen-key")}
+              >
+                {copiedKey === "gen-key" ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
               </Button>
             </div>
           )}
@@ -448,31 +609,58 @@ export function DeployChecklistGuide({ vpsHost = "192.168.0.220" }: DeployCheckl
               <div>
                 <span className="text-sm font-bold flex items-center gap-2">
                   Rincian Penyetelan OAuth & Redirect URIs
-                  <Badge variant="secondary" className="text-[10px]">Detail Teknis</Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    Detail Teknis
+                  </Badge>
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Alur lengkap penanganan Redirect URI di provider dan di berkas .env server.
+                  Alur lengkap penanganan Redirect URI di provider dan di berkas
+                  .env server.
                 </p>
               </div>
             </div>
-            {expandedSection === "oauth-detail" ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            {expandedSection === "oauth-detail" ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
           </button>
 
           {expandedSection === "oauth-detail" && (
             <div className="p-4 pt-1 border-t bg-muted/10 text-xs space-y-4">
               <div className="space-y-2">
-                <span className="font-semibold text-foreground">Daftar Redirect URIs yang Wajib Didaftarkan di Logto:</span>
+                <span className="font-semibold text-foreground">
+                  Daftar Redirect URIs yang Wajib Didaftarkan di Logto:
+                </span>
                 <div className="space-y-2 font-mono text-[11px]">
                   <div className="flex items-center justify-between p-2 rounded bg-background border">
                     <span>{logtoCallback}</span>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyText(logtoCallback, "c1")}>
-                      {copiedKey === "c1" ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => copyText(logtoCallback, "c1")}
+                    >
+                      {copiedKey === "c1" ? (
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
                     </Button>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded bg-background border">
                     <span>{logtoGithubCallback}</span>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyText(logtoGithubCallback, "c2")}>
-                      {copiedKey === "c2" ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => copyText(logtoGithubCallback, "c2")}
+                    >
+                      {copiedKey === "c2" ? (
+                        <Check className="h-3 w-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
                     </Button>
                   </div>
                 </div>

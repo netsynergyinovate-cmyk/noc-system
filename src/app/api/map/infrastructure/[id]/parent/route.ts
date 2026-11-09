@@ -14,10 +14,17 @@ export async function PATCH(
       const body = await request.json().catch(() => null);
       const parentId = body?.parentId ?? null;
       if (parentId !== null && typeof parentId !== "string") {
-        return NextResponse.json({ ok: false, error: "parentId harus string atau null." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: "parentId harus string atau null." },
+          { status: 400 },
+        );
       }
       const result = await updateInfrastructureParent(id, parentId);
-      return NextResponse.json({ ok: true, data: result, message: "Parent perangkat berhasil diperbarui." });
+      return NextResponse.json({
+        ok: true,
+        data: result,
+        message: "Parent perangkat berhasil diperbarui.",
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return NextResponse.json({ ok: false, error: msg }, { status: 500 });

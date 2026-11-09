@@ -41,7 +41,8 @@ export function SyncHistoryPanel() {
     query: "",
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState<number>(0);
+  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] =
+    useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const overview = useMemo(
@@ -89,7 +90,10 @@ export function SyncHistoryPanel() {
     switch (status) {
       case "success":
         return (
-          <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+          <Badge
+            variant="default"
+            className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+          >
             <CheckCircle2 className="h-3 w-3" />
             Sukses
           </Badge>
@@ -262,7 +266,9 @@ export function SyncHistoryPanel() {
                 variant={filter.triggerType === tr ? "secondary" : "ghost"}
                 size="sm"
                 className="text-xs"
-                onClick={() => setFilter((prev) => ({ ...prev, triggerType: tr }))}
+                onClick={() =>
+                  setFilter((prev) => ({ ...prev, triggerType: tr }))
+                }
               >
                 {tr === "all"
                   ? "Semua Tipe"
@@ -379,7 +385,10 @@ export function SyncHistoryPanel() {
                     </td>
 
                     <td className="p-3">
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono"
+                      >
                         {item.scope}
                       </Badge>
                     </td>
@@ -389,7 +398,8 @@ export function SyncHistoryPanel() {
                         {item.recordsProcessed} baris
                       </span>
                       <span className="block text-[11px] text-muted-foreground">
-                        +{item.recordsInserted} baru · ~{item.recordsUpdated} update
+                        +{item.recordsInserted} baru · ~{item.recordsUpdated}{" "}
+                        update
                       </span>
                     </td>
 

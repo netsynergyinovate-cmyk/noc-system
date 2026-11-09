@@ -20,13 +20,7 @@ export interface RouterHealth {
 }
 
 export type UnreachableCause =
-  | "closed"
-  | "timeout"
-  | "refused"
-  | "auth"
-  | "dns"
-  | "wrong-port"
-  | "unknown";
+  "closed" | "timeout" | "refused" | "auth" | "dns" | "wrong-port" | "unknown";
 
 export interface UnreachableDiagnosis {
   cause: UnreachableCause;
@@ -58,9 +52,11 @@ export function allowListCommand(
   localSourceIp?: string | null,
   existingAddress?: string | null,
 ): string | undefined {
-  const newEntries = [...new Set([sourceIp, localSourceIp].map((v) => (v ?? "").trim()).filter(Boolean))].map(
-    (ip) => `${ip}${ip.includes(":") ? "/128" : "/32"}`,
-  );
+  const newEntries = [
+    ...new Set(
+      [sourceIp, localSourceIp].map((v) => (v ?? "").trim()).filter(Boolean),
+    ),
+  ].map((ip) => `${ip}${ip.includes(":") ? "/128" : "/32"}`);
   const existing = (existingAddress ?? "")
     .split(",")
     .map((v) => v.trim())
@@ -71,13 +67,18 @@ export function allowListCommand(
 }
 
 // Urutan penting: yang paling spesifik lebih dulu.
-export function diagnoseUnreachable(lastError: string, ctx: UnreachableContext = {}): UnreachableDiagnosis {
+export function diagnoseUnreachable(
+  lastError: string,
+  ctx: UnreachableContext = {},
+): UnreachableDiagnosis {
   const e = (lastError ?? "").toLowerCase();
   const service: "www" | "api" = ctx.protocol === "api" ? "api" : "www";
   const label = service === "api" ? "api/api-ssl" : "www/www-ssl";
   const sourceIp = (ctx.sourceIp ?? "").trim();
   const localSourceIp = (ctx.localSourceIp ?? "").trim();
-  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(" / ");
+  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(
+    " / ",
+  );
   if (/menolak login|http 40[13]|unauthorized/.test(e)) {
     return {
       cause: "auth",
@@ -85,17 +86,26 @@ export function diagnoseUnreachable(lastError: string, ctx: UnreachableContext =
       hint: `Username atau kata sandi akun router berubah, atau akun itu kehilangan izin ${service === "api" ? "API" : "REST"}. Perbarui kredensial di halaman Router.`,
     };
   }
-  if (/no such host|tidak ditemukan|lookup|getaddrinfo|wsahostnotfound/.test(e)) {
+  if (
+    /no such host|tidak ditemukan|lookup|getaddrinfo|wsahostnotfound/.test(e)
+  ) {
     return {
       cause: "dns",
       title: "Alamat router tidak ditemukan",
       hint: "Nama host tidak bisa di-resolve. Periksa alamat router atau gunakan alamat IP.",
     };
   }
-  if (/refused|ditolak oleh|actively refused|wsaeconnrefused|target machine actively refused/.test(e)) {
+  if (
+    /refused|ditolak oleh|actively refused|wsaeconnrefused|target machine actively refused/.test(
+      e,
+    )
+  ) {
     return {
       cause: "refused",
-      title: service === "api" ? "Layanan API router mati" : "Layanan REST router mati",
+      title:
+        service === "api"
+          ? "Layanan API router mati"
+          : "Layanan REST router mati",
       hint:
         service === "api"
           ? "Router terjangkau tetapi layanan api/api-ssl tidak aktif atau portnya berubah. Aktifkan lagi di router."
@@ -103,8 +113,17 @@ export function diagnoseUnreachable(lastError: string, ctx: UnreachableContext =
       command: `/ip service set ${service} disabled=no`,
     };
   }
-  if (/eof|reset by peer|connection reset|broken pipe|ditutup|forcibly closed|closed by the remote host|wsarecv|wsasend|connection closed|aborted by the software|wsaeconnaborted|wsaeconnreset|connection aborted/.test(e)) {
-    const command = allowListCommand(service, sourceIp, localSourceIp, ctx.existingAddress);
+  if (
+    /eof|reset by peer|connection reset|broken pipe|ditutup|forcibly closed|closed by the remote host|wsarecv|wsasend|connection closed|aborted by the software|wsaeconnaborted|wsaeconnreset|connection aborted/.test(
+      e,
+    )
+  ) {
+    const command = allowListCommand(
+      service,
+      sourceIp,
+      localSourceIp,
+      ctx.existingAddress,
+    );
     return {
       cause: "closed",
       title: "Router menutup koneksi",
@@ -114,7 +133,11 @@ export function diagnoseUnreachable(lastError: string, ctx: UnreachableContext =
       command: command ?? `/ip service print where name~"${service}"`,
     };
   }
-  if (/timeout|timed out|deadline|tidak menjawab|i\/o timeout|unreachable|did not properly respond|semaphore timeout|wsatimedout/.test(e)) {
+  if (
+    /timeout|timed out|deadline|tidak menjawab|i\/o timeout|unreachable|did not properly respond|semaphore timeout|wsatimedout/.test(
+      e,
+    )
+  ) {
     return {
       cause: "timeout",
       title: "Router tidak menjawab",
@@ -143,8 +166,12 @@ const jakarta = new Intl.DateTimeFormat("id-ID", {
 });
 
 /** "10:20:52" (WIB) bersama selang waktunya, mis. "23 menit lalu". */
-export function describeLastOk(lastOkAt: number | null, nowSec: number): string {
-  if (lastOkAt === null) return "Belum ada pembacaan yang berhasil sejak backend menyala.";
+export function describeLastOk(
+  lastOkAt: number | null,
+  nowSec: number,
+): string {
+  if (lastOkAt === null)
+    return "Belum ada pembacaan yang berhasil sejak backend menyala.";
   const ago = Math.max(0, nowSec - lastOkAt);
   const rel =
     ago < 60
@@ -158,6 +185,8 @@ export function describeLastOk(lastOkAt: number | null, nowSec: number): string 
 }
 
 /** Hanya router aktif yang tidak terjangkau; nonaktif dimatikan sengaja. */
-export function unreachableRouters(list: readonly RouterHealth[]): RouterHealth[] {
+export function unreachableRouters(
+  list: readonly RouterHealth[],
+): RouterHealth[] {
   return list.filter((r) => r.active && !r.reachable);
 }

@@ -30,7 +30,8 @@ export function sanitizeGenieacsUrl(urlStr: string): string {
 }
 
 function parseTimeout(raw: string | undefined): number {
-  if (raw === undefined || raw.trim() === "") return GENIEACS_DEFAULT_TIMEOUT_MS;
+  if (raw === undefined || raw.trim() === "")
+    return GENIEACS_DEFAULT_TIMEOUT_MS;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < MIN_TIMEOUT_MS || n > MAX_TIMEOUT_MS) {
     return GENIEACS_DEFAULT_TIMEOUT_MS;

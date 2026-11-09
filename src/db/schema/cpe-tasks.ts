@@ -24,7 +24,12 @@ export const cpeActions = [
 ] as const;
 export type CpeAction = (typeof cpeActions)[number];
 
-export const cpeTaskStatuses = ["pending", "running", "success", "failed"] as const;
+export const cpeTaskStatuses = [
+  "pending",
+  "running",
+  "success",
+  "failed",
+] as const;
 export type CpeTaskStatus = (typeof cpeTaskStatuses)[number];
 
 // Antrean perubahan perangkat pelanggan lewat GenieACS. `payload` bisa memuat

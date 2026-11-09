@@ -36,7 +36,8 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
     description: "Gateway BGP, PPPoE Server, Routing Core",
     icon: Router,
     color: "#8b5cf6",
-    badgeClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    badgeClass:
+      "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
   },
   {
     type: "olt",
@@ -44,7 +45,8 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
     description: "Optical Line Terminal HSGQ GPON/EPON",
     icon: Network,
     color: "#06b6d4",
-    badgeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+    badgeClass:
+      "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
   },
   {
     type: "odp",
@@ -52,7 +54,8 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
     description: "Optical Distribution Point Fiber to Home",
     icon: Boxes,
     color: "#f59e0b",
-    badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    badgeClass:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
   },
   {
     type: "odc",
@@ -60,7 +63,8 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
     description: "Optical Distribution Cabinet Sentral Feeder",
     icon: Server,
     color: "#3b82f6",
-    badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    badgeClass:
+      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
   },
   {
     type: "pole",
@@ -68,7 +72,8 @@ export const DEVICE_TYPE_OPTIONS: DeviceTypeOption[] = [
     description: "Tiang tumpu kabel aerial serat optik",
     icon: MapPin,
     color: "#64748b",
-    badgeClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
+    badgeClass:
+      "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
   },
 ];
 
@@ -119,14 +124,22 @@ export function DeviceTypePicker({
 }: DeviceTypePickerProps) {
   const [deviceName, setDeviceName] = useState(suggestedName ?? "");
   const [deviceHost, setDeviceHost] = useState("");
-  useEffect(() => { setDeviceName(suggestedName ?? ""); }, [suggestedName]);
+  useEffect(() => {
+    setDeviceName(suggestedName ?? "");
+  }, [suggestedName]);
   const [formError, setFormError] = useState<string | null>(null);
-  const [selectedRouteId, setSelectedRouteId] = useState<string>(activeRouteId ?? "");
-  useEffect(() => { setSelectedRouteId(activeRouteId ?? ""); }, [activeRouteId]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>(
+    activeRouteId ?? "",
+  );
+  useEffect(() => {
+    setSelectedRouteId(activeRouteId ?? "");
+  }, [activeRouteId]);
 
   if (!isOpen && !draftCoordinates) return null;
 
-  const activeOption = DEVICE_TYPE_OPTIONS.find((opt) => opt.type === selectedType) ?? DEVICE_TYPE_OPTIONS[2]; // default ODP
+  const activeOption =
+    DEVICE_TYPE_OPTIONS.find((opt) => opt.type === selectedType) ??
+    DEVICE_TYPE_OPTIONS[2]; // default ODP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,7 +200,9 @@ export function DeviceTypePicker({
             </div>
 
             <div className="space-y-1.5">
-              {DEVICE_TYPE_OPTIONS.filter((o) => o.type === "odp" || o.type === "odc").map((opt) => {
+              {DEVICE_TYPE_OPTIONS.filter(
+                (o) => o.type === "odp" || o.type === "odc",
+              ).map((opt) => {
                 const IconComponent = opt.icon;
                 const isSelected = selectedType === opt.type;
                 return (
@@ -226,7 +241,10 @@ export function DeviceTypePicker({
                         </span>
                         <Badge
                           variant="outline"
-                          className={cn("text-[9px] px-1 py-0 uppercase font-mono", opt.badgeClass)}
+                          className={cn(
+                            "text-[9px] px-1 py-0 uppercase font-mono",
+                            opt.badgeClass,
+                          )}
                         >
                           {opt.type}
                         </Badge>
@@ -280,7 +298,9 @@ export function DeviceTypePicker({
 
             {/* Type switcher chips */}
             <div className="flex gap-1 flex-wrap">
-              {DEVICE_TYPE_OPTIONS.filter((o) => o.type === "odp" || o.type === "odc").map((opt) => (
+              {DEVICE_TYPE_OPTIONS.filter(
+                (o) => o.type === "odp" || o.type === "odc",
+              ).map((opt) => (
                 <button
                   key={opt.type}
                   type="button"
@@ -340,29 +360,34 @@ export function DeviceTypePicker({
                 />
               </div>
 
-              {(selectedType === "odp" || selectedType === null) && routes.length > 0 && (
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">
-                    Jalur <span className="text-muted-foreground">(opsional)</span>
-                  </label>
-                  <select
-                    value={selectedRouteId}
-                    onChange={(e) => setSelectedRouteId(e.target.value)}
-                    disabled={!!activeRouteId}
-                    className="w-full text-xs rounded-md border border-input bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
-                  >
-                    <option value="">— Tanpa jalur —</option>
-                    {routes.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}{r.odcName ? ` (${r.odcName})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {activeRouteId && (
-                    <p className="text-[10px] text-muted-foreground">Jalur terkunci ke mode aktif.</p>
-                  )}
-                </div>
-              )}
+              {(selectedType === "odp" || selectedType === null) &&
+                routes.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">
+                      Jalur{" "}
+                      <span className="text-muted-foreground">(opsional)</span>
+                    </label>
+                    <select
+                      value={selectedRouteId}
+                      onChange={(e) => setSelectedRouteId(e.target.value)}
+                      disabled={!!activeRouteId}
+                      className="w-full text-xs rounded-md border border-input bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+                    >
+                      <option value="">— Tanpa jalur —</option>
+                      {routes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                          {r.odcName ? ` (${r.odcName})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {activeRouteId && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Jalur terkunci ke mode aktif.
+                      </p>
+                    )}
+                  </div>
+                )}
 
               {(selectedType === "router" || selectedType === "olt") && (
                 <div className="space-y-1">

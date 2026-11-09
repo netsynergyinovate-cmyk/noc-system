@@ -46,7 +46,11 @@ export async function snapshot(
   for (const id of new Set(ids)) {
     let row: Row | undefined;
     if (kind === "override") {
-      [row] = await tx.select().from(mapOverrides).where(overrideWhere(id)).limit(1);
+      [row] = await tx
+        .select()
+        .from(mapOverrides)
+        .where(overrideWhere(id))
+        .limit(1);
     } else {
       const t = TABLES[kind];
       [row] = await tx.select().from(t).where(eq(t.id, id)).limit(1);
@@ -94,7 +98,10 @@ async function restore(tx: Tx, change: UndoChange) {
 
   if (kind === "override") {
     await tx.delete(mapOverrides).where(overrideWhere(id));
-    if (before) await tx.insert(mapOverrides).values(before as typeof mapOverrides.$inferInsert);
+    if (before)
+      await tx
+        .insert(mapOverrides)
+        .values(before as typeof mapOverrides.$inferInsert);
     return;
   }
 
@@ -110,9 +117,13 @@ async function restore(tx: Tx, change: UndoChange) {
     .values(row as never)
     .onConflictDoUpdate({ target: t.id, set: row as never });
   if (kind === "segment") {
-    await tx.delete(cableSegmentSamples).where(eq(cableSegmentSamples.segmentId, id));
+    await tx
+      .delete(cableSegmentSamples)
+      .where(eq(cableSegmentSamples.segmentId, id));
     if (samples?.length) {
-      await tx.insert(cableSegmentSamples).values(samples.map((s) => reviveDates(s)) as never);
+      await tx
+        .insert(cableSegmentSamples)
+        .values(samples.map((s) => reviveDates(s)) as never);
     }
   }
 }

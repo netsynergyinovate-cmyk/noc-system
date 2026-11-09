@@ -22,8 +22,15 @@ export default async function PelangganPage({
       {focusId && <MapFocusFromUrl customerId={focusId} />}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Daftar Pelanggan</h1>
-          <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Daftar Pelanggan
+          </h1>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+          >
             <Link href="/app/peta">
               <MapPin className="size-3.5 text-primary" />
               <span>Lihat Peta Pelanggan</span>
@@ -31,11 +38,11 @@ export default async function PelangganPage({
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          Kelola perangkat pelanggan (CPE) dan pantau status koneksi, sinyal, serta tagihan.
+          Kelola perangkat pelanggan (CPE) dan pantau status koneksi, sinyal,
+          serta tagihan.
         </p>
       </div>
       <CustomerTable />
     </div>
   );
 }
-

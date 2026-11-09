@@ -55,8 +55,7 @@ test("resolveAlertRefreshMode", () => {
 });
 
 test("komponen AlertAutoRefreshControl diekspor", async () => {
-  const mod = await import(
-    "../src/components/dashboard/alert-auto-refresh-control.tsx"
-  );
+  const mod =
+    await import("../src/components/dashboard/alert-auto-refresh-control.tsx");
   assert.equal(typeof mod.AlertAutoRefreshControl, "function");
 });

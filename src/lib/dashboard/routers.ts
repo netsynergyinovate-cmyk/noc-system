@@ -204,7 +204,9 @@ export function buildLiveRouterDetails(
   });
 }
 
-export function isCpuWarning(router: Pick<MockRouterDetail, "cpuLoad" | "active">): boolean {
+export function isCpuWarning(
+  router: Pick<MockRouterDetail, "cpuLoad" | "active">,
+): boolean {
   return router.active && router.cpuLoad > CPU_WARNING_THRESHOLD;
 }
 
@@ -231,7 +233,8 @@ export function summarizeRouterResources(
   for (const r of active) {
     cpu += r.cpuLoad;
     mem += r.memoryUsage;
-    if (!peak || r.cpuLoad > peak.value) peak = { routerName: r.name, value: r.cpuLoad };
+    if (!peak || r.cpuLoad > peak.value)
+      peak = { routerName: r.name, value: r.cpuLoad };
   }
   const n = active.length;
   return {
@@ -325,7 +328,10 @@ export function generateMockSimpleQueues(
   const rIdx = m ? Number(m[1]) % 256 : Math.floor(unit(routerId) * 255);
   return own.map((c, i) => {
     const plan = Math.max(1, c.planMbps);
-    const maxLimit = { upload: Math.round((plan / 2) * 1e6), download: plan * 1e6 };
+    const maxLimit = {
+      upload: Math.round((plan / 2) * 1e6),
+      download: plan * 1e6,
+    };
     const isolir = c.billingStatus === "isolir";
     const live = c.isOnline && !isolir;
     const fu = 0.15 + unit(`${c.id}:u`) * 0.7;
@@ -376,8 +382,16 @@ export interface SimpleQueueSummary {
   rateDownload: number;
 }
 
-export function summarizeSimpleQueues(queues: readonly MockSimpleQueue[]): SimpleQueueSummary {
-  const s: SimpleQueueSummary = { total: queues.length, active: 0, disabled: 0, rateUpload: 0, rateDownload: 0 };
+export function summarizeSimpleQueues(
+  queues: readonly MockSimpleQueue[],
+): SimpleQueueSummary {
+  const s: SimpleQueueSummary = {
+    total: queues.length,
+    active: 0,
+    disabled: 0,
+    rateUpload: 0,
+    rateDownload: 0,
+  };
   for (const q of queues) {
     if (q.disabled) {
       s.disabled++;

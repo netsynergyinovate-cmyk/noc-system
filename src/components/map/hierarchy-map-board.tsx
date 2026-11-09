@@ -84,14 +84,17 @@ export function HierarchyMapBoard({
   const [tierFilter, setTierFilter] = useState<HierarchyTier>("all");
   const [showLinks, setShowLinks] = useState(true);
   const [isTreeOpen, setIsTreeOpen] = useState(true);
-  const [selectedNode, setSelectedNode] = useState<SelectedHierarchyNode | null>(null);
+  const [selectedNode, setSelectedNode] =
+    useState<SelectedHierarchyNode | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
   // State Kontrol Pindah Anak ke Induk Lain (Reassign Parent)
   const [isReassignOpen, setIsReassignOpen] = useState(false);
   const [targetParentId, setTargetParentId] = useState<string>("");
   const [isSavingReassign, setIsSavingReassign] = useState(false);
-  const [reassignSuccessMsg, setReassignSuccessMsg] = useState<string | null>(null);
+  const [reassignSuccessMsg, setReassignSuccessMsg] = useState<string | null>(
+    null,
+  );
   const [reassignErrorMsg, setReassignErrorMsg] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
     // Default expand semua root dan odc pertama
@@ -135,7 +138,9 @@ export function HierarchyMapBoard({
   const refreshData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/map/hierarchy", { credentials: "same-origin" });
+      const res = await fetch("/api/map/hierarchy", {
+        credentials: "same-origin",
+      });
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data);
@@ -158,7 +163,8 @@ export function HierarchyMapBoard({
         infraList.push({
           id: root.id,
           name: root.name,
-          type: (root.type === "server" ? "router" : root.type) as "router" | "olt",
+          type: (root.type === "server" ? "router" : root.type) as
+            "router" | "olt",
           host: root.host,
           status: root.status,
           latitude: root.latitude,
@@ -293,7 +299,9 @@ export function HierarchyMapBoard({
           (c) => c.opticalPower !== null && c.opticalPower < -24.5,
         ).length,
         totalOlts: data.roots.filter((r) => r.type === "olt").length,
-        totalRouters: data.roots.filter((r) => r.type === "router" || r.type === "server").length,
+        totalRouters: data.roots.filter(
+          (r) => r.type === "router" || r.type === "server",
+        ).length,
         totalOdps: data.summary.totalOdps,
       },
       dataSource: data.dataSource,
@@ -301,46 +309,58 @@ export function HierarchyMapBoard({
   }, [data, tierFilter]);
 
   // Handle seleksi simpul pohon
-  const handleSelectCustomer = useCallback((customer: NetworkCustomerPoint | null) => {
-    if (!customer || customer.latitude === null || customer.longitude === null) {
-      setSelectedNode(null);
-      return;
-    }
-    setSelectedNode({
-      id: customer.id,
-      name: customer.name,
-      type: "customer",
-      tier: 4,
-      latitude: customer.latitude,
-      longitude: customer.longitude,
-      status: customer.isOnline ? "online" : "offline",
-      parentName: customer.odpName || undefined,
-      opticalPower: customer.opticalPower,
-      pppoeUsername: customer.pppoeUsername,
-    });
-  }, []);
+  const handleSelectCustomer = useCallback(
+    (customer: NetworkCustomerPoint | null) => {
+      if (
+        !customer ||
+        customer.latitude === null ||
+        customer.longitude === null
+      ) {
+        setSelectedNode(null);
+        return;
+      }
+      setSelectedNode({
+        id: customer.id,
+        name: customer.name,
+        type: "customer",
+        tier: 4,
+        latitude: customer.latitude,
+        longitude: customer.longitude,
+        status: customer.isOnline ? "online" : "offline",
+        parentName: customer.odpName || undefined,
+        opticalPower: customer.opticalPower,
+        pppoeUsername: customer.pppoeUsername,
+      });
+    },
+    [],
+  );
 
-  const handleSelectInfra = useCallback((infra: NetworkInfrastructurePoint | null) => {
-    if (!infra) {
-      setSelectedNode(null);
-      return;
-    }
+  const handleSelectInfra = useCallback(
+    (infra: NetworkInfrastructurePoint | null) => {
+      if (!infra) {
+        setSelectedNode(null);
+        return;
+      }
 
-    let tier: 1 | 2 | 3 = 1;
-    if (infra.type === "odc") tier = 2;
-    else if (infra.type === "odp") tier = 3;
+      let tier: 1 | 2 | 3 = 1;
+      if (infra.type === "odc") tier = 2;
+      else if (infra.type === "odp") tier = 3;
 
-    setSelectedNode({
-      id: infra.id,
-      name: infra.name,
-      type: infra.type,
-      tier,
-      latitude: infra.latitude,
-      longitude: infra.longitude,
-      status: infra.status,
-      parentName: (infra.details?.parentRoot as string) || (infra.details?.parentOdc as string),
-    });
-  }, []);
+      setSelectedNode({
+        id: infra.id,
+        name: infra.name,
+        type: infra.type,
+        tier,
+        latitude: infra.latitude,
+        longitude: infra.longitude,
+        status: infra.status,
+        parentName:
+          (infra.details?.parentRoot as string) ||
+          (infra.details?.parentOdc as string),
+      });
+    },
+    [],
+  );
 
   const handleCopyCoords = useCallback(() => {
     if (!selectedNode) return;
@@ -379,11 +399,19 @@ export function HierarchyMapBoard({
       for (const root of data.roots) {
         for (const odc of root.odcs) {
           for (const odp of odc.odps) {
-            odps.push({ id: odp.id, name: odp.name, tier: `ODP via ${odc.name}` });
+            odps.push({
+              id: odp.id,
+              name: odp.name,
+              tier: `ODP via ${odc.name}`,
+            });
           }
         }
         for (const odp of root.directOdps) {
-          odps.push({ id: odp.id, name: odp.name, tier: `Direct ODP via ${root.name}` });
+          odps.push({
+            id: odp.id,
+            name: odp.name,
+            tier: `Direct ODP via ${root.name}`,
+          });
         }
       }
       return odps;
@@ -393,10 +421,18 @@ export function HierarchyMapBoard({
       // ODP -> Induk adalah ODC (Tingkat 2) atau Core Root
       const parents: Array<{ id: string; name: string; tier: string }> = [];
       for (const root of data.roots) {
-        parents.push({ id: root.id, name: root.name, tier: `Core Root (${root.type})` });
+        parents.push({
+          id: root.id,
+          name: root.name,
+          tier: `Core Root (${root.type})`,
+        });
         for (const odc of root.odcs) {
           if (odc.id !== selectedNode.id) {
-            parents.push({ id: odc.id, name: odc.name, tier: `ODC Hub via ${root.name}` });
+            parents.push({
+              id: odc.id,
+              name: odc.name,
+              tier: `ODC Hub via ${root.name}`,
+            });
           }
         }
       }
@@ -452,7 +488,9 @@ export function HierarchyMapBoard({
               odcs: root.odcs.map((odc) => ({
                 ...odc,
                 odps: odc.odps.map((odp) => {
-                  let nextCusts = odp.customers.filter((c) => c.id !== selectedNode.id);
+                  let nextCusts = odp.customers.filter(
+                    (c) => c.id !== selectedNode.id,
+                  );
                   if (odp.id === selectedOption.id) {
                     nextCusts = [
                       ...nextCusts,
@@ -473,7 +511,9 @@ export function HierarchyMapBoard({
                 }),
               })),
               directOdps: root.directOdps.map((odp) => {
-                let nextCusts = odp.customers.filter((c) => c.id !== selectedNode.id);
+                let nextCusts = odp.customers.filter(
+                  (c) => c.id !== selectedNode.id,
+                );
                 if (odp.id === selectedOption.id) {
                   nextCusts = [
                     ...nextCusts,
@@ -509,7 +549,9 @@ export function HierarchyMapBoard({
               }
             }
             if (!movingOdp) {
-              const foundDirect = r.directOdps.find((odp) => odp.id === selectedNode.id);
+              const foundDirect = r.directOdps.find(
+                (odp) => odp.id === selectedNode.id,
+              );
               if (foundDirect) {
                 movingOdp = { ...foundDirect, parentId: selectedOption.id };
                 break;
@@ -520,7 +562,9 @@ export function HierarchyMapBoard({
           if (movingOdp) {
             const nextRoots = prev.roots.map((root) => {
               const isDirectTarget = root.id === selectedOption.id;
-              const nextDirect = root.directOdps.filter((o) => o.id !== selectedNode.id);
+              const nextDirect = root.directOdps.filter(
+                (o) => o.id !== selectedNode.id,
+              );
               if (isDirectTarget && movingOdp) {
                 nextDirect.push(movingOdp);
               }
@@ -581,13 +625,17 @@ export function HierarchyMapBoard({
       // Segarkan data dari database backend secara background tanpa reload halaman
       refreshData();
 
-      setReassignSuccessMsg(`Peta dan pohon berhasil disinkronkan ke induk '${selectedOption.name}'`);
+      setReassignSuccessMsg(
+        `Peta dan pohon berhasil disinkronkan ke induk '${selectedOption.name}'`,
+      );
       setTimeout(() => {
         setIsReassignOpen(false);
         setReassignSuccessMsg(null);
       }, 1500);
     } catch (err) {
-      setReassignErrorMsg(err instanceof Error ? err.message : "Terjadi kesalahan sistem.");
+      setReassignErrorMsg(
+        err instanceof Error ? err.message : "Terjadi kesalahan sistem.",
+      );
     } finally {
       setIsSavingReassign(false);
     }
@@ -621,7 +669,11 @@ export function HierarchyMapBoard({
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Relasi hierarki struktural jaringan: <span className="font-semibold text-foreground">Server/Core &rarr; ODC &rarr; ODP &rarr; Pelanggan</span> terhubung dengan data nyata dari database.
+            Relasi hierarki struktural jaringan:{" "}
+            <span className="font-semibold text-foreground">
+              Server/Core &rarr; ODC &rarr; ODP &rarr; Pelanggan
+            </span>{" "}
+            terhubung dengan data nyata dari database.
           </p>
         </div>
 
@@ -637,7 +689,9 @@ export function HierarchyMapBoard({
             data-testid="refresh-hierarchy-button"
             title="Segarkan data hierarki dari backend"
           >
-            <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
+            <RefreshCw
+              className={cn("size-3.5", isLoading && "animate-spin")}
+            />
             <span>Segarkan</span>
           </Button>
 
@@ -683,7 +737,10 @@ export function HierarchyMapBoard({
       </div>
 
       {/* 2. Kartu Metrik 4 Tingkat Susunan (Hierarchy Tier KPI Cards) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5" data-testid="hierarchy-kpi-cards">
+      <div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-2.5"
+        data-testid="hierarchy-kpi-cards"
+      >
         {/* Tingkat 1: Core Server & OLT */}
         <Card className="border border-border/80 shadow-xs bg-card/60 backdrop-blur-xs">
           <CardContent className="p-3">
@@ -696,10 +753,15 @@ export function HierarchyMapBoard({
               </div>
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-foreground" data-testid="kpi-total-roots">
+              <span
+                className="text-xl font-bold text-foreground"
+                data-testid="kpi-total-roots"
+              >
                 {data.summary.totalRoots}
               </span>
-              <span className="text-[11px] text-muted-foreground">Simpul Pusat</span>
+              <span className="text-[11px] text-muted-foreground">
+                Simpul Pusat
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -716,10 +778,15 @@ export function HierarchyMapBoard({
               </div>
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-foreground" data-testid="kpi-total-odcs">
+              <span
+                className="text-xl font-bold text-foreground"
+                data-testid="kpi-total-odcs"
+              >
                 {data.summary.totalOdcs}
               </span>
-              <span className="text-[11px] text-muted-foreground">Kabin Hub</span>
+              <span className="text-[11px] text-muted-foreground">
+                Kabin Hub
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -736,10 +803,15 @@ export function HierarchyMapBoard({
               </div>
             </div>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-foreground" data-testid="kpi-total-odps">
+              <span
+                className="text-xl font-bold text-foreground"
+                data-testid="kpi-total-odps"
+              >
                 {data.summary.totalOdps}
               </span>
-              <span className="text-[11px] text-muted-foreground">Kotak Distribusi</span>
+              <span className="text-[11px] text-muted-foreground">
+                Kotak Distribusi
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -756,7 +828,10 @@ export function HierarchyMapBoard({
               </div>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
-              <span className="text-xl font-bold text-foreground" data-testid="kpi-total-customers">
+              <span
+                className="text-xl font-bold text-foreground"
+                data-testid="kpi-total-customers"
+              >
                 {data.summary.totalCustomers}
               </span>
               <span className="text-[10px] font-medium text-muted-foreground">
@@ -777,7 +852,10 @@ export function HierarchyMapBoard({
       {/* 3. Bar Kontrol Filter & Toggle Pohon */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-card p-2 rounded-xl border shadow-xs">
         {/* Saringan Tingkat Hierarki */}
-        <div className="flex flex-wrap items-center gap-1.5" data-testid="hierarchy-tier-filters">
+        <div
+          className="flex flex-wrap items-center gap-1.5"
+          data-testid="hierarchy-tier-filters"
+        >
           <span className="text-[11px] font-semibold text-muted-foreground mr-1 flex items-center gap-1">
             <Filter className="size-3" />
             <span>Tingkat:</span>
@@ -849,21 +927,29 @@ export function HierarchyMapBoard({
             type="button"
             variant="outline"
             size="sm"
-            className={cn("h-7 px-2.5 text-xs font-medium gap-1.5", showLinks && "bg-primary/10 text-primary border-primary/30")}
+            className={cn(
+              "h-7 px-2.5 text-xs font-medium gap-1.5",
+              showLinks && "bg-primary/10 text-primary border-primary/30",
+            )}
             onClick={() => setShowLinks(!showLinks)}
             data-testid="toggle-hierarchy-links-button"
             title="Tampilkan atau sembunyikan garis hubungan induk-anak di peta"
           >
             <Share2 className="size-3.5" />
             <span className="hidden sm:inline">Garis Hubungan</span>
-            <span className="text-[10px] font-bold">({showLinks ? "ON" : "OFF"})</span>
+            <span className="text-[10px] font-bold">
+              ({showLinks ? "ON" : "OFF"})
+            </span>
           </Button>
 
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn("h-7 px-2.5 text-xs font-medium gap-1.5", isTreeOpen && "bg-muted text-foreground")}
+            className={cn(
+              "h-7 px-2.5 text-xs font-medium gap-1.5",
+              isTreeOpen && "bg-muted text-foreground",
+            )}
             onClick={() => setIsTreeOpen(!isTreeOpen)}
             data-testid="toggle-hierarchy-tree-button"
             title="Tampilkan atau sembunyikan panel pohon relasi"
@@ -890,7 +976,10 @@ export function HierarchyMapBoard({
               const isSelected = step.id === selectedNode?.id;
 
               return (
-                <div key={step.id} className="flex items-center gap-1.5 shrink-0">
+                <div
+                  key={step.id}
+                  className="flex items-center gap-1.5 shrink-0"
+                >
                   {idx > 0 && (
                     <ChevronRight className="size-3 text-muted-foreground shrink-0" />
                   )}
@@ -900,7 +989,10 @@ export function HierarchyMapBoard({
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-all font-medium cursor-pointer",
                       isSelected
-                        ? cn(meta.badgeClass, "ring-1 ring-primary/40 font-bold shadow-xs scale-102")
+                        ? cn(
+                            meta.badgeClass,
+                            "ring-1 ring-primary/40 font-bold shadow-xs scale-102",
+                          )
                         : "border-border/60 hover:bg-muted/70 text-foreground",
                     )}
                     data-testid={`lineage-step-${step.tier}`}
@@ -910,10 +1002,15 @@ export function HierarchyMapBoard({
                       className="size-2 rounded-full shrink-0"
                       style={{ backgroundColor: meta.hexColor }}
                     />
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 font-mono">
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1 py-0 h-3.5 font-mono"
+                    >
                       T{step.tier}
                     </Badge>
-                    <span className="truncate max-w-[140px] sm:max-w-[200px]">{step.name}</span>
+                    <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                      {step.name}
+                    </span>
                   </button>
                 </div>
               );
@@ -1007,7 +1104,8 @@ export function HierarchyMapBoard({
             {/* List Tree Kolapsibel */}
             <div className="flex-1 overflow-y-auto p-2 space-y-1 text-xs">
               {data.roots.map((root) => {
-                const isRootExpanded = expandedNodes.has(root.id) || !!searchLower;
+                const isRootExpanded =
+                  expandedNodes.has(root.id) || !!searchLower;
 
                 return (
                   <div key={root.id} className="space-y-1 select-none">
@@ -1023,7 +1121,9 @@ export function HierarchyMapBoard({
                         handleSelectInfra({
                           id: root.id,
                           name: root.name,
-                          type: (root.type === "server" ? "router" : root.type) as "router" | "olt",
+                          type: (root.type === "server"
+                            ? "router"
+                            : root.type) as "router" | "olt",
                           host: root.host,
                           status: root.status,
                           latitude: root.latitude,
@@ -1047,7 +1147,11 @@ export function HierarchyMapBoard({
                             e.stopPropagation();
                             toggleExpand(root.id);
                           }}
-                          aria-label={isRootExpanded ? "Ciutkan cabang" : "Bentangkan cabang"}
+                          aria-label={
+                            isRootExpanded
+                              ? "Ciutkan cabang"
+                              : "Bentangkan cabang"
+                          }
                         >
                           {isRootExpanded ? (
                             <ChevronDown className="size-3.5 shrink-0" />
@@ -1056,7 +1160,9 @@ export function HierarchyMapBoard({
                           )}
                         </button>
                         <span className="size-2 rounded-full bg-purple-500 shrink-0" />
-                        <span className="font-bold truncate text-foreground">{root.name}</span>
+                        <span className="font-bold truncate text-foreground">
+                          {root.name}
+                        </span>
                       </div>
                       <Badge
                         variant="outline"
@@ -1071,7 +1177,8 @@ export function HierarchyMapBoard({
                     {isRootExpanded && (
                       <div className="pl-4 space-y-1 border-l border-border/60 ml-2">
                         {root.odcs.map((odc) => {
-                          const isOdcExpanded = expandedNodes.has(odc.id) || !!searchLower;
+                          const isOdcExpanded =
+                            expandedNodes.has(odc.id) || !!searchLower;
 
                           return (
                             <div key={odc.id} className="space-y-1">
@@ -1115,7 +1222,11 @@ export function HierarchyMapBoard({
                                       e.stopPropagation();
                                       toggleExpand(odc.id);
                                     }}
-                                    aria-label={isOdcExpanded ? "Ciutkan cabang" : "Bentangkan cabang"}
+                                    aria-label={
+                                      isOdcExpanded
+                                        ? "Ciutkan cabang"
+                                        : "Bentangkan cabang"
+                                    }
                                   >
                                     {isOdcExpanded ? (
                                       <ChevronDown className="size-3 shrink-0" />
@@ -1124,7 +1235,9 @@ export function HierarchyMapBoard({
                                     )}
                                   </button>
                                   <span className="size-1.5 rounded-full bg-blue-500 shrink-0" />
-                                  <span className="font-semibold truncate text-foreground">{odc.name}</span>
+                                  <span className="font-semibold truncate text-foreground">
+                                    {odc.name}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <Badge
@@ -1144,7 +1257,9 @@ export function HierarchyMapBoard({
                               {isOdcExpanded && (
                                 <div className="pl-4 space-y-1 border-l border-border/50 ml-2">
                                   {odc.odps.map((odp) => {
-                                    const isOdpExpanded = expandedNodes.has(odp.id) || !!searchLower;
+                                    const isOdpExpanded =
+                                      expandedNodes.has(odp.id) ||
+                                      !!searchLower;
 
                                     return (
                                       <div key={odp.id} className="space-y-1">
@@ -1171,7 +1286,8 @@ export function HierarchyMapBoard({
                                                 parentId: odc.id,
                                                 parentOdc: odc.name,
                                                 capacity: `1:${odp.capacity} Splitter`,
-                                                connectedCustomers: odp.customers.length,
+                                                connectedCustomers:
+                                                  odp.customers.length,
                                               },
                                             });
                                             if (!expandedNodes.has(odp.id)) {
@@ -1188,7 +1304,11 @@ export function HierarchyMapBoard({
                                                 e.stopPropagation();
                                                 toggleExpand(odp.id);
                                               }}
-                                              aria-label={isOdpExpanded ? "Ciutkan cabang" : "Bentangkan cabang"}
+                                              aria-label={
+                                                isOdpExpanded
+                                                  ? "Ciutkan cabang"
+                                                  : "Bentangkan cabang"
+                                              }
                                             >
                                               {isOdpExpanded ? (
                                                 <ChevronDown className="size-2.5 shrink-0" />
@@ -1197,7 +1317,9 @@ export function HierarchyMapBoard({
                                               )}
                                             </button>
                                             <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
-                                            <span className="font-medium truncate text-foreground">{odp.name}</span>
+                                            <span className="font-medium truncate text-foreground">
+                                              {odp.name}
+                                            </span>
                                           </div>
                                           <div className="flex items-center gap-1 shrink-0">
                                             <Badge
@@ -1214,59 +1336,77 @@ export function HierarchyMapBoard({
                                         </div>
 
                                         {/* Children Customers: Tingkat 4 */}
-                                        {isOdpExpanded && odp.customers.length > 0 && (
-                                          <div className="pl-3 space-y-0.5 border-l border-border/40 ml-1.5">
-                                            {odp.customers.map((c) => (
-                                              <div
-                                                key={c.id}
-                                                className={cn(
-                                                  "flex items-center justify-between p-1 rounded hover:bg-muted/50 cursor-pointer text-[10px] transition-colors",
-                                                  selectedNode?.id === c.id && "bg-emerald-500/15 font-semibold text-emerald-900 dark:text-emerald-200",
-                                                )}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleSelectCustomer({
-                                                    id: c.id,
-                                                    name: c.name,
-                                                    pppoeUsername: c.pppoeUsername,
-                                                    routerId: root.id,
-                                                    address: null,
-                                                    latitude: c.latitude,
-                                                    longitude: c.longitude,
-                                                    odpName: odp.name,
-                                                    billingStatus: c.billingStatus as "lunas" | "isolir",
-                                                    opticalPower: c.opticalPower,
-                                                    isOnline: c.isOnline,
-                                                    lastUpdatedAt: new Date(),
-                                                  });
-                                                }}
-                                                data-testid={`tree-node-${c.id}`}
-                                              >
-                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                  <span
-                                                    className={cn("size-1.5 rounded-full shrink-0", c.isOnline ? "bg-emerald-500" : "bg-rose-500")}
-                                                    title={c.isOnline ? "Online" : "Offline"}
-                                                  />
-                                                  <span className="truncate">{c.name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                  {c.opticalPower !== null && (
-                                                    <span className="font-mono text-muted-foreground text-[9px]">
-                                                      {c.opticalPower} dBm
-                                                    </span>
+                                        {isOdpExpanded &&
+                                          odp.customers.length > 0 && (
+                                            <div className="pl-3 space-y-0.5 border-l border-border/40 ml-1.5">
+                                              {odp.customers.map((c) => (
+                                                <div
+                                                  key={c.id}
+                                                  className={cn(
+                                                    "flex items-center justify-between p-1 rounded hover:bg-muted/50 cursor-pointer text-[10px] transition-colors",
+                                                    selectedNode?.id === c.id &&
+                                                      "bg-emerald-500/15 font-semibold text-emerald-900 dark:text-emerald-200",
                                                   )}
-                                                  <Badge
-                                                    variant="outline"
-                                                    className="text-[8px] px-1 py-0 h-3 font-mono text-emerald-600 border-emerald-500/40 bg-emerald-500/10"
-                                                    data-testid={`tier-badge-${c.id}`}
-                                                  >
-                                                    T4
-                                                  </Badge>
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelectCustomer({
+                                                      id: c.id,
+                                                      name: c.name,
+                                                      pppoeUsername:
+                                                        c.pppoeUsername,
+                                                      routerId: root.id,
+                                                      address: null,
+                                                      latitude: c.latitude,
+                                                      longitude: c.longitude,
+                                                      odpName: odp.name,
+                                                      billingStatus:
+                                                        c.billingStatus as
+                                                          "lunas" | "isolir",
+                                                      opticalPower:
+                                                        c.opticalPower,
+                                                      isOnline: c.isOnline,
+                                                      lastUpdatedAt: new Date(),
+                                                    });
+                                                  }}
+                                                  data-testid={`tree-node-${c.id}`}
+                                                >
+                                                  <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span
+                                                      className={cn(
+                                                        "size-1.5 rounded-full shrink-0",
+                                                        c.isOnline
+                                                          ? "bg-emerald-500"
+                                                          : "bg-rose-500",
+                                                      )}
+                                                      title={
+                                                        c.isOnline
+                                                          ? "Online"
+                                                          : "Offline"
+                                                      }
+                                                    />
+                                                    <span className="truncate">
+                                                      {c.name}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 shrink-0">
+                                                    {c.opticalPower !==
+                                                      null && (
+                                                      <span className="font-mono text-muted-foreground text-[9px]">
+                                                        {c.opticalPower} dBm
+                                                      </span>
+                                                    )}
+                                                    <Badge
+                                                      variant="outline"
+                                                      className="text-[8px] px-1 py-0 h-3 font-mono text-emerald-600 border-emerald-500/40 bg-emerald-500/10"
+                                                      data-testid={`tier-badge-${c.id}`}
+                                                    >
+                                                      T4
+                                                    </Badge>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
+                                              ))}
+                                            </div>
+                                          )}
                                       </div>
                                     );
                                   })}
@@ -1278,7 +1418,8 @@ export function HierarchyMapBoard({
 
                         {/* Direct ODPs: Tingkat 3 Langsung ke Core */}
                         {root.directOdps.map((odp) => {
-                          const isOdpExpanded = expandedNodes.has(odp.id) || !!searchLower;
+                          const isOdpExpanded =
+                            expandedNodes.has(odp.id) || !!searchLower;
 
                           return (
                             <div key={odp.id} className="space-y-1">
@@ -1320,7 +1461,11 @@ export function HierarchyMapBoard({
                                       e.stopPropagation();
                                       toggleExpand(odp.id);
                                     }}
-                                    aria-label={isOdpExpanded ? "Ciutkan cabang" : "Bentangkan cabang"}
+                                    aria-label={
+                                      isOdpExpanded
+                                        ? "Ciutkan cabang"
+                                        : "Bentangkan cabang"
+                                    }
                                   >
                                     {isOdpExpanded ? (
                                       <ChevronDown className="size-2.5 shrink-0" />
@@ -1329,7 +1474,9 @@ export function HierarchyMapBoard({
                                     )}
                                   </button>
                                   <span className="size-1.5 rounded-full bg-amber-500 shrink-0" />
-                                  <span className="font-medium truncate text-foreground">{odp.name}</span>
+                                  <span className="font-medium truncate text-foreground">
+                                    {odp.name}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <Badge
@@ -1352,7 +1499,8 @@ export function HierarchyMapBoard({
                                       key={c.id}
                                       className={cn(
                                         "flex items-center justify-between p-1 rounded hover:bg-muted/50 cursor-pointer text-[10px] transition-colors",
-                                        selectedNode?.id === c.id && "bg-emerald-500/15 font-semibold text-emerald-900 dark:text-emerald-200",
+                                        selectedNode?.id === c.id &&
+                                          "bg-emerald-500/15 font-semibold text-emerald-900 dark:text-emerald-200",
                                       )}
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1365,7 +1513,8 @@ export function HierarchyMapBoard({
                                           latitude: c.latitude,
                                           longitude: c.longitude,
                                           odpName: odp.name,
-                                          billingStatus: c.billingStatus as "lunas" | "isolir",
+                                          billingStatus: c.billingStatus as
+                                            "lunas" | "isolir",
                                           opticalPower: c.opticalPower,
                                           isOnline: c.isOnline,
                                           lastUpdatedAt: new Date(),
@@ -1375,10 +1524,19 @@ export function HierarchyMapBoard({
                                     >
                                       <div className="flex items-center gap-1.5 min-w-0">
                                         <span
-                                          className={cn("size-1.5 rounded-full shrink-0", c.isOnline ? "bg-emerald-500" : "bg-rose-500")}
-                                          title={c.isOnline ? "Online" : "Offline"}
+                                          className={cn(
+                                            "size-1.5 rounded-full shrink-0",
+                                            c.isOnline
+                                              ? "bg-emerald-500"
+                                              : "bg-rose-500",
+                                          )}
+                                          title={
+                                            c.isOnline ? "Online" : "Offline"
+                                          }
                                         />
-                                        <span className="truncate">{c.name}</span>
+                                        <span className="truncate">
+                                          {c.name}
+                                        </span>
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
                                         {c.opticalPower !== null && (
@@ -1451,10 +1609,14 @@ export function HierarchyMapBoard({
                         variant="outline"
                         className={cn(
                           "text-[9px] px-1.5 py-0.2 font-semibold uppercase",
-                          selectedNode.tier === 1 && "text-purple-600 border-purple-500/40 bg-purple-500/10",
-                          selectedNode.tier === 2 && "text-blue-600 border-blue-500/40 bg-blue-500/10",
-                          selectedNode.tier === 3 && "text-amber-600 border-amber-500/40 bg-amber-500/10",
-                          selectedNode.tier === 4 && "text-emerald-600 border-emerald-500/40 bg-emerald-500/10",
+                          selectedNode.tier === 1 &&
+                            "text-purple-600 border-purple-500/40 bg-purple-500/10",
+                          selectedNode.tier === 2 &&
+                            "text-blue-600 border-blue-500/40 bg-blue-500/10",
+                          selectedNode.tier === 3 &&
+                            "text-amber-600 border-amber-500/40 bg-amber-500/10",
+                          selectedNode.tier === 4 &&
+                            "text-emerald-600 border-emerald-500/40 bg-emerald-500/10",
                         )}
                         data-testid="selected-node-tier-badge"
                       >
@@ -1465,7 +1627,8 @@ export function HierarchyMapBoard({
                         variant="outline"
                         className={cn(
                           "text-[9px] px-1.5 py-0.2 font-semibold uppercase",
-                          selectedNode.status === "active" || selectedNode.status === "online"
+                          selectedNode.status === "active" ||
+                            selectedNode.status === "online"
                             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10"
                             : "text-rose-600 border-rose-500/30 bg-rose-500/10",
                         )}
@@ -1474,7 +1637,10 @@ export function HierarchyMapBoard({
                       </Badge>
                     </div>
 
-                    <h3 className="font-bold text-sm text-foreground truncate" title={selectedNode.name}>
+                    <h3
+                      className="font-bold text-sm text-foreground truncate"
+                      title={selectedNode.name}
+                    >
                       {selectedNode.name}
                     </h3>
 
@@ -1482,7 +1648,9 @@ export function HierarchyMapBoard({
                       <div className="flex items-center justify-between gap-1 pt-0.5">
                         <p className="text-[11px] text-muted-foreground flex items-center gap-1 min-w-0">
                           <span>Induk:</span>
-                          <strong className="text-foreground truncate">{selectedNode.parentName}</strong>
+                          <strong className="text-foreground truncate">
+                            {selectedNode.parentName}
+                          </strong>
                         </p>
                         {selectedNode.tier >= 2 && (
                           <Button
@@ -1624,14 +1792,21 @@ export function HierarchyMapBoard({
                     <div className="flex flex-wrap items-center gap-1 text-[11px]">
                       {activeLineage.map((st, i) => (
                         <span key={st.id} className="flex items-center gap-1">
-                          {i > 0 && <span className="text-muted-foreground">&rarr;</span>}
+                          {i > 0 && (
+                            <span className="text-muted-foreground">
+                              &rarr;
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleSelectLineageStep(st)}
                             className={cn(
                               "px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer",
                               st.id === selectedNode.id
-                                ? cn(HIERARCHY_TIER_META[st.tier].badgeClass, "font-bold ring-1 ring-primary/40")
+                                ? cn(
+                                    HIERARCHY_TIER_META[st.tier].badgeClass,
+                                    "font-bold ring-1 ring-primary/40",
+                                  )
                                 : "text-foreground hover:bg-muted/70",
                             )}
                             title={`Tingkat ${st.tier}: ${st.name}`}
@@ -1651,11 +1826,13 @@ export function HierarchyMapBoard({
                       Koordinat GPS
                     </span>
                     <span className="font-mono text-[11px] block truncate">
-                      {selectedNode.latitude.toFixed(4)}, {selectedNode.longitude.toFixed(4)}
+                      {selectedNode.latitude.toFixed(4)},{" "}
+                      {selectedNode.longitude.toFixed(4)}
                     </span>
                   </div>
 
-                  {selectedNode.opticalPower !== undefined && selectedNode.opticalPower !== null ? (
+                  {selectedNode.opticalPower !== undefined &&
+                  selectedNode.opticalPower !== null ? (
                     <div className="space-y-0.5">
                       <span className="text-[10px] text-muted-foreground uppercase block font-semibold">
                         Sinyal Optik
@@ -1670,7 +1847,8 @@ export function HierarchyMapBoard({
                         Kapasitas Port
                       </span>
                       <span className="font-mono text-[11px] font-bold block text-foreground">
-                        {selectedNode.usedCapacity || 0} / {selectedNode.capacity}
+                        {selectedNode.usedCapacity || 0} /{" "}
+                        {selectedNode.capacity}
                       </span>
                     </div>
                   ) : null}
@@ -1689,7 +1867,9 @@ export function HierarchyMapBoard({
                     {isCopied ? (
                       <>
                         <Check className="size-3.5 text-emerald-500" />
-                        <span className="text-emerald-600 dark:text-emerald-400">Tersalin</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          Tersalin
+                        </span>
                       </>
                     ) : (
                       <>

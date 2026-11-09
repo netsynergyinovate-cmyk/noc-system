@@ -1,7 +1,11 @@
 import "server-only";
 
 import { ApiError } from "@/lib/api";
-import { HSGQ_TELNET_DRIVER, parseTelnetHost, testHsgqTelnetLogin } from "@/lib/olt/hsgq-telnet";
+import {
+  HSGQ_TELNET_DRIVER,
+  parseTelnetHost,
+  testHsgqTelnetLogin,
+} from "@/lib/olt/hsgq-telnet";
 import type { DeviceTarget } from "@/lib/mode-switch";
 import { getDeviceMode } from "@/services/mode-switch.service";
 import { saveDeviceTestResult } from "@/services/device-test-results.service";
@@ -38,7 +42,11 @@ export async function testDeviceConnection(
     mode,
     useTls: input.useTls,
   });
-  const response: DeviceConnectionResponse = { ...result, type: input.type, mode };
+  const response: DeviceConnectionResponse = {
+    ...result,
+    type: input.type,
+    mode,
+  };
   // Simpan riwayat; kegagalan DB tidak boleh menggagalkan uji koneksi.
   try {
     await saveDeviceTestResult(response, opts.testedBy, opts.deviceId, {

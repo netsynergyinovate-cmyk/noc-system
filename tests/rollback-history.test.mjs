@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { MOCK_ROLLBACK_HISTORY } = await import(
-  "../src/lib/dashboard/deploy-safety.ts"
-);
+const { MOCK_ROLLBACK_HISTORY } =
+  await import("../src/lib/dashboard/deploy-safety.ts");
 
 test("MOCK_ROLLBACK_HISTORY memuat riwayat rollback dengan atribut lengkap", () => {
   assert.ok(MOCK_ROLLBACK_HISTORY.length >= 3);

@@ -6,17 +6,35 @@ import path from "node:path";
 describe("Tablet Responsive Layout for Network Map & Page", () => {
   const rootDir = process.cwd();
   const pagePath = path.join(rootDir, "src/app/(protected)/app/peta/page.tsx");
-  const networkMapPath = path.join(rootDir, "src/components/map/network-map.tsx");
-  const customerPanelPath = path.join(rootDir, "src/components/map/customer-detail-panel.tsx");
-  const devicePanelPath = path.join(rootDir, "src/components/map/device-detail-panel.tsx");
-  const legendPath = path.join(rootDir, "src/components/map/network-map-legend.tsx");
+  const networkMapPath = path.join(
+    rootDir,
+    "src/components/map/network-map.tsx",
+  );
+  const customerPanelPath = path.join(
+    rootDir,
+    "src/components/map/customer-detail-panel.tsx",
+  );
+  const devicePanelPath = path.join(
+    rootDir,
+    "src/components/map/device-detail-panel.tsx",
+  );
+  const legendPath = path.join(
+    rootDir,
+    "src/components/map/network-map-legend.tsx",
+  );
 
   it("should have responsive layout in /app/peta page.tsx", () => {
     assert.ok(fs.existsSync(pagePath), "page.tsx should exist");
     const content = fs.readFileSync(pagePath, "utf-8");
 
-    assert.ok(content.includes('data-testid="peta-page"'), "Must contain peta-page container");
-    assert.ok(content.includes("<MapClient"), "Must render MapClient component");
+    assert.ok(
+      content.includes('data-testid="peta-page"'),
+      "Must contain peta-page container",
+    );
+    assert.ok(
+      content.includes("<MapClient"),
+      "Must render MapClient component",
+    );
   });
 
   it("should have tablet-adapted height and top control bar in network-map.tsx", () => {
@@ -79,7 +97,10 @@ describe("Tablet Responsive Layout for Network Map & Page", () => {
   });
 
   it("should have tablet-adapted width in CustomerDetailPanel", () => {
-    assert.ok(fs.existsSync(customerPanelPath), "customer-detail-panel.tsx should exist");
+    assert.ok(
+      fs.existsSync(customerPanelPath),
+      "customer-detail-panel.tsx should exist",
+    );
     const content = fs.readFileSync(customerPanelPath, "utf-8");
 
     assert.ok(
@@ -89,7 +110,10 @@ describe("Tablet Responsive Layout for Network Map & Page", () => {
   });
 
   it("should have tablet-adapted width in DeviceDetailPanel", () => {
-    assert.ok(fs.existsSync(devicePanelPath), "device-detail-panel.tsx should exist");
+    assert.ok(
+      fs.existsSync(devicePanelPath),
+      "device-detail-panel.tsx should exist",
+    );
     const content = fs.readFileSync(devicePanelPath, "utf-8");
 
     assert.ok(

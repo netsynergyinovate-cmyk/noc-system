@@ -5,9 +5,7 @@
 import type { DataSourceEntry } from "./setup-extended.ts";
 
 export type OptionalIntegrationStatus =
-  | "terkonfigurasi"
-  | "belum-dikonfigurasi"
-  | "dalam-pengujian";
+  "terkonfigurasi" | "belum-dikonfigurasi" | "dalam-pengujian";
 
 export interface OptionalIntegrationItem {
   id: string;
@@ -44,83 +42,88 @@ export const OPTIONAL_INTEGRATIONS_MOCK_ENTRY: DataSourceEntry = {
     "Tiruan sementara daftar integrasi opsional terpandu; dievaluasi dari environment dan tabel database saat go-live.",
 };
 
-export const OPTIONAL_INTEGRATION_TEMPLATES: readonly OptionalIntegrationItem[] = [
-  {
-    id: "opt-olt-hsgq",
-    name: "OLT HSGQ & Port PON",
-    category: "akses",
-    description:
-      "Pemantauan status port optik PON, redaman RX/TX Power ONU, dan inventaris modem GPON/EPON.",
-    targetDeviceOrService: "OLT HSGQ (SNMP / Telnet Management)",
-    envKey: "OLT_HSGQ_HOST",
-    status: "belum-dikonfigurasi",
-    mode: "simulator",
-    routeUrl: "/app/cpe",
-    routeLabel: "Kelola OLT & PON",
-    benefit: "Mendeteksi kabel fiber putus dan redaman drop sebelum pelanggan komplain.",
-    requiredVars: ["OLT_HSGQ_HOST", "OLT_HSGQ_USER", "OLT_HSGQ_PASSWORD"],
-  },
-  {
-    id: "opt-genieacs-nbi",
-    name: "GenieACS NBI (TR-069 ACS)",
-    category: "akses",
-    description:
-      "Diagnostik CPE/ONU pelanggan dari jarak jauh, reboot modem, dan baca parameter Wi-Fi.",
-    targetDeviceOrService: "GenieACS NBI API (Port 7557)",
-    envKey: "GENIEACS_NBI_URL",
-    status: "belum-dikonfigurasi",
-    mode: "simulator",
-    routeUrl: "/app/genieacs",
-    routeLabel: "GenieACS (TR-069)",
-    benefit: "Teknisi dapat troubleshooting Wi-Fi tanpa datang ke rumah pelanggan.",
-    requiredVars: ["GENIEACS_NBI_URL"],
-  },
-  {
-    id: "opt-netflow-collector",
-    name: "NetFlow v5/v9 Collector",
-    category: "monitoring",
-    description:
-      "Penerimaan aliran sampel trafik UDP port 2055 untuk analisis top talker, protokol, dan lonjakan anomali.",
-    targetDeviceOrService: "Go NetFlow Engine (UDP 2055)",
-    envKey: "NETFLOW_COLLECTOR_HOST",
-    status: "belum-dikonfigurasi",
-    mode: "simulator",
-    routeUrl: "/app/netflow",
-    routeLabel: "Papan NetFlow",
-    benefit: "Mengetahui IP pelanggan yang menyedot bandwidth besar atau terindikasi DDoS.",
-    requiredVars: ["NETFLOW_COLLECTOR_HOST"],
-  },
-  {
-    id: "opt-whatsapp-gateway",
-    name: "Gateway Notifikasi WhatsApp",
-    category: "notifikasi",
-    description:
-      "Pengiriman otomatis tiket alert gangguan jaringan ke grup teknisi NOC atau nomor teknisi lapangan.",
-    targetDeviceOrService: "WhatsApp API Gateway / Bot Service",
-    envKey: "WHATSAPP_API_KEY",
-    status: "belum-dikonfigurasi",
-    mode: "simulator",
-    routeUrl: "/app/alert/whatsapp",
-    routeLabel: "Setup WhatsApp",
-    benefit: "Eskalasi insiden otomatis dalam 5 detik saat terjadi link down.",
-    requiredVars: ["WHATSAPP_API_KEY", "WHATSAPP_API_URL"],
-  },
-  {
-    id: "opt-billing-sync",
-    name: "Sinkronisasi Sistem Billing",
-    category: "billing",
-    description:
-      "Rekonsiliasi berkala akun PPPoE dengan status pembayaran pelanggan (Lunas vs Isolir).",
-    targetDeviceOrService: "Scraper HTML / REST API Billing ISP",
-    envKey: "BILLING_URL",
-    status: "belum-dikonfigurasi",
-    mode: "simulator",
-    routeUrl: "/app/billing",
-    routeLabel: "Status Billing",
-    benefit: "Mencegah pelanggan nunggak tetap menikmati internet aktif.",
-    requiredVars: ["BILLING_URL", "BILLING_USERNAME", "BILLING_PASSWORD"],
-  },
-];
+export const OPTIONAL_INTEGRATION_TEMPLATES: readonly OptionalIntegrationItem[] =
+  [
+    {
+      id: "opt-olt-hsgq",
+      name: "OLT HSGQ & Port PON",
+      category: "akses",
+      description:
+        "Pemantauan status port optik PON, redaman RX/TX Power ONU, dan inventaris modem GPON/EPON.",
+      targetDeviceOrService: "OLT HSGQ (SNMP / Telnet Management)",
+      envKey: "OLT_HSGQ_HOST",
+      status: "belum-dikonfigurasi",
+      mode: "simulator",
+      routeUrl: "/app/cpe",
+      routeLabel: "Kelola OLT & PON",
+      benefit:
+        "Mendeteksi kabel fiber putus dan redaman drop sebelum pelanggan komplain.",
+      requiredVars: ["OLT_HSGQ_HOST", "OLT_HSGQ_USER", "OLT_HSGQ_PASSWORD"],
+    },
+    {
+      id: "opt-genieacs-nbi",
+      name: "GenieACS NBI (TR-069 ACS)",
+      category: "akses",
+      description:
+        "Diagnostik CPE/ONU pelanggan dari jarak jauh, reboot modem, dan baca parameter Wi-Fi.",
+      targetDeviceOrService: "GenieACS NBI API (Port 7557)",
+      envKey: "GENIEACS_NBI_URL",
+      status: "belum-dikonfigurasi",
+      mode: "simulator",
+      routeUrl: "/app/genieacs",
+      routeLabel: "GenieACS (TR-069)",
+      benefit:
+        "Teknisi dapat troubleshooting Wi-Fi tanpa datang ke rumah pelanggan.",
+      requiredVars: ["GENIEACS_NBI_URL"],
+    },
+    {
+      id: "opt-netflow-collector",
+      name: "NetFlow v5/v9 Collector",
+      category: "monitoring",
+      description:
+        "Penerimaan aliran sampel trafik UDP port 2055 untuk analisis top talker, protokol, dan lonjakan anomali.",
+      targetDeviceOrService: "Go NetFlow Engine (UDP 2055)",
+      envKey: "NETFLOW_COLLECTOR_HOST",
+      status: "belum-dikonfigurasi",
+      mode: "simulator",
+      routeUrl: "/app/netflow",
+      routeLabel: "Papan NetFlow",
+      benefit:
+        "Mengetahui IP pelanggan yang menyedot bandwidth besar atau terindikasi DDoS.",
+      requiredVars: ["NETFLOW_COLLECTOR_HOST"],
+    },
+    {
+      id: "opt-whatsapp-gateway",
+      name: "Gateway Notifikasi WhatsApp",
+      category: "notifikasi",
+      description:
+        "Pengiriman otomatis tiket alert gangguan jaringan ke grup teknisi NOC atau nomor teknisi lapangan.",
+      targetDeviceOrService: "WhatsApp API Gateway / Bot Service",
+      envKey: "WHATSAPP_API_KEY",
+      status: "belum-dikonfigurasi",
+      mode: "simulator",
+      routeUrl: "/app/alert/whatsapp",
+      routeLabel: "Setup WhatsApp",
+      benefit:
+        "Eskalasi insiden otomatis dalam 5 detik saat terjadi link down.",
+      requiredVars: ["WHATSAPP_API_KEY", "WHATSAPP_API_URL"],
+    },
+    {
+      id: "opt-billing-sync",
+      name: "Sinkronisasi Sistem Billing",
+      category: "billing",
+      description:
+        "Rekonsiliasi berkala akun PPPoE dengan status pembayaran pelanggan (Lunas vs Isolir).",
+      targetDeviceOrService: "Scraper HTML / REST API Billing ISP",
+      envKey: "BILLING_URL",
+      status: "belum-dikonfigurasi",
+      mode: "simulator",
+      routeUrl: "/app/billing",
+      routeLabel: "Status Billing",
+      benefit: "Mencegah pelanggan nunggak tetap menikmati internet aktif.",
+      requiredVars: ["BILLING_URL", "BILLING_USERNAME", "BILLING_PASSWORD"],
+    },
+  ];
 
 /**
  * Mengevaluasi status konfigurasi modul opsional berdasarkan environment atau mock state.
@@ -158,7 +161,9 @@ export function evaluateOptionalIntegrations(
     };
   });
 
-  const configuredCount = items.filter((i) => i.status === "terkonfigurasi").length;
+  const configuredCount = items.filter(
+    (i) => i.status === "terkonfigurasi",
+  ).length;
   const unconfiguredCount = items.length - configuredCount;
   const completionPercentage =
     items.length === 0 ? 0 : Math.round((configuredCount / items.length) * 100);

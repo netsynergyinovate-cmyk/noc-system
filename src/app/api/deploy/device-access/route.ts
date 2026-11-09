@@ -1,6 +1,12 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployTarget, updateDeviceAccessLevel } from "@/services/deploy-targets.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployTarget,
+  updateDeviceAccessLevel,
+} from "@/services/deploy-targets.service";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -20,7 +26,10 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return Response.json(
-        { error: "Tingkat akses tidak valid (pilih simulator, baca-saja, atau penuh)." },
+        {
+          error:
+            "Tingkat akses tidak valid (pilih simulator, baca-saja, atau penuh).",
+        },
         { status: 400 },
       );
     }

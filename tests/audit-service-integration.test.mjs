@@ -13,12 +13,8 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const {
-  recordAudit,
-  logOperatorAction,
-  listAuditLogs,
-  sanitizeAuditDetail,
-} = await import("../src/services/audit.service.ts");
+const { recordAudit, logOperatorAction, listAuditLogs, sanitizeAuditDetail } =
+  await import("../src/services/audit.service.ts");
 const { withAudit } = await import("../src/lib/audit-middleware.ts");
 
 test("audit service: sanitizeAuditDetail membersihkan data sensitif", () => {
@@ -57,18 +53,20 @@ test("audit service: listAuditLogs menghasilkan query Drizzle", () => {
 
 test("withAudit middleware memicu pencatatan saat handler sukses", async () => {
   const calls = [];
-  const customWithAudit = (await import("../src/lib/audit-sanitize.ts")).createWithAudit(
-    async (userId, action, target, detail) => {
-      calls.push({ userId, action, target, detail });
-    },
-  );
+  const customWithAudit = (
+    await import("../src/lib/audit-sanitize.ts")
+  ).createWithAudit(async (userId, action, target, detail) => {
+    calls.push({ userId, action, target, detail });
+  });
 
   const wrapped = customWithAudit({
     action: "router-added",
     getTarget: () => "/api/routers/r1",
   });
 
-  const req = new Request("http://localhost:3000/api/routers", { method: "POST" });
+  const req = new Request("http://localhost:3000/api/routers", {
+    method: "POST",
+  });
   const session = { user: { id: "usr-admin" } };
 
   const handler = wrapped(req, async () => {

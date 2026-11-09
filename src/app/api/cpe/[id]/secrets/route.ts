@@ -20,19 +20,34 @@ export function GET(request: Request, context: Context) {
     { cpe: ["manage"] },
     audit(request, async () => {
       const { id } = await context.params;
-      const wifiOnly = new URL(request.url).searchParams.get("scope") === "wifi";
+      const wifiOnly =
+        new URL(request.url).searchParams.get("scope") === "wifi";
       target = `cpe:${id}${wifiOnly ? " (wifi)" : ""}`;
       try {
         const found = await getCpeSecrets(id);
-        if (!found) return Response.json({ error: "Perangkat CPE tidak ditemukan" }, { status: 404 });
+        if (!found)
+          return Response.json(
+            { error: "Perangkat CPE tidak ditemukan" },
+            { status: 404 },
+          );
         target = `cpe:${found.deviceId}${wifiOnly ? " (wifi)" : ""}`;
         // scope=wifi: hanya sandi Wi-Fi; akun admin web modem dan akun ACS tidak ikut ke peramban.
         return Response.json(
           { data: wifiOnly ? { wifi: found.secrets.wifi } : found.secrets },
-          { headers: { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" } },
+          {
+            headers: {
+              "Cache-Control": "no-store, max-age=0",
+              Pragma: "no-cache",
+            },
+          },
         );
       } catch (err) {
-        if (err instanceof GenieAcsError) throw new ApiError(502, "GENIEACS_UNAVAILABLE", "GenieACS tidak dapat dihubungi.");
+        if (err instanceof GenieAcsError)
+          throw new ApiError(
+            502,
+            "GENIEACS_UNAVAILABLE",
+            "GenieACS tidak dapat dihubungi.",
+          );
         throw err;
       }
     }),

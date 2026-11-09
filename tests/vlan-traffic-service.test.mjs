@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { register } from "tsx/esm/api";
 
-process.env.DATABASE_URL ??= "postgresql://starter:starter_password@127.0.0.1:5432/starter";
+process.env.DATABASE_URL ??=
+  "postgresql://starter:starter_password@127.0.0.1:5432/starter";
 process.env.BETTER_AUTH_SECRET ??= "s".repeat(32);
 process.env.BETTER_AUTH_URL ??= "http://localhost:3000";
 process.env.DASHBOARD_DATA = "demo";
@@ -14,7 +15,8 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { getVlanPonTraffic } = await import("../src/services/vlan-traffic.service.ts");
+const { getVlanPonTraffic } =
+  await import("../src/services/vlan-traffic.service.ts");
 
 test("getVlanPonTraffic (live): mengembalikan 6 PON VLAN dengan deret grafik lengkap", async () => {
   const result = await getVlanPonTraffic({ range: "live" });

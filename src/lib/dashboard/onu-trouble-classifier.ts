@@ -108,7 +108,14 @@ export function summarizeOnuTroubles(onus: readonly OnuTroubleInput[]): {
   losCount: number;
   healthyCount: number;
 } {
-  const s = { total: onus.length, troubled: 0, criticalCount: 0, warningCount: 0, losCount: 0, healthyCount: 0 };
+  const s = {
+    total: onus.length,
+    troubled: 0,
+    criticalCount: 0,
+    warningCount: 0,
+    losCount: 0,
+    healthyCount: 0,
+  };
   for (const o of onus) {
     const e = classifyOnuTrouble(o);
     if (e.isTroubled) s.troubled++;

@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  CheckCircle2,
-  Flame,
-  History,
-  TriangleAlert,
-} from "lucide-react";
+import { CheckCircle2, Flame, History, TriangleAlert } from "lucide-react";
 import { computeAlertKpi } from "@/lib/dashboard/alert-board-mock";
 import { formatInteger } from "@/lib/dashboard/format";
 import { useNowMinute } from "@/lib/dashboard/use-now";

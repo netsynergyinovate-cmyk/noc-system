@@ -4,7 +4,11 @@
 export interface FleetDevice {
   isOnline: boolean;
   lastInformAt: number;
-  acs?: { url: string; informEnabled: boolean; informIntervalSec: number | null };
+  acs?: {
+    url: string;
+    informEnabled: boolean;
+    informIntervalSec: number | null;
+  };
 }
 
 export interface FleetGroup {
@@ -40,7 +44,11 @@ export function acsEndpoint(url: string): string | null {
   }
 }
 
-export function summarizeFleet(devices: readonly FleetDevice[], configuredAcsUrl: string, nowSec: number): FleetSummary {
+export function summarizeFleet(
+  devices: readonly FleetDevice[],
+  configuredAcsUrl: string,
+  nowSec: number,
+): FleetSummary {
   const want = acsEndpoint(configuredAcsUrl);
   const byUrl = new Map<string, FleetGroup>();
   const intervals = new Map<number | null, number>();
@@ -50,9 +58,15 @@ export function summarizeFleet(devices: readonly FleetDevice[], configuredAcsUrl
 
   for (const d of devices) {
     if (d.isOnline) reporting++;
-    if (d.lastInformAt > 0 && (newest === null || d.lastInformAt > newest)) newest = d.lastInformAt;
+    if (d.lastInformAt > 0 && (newest === null || d.lastInformAt > newest))
+      newest = d.lastInformAt;
     const url = d.acs?.url.trim() ?? "";
-    const g = byUrl.get(url) ?? { url, count: 0, reporting: 0, matchesConfigured: want === null ? null : acsEndpoint(url) === want };
+    const g = byUrl.get(url) ?? {
+      url,
+      count: 0,
+      reporting: 0,
+      matchesConfigured: want === null ? null : acsEndpoint(url) === want,
+    };
     g.count++;
     if (d.isOnline) g.reporting++;
     byUrl.set(url, g);
@@ -63,7 +77,9 @@ export function summarizeFleet(devices: readonly FleetDevice[], configuredAcsUrl
 
   const groups = [...byUrl.values()].sort((a, b) => b.count - a.count);
   const findings: string[] = [];
-  const elsewhere = groups.filter((g) => g.matchesConfigured === false && g.url !== "");
+  const elsewhere = groups.filter(
+    (g) => g.matchesConfigured === false && g.url !== "",
+  );
   const elsewhereCount = elsewhere.reduce((n, g) => n + g.count, 0);
   if (elsewhereCount > 0) {
     findings.push(
@@ -81,7 +97,9 @@ export function summarizeFleet(devices: readonly FleetDevice[], configuredAcsUrl
   // Banyak modem berhenti melapor pada saat yang hampir sama: jalur ke server yang putus (router/NAT/VPN/firewall),
   // bukan modemnya satu per satu.
   if (newest !== null && reporting === 0 && devices.length >= 5) {
-    const nearNewest = devices.filter((d) => d.lastInformAt > 0 && newest - d.lastInformAt <= 600).length;
+    const nearNewest = devices.filter(
+      (d) => d.lastInformAt > 0 && newest - d.lastInformAt <= 600,
+    ).length;
     if (nearNewest / devices.length >= 0.8) {
       findings.push(
         `${nearNewest} dari ${devices.length} modem berhenti melapor bersamaan (inform terakhir dalam rentang 10 menit). ` +
@@ -89,14 +107,19 @@ export function summarizeFleet(devices: readonly FleetDevice[], configuredAcsUrl
       );
     }
   }
-  if (informOff > 0) findings.push(`${informOff} modem mematikan periodic inform, jadi hanya terlihat saat dihubungi atau di-reboot.`);
+  if (informOff > 0)
+    findings.push(
+      `${informOff} modem mematikan periodic inform, jadi hanya terlihat saat dihubungi atau di-reboot.`,
+    );
 
   return {
     total: devices.length,
     reporting,
     newestInformAt: newest,
     groups,
-    intervals: [...intervals.entries()].map(([sec, count]) => ({ sec, count })).sort((a, b) => b.count - a.count),
+    intervals: [...intervals.entries()]
+      .map(([sec, count]) => ({ sec, count }))
+      .sort((a, b) => b.count - a.count),
     informOff,
     findings,
   };

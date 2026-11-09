@@ -148,7 +148,10 @@ export async function DELETE(request: Request) {
 
       if (!id) {
         return NextResponse.json(
-          { ok: false, error: "ID perangkat yang akan dihapus wajib ditentukan." },
+          {
+            ok: false,
+            error: "ID perangkat yang akan dihapus wajib ditentukan.",
+          },
           { status: 400 },
         );
       }

@@ -186,7 +186,10 @@ test("2. Setiap entri terdaftar memiliki title dan explain non-kosong, serta >= 
 
   for (const layer of layers) {
     const lInfo = layerInfo(layer);
-    assert.ok(lInfo.explain.length > 0, `layerInfo(${layer}).explain non-kosong`);
+    assert.ok(
+      lInfo.explain.length > 0,
+      `layerInfo(${layer}).explain non-kosong`,
+    );
     assert.ok(
       lInfo.sources.length >= 1,
       `layerInfo(${layer}).sources minimal 1 sumber`,
@@ -399,8 +402,7 @@ test("8. WAJIB (a): Setiap MikroTik path muncul sebagai literal /rest<path> di d
   for (const p of testedPaths) {
     const restPath = "/rest" + p;
     const found =
-      combinedCode.includes(restPath) ||
-      goCollectorCode.includes("rest" + p);
+      combinedCode.includes(restPath) || goCollectorCode.includes("rest" + p);
     assert.ok(
       found,
       `MikroTik path '${p}' (${restPath}) harus muncul di diagnostics.service.ts, client.ts atau collector/*.go`,
@@ -550,7 +552,9 @@ test("10. WAJIB (c): Nilai dalam 'via' ({key: 'value'}, .proplist) cocok persis 
 
   // 6. Poller proplists di Go
   for (const kind of ["queue", "cpu", "port", "offline"]) {
-    const s = anomalyKindInfo[kind].sources.find((x) => x.system === "MikroTik");
+    const s = anomalyKindInfo[kind].sources.find(
+      (x) => x.system === "MikroTik",
+    );
     assert.ok(s);
     const match = /\.proplist=([^ "]+)/.exec(s.via);
     assert.ok(match, "via must have .proplist: " + s.via);
@@ -648,8 +652,12 @@ test("12. Setiap field MikroTik di registry benar-benar disebut di kode yang mem
   ].join("\n");
 
   const metricIds = new Set();
-  for (const f of ["src/lib/diagnostics.ts", "src/services/diagnostics.service.ts"]) {
-    for (const m of read(f).matchAll(/metric:\s*"([a-z0-9_]+)"/g)) metricIds.add(m[1]);
+  for (const f of [
+    "src/lib/diagnostics.ts",
+    "src/services/diagnostics.service.ts",
+  ]) {
+    for (const m of read(f).matchAll(/metric:\s*"([a-z0-9_]+)"/g))
+      metricIds.add(m[1]);
   }
   const sources = [];
   for (const kind of ["queue", "cpu", "port", "optical", "offline"]) {
@@ -664,9 +672,15 @@ test("12. Setiap field MikroTik di registry benar-benar disebut di kode yang mem
   for (const s of sources) {
     if (s.system !== "MikroTik") continue;
     for (const field of s.fields ?? []) {
-      const quoted = new RegExp(`["'\`.]${field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\`\\s,)\\]]`);
+      const quoted = new RegExp(
+        `["'\`.]${field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'\`\\s,)\\]]`,
+      );
       if (!quoted.test(code)) missing.add(`${s.path} :: ${field}`);
     }
   }
-  assert.deepEqual([...missing].sort(), [], "field MikroTik yang tidak ditemukan di kode pembacanya");
+  assert.deepEqual(
+    [...missing].sort(),
+    [],
+    "field MikroTik yang tidak ditemukan di kode pembacanya",
+  );
 });

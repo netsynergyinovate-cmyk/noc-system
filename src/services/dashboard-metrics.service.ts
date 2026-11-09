@@ -25,7 +25,9 @@ export interface DashboardKpiMetrics {
   generatedAt: string;
 }
 
-export function emptyDashboardKpiMetrics(now = new Date()): DashboardKpiMetrics {
+export function emptyDashboardKpiMetrics(
+  now = new Date(),
+): DashboardKpiMetrics {
   return {
     onlineCount: 0,
     offlineCount: 0,

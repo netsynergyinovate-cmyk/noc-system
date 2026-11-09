@@ -1,6 +1,7 @@
 // Bentuk catatan undo dan pemulihan tanggal dari JSONB (murni, tanpa DB, agar mudah diuji).
 
-export type UndoKind = "device" | "customer" | "route" | "segment" | "override" | "layer";
+export type UndoKind =
+  "device" | "customer" | "route" | "segment" | "override" | "layer";
 
 export type UndoChange = {
   kind: UndoKind;

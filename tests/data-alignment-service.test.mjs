@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { ALIGNMENT_ADVISORY_LOCK_KEY, runDataAlignmentIdempotent } = await import(
-  "../src/services/data-alignment.service.ts"
-);
+const { ALIGNMENT_ADVISORY_LOCK_KEY, runDataAlignmentIdempotent } =
+  await import("../src/services/data-alignment.service.ts");
 
 test("ALIGNMENT_ADVISORY_LOCK_KEY didefinisikan secara unik", () => {
   assert.equal(ALIGNMENT_ADVISORY_LOCK_KEY, 727274003);
@@ -25,7 +24,11 @@ test("runDataAlignmentIdempotent menangani database offline secara aman", async 
   const res = await runDataAlignmentIdempotent({
     actor: "test_suite",
     steps: ["billing_status", "thresholds"],
-    pool: { connect: async () => { throw new Error("Connection refused (database offline)"); } },
+    pool: {
+      connect: async () => {
+        throw new Error("Connection refused (database offline)");
+      },
+    },
   });
   assert.equal(res.success, false);
   assert.equal(res.totalSteps, 2);

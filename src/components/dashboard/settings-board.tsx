@@ -29,7 +29,13 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +102,9 @@ export function SettingsBoard() {
   const [copiedScript, setCopiedScript] = useState<string | null>(null);
 
   // Status sistem riil dari backend & database
-  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(
+    null,
+  );
 
   // Audio Alarm browser riil (terhubung langsung ke soundEngine)
   const soundSnapshot = useSyncExternalStore(
@@ -221,7 +229,8 @@ export function SettingsBoard() {
               Pengaturan Sistem NOC
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Konfigurasi operasional, ambang batas anomali, dan panduan perangkat.
+              Konfigurasi operasional, ambang batas anomali, dan panduan
+              perangkat.
             </p>
           </div>
 
@@ -236,7 +245,11 @@ export function SettingsBoard() {
                   : "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
               )}
             >
-              {isLocal ? <Laptop className="size-3" /> : <Globe className="size-3" />}
+              {isLocal ? (
+                <Laptop className="size-3" />
+              ) : (
+                <Globe className="size-3" />
+              )}
               <span>{isLocal ? "Localhost" : "Server Remote"}</span>
             </Badge>
           </div>
@@ -293,25 +306,32 @@ export function SettingsBoard() {
                   <span>Ringkasan Data Operasional</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Jumlah entitas jaringan aktif yang tersimpan dan terpantau di sistem.
+                  Jumlah entitas jaringan aktif yang tersimpan dan terpantau di
+                  sistem.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
-                    <span className="text-muted-foreground text-[11px]">Router MikroTik</span>
+                    <span className="text-muted-foreground text-[11px]">
+                      Router MikroTik
+                    </span>
                     <div className="text-base font-bold text-foreground font-mono">
                       {runtimeStatus.dbStats.routers}
                     </div>
                   </div>
                   <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
-                    <span className="text-muted-foreground text-[11px]">OLT GPON</span>
+                    <span className="text-muted-foreground text-[11px]">
+                      OLT GPON
+                    </span>
                     <div className="text-base font-bold text-foreground font-mono">
                       {runtimeStatus.dbStats.olts}
                     </div>
                   </div>
                   <div className="rounded-md border bg-muted/20 p-2.5 text-xs space-y-0.5">
-                    <span className="text-muted-foreground text-[11px]">Total Alert Sistem</span>
+                    <span className="text-muted-foreground text-[11px]">
+                      Total Alert Sistem
+                    </span>
                     <div className="text-base font-bold text-foreground font-mono">
                       {runtimeStatus.dbStats.alerts}
                     </div>
@@ -331,7 +351,8 @@ export function SettingsBoard() {
                     <span>Akun Aktif &amp; Hak Akses</span>
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Tingkat wewenang akun Anda dalam operasional dan konfigurasi sistem.
+                    Tingkat wewenang akun Anda dalam operasional dan konfigurasi
+                    sistem.
                   </CardDescription>
                 </div>
                 {userRoleInfo && (
@@ -376,10 +397,17 @@ export function SettingsBoard() {
                     className="h-7 text-xs gap-1.5"
                   >
                     <KeyRound className="size-3" />
-                    <span>{showChangePassword ? "Tutup Form" : "Ganti Kata Sandi"}</span>
+                    <span>
+                      {showChangePassword ? "Tutup Form" : "Ganti Kata Sandi"}
+                    </span>
                   </Button>
 
-                  <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                  >
                     <Link href="/app/pengaturan/akun">
                       <Users className="size-3 text-amber-500" />
                       <span>Manajemen Akun</span>
@@ -418,7 +446,9 @@ export function SettingsBoard() {
                   )}
                   <div className="grid gap-2.5 sm:grid-cols-3">
                     <div className="space-y-1">
-                      <Label htmlFor="current-pass" className="text-xs">Sandi Saat Ini</Label>
+                      <Label htmlFor="current-pass" className="text-xs">
+                        Sandi Saat Ini
+                      </Label>
                       <Input
                         id="current-pass"
                         type="password"
@@ -430,7 +460,9 @@ export function SettingsBoard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="new-pass" className="text-xs">Sandi Baru</Label>
+                      <Label htmlFor="new-pass" className="text-xs">
+                        Sandi Baru
+                      </Label>
                       <Input
                         id="new-pass"
                         type="password"
@@ -443,7 +475,9 @@ export function SettingsBoard() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="confirm-pass" className="text-xs">Ulangi Sandi Baru</Label>
+                      <Label htmlFor="confirm-pass" className="text-xs">
+                        Ulangi Sandi Baru
+                      </Label>
                       <Input
                         id="confirm-pass"
                         type="password"
@@ -500,7 +534,8 @@ export function SettingsBoard() {
                 <span>Pengaturan Suara Alarm Audio Browser</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Peringatan audio peramban saat terdeteksi gangguan kritis jaringan secara real-time.
+                Peringatan audio peramban saat terdeteksi gangguan kritis
+                jaringan secara real-time.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-1">
@@ -515,7 +550,8 @@ export function SettingsBoard() {
                   </div>
                   <div>
                     <div className="text-xs font-semibold">
-                      Status Audio: {soundSnapshot.enabled ? "Aktif" : "Dimatikan"}
+                      Status Audio:{" "}
+                      {soundSnapshot.enabled ? "Aktif" : "Dimatikan"}
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       {soundSnapshot.enabled
@@ -531,7 +567,9 @@ export function SettingsBoard() {
                   variant={soundSnapshot.enabled ? "default" : "outline"}
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => void soundEngine.setEnabled(!soundSnapshot.enabled)}
+                  onClick={() =>
+                    void soundEngine.setEnabled(!soundSnapshot.enabled)
+                  }
                 >
                   {soundSnapshot.enabled ? "Matikan Alarm" : "Aktifkan Alarm"}
                 </Button>
@@ -549,7 +587,8 @@ export function SettingsBoard() {
                     <span>Integrasi Bot Telegram NOC</span>
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Broadcast insiden kritis ke channel atau grup koordinasi teknisi via Telegram.
+                    Broadcast insiden kritis ke channel atau grup koordinasi
+                    teknisi via Telegram.
                   </CardDescription>
                 </div>
                 <Badge
@@ -563,7 +602,10 @@ export function SettingsBoard() {
             </CardHeader>
             <CardContent className="pt-1">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3.5 text-xs text-muted-foreground leading-relaxed">
-                Fitur integrasi bot Telegram untuk broadcast insiden dan eskalasi anomali jaringan sedang dalam tahap pengembangan (Coming Soon) dan akan dirilis pada pembaruan berikutnya bersamaan dengan integrasi WhatsApp.
+                Fitur integrasi bot Telegram untuk broadcast insiden dan
+                eskalasi anomali jaringan sedang dalam tahap pengembangan
+                (Coming Soon) dan akan dirilis pada pembaruan berikutnya
+                bersamaan dengan integrasi WhatsApp.
               </div>
             </CardContent>
           </Card>
@@ -601,17 +643,25 @@ export function SettingsBoard() {
                 <span>Koneksi Backend Collector (Go Module)</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Layanan pengumpul telemetri mandiri berkecepatan tinggi pada direktori <code className="text-xs font-mono">backend/</code>.
+                Layanan pengumpul telemetri mandiri berkecepatan tinggi pada
+                direktori <code className="text-xs font-mono">backend/</code>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-1">
               <div className="rounded-lg border bg-muted/20 p-3.5 text-xs text-muted-foreground leading-relaxed space-y-2">
                 <p>
-                  Collector Go secara mandiri membaca utilisasi CPU/RAM MikroTik, traffic queue, port VLAN, dan SNMP OLT setiap detik, lalu mengalirkan delta data secara langsung melalui protokol WebSocket streaming.
+                  Collector Go secara mandiri membaca utilisasi CPU/RAM
+                  MikroTik, traffic queue, port VLAN, dan SNMP OLT setiap detik,
+                  lalu mengalirkan delta data secara langsung melalui protokol
+                  WebSocket streaming.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-[11px] text-foreground">
-                  <span className="text-muted-foreground">Perintah jalankan backend:</span>
-                  <code className="bg-black/60 px-2 py-0.5 rounded text-primary font-bold">npm run backend:dev</code>
+                  <span className="text-muted-foreground">
+                    Perintah jalankan backend:
+                  </span>
+                  <code className="bg-black/60 px-2 py-0.5 rounded text-primary font-bold">
+                    npm run backend:dev
+                  </code>
                 </div>
               </div>
             </CardContent>
@@ -629,7 +679,12 @@ export function SettingsBoard() {
                   <CreditCard className="size-4 text-primary" />
                   <span>Sinkronisasi Billing &amp; Aturan Isolir Router</span>
                 </CardTitle>
-                <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                >
                   <Link href="/app/pelanggan">
                     <span>Lihat Pelanggan</span>
                     <ArrowRight className="size-3" />
@@ -637,7 +692,8 @@ export function SettingsBoard() {
                 </Button>
               </div>
               <CardDescription className="text-xs">
-                Integrasi status penagihan pelanggan dan pemutusan otomatis profil PPPoE.
+                Integrasi status penagihan pelanggan dan pemutusan otomatis
+                profil PPPoE.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-1">
@@ -647,7 +703,11 @@ export function SettingsBoard() {
                   <span>Mekanisme Isolir: Router MikroTik Didahulukan</span>
                 </div>
                 <p className="text-muted-foreground leading-relaxed">
-                  Status isolir ditentukan secara real-time berdasarkan address-list <code>isolir</code> pada MikroTik BRAS yang diperiksa oleh poller Go setiap 5 detik. Data billing eksternal disinkronkan secara terjadwal melalui variabel lingkungan <code className="font-mono">BILLING_URL</code>.
+                  Status isolir ditentukan secara real-time berdasarkan
+                  address-list <code>isolir</code> pada MikroTik BRAS yang
+                  diperiksa oleh poller Go setiap 5 detik. Data billing
+                  eksternal disinkronkan secara terjadwal melalui variabel
+                  lingkungan <code className="font-mono">BILLING_URL</code>.
                 </p>
               </div>
             </CardContent>
@@ -665,7 +725,8 @@ export function SettingsBoard() {
                 <span>Panduan Cepat Integrasi Perangkat ke NOC</span>
               </CardTitle>
               <CardDescription className="text-xs">
-                Perintah standar untuk mengaktifkan REST API MikroTik dan SNMP OLT GPON.
+                Perintah standar untuk mengaktifkan REST API MikroTik dan SNMP
+                OLT GPON.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-1">
@@ -691,7 +752,9 @@ export function SettingsBoard() {
                     ) : (
                       <Copy className="size-3" />
                     )}
-                    <span>{copiedScript === "ros" ? "Tersalin" : "Salin Script"}</span>
+                    <span>
+                      {copiedScript === "ros" ? "Tersalin" : "Salin Script"}
+                    </span>
                   </Button>
                 </div>
                 <pre className="rounded bg-black/60 p-2.5 font-mono text-[11px] text-foreground/90 overflow-x-auto">
@@ -721,7 +784,9 @@ export function SettingsBoard() {
                     ) : (
                       <Copy className="size-3" />
                     )}
-                    <span>{copiedScript === "olt" ? "Tersalin" : "Salin Script"}</span>
+                    <span>
+                      {copiedScript === "olt" ? "Tersalin" : "Salin Script"}
+                    </span>
                   </Button>
                 </div>
                 <pre className="rounded bg-black/60 p-2.5 font-mono text-[11px] text-foreground/90 overflow-x-auto">
@@ -732,7 +797,9 @@ export function SettingsBoard() {
               {/* Langkah 3 */}
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div>
-                  <span className="font-semibold">Daftarkan Perangkat Baru:</span>
+                  <span className="font-semibold">
+                    Daftarkan Perangkat Baru:
+                  </span>
                   <span className="text-muted-foreground ml-1.5">
                     Gunakan antarmuka manajemen untuk menambah router atau OLT.
                   </span>
@@ -741,7 +808,12 @@ export function SettingsBoard() {
                   <Button asChild size="sm" className="h-7 text-xs">
                     <Link href="/app/router">Kelola Router →</Link>
                   </Button>
-                  <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                  >
                     <Link href="/setup">Wisaya Setup →</Link>
                   </Button>
                 </div>

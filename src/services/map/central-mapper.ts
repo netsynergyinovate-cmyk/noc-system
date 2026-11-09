@@ -160,7 +160,12 @@ export function mapCentralData(
         const olt =
           (d.host ? oltByHost.get(d.host.trim()) : undefined) ??
           olts.find((o) => o.id === oltLinks.get(d.id));
-        return olt ? { ponPorts: portsOf(olt.id), centralOlt: { id: olt.id, name: olt.name } } : {};
+        return olt
+          ? {
+              ponPorts: portsOf(olt.id),
+              centralOlt: { id: olt.id, name: olt.name },
+            }
+          : {};
       })(),
     }));
 
@@ -183,36 +188,40 @@ export function mapCentralData(
   const customers: MapCustomer[] = rawCustomers.map((c) => {
     const onu = onuByCustomer.get(c.id);
     return {
-    id: c.id,
-    name: c.name,
-    customerNumber: c.pppoeUsername,
-    address: c.address ?? "",
-    region: "", // shortcut: pusat belum punya wilayah pelanggan; isi saat kolomnya ada
-    // "loss" butuh status LOS ONU, belum tersedia di dataset customers
-    status:
-      effectiveBillingStatus(c.isolirRouter, c.billingStatus) === "isolir"
-        ? "isolir"
-        : c.isOnline
-          ? "terhubung"
-          : "offline",
-    billingStatus: c.billingStatus,
-    latitude: c.latitude,
-    longitude: c.longitude,
-    packagePlan: packageByCustId.get(c.pppoeUsername.split("@")[0]) ?? null,
-    monthlyFee: null,
-    opticalPower: c.opticalPower ?? onu?.rxPower ?? undefined,
-    odpId: c.odpName ? (odpIdByName.get(normalizeName(c.odpName)) ?? null) : null,
-    onuSerial: onu?.serialNumber ?? undefined,
-    onuStatus: onu?.status,
-    onuLocation: onu
-      ? `${oltName.get(onu.oltId) ?? "OLT"} • PON ${onu.ponIndex} / ONU ${onu.onuIndex}`
-      : undefined,
+      id: c.id,
+      name: c.name,
+      customerNumber: c.pppoeUsername,
+      address: c.address ?? "",
+      region: "", // shortcut: pusat belum punya wilayah pelanggan; isi saat kolomnya ada
+      // "loss" butuh status LOS ONU, belum tersedia di dataset customers
+      status:
+        effectiveBillingStatus(c.isolirRouter, c.billingStatus) === "isolir"
+          ? "isolir"
+          : c.isOnline
+            ? "terhubung"
+            : "offline",
+      billingStatus: c.billingStatus,
+      latitude: c.latitude,
+      longitude: c.longitude,
+      packagePlan: packageByCustId.get(c.pppoeUsername.split("@")[0]) ?? null,
+      monthlyFee: null,
+      opticalPower: c.opticalPower ?? onu?.rxPower ?? undefined,
+      odpId: c.odpName
+        ? (odpIdByName.get(normalizeName(c.odpName)) ?? null)
+        : null,
+      onuSerial: onu?.serialNumber ?? undefined,
+      onuStatus: onu?.status,
+      onuLocation: onu
+        ? `${oltName.get(onu.oltId) ?? "OLT"} • PON ${onu.ponIndex} / ONU ${onu.onuIndex}`
+        : undefined,
     };
   });
 
   const statusByCustomer = new Map(customers.map((c) => [c.id, c.status]));
   for (const d of devices) {
-    d.connectedCustomersCount = customers.filter((c) => c.odpId === d.id).length;
+    d.connectedCustomersCount = customers.filter(
+      (c) => c.odpId === d.id,
+    ).length;
   }
 
   const routes: CableRoute[] = [];
@@ -263,7 +272,11 @@ export function mapCentralData(
           : toCustomer
             ? "unknown"
             : null,
-      samples: samples.map((s) => ({ ...s, id: `${cable.id}:${s.sequence}`, segmentId: cable.id })),
+      samples: samples.map((s) => ({
+        ...s,
+        id: `${cable.id}:${s.sequence}`,
+        segmentId: cable.id,
+      })),
     });
   }
 
@@ -311,7 +324,9 @@ export function mergeMapData(
   const byKey = new Map(
     overrides.map((o) => [`${o.entityType}:${o.entityId}`, o]),
   );
-  const coords = <T extends { latitude: number | null; longitude: number | null }>(
+  const coords = <
+    T extends { latitude: number | null; longitude: number | null },
+  >(
     entity: T,
     o: LocalOverride | undefined,
   ): T =>
@@ -325,7 +340,11 @@ export function mergeMapData(
       .map((c) => {
         const o = byKey.get(`customer:${c.id}`);
         // parentDeviceId pada koreksi pelanggan = ODP pilihan peta, menimpa tautan nama dari pusat
-        return { ...coords(c, o), odpId: o?.parentDeviceId ?? c.odpId, odpPort: o?.odpPort ?? null };
+        return {
+          ...coords(c, o),
+          odpId: o?.parentDeviceId ?? c.odpId,
+          odpPort: o?.odpPort ?? null,
+        };
       }),
     ...local.customers,
   ];
@@ -351,7 +370,10 @@ export function mergeMapData(
           splitterTap: o.splitterTap ?? null,
           odcPort: o.odcPort ?? null,
           // Koreksi jenis hanya ODP <-> ODC
-          type: o.deviceType === "odp" || o.deviceType === "odc" ? o.deviceType : d.type,
+          type:
+            o.deviceType === "odp" || o.deviceType === "odc"
+              ? o.deviceType
+              : d.type,
         };
       }),
     ...local.devices,
@@ -360,7 +382,12 @@ export function mergeMapData(
   const statusOf = new Map(customers.map((c) => [c.id, c.status]));
   const segments = [...central.segments, ...local.segments].map((s) =>
     s.customerId
-      ? { ...s, connectionStatus: toConnection(statusOf.get(s.customerId) ?? undefined) }
+      ? {
+          ...s,
+          connectionStatus: toConnection(
+            statusOf.get(s.customerId) ?? undefined,
+          ),
+        }
       : s,
   );
 

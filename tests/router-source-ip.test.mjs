@@ -4,8 +4,10 @@ import net from "node:net";
 import { register } from "tsx/esm/api";
 
 register();
-const { outboundSourceIp } = await import("../src/services/outbound-source-ip.ts");
-const { describeConnectionTroubleshoot: d } = await import("../src/components/dashboard/connection-error-notice.tsx");
+const { outboundSourceIp } =
+  await import("../src/services/outbound-source-ip.ts");
+const { describeConnectionTroubleshoot: d } =
+  await import("../src/components/dashboard/connection-error-notice.tsx");
 
 function listen() {
   const { promise, resolve } = Promise.withResolvers();
@@ -17,7 +19,10 @@ function listen() {
 test("outboundSourceIp mengembalikan alamat lokal yang dipakai untuk menyambung", async () => {
   const server = await listen();
   try {
-    assert.equal(await outboundSourceIp("127.0.0.1", server.address().port), "127.0.0.1");
+    assert.equal(
+      await outboundSourceIp("127.0.0.1", server.address().port),
+      "127.0.0.1",
+    );
   } finally {
     server.close();
   }
@@ -31,7 +36,10 @@ test("outboundSourceIp null bila port tertutup (tidak ada alamat sumber untuk di
 });
 
 test("CONNECTION_CLOSED mikrotik: judul, peringatan mengganti allow-list, command siap tempel", () => {
-  const r = d("CONNECTION_CLOSED", "mikrotik", { sourceIp: "203.0.113.5", protocol: "rest" });
+  const r = d("CONNECTION_CLOSED", "mikrotik", {
+    sourceIp: "203.0.113.5",
+    protocol: "rest",
+  });
   assert.match(r.title, /menutup koneksi/i);
   assert.match(r.hint, /MENGGANTI|mempertahankan entri lama/i);
   assert.match(r.command, /203\.0\.113\.5\/32/);
@@ -45,7 +53,10 @@ test("CONNECTION_CLOSED menyertakan IP publik DAN IP LAN server", () => {
     localSourceIp: "192.168.0.182",
     protocol: "rest",
   });
-  assert.equal(r.command, "/ip service set www address=203.0.113.5/32,192.168.0.182/32");
+  assert.equal(
+    r.command,
+    "/ip service set www address=203.0.113.5/32,192.168.0.182/32",
+  );
 });
 
 test("CONNECTION_REFUSED mikrotik: arahkan cek port (router bisa memakai port lain), jangan menyuruh mengaktifkan www-ssl", () => {
@@ -74,7 +85,8 @@ test("TIMEOUT mikrotik: petunjuk menyebut port Winbox/layanan lain, tidak generi
 });
 
 test("tcpConnectedTimeoutMessage menyebut port, host, kemungkinan Winbox/API, dan arahan ke port www", async () => {
-  const { tcpConnectedTimeoutMessage } = await import("../src/services/outbound-source-ip.ts");
+  const { tcpConnectedTimeoutMessage } =
+    await import("../src/services/outbound-source-ip.ts");
   const m = tcpConnectedTimeoutMessage("10.0.0.1", 2024);
   assert.match(m, /2024/);
   assert.match(m, /10\.0\.0\.1/);

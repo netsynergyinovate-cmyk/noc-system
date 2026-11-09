@@ -1,5 +1,8 @@
 import { db } from "@/db";
-import { deployWriteGuardLogs, type DeployWriteGuardLog } from "@/db/schema/deploy-runs";
+import {
+  deployWriteGuardLogs,
+  type DeployWriteGuardLog,
+} from "@/db/schema/deploy-runs";
 import { getDeployTarget } from "./deploy-targets.service";
 import { isDeployRole } from "@/lib/deploy/role-guard";
 import { desc } from "drizzle-orm";
@@ -18,22 +21,26 @@ export const DANGEROUS_WRITE_ENDPOINTS = [
   {
     path: "/api/cpe/tasks",
     name: "Pembuatan Task CPE / TR-069",
-    reason: "Pembuatan task CPE diblokir di localhost untuk mencegah perintah konfigurasi ganda ke modem pelanggan.",
+    reason:
+      "Pembuatan task CPE diblokir di localhost untuk mencegah perintah konfigurasi ganda ke modem pelanggan.",
   },
   {
     path: "/api/billing/sync",
     name: "Sinkronisasi Billing",
-    reason: "Sinkronisasi billing diblokir di localhost agar status tagihan dan isolir hanya dikelola oleh SERVER NATIVE.",
+    reason:
+      "Sinkronisasi billing diblokir di localhost agar status tagihan dan isolir hanya dikelola oleh SERVER NATIVE.",
   },
   {
     path: "/api/whatsapp/send",
     name: "Pengiriman Notifikasi WhatsApp",
-    reason: "Pengiriman pesan WhatsApp diblokir di localhost untuk mencegah pesan duplikat atau spam ke pelanggan.",
+    reason:
+      "Pengiriman pesan WhatsApp diblokir di localhost untuk mencegah pesan duplikat atau spam ke pelanggan.",
   },
   {
     path: "/api/alerts/ticket",
     name: "Pembuatan Tiket Alert",
-    reason: "Pembuatan tiket alert otomatis diblokir di localhost pada mode baca-saja.",
+    reason:
+      "Pembuatan tiket alert otomatis diblokir di localhost pada mode baca-saja.",
   },
 ] as const;
 
@@ -73,7 +80,11 @@ export async function evaluateWriteGuard(
     endpoint.toLowerCase().startsWith(item.path.toLowerCase()),
   );
 
-  if (matched && method.toUpperCase() !== "GET" && method.toUpperCase() !== "HEAD") {
+  if (
+    matched &&
+    method.toUpperCase() !== "GET" &&
+    method.toUpperCase() !== "HEAD"
+  ) {
     const reason = `[Tingkat: ${level}] ${matched.reason}`;
 
     // Catat ke tabel deploy_write_guard_logs agar operator tahu kenapa aksi tidak terjadi
@@ -101,7 +112,9 @@ export async function evaluateWriteGuard(
 /**
  * Mengambil catatan penolakan penjaga tulis terbaru.
  */
-export async function getWriteGuardLogs(limit = 50): Promise<DeployWriteGuardLog[]> {
+export async function getWriteGuardLogs(
+  limit = 50,
+): Promise<DeployWriteGuardLog[]> {
   return db
     .select()
     .from(deployWriteGuardLogs)

@@ -67,11 +67,17 @@ function readChanges(raw: unknown): AuditChange[] {
   return out;
 }
 
-const HIDDEN_SUMMARY = "Rincian disembunyikan karena memuat data yang tampak sensitif.";
+const HIDDEN_SUMMARY =
+  "Rincian disembunyikan karena memuat data yang tampak sensitif.";
 
 // Tidak pernah melempar: satu catatan buruk tidak boleh menjatuhkan seluruh halaman.
 export function mapAuditRow(row: LiveAuditRow): AuditEntry | null {
-  if (!row || typeof row.id !== "string" || !Number.isSafeInteger(row.at) || row.at < 0) {
+  if (
+    !row ||
+    typeof row.id !== "string" ||
+    !Number.isSafeInteger(row.at) ||
+    row.at < 0
+  ) {
     return null;
   }
   const actor =
@@ -113,7 +119,9 @@ export async function loadLiveAudit(
     throw new AuditLoadError();
   }
   if (!res.ok) throw new AuditLoadError();
-  const json = (await res.json().catch(() => null)) as { data?: LiveAuditRow[] } | null;
+  const json = (await res.json().catch(() => null)) as {
+    data?: LiveAuditRow[];
+  } | null;
   const since = nowSec - AUDIT_WINDOW_SECONDS;
   const entries: AuditEntry[] = [];
   for (const row of json?.data ?? []) {

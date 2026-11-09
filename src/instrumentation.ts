@@ -1,8 +1,7 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { runStartupValidation, formatStartupBanner } = await import(
-      "@/lib/startup-validator"
-    );
+    const { runStartupValidation, formatStartupBanner } =
+      await import("@/lib/startup-validator");
     const report = runStartupValidation(process.env);
     console.log(formatStartupBanner(report));
 
@@ -18,22 +17,19 @@ export async function register() {
 
     // Jalankan migrasi skema dan seed awal sebelum aplikasi melayani permintaan
     if (report.canBoot) {
-      const { runStartupMigrations } = await import(
-        "@/services/startup-migration.service"
-      );
+      const { runStartupMigrations } =
+        await import("@/services/startup-migration.service");
       const migResult = await runStartupMigrations();
 
       if (migResult.success) {
-        const { runStartupSeed } = await import(
-          "@/services/startup-seed.service"
-        );
+        const { runStartupSeed } =
+          await import("@/services/startup-seed.service");
         await runStartupSeed();
       }
 
       try {
-        const { startVlanBackgroundCollector } = await import(
-          "@/services/vlan-traffic.service"
-        );
+        const { startVlanBackgroundCollector } =
+          await import("@/services/vlan-traffic.service");
         startVlanBackgroundCollector();
       } catch (err) {
         console.error("Gagal memulai background collector VLAN:", err);

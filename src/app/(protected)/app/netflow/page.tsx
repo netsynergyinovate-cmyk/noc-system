@@ -16,11 +16,14 @@ export default async function NetflowPage() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Inspeksi aliran trafik IP per router, protokol, dan aplikasi
-          teratas.
+          Inspeksi aliran trafik IP per router, protokol, dan aplikasi teratas.
         </p>
       </div>
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Memuat NetFlow…</p>}>
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted-foreground">Memuat NetFlow…</p>
+        }
+      >
         <NetflowBoard />
       </Suspense>
     </div>

@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import {
-  Cpu,
-  EthernetPort,
-  Gauge,
-  Info,
-  Signal,
-  WifiOff,
-} from "lucide-react";
+import { Cpu, EthernetPort, Gauge, Info, Signal, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   anomalyRules,
@@ -86,7 +79,9 @@ export function KindIcon({
 }) {
   const meta = kindMeta[kind] ?? kindMeta.queue;
   const Icon = meta.Icon;
-  return <Icon className={cn("size-4 shrink-0", className)} aria-hidden="true" />;
+  return (
+    <Icon className={cn("size-4 shrink-0", className)} aria-hidden="true" />
+  );
 }
 
 // Chip kecil yang selalu terlihat di kartu insiden dan jenis gangguan
@@ -102,7 +97,9 @@ export function MikroTikSourceChip({ kind }: { kind: IncidentKind }) {
       className="inline-flex items-center gap-1 rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground border border-border/70"
     >
       <span className="font-sans font-medium text-foreground">
-        {primarySource.system === "MikroTik" ? "Sumber MikroTik:" : `Sumber ${primarySource.system}:`}
+        {primarySource.system === "MikroTik"
+          ? "Sumber MikroTik:"
+          : `Sumber ${primarySource.system}:`}
       </span>
       <span>{primarySource.path}</span>
     </span>
@@ -130,14 +127,21 @@ export function KindInfoDisclosure({ kind }: { kind: IncidentKind }) {
       {open && (
         <div className="mt-1.5 rounded-md border border-border bg-muted/40 p-2 space-y-1.5 text-[11px] leading-relaxed animate-in fade-in-50 duration-150">
           <div>
-            <span className="font-medium text-foreground block">Penjelasan Gangguan:</span>
+            <span className="font-medium text-foreground block">
+              Penjelasan Gangguan:
+            </span>
             <p className="text-muted-foreground">{info.explain}</p>
           </div>
           <div className="pt-1 border-t border-border/60">
-            <span className="font-medium text-foreground block mb-1">Sumber Data:</span>
+            <span className="font-medium text-foreground block mb-1">
+              Sumber Data:
+            </span>
             <div className="space-y-1">
               {info.sources.map((s, idx) => (
-                <div key={idx} className="flex flex-wrap items-baseline gap-1 text-[11px]">
+                <div
+                  key={idx}
+                  className="flex flex-wrap items-baseline gap-1 text-[11px]"
+                >
                   <span
                     className={cn(
                       "px-1 py-0.2 rounded font-sans font-medium text-[10px] border",
@@ -150,7 +154,9 @@ export function KindInfoDisclosure({ kind }: { kind: IncidentKind }) {
                   >
                     {s.system}
                   </span>
-                  <span className="font-mono text-foreground font-medium">{s.path}</span>
+                  <span className="font-mono text-foreground font-medium">
+                    {s.path}
+                  </span>
                   <span className="text-muted-foreground">({s.via})</span>
                   {s.fields && s.fields.length > 0 && (
                     <span className="text-muted-foreground/80 font-mono text-[10px]">
@@ -187,14 +193,20 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
     }
     const pct = Math.min(100, Math.max(0, val));
     return (
-      <div className="flex flex-col gap-1 w-full text-[11px]" data-kind-element="queue">
+      <div
+        className="flex flex-col gap-1 w-full text-[11px]"
+        data-kind-element="queue"
+      >
         <div className="flex justify-between items-center text-[11px] font-mono">
           <span className="text-muted-foreground">Utilisasi Antrean</span>
           <span className="font-semibold text-foreground">{val}%</span>
         </div>
         <div className="relative h-2 w-full rounded-full bg-muted overflow-hidden">
           <div
-            className={cn("h-full rounded-full transition-all", val >= thresh ? "bg-destructive" : "bg-chart-1")}
+            className={cn(
+              "h-full rounded-full transition-all",
+              val >= thresh ? "bg-destructive" : "bg-chart-1",
+            )}
             style={{ width: `${pct}%` }}
           />
           <div
@@ -223,7 +235,10 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
       );
     }
     return (
-      <div className="flex flex-col gap-1 w-full text-[11px]" data-kind-element="cpu">
+      <div
+        className="flex flex-col gap-1 w-full text-[11px]"
+        data-kind-element="cpu"
+      >
         <div className="flex justify-between items-center text-[11px] font-mono">
           <span className="text-muted-foreground">Beban CPU Router</span>
           <span className="font-semibold text-foreground">{val}%</span>
@@ -269,10 +284,15 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
       );
     }
     return (
-      <div className="flex flex-col gap-1 w-full text-[11px]" data-kind-element="port">
+      <div
+        className="flex flex-col gap-1 w-full text-[11px]"
+        data-kind-element="port"
+      >
         <div className="flex justify-between items-center text-[11px] font-mono">
           <span className="text-muted-foreground">Laju Error Port</span>
-          <span className="font-semibold text-destructive">{val} err/menit</span>
+          <span className="font-semibold text-destructive">
+            {val} err/menit
+          </span>
         </div>
         <div className="flex items-center gap-0.5 h-2 w-full">
           {Array.from({ length: 20 }).map((_, i) => {
@@ -284,7 +304,11 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
                 key={i}
                 className={cn(
                   "h-full flex-1 rounded-[1px] transition-colors",
-                  isThreshold ? "bg-destructive/80" : active ? "bg-chart-2" : "bg-muted",
+                  isThreshold
+                    ? "bg-destructive/80"
+                    : active
+                      ? "bg-chart-2"
+                      : "bg-muted",
                 )}
                 title={`Level ${tickVal} err/min`}
               />
@@ -314,7 +338,10 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
     const threshPct = Math.min(100, Math.max(0, ((thresh - -35) / 25) * 100));
     const markerPct = Math.min(100, Math.max(0, ((val - -35) / 25) * 100));
     return (
-      <div className="flex flex-col gap-1 w-full text-[11px]" data-kind-element="optical">
+      <div
+        className="flex flex-col gap-1 w-full text-[11px]"
+        data-kind-element="optical"
+      >
         <div className="flex justify-between items-center text-[11px] font-mono">
           <span className="text-muted-foreground">Sinyal Optik ONU (Rx)</span>
           <span className="font-semibold text-warning">{val} dBm</span>
@@ -349,7 +376,10 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
 
   // offline
   return (
-    <div className="flex flex-col gap-1 w-full text-[11px]" data-kind-element="offline">
+    <div
+      className="flex flex-col gap-1 w-full text-[11px]"
+      data-kind-element="offline"
+    >
       <div className="flex justify-between items-center text-[11px]">
         <span className="text-muted-foreground">Sesi PPPoE</span>
         <span className="font-medium text-destructive">Terputus (Dead)</span>
@@ -360,7 +390,12 @@ export function KindElement({ anomaly }: { anomaly: Anomaly }) {
           {isActive(anomaly) ? (
             <RunningDuration startedAt={anomaly.startedAt} />
           ) : (
-            <span>selama {formatElapsed((anomaly.endedAt ?? anomaly.startedAt) - anomaly.startedAt)}</span>
+            <span>
+              selama{" "}
+              {formatElapsed(
+                (anomaly.endedAt ?? anomaly.startedAt) - anomaly.startedAt,
+              )}
+            </span>
           )}
         </span>
       </div>
@@ -391,8 +426,12 @@ export function KindMiniVisual({
       return (
         <div className="mt-1 pt-1 border-t border-border/70 space-y-1">
           <div className="space-y-0.5 text-[11px]">
-            <div className="text-muted-foreground font-mono leading-tight">{limitText}</div>
-            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">belum ada pengukuran</div>
+            <div className="text-muted-foreground font-mono leading-tight">
+              {limitText}
+            </div>
+            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">
+              belum ada pengukuran
+            </div>
           </div>
           <div className="relative h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
@@ -415,8 +454,12 @@ export function KindMiniVisual({
       return (
         <div className="mt-1 pt-1 border-t border-border/70 space-y-1">
           <div className="space-y-0.5 text-[11px]">
-            <div className="text-muted-foreground font-mono leading-tight">{limitText}</div>
-            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">belum ada pengukuran</div>
+            <div className="text-muted-foreground font-mono leading-tight">
+              {limitText}
+            </div>
+            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">
+              belum ada pengukuran
+            </div>
           </div>
           <div className="grid grid-cols-10 gap-0.5 h-1.5 w-full">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -424,7 +467,9 @@ export function KindMiniVisual({
                 key={i}
                 className={cn(
                   "rounded-xs h-full bg-muted",
-                  (i + 1) * 10 >= thresh && i * 10 < thresh && "border-r border-destructive",
+                  (i + 1) * 10 >= thresh &&
+                    i * 10 < thresh &&
+                    "border-r border-destructive",
                 )}
                 title={`Segmen ${(i + 1) * 10}%`}
               />
@@ -444,8 +489,12 @@ export function KindMiniVisual({
       return (
         <div className="mt-1 pt-1 border-t border-border/70 space-y-1">
           <div className="space-y-0.5 text-[11px]">
-            <div className="text-muted-foreground font-mono leading-tight">{limitText}</div>
-            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">belum ada pengukuran</div>
+            <div className="text-muted-foreground font-mono leading-tight">
+              {limitText}
+            </div>
+            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">
+              belum ada pengukuran
+            </div>
           </div>
           <div className="flex items-center gap-0.5 h-1.5 w-full">
             {Array.from({ length: 20 }).map((_, i) => {
@@ -476,8 +525,12 @@ export function KindMiniVisual({
       return (
         <div className="mt-1 pt-1 border-t border-border/70 space-y-1">
           <div className="space-y-0.5 text-[11px]">
-            <div className="text-muted-foreground font-mono leading-tight">{limitText}</div>
-            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">belum ada pengukuran</div>
+            <div className="text-muted-foreground font-mono leading-tight">
+              {limitText}
+            </div>
+            <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">
+              belum ada pengukuran
+            </div>
           </div>
           <div className="relative h-1.5 w-full rounded-full bg-muted overflow-visible">
             <div
@@ -502,8 +555,12 @@ export function KindMiniVisual({
     return (
       <div className="mt-1 pt-1 border-t border-border/70 space-y-1">
         <div className="space-y-0.5 text-[11px]">
-          <div className="text-muted-foreground font-mono leading-tight">{limitText}</div>
-          <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">tidak ada putus aktif</div>
+          <div className="text-muted-foreground font-mono leading-tight">
+            {limitText}
+          </div>
+          <div className="text-muted-foreground/80 font-sans text-[11px] leading-tight">
+            tidak ada putus aktif
+          </div>
         </div>
         <div className="flex items-center justify-between rounded bg-muted/40 px-2 py-0.5 border border-border/50 text-[11px]">
           <span className="text-success font-medium flex items-center gap-1">
@@ -519,7 +576,9 @@ export function KindMiniVisual({
   // Saat ada anomali aktif, tampilkan KindElement dengan nilai terukur terburuk
   return (
     <div className="mt-1 pt-1 border-t border-border/70 text-[11px] space-y-1">
-      <div className="text-muted-foreground text-[11px] font-mono leading-tight">{limitText}</div>
+      <div className="text-muted-foreground text-[11px] font-mono leading-tight">
+        {limitText}
+      </div>
       <KindElement anomaly={worstAnomaly} />
     </div>
   );

@@ -5,9 +5,18 @@ import { routers as routersTable, trafficSamples } from "@/db/schema";
 import { ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
-import { MikrotikRestClient, type MikrotikInterface } from "@/lib/mikrotik/client";
-import { insertTrafficSamplesDrizzle, queryTrafficHistoryDrizzle } from "@/services/traffic-archive.service";
-import { getMockRouterTraffic, type RouterTrafficStats } from "@/lib/dashboard/router-traffic";
+import {
+  MikrotikRestClient,
+  type MikrotikInterface,
+} from "@/lib/mikrotik/client";
+import {
+  insertTrafficSamplesDrizzle,
+  queryTrafficHistoryDrizzle,
+} from "@/services/traffic-archive.service";
+import {
+  getMockRouterTraffic,
+  type RouterTrafficStats,
+} from "@/lib/dashboard/router-traffic";
 import {
   generateTrafficTrendSeries,
   getMockInterfaceSamples,
@@ -63,7 +72,10 @@ export function clearInterfaceHistoryCache() {
   interfaceHistoryCache.clear();
 }
 
-export function inferInterfaceRole(name: string, type = "ether"): "wan" | "lan" | "uplink" | "hotspot" {
+export function inferInterfaceRole(
+  name: string,
+  type = "ether",
+): "wan" | "lan" | "uplink" | "hotspot" {
   const n = name.toLowerCase();
   if (n.includes("sfp") || n.includes("uplink")) return "uplink";
   if (n.includes("wan") || n === "ether1") return "wan";
@@ -83,8 +95,10 @@ export function calculateRateFromBytes(
   if (deltaSec <= 0) {
     return { rxMbps: 0, txMbps: 0 };
   }
-  const deltaRx = curr.rxByte >= prev.rxByte ? curr.rxByte - prev.rxByte : curr.rxByte;
-  const deltaTx = curr.txByte >= prev.txByte ? curr.txByte - prev.txByte : curr.txByte;
+  const deltaRx =
+    curr.rxByte >= prev.rxByte ? curr.rxByte - prev.rxByte : curr.rxByte;
+  const deltaTx =
+    curr.txByte >= prev.txByte ? curr.txByte - prev.txByte : curr.txByte;
 
   const rxBps = (deltaRx * 8) / deltaSec;
   const txBps = (deltaTx * 8) / deltaSec;
@@ -147,50 +161,54 @@ export async function sampleRouterTraffic(
 
   const rawInterfaces = await client.getInterfaces();
 
-  const ifaces: DeviceInterfaceTraffic[] = rawInterfaces.map((item: MikrotikInterface) => {
-    const role = inferInterfaceRole(item.name, item.type);
-    const cacheKey = `${router.id}:${item.name}`;
-    const prev = interfaceHistoryCache.get(cacheKey);
+  const ifaces: DeviceInterfaceTraffic[] = rawInterfaces.map(
+    (item: MikrotikInterface) => {
+      const role = inferInterfaceRole(item.name, item.type);
+      const cacheKey = `${router.id}:${item.name}`;
+      const prev = interfaceHistoryCache.get(cacheKey);
 
-    let { rxMbps, txMbps } = calculateRateFromBytes(
-      prev,
-      { rxByte: item.rxByte, txByte: item.txByte },
-      nowMs,
-    );
+      let { rxMbps, txMbps } = calculateRateFromBytes(
+        prev,
+        { rxByte: item.rxByte, txByte: item.txByte },
+        nowMs,
+      );
 
-    // Fallback estimasi bila baru pertama kali membaca di mode simulator
-    if (rxMbps === 0 && txMbps === 0 && prev === undefined && item.running) {
-      const simulatedMbps = Math.round(((item.rxByte % 100) + 10) * 10) / 100;
-      rxMbps = simulatedMbps;
-      txMbps = Math.round(simulatedMbps * 0.4 * 100) / 100;
-    }
+      // Fallback estimasi bila baru pertama kali membaca di mode simulator
+      if (rxMbps === 0 && txMbps === 0 && prev === undefined && item.running) {
+        const simulatedMbps = Math.round(((item.rxByte % 100) + 10) * 10) / 100;
+        rxMbps = simulatedMbps;
+        txMbps = Math.round(simulatedMbps * 0.4 * 100) / 100;
+      }
 
-    interfaceHistoryCache.set(cacheKey, {
-      rxByte: item.rxByte,
-      txByte: item.txByte,
-      timestamp: nowMs,
-    });
+      interfaceHistoryCache.set(cacheKey, {
+        rxByte: item.rxByte,
+        txByte: item.txByte,
+        timestamp: nowMs,
+      });
 
-    return {
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      running: item.running,
-      disabled: item.disabled,
-      role,
-      rxByte: item.rxByte,
-      txByte: item.txByte,
-      rxMbps,
-      txMbps,
-      rxErrorsPerMin: 0,
-      txErrorsPerMin: 0,
-    };
-  });
+      return {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        running: item.running,
+        disabled: item.disabled,
+        role,
+        rxByte: item.rxByte,
+        txByte: item.txByte,
+        rxMbps,
+        txMbps,
+        rxErrorsPerMin: 0,
+        txErrorsPerMin: 0,
+      };
+    },
+  );
 
   // Agregat bandwidth router: jumlah interface aktif
   const activeIfaces = ifaces.filter((i) => i.running && !i.disabled);
-  const totalRxMbps = Math.round(activeIfaces.reduce((s, i) => s + i.rxMbps, 0) * 100) / 100;
-  const totalTxMbps = Math.round(activeIfaces.reduce((s, i) => s + i.txMbps, 0) * 100) / 100;
+  const totalRxMbps =
+    Math.round(activeIfaces.reduce((s, i) => s + i.rxMbps, 0) * 100) / 100;
+  const totalTxMbps =
+    Math.round(activeIfaces.reduce((s, i) => s + i.txMbps, 0) * 100) / 100;
 
   if (options.persist !== false) {
     try {
@@ -244,14 +262,19 @@ export async function sampleAllActiveRouters(
   );
 
   return results
-    .filter((r): r is PromiseFulfilledResult<DeviceTrafficSample> => r.status === "fulfilled")
+    .filter(
+      (r): r is PromiseFulfilledResult<DeviceTrafficSample> =>
+        r.status === "fulfilled",
+    )
     .map((r) => r.value);
 }
 
 /**
  * Mengambil data statistik trafik live router untuk kartu trafik / dasbor.
  */
-export async function getRouterLiveTraffic(routerId: string): Promise<RouterTrafficStats> {
+export async function getRouterLiveTraffic(
+  routerId: string,
+): Promise<RouterTrafficStats> {
   const [router] = await db
     .select({
       id: routersTable.id,
@@ -430,7 +453,10 @@ export async function getTrafficTrendData(query: {
         const d = new Date((t + 7 * 3600) * 1000);
         const p = (n: number) => String(n).padStart(2, "0");
         const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
-        const timeLabel = range === "7d" ? `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${hm}` : hm;
+        const timeLabel =
+          range === "7d"
+            ? `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${hm}`
+            : hm;
         return {
           timestamp: t,
           timeLabel,
@@ -444,7 +470,8 @@ export async function getTrafficTrendData(query: {
       const interfaces = await getDeviceInterfaceSamples(query.routerId);
       const lastPoint = series[series.length - 1];
       const sumTotal = series.reduce((s, p) => s + p.totalMbps, 0);
-      const volumeGb = Math.round(((sumTotal * stepSec) / 8 / 1000) * 100) / 100;
+      const volumeGb =
+        Math.round(((sumTotal * stepSec) / 8 / 1000) * 100) / 100;
       const peak = Math.max(...series.map((p) => p.peakMbps), 0);
 
       const overview: TrafficOverviewStats = {
@@ -453,10 +480,13 @@ export async function getTrafficTrendData(query: {
         peakMbps: Math.round(peak * 100) / 100,
         avgMbps: Math.round((sumTotal / (series.length || 1)) * 100) / 100,
         totalVolumeGb: volumeGb,
-        activeInterfacesCount: interfaces.filter((i) => i.status === "up").length,
+        activeInterfacesCount: interfaces.filter((i) => i.status === "up")
+          .length,
         range,
         sourceStatus: "nyata",
-        lastSampledAt: lastPoint ? new Date(lastPoint.timestamp * 1000).toISOString() : new Date().toISOString(),
+        lastSampledAt: lastPoint
+          ? new Date(lastPoint.timestamp * 1000).toISOString()
+          : new Date().toISOString(),
       };
 
       return {
@@ -473,7 +503,9 @@ export async function getTrafficTrendData(query: {
   // Mode live tanpa histori (backend baru mulai merekam, atau database gagal
   // dibaca): jawab kosong dan jujur. Data tiruan tidak boleh menyamar jadi data
   // router. Sampel interface tetap dibaca langsung dari router bila bisa.
-  const interfaces = await getDeviceInterfaceSamples(query.routerId).catch(() => []);
+  const interfaces = await getDeviceInterfaceSamples(query.routerId).catch(
+    () => [],
+  );
   const overview: TrafficOverviewStats = {
     currentDownloadMbps: 0,
     currentUploadMbps: 0,
@@ -487,4 +519,3 @@ export async function getTrafficTrendData(query: {
   };
   return { overview, series: [], interfaces, sourceStatus: "kosong" };
 }
-

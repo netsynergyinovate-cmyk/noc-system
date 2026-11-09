@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  initialRefresh,
-  refreshReducer,
-} from "@/lib/dashboard/refresh-state";
+import { initialRefresh, refreshReducer } from "@/lib/dashboard/refresh-state";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import {
   Table,
@@ -41,7 +45,9 @@ function useLiveQueues(routerId: string, enabled: boolean) {
   const load = useCallback(async (): Promise<boolean> => {
     if (!enabled) return true;
     try {
-      const res = await fetch(`/api/routers/${encodeURIComponent(routerId)}/queues`);
+      const res = await fetch(
+        `/api/routers/${encodeURIComponent(routerId)}/queues`,
+      );
       if (!res.ok) throw new Error(String(res.status));
       const json = (await res.json()) as { data?: MockSimpleQueue[] };
       if (alive.current) {
@@ -93,16 +99,24 @@ export function RouterQueueTable({
     dispatch({ type: "start" });
     try {
       if (!(await live.refresh())) {
-        throw new Error("Server tidak bisa membaca queue dari router. Coba lagi sebentar.");
+        throw new Error(
+          "Server tidak bisa membaca queue dari router. Coba lagi sebentar.",
+        );
       }
       dispatch({ type: "success" });
     } catch (e) {
-      dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan queue." });
+      dispatch({
+        type: "fail",
+        message: e instanceof Error ? e.message : "Gagal menyegarkan queue.",
+      });
     }
   }
 
   const queues = live.queues ?? [];
-  const visible = useMemo(() => filterSimpleQueues(queues, query, status), [queues, query, status]);
+  const visible = useMemo(
+    () => filterSimpleQueues(queues, query, status),
+    [queues, query, status],
+  );
 
   return (
     <div className="space-y-3">
@@ -137,7 +151,10 @@ export function RouterQueueTable({
           aria-label="Segarkan simple queue"
           className="h-9 gap-1.5 text-xs"
         >
-          <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+          <RefreshCw
+            className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+            aria-hidden="true"
+          />
           {isRefreshing ? "Menyegarkan..." : "Segarkan"}
         </Button>
       </div>
@@ -148,13 +165,24 @@ export function RouterQueueTable({
           className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           <span>{refresh.message}</span>
-          <Button type="button" variant="outline" size="sm" onClick={handleRefresh} className="h-8 text-xs">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="h-8 text-xs"
+          >
             Coba lagi
           </Button>
         </div>
       )}
 
-      <div className="max-h-80 overflow-auto rounded-md border" role="region" aria-label="Tabel simple queue" tabIndex={0}>
+      <div
+        className="max-h-80 overflow-auto rounded-md border"
+        role="region"
+        aria-label="Tabel simple queue"
+        tabIndex={0}
+      >
         <Table>
           <TableHeader className="sticky top-0 bg-card">
             <TableRow>
@@ -177,7 +205,10 @@ export function RouterQueueTable({
               ))
             ) : visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   {queues.length === 0
                     ? "Belum ada simple queue di router ini."
                     : "Tidak ada queue yang cocok dengan pencarian."}
@@ -188,8 +219,14 @@ export function RouterQueueTable({
                 <TableRow key={q.id}>
                   <TableCell>
                     <div className="font-semibold">{q.name}</div>
-                    <div className="font-mono text-xs text-muted-foreground">{q.target}</div>
-                    {q.comment && <div className="text-[11px] text-muted-foreground">{q.comment}</div>}
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {q.target}
+                    </div>
+                    {q.comment && (
+                      <div className="text-[11px] text-muted-foreground">
+                        {q.comment}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">
                     <div>↑ {formatBitrate(q.maxLimit.upload)}</div>
@@ -197,10 +234,12 @@ export function RouterQueueTable({
                   </TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">
                     <div>
-                      ↑ {formatBitrate(q.rate.upload)} ({pct(q.rate.upload, q.maxLimit.upload)}%)
+                      ↑ {formatBitrate(q.rate.upload)} (
+                      {pct(q.rate.upload, q.maxLimit.upload)}%)
                     </div>
                     <div>
-                      ↓ {formatBitrate(q.rate.download)} ({pct(q.rate.download, q.maxLimit.download)}%)
+                      ↓ {formatBitrate(q.rate.download)} (
+                      {pct(q.rate.download, q.maxLimit.download)}%)
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">
@@ -212,11 +251,17 @@ export function RouterQueueTable({
                   </TableCell>
                   <TableCell>
                     {q.disabled ? (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         Nonaktif
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="border-success/50 bg-success/10 text-success">
+                      <Badge
+                        variant="outline"
+                        className="border-success/50 bg-success/10 text-success"
+                      >
                         Aktif
                       </Badge>
                     )}

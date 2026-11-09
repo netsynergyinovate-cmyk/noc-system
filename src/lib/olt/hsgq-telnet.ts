@@ -7,7 +7,14 @@ export const HSGQ_TELNET_DRIVER = "hsgq-telnet";
 
 export interface TelnetLoginResult {
   ok: boolean;
-  code: "OK" | "TIMEOUT" | "CONNECTION_REFUSED" | "DNS_ERROR" | "AUTH_FAILED" | "NETWORK_ERROR" | "PROTOCOL_ERROR";
+  code:
+    | "OK"
+    | "TIMEOUT"
+    | "CONNECTION_REFUSED"
+    | "DNS_ERROR"
+    | "AUTH_FAILED"
+    | "NETWORK_ERROR"
+    | "PROTOCOL_ERROR";
   message: string;
   latencyMs: number;
   // Baris pengenal perangkat dari banner (mis. "HSGQ-XE08ID EPON OLT Operating System").
@@ -19,7 +26,9 @@ const PASS_RE = /pass(word)?\s*:\s*$/i;
 const PROMPT_RE = /(?:^|\n)[^\s<>#]+(?:\([a-z0-9-]+\))?[>#][ ]?\n?$/;
 
 // Mengurai alamat "host" atau "host:port" (bawaan 23). Menolak skema dan karakter aneh.
-export function parseTelnetHost(raw: string): { host: string; port: number } | null {
+export function parseTelnetHost(
+  raw: string,
+): { host: string; port: number } | null {
   const m = /^([a-z0-9.-]+)(?::(\d{1,5}))?$/i.exec(raw.trim());
   if (!m) return null;
   const port = m[2] ? Number(m[2]) : 23;
@@ -42,7 +51,8 @@ export function stripTelnet(data: Buffer): { text: string; reply: Buffer } {
       reply.push(255, cmd === 253 || cmd === 254 ? 252 : 254, data[i + 2]);
       i += 2;
     } else if (cmd === 250) {
-      while (i + 1 < data.length && !(data[i] === 255 && data[i + 1] === 240)) i++;
+      while (i + 1 < data.length && !(data[i] === 255 && data[i + 1] === 240))
+        i++;
       i++;
     } else {
       i++;
@@ -60,14 +70,22 @@ export function testHsgqTelnetLogin(opts: {
 }): Promise<TelnetLoginResult> {
   const target = parseTelnetHost(opts.host);
   const started = Date.now();
-  const fail = (code: TelnetLoginResult["code"], message: string): TelnetLoginResult => ({
+  const fail = (
+    code: TelnetLoginResult["code"],
+    message: string,
+  ): TelnetLoginResult => ({
     ok: false,
     code,
     message,
     latencyMs: Date.now() - started,
   });
   if (!target) {
-    return Promise.resolve(fail("PROTOCOL_ERROR", "Alamat OLT tidak valid: tulis alamat IP atau alamat:port tanpa skema."));
+    return Promise.resolve(
+      fail(
+        "PROTOCOL_ERROR",
+        "Alamat OLT tidak valid: tulis alamat IP atau alamat:port tanpa skema.",
+      ),
+    );
   }
   const timeoutMs = opts.timeoutMs ?? 10_000;
 
@@ -105,7 +123,9 @@ export function testHsgqTelnetLogin(opts: {
       if (reply.length) sock.write(reply);
       buf += text;
       if (stage === "user" && USER_RE.test(buf)) {
-        banner = (/^\s*(.*?\bOperating System)\s*$/im.exec(buf)?.[1] ?? "").trim();
+        banner = (
+          /^\s*(.*?\bOperating System)\s*$/im.exec(buf)?.[1] ?? ""
+        ).trim();
         buf = "";
         stage = "pass";
         sock.write(`${opts.username}\r\n`);
@@ -117,7 +137,12 @@ export function testHsgqTelnetLogin(opts: {
         // Gagal bila prompt login muncul lagi; berhasil bila prompt CLI muncul.
         // Banner sesudah login memuat kata "fail" (tabel login gagal), jadi tidak dipakai.
         if (USER_RE.test(buf) && !PROMPT_RE.test(buf)) {
-          finish(fail("AUTH_FAILED", "OLT menolak login: periksa username dan kata sandi."));
+          finish(
+            fail(
+              "AUTH_FAILED",
+              "OLT menolak login: periksa username dan kata sandi.",
+            ),
+          );
         } else if (PROMPT_RE.test(buf)) {
           finish({
             ok: true,
@@ -131,17 +156,41 @@ export function testHsgqTelnetLogin(opts: {
     });
     sock.on("error", (e: NodeJS.ErrnoException) => {
       if (e.code === "ECONNREFUSED") {
-        finish(fail("CONNECTION_REFUSED", `Koneksi ditolak oleh ${target.host}:${target.port}. Pastikan port telnet OLT benar dan terbuka.`));
+        finish(
+          fail(
+            "CONNECTION_REFUSED",
+            `Koneksi ditolak oleh ${target.host}:${target.port}. Pastikan port telnet OLT benar dan terbuka.`,
+          ),
+        );
       } else if (e.code === "ENOTFOUND" || e.code === "EAI_AGAIN") {
-        finish(fail("DNS_ERROR", "Host tidak ditemukan. Pastikan alamat OLT benar."));
-      } else if (e.code === "ETIMEDOUT" || e.code === "EHOSTUNREACH" || e.code === "ENETUNREACH") {
-        finish(fail("TIMEOUT", `OLT ${target.host}:${target.port} tidak dapat dijangkau.`));
+        finish(
+          fail("DNS_ERROR", "Host tidak ditemukan. Pastikan alamat OLT benar."),
+        );
+      } else if (
+        e.code === "ETIMEDOUT" ||
+        e.code === "EHOSTUNREACH" ||
+        e.code === "ENETUNREACH"
+      ) {
+        finish(
+          fail(
+            "TIMEOUT",
+            `OLT ${target.host}:${target.port} tidak dapat dijangkau.`,
+          ),
+        );
       } else {
-        finish(fail("NETWORK_ERROR", `Gagal menghubungi OLT: ${e.code ?? e.message}`));
+        finish(
+          fail(
+            "NETWORK_ERROR",
+            `Gagal menghubungi OLT: ${e.code ?? e.message}`,
+          ),
+        );
       }
     });
     sock.on("close", () => {
-      if (!done) finish(fail("NETWORK_ERROR", "OLT menutup koneksi sebelum login selesai."));
+      if (!done)
+        finish(
+          fail("NETWORK_ERROR", "OLT menutup koneksi sebelum login selesai."),
+        );
     });
   });
 }

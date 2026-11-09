@@ -22,10 +22,7 @@ import { subjectLabel, useSubjectLookup } from "./anomaly-subject";
 import { AlertTime } from "./alert-time";
 import { RunningDuration } from "./running-duration";
 import { SeverityBadge } from "./status-badge";
-import {
-  KindInfoDisclosure,
-  MikroTikSourceChip,
-} from "./anomaly-kind-visual";
+import { KindInfoDisclosure, MikroTikSourceChip } from "./anomaly-kind-visual";
 import { incidentVariantStyle } from "./incident-variant-meta";
 import {
   classifyIncident,
@@ -56,13 +53,7 @@ function alertReading(alert: IncidentCard["alerts"][number]) {
 
 // Alert anggota insiden, satu baris per alert: waktu mulai sampai detik beserta
 // sumbernya, jenis dan subjek, bacaan, dan tingkatnya.
-function IncidentAlertList({
-  card,
-  now,
-}: {
-  card: IncidentCard;
-  now: number;
-}) {
+function IncidentAlertList({ card, now }: { card: IncidentCard; now: number }) {
   const lookup = useSubjectLookup();
   return (
     <div
@@ -92,9 +83,13 @@ function IncidentAlertList({
                 <span className="font-medium text-foreground">
                   {alertKindLabel(alert)}
                 </span>
-                <span className="text-foreground">{subjectLabel(alert, lookup)}</span>
+                <span className="text-foreground">
+                  {subjectLabel(alert, lookup)}
+                </span>
                 {username && (
-                  <span className="font-mono text-muted-foreground">{username}</span>
+                  <span className="font-mono text-muted-foreground">
+                    {username}
+                  </span>
                 )}
               </div>
               <div className="text-muted-foreground">
@@ -153,7 +148,9 @@ function CardDetails({
       )}
       <div className="space-y-1">
         <SectionLabel>
-          {card.alertCount > 1 ? `Alert (${formatInteger(card.alertCount)})` : "Alert"}
+          {card.alertCount > 1
+            ? `Alert (${formatInteger(card.alertCount)})`
+            : "Alert"}
         </SectionLabel>
         <IncidentAlertList card={card} now={now} />
       </div>
@@ -300,7 +297,12 @@ const IncidentCardView = memo(function IncidentCardView({
 
         <div className="flex items-center">
           {focusHref && (
-            <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[11px]" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 px-1.5 text-[11px]"
+              asChild
+            >
               <Link
                 href={focusHref}
                 aria-label={`Sorot insiden ${card.title} di peta`}
@@ -323,7 +325,10 @@ const IncidentCardView = memo(function IncidentCardView({
           >
             <ChevronDown
               aria-hidden="true"
-              className={cn("size-3 transition-transform", open && "rotate-180")}
+              className={cn(
+                "size-3 transition-transform",
+                open && "rotate-180",
+              )}
             />
             {open ? "Sembunyikan rincian" : "Lihat rincian"}
           </Button>

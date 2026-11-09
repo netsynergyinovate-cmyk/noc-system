@@ -21,19 +21,37 @@ const { POST: addOlt } = await import("../src/app/api/olts/route.ts");
 const { DELETE: deleteOlt } = await import("../src/app/api/olts/[id]/route.ts");
 
 let role = "admin";
-auth.api.getSession = async () => (role === "anon" ? null : { user: { id: "u1" }, session: {} });
+auth.api.getSession = async () =>
+  role === "anon" ? null : { user: { id: "u1" }, session: {} };
 auth.api.userHasPermission = async () => ({ success: role === "admin" });
 
-const body = { name: "OLT uji hapus", host: "10.255.255.1", brand: "HSGQ", driver: "hsgq-telnet", username: "admin", password: "rahasia" };
+const body = {
+  name: "OLT uji hapus",
+  host: "10.255.255.1",
+  brand: "HSGQ",
+  driver: "hsgq-telnet",
+  username: "admin",
+  password: "rahasia",
+};
 const post = () =>
   addOlt(
     new Request("http://localhost/api/olts?skipTest=1", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Origin: "http://localhost:3101" },
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "http://localhost:3101",
+      },
       body: JSON.stringify(body),
     }),
   );
-const del = (id) => deleteOlt(new Request(`http://localhost/api/olts/${id}`, { method: "DELETE", headers: { Origin: "http://localhost:3101" } }), { params: Promise.resolve({ id }) });
+const del = (id) =>
+  deleteOlt(
+    new Request(`http://localhost/api/olts/${id}`, {
+      method: "DELETE",
+      headers: { Origin: "http://localhost:3101" },
+    }),
+    { params: Promise.resolve({ id }) },
+  );
 
 test("tambah OLT (skipTest) lalu hapus: ONU ikut terhapus", async () => {
   role = "admin";
@@ -41,11 +59,20 @@ test("tambah OLT (skipTest) lalu hapus: ONU ikut terhapus", async () => {
   assert.equal(res.status, 201);
   const { data } = await res.json();
   await db.insert(oltOnus).values({ oltId: data.id, ponIndex: 1, onuIndex: 1 });
-  assert.equal((await db.select().from(oltOnus).where(eq(oltOnus.oltId, data.id))).length, 1);
+  assert.equal(
+    (await db.select().from(oltOnus).where(eq(oltOnus.oltId, data.id))).length,
+    1,
+  );
 
   assert.equal((await del(data.id)).status, 204);
-  assert.equal((await db.select().from(olts).where(eq(olts.id, data.id))).length, 0);
-  assert.equal((await db.select().from(oltOnus).where(eq(oltOnus.oltId, data.id))).length, 0);
+  assert.equal(
+    (await db.select().from(olts).where(eq(olts.id, data.id))).length,
+    0,
+  );
+  assert.equal(
+    (await db.select().from(oltOnus).where(eq(oltOnus.oltId, data.id))).length,
+    0,
+  );
   assert.equal((await del(data.id)).status, 404);
 });
 

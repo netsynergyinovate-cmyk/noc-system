@@ -12,7 +12,8 @@ const bad = (message: string) =>
 export function POST(request: Request) {
   return withApiSession(request, async (session) => {
     const parsed = sendWhatsappSchema.safeParse(await readJson(request));
-    if (!parsed.success) return bad(parsed.error.issues[0]?.message ?? "Input tidak valid.");
+    if (!parsed.success)
+      return bad(parsed.error.issues[0]?.message ?? "Input tidak valid.");
     const input = parsed.data;
 
     const result = await sendWhatsappRequest(input);

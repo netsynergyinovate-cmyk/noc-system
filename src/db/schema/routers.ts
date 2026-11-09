@@ -1,4 +1,11 @@
-import { check, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  doublePrecision,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const deviceStatuses = ["aktif", "nonaktif"] as const;
@@ -24,7 +31,10 @@ export const routers = pgTable(
     passwordEnc: text("password_enc").notNull(),
     // "rest" (bawaan, data lama) atau "api" (API biner). Backend Go memilih
     // transport berdasarkan kolom ini.
-    protocol: text("protocol").$type<RouterProtocol>().default("rest").notNull(),
+    protocol: text("protocol")
+      .$type<RouterProtocol>()
+      .default("rest")
+      .notNull(),
     status: text("status").$type<DeviceStatus>().default("aktif").notNull(),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
@@ -38,9 +48,6 @@ export const routers = pgTable(
       "routers_status_check",
       sql`${table.status} in ('aktif', 'nonaktif')`,
     ),
-    check(
-      "routers_protocol_check",
-      sql`${table.protocol} in ('rest', 'api')`,
-    ),
+    check("routers_protocol_check", sql`${table.protocol} in ('rest', 'api')`),
   ],
 );

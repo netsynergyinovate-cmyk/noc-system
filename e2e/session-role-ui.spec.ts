@@ -648,9 +648,7 @@ test("di 1366x768 dan 1366x600 tombol Keluar di sidebar tetap terjangkau, juga s
         await hydrated(select);
         await select.selectOption("admin");
         await expect(aside.getByText(hint)).toBeVisible();
-        await expect(
-          page.getByRole("link", { name: "Admin" }),
-        ).toBeVisible();
+        await expect(page.getByRole("link", { name: "Admin" })).toBeVisible();
 
         // Perilaku dulu: tombol Keluar bisa digulirkan ke dalam layar, utuh dan
         // tidak terpotong, lalu bisa dituju.

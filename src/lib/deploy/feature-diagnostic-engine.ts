@@ -17,7 +17,10 @@ export interface DiagnosticContext {
   elementType: string;
   isInsideModal: boolean;
   modalName?: string;
-  complexity: "Rendah (UI / Tampilan)" | "Sedang (API Fetch / Mutasi DB)" | "Tinggi (Hardware / RouterOS / Scraper)";
+  complexity:
+    | "Rendah (UI / Tampilan)"
+    | "Sedang (API Fetch / Mutasi DB)"
+    | "Tinggi (Hardware / RouterOS / Scraper)";
   featureDomain: string;
 }
 
@@ -117,7 +120,10 @@ const ROUTE_REGISTRY: Record<string, RouteKnowledge> = {
           "src/components/dashboard/customer-traffic-panel.tsx",
           "src/components/dashboard/customer-live-capture-panel.tsx",
         ],
-        apis: ["GET /api/customers/[id]/traffic", "POST /api/customers/[id]/capture"],
+        apis: [
+          "GET /api/customers/[id]/traffic",
+          "POST /api/customers/[id]/capture",
+        ],
         services: ["src/services/traffic.service.ts"],
         functionName: "getCustomerTrafficSamples(customerId)",
         externalSystem: "Go NetFlow / MikroTik Queue Streaming",
@@ -224,7 +230,9 @@ const ROUTE_REGISTRY: Record<string, RouteKnowledge> = {
         match: /diagnos|analisis|root-cause/i,
         components: ["src/components/dashboard/diagnostic-panel.tsx"],
         apis: ["POST /api/anomalies/diagnostics"],
-        services: ["src/services/diagnostics.service.ts (runFullDiagnosticRun)"],
+        services: [
+          "src/services/diagnostics.service.ts (runFullDiagnosticRun)",
+        ],
         functionName: "runDiagnosticWorkflow(anomalyId)",
         complexity: "Tinggi (Hardware / RouterOS / Scraper)",
       },
@@ -238,7 +246,11 @@ const ROUTE_REGISTRY: Record<string, RouteKnowledge> = {
       "src/components/dashboard/handle-alert-dialog.tsx",
       "src/components/dashboard/alert-ticket-dialog.tsx",
     ],
-    defaultApis: ["/api/alerts", "/api/alerts/[id]/handle", "/api/whatsapp/send"],
+    defaultApis: [
+      "/api/alerts",
+      "/api/alerts/[id]/handle",
+      "/api/whatsapp/send",
+    ],
     defaultServices: [
       "src/services/alerts.service.ts",
       "src/services/whatsapp.service.ts",
@@ -248,7 +260,9 @@ const ROUTE_REGISTRY: Record<string, RouteKnowledge> = {
     keywords: [
       {
         match: /whatsapp|wa|kirim pesan/i,
-        components: ["src/components/dashboard/whatsapp-recipients-manager.tsx"],
+        components: [
+          "src/components/dashboard/whatsapp-recipients-manager.tsx",
+        ],
         apis: ["POST /api/whatsapp/send"],
         services: ["src/services/whatsapp.service.ts (sendWhatsAppAlert)"],
         functionName: "sendWhatsAppNotification(target, text)",
@@ -340,15 +354,35 @@ export function generateTechnicalReport(marker: {
   // Tentukan jenis elemen
   let elementType = "Elemen Antarmuka";
   const sel = (marker.elementSelector || "").toLowerCase();
-  const text = (marker.featureName + " " + (marker.elementText || "")).toLowerCase();
+  const text = (
+    marker.featureName +
+    " " +
+    (marker.elementText || "")
+  ).toLowerCase();
 
-  if (sel.includes("button") || text.includes("tombol") || text.includes("klik")) {
+  if (
+    sel.includes("button") ||
+    text.includes("tombol") ||
+    text.includes("klik")
+  ) {
     elementType = "Tombol Aksi (Action Button)";
-  } else if (sel.includes("input") || sel.includes("textarea") || text.includes("form")) {
+  } else if (
+    sel.includes("input") ||
+    sel.includes("textarea") ||
+    text.includes("form")
+  ) {
     elementType = "Input Formulir (Form Input)";
-  } else if (sel.includes("table") || text.includes("tabel") || sel.includes("row")) {
+  } else if (
+    sel.includes("table") ||
+    text.includes("tabel") ||
+    sel.includes("row")
+  ) {
     elementType = "Tabel Data (Data Table)";
-  } else if (sel.includes("badge") || text.includes("status") || text.includes("badge")) {
+  } else if (
+    sel.includes("badge") ||
+    text.includes("status") ||
+    text.includes("badge")
+  ) {
     elementType = "Lencana Status (Status Badge)";
   } else if (sel.includes("card") || text.includes("kartu")) {
     elementType = "Kartu Metrik (Metric Card)";
@@ -358,22 +392,45 @@ export function generateTechnicalReport(marker: {
 
   // 2. Cocokkan keyword dengan alur teknis yang berjalan
   const combinedText = `${marker.featureName} ${marker.notes || ""} ${marker.elementText || ""}`;
-  const matchedKeyword = knowledge.keywords.find((k) => k.match.test(combinedText));
+  const matchedKeyword = knowledge.keywords.find((k) =>
+    k.match.test(combinedText),
+  );
 
   // Tentukan file komponen utama
   const componentFiles = [...knowledge.defaultComponents];
   if (modalName) {
-    if (modalName.toLowerCase().includes("pelanggan") || modalName.toLowerCase().includes("perangkat")) {
-      if (!componentFiles.includes("src/components/dashboard/customer-cpe-dialog.tsx")) {
-        componentFiles.unshift("src/components/dashboard/customer-cpe-dialog.tsx");
+    if (
+      modalName.toLowerCase().includes("pelanggan") ||
+      modalName.toLowerCase().includes("perangkat")
+    ) {
+      if (
+        !componentFiles.includes(
+          "src/components/dashboard/customer-cpe-dialog.tsx",
+        )
+      ) {
+        componentFiles.unshift(
+          "src/components/dashboard/customer-cpe-dialog.tsx",
+        );
       }
     } else if (modalName.toLowerCase().includes("router")) {
-      if (!componentFiles.includes("src/components/dashboard/router-config-dialog.tsx")) {
-        componentFiles.unshift("src/components/dashboard/router-config-dialog.tsx");
+      if (
+        !componentFiles.includes(
+          "src/components/dashboard/router-config-dialog.tsx",
+        )
+      ) {
+        componentFiles.unshift(
+          "src/components/dashboard/router-config-dialog.tsx",
+        );
       }
     } else if (modalName.toLowerCase().includes("alert")) {
-      if (!componentFiles.includes("src/components/dashboard/handle-alert-dialog.tsx")) {
-        componentFiles.unshift("src/components/dashboard/handle-alert-dialog.tsx");
+      if (
+        !componentFiles.includes(
+          "src/components/dashboard/handle-alert-dialog.tsx",
+        )
+      ) {
+        componentFiles.unshift(
+          "src/components/dashboard/handle-alert-dialog.tsx",
+        );
       }
     }
   }
@@ -386,11 +443,15 @@ export function generateTechnicalReport(marker: {
 
   const apiEndpoints = matchedKeyword?.apis || knowledge.defaultApis;
   const serviceFiles = matchedKeyword?.services || knowledge.defaultServices;
-  const validatorFiles = matchedKeyword?.validators || knowledge.defaultValidators;
-  const hardwareOrExternalSystem = matchedKeyword?.externalSystem || knowledge.externalSystem;
+  const validatorFiles =
+    matchedKeyword?.validators || knowledge.defaultValidators;
+  const hardwareOrExternalSystem =
+    matchedKeyword?.externalSystem || knowledge.externalSystem;
   const complexity =
     matchedKeyword?.complexity ||
-    (hardwareOrExternalSystem ? "Tinggi (Hardware / RouterOS / Scraper)" : "Sedang (API Fetch / Mutasi DB)");
+    (hardwareOrExternalSystem
+      ? "Tinggi (Hardware / RouterOS / Scraper)"
+      : "Sedang (API Fetch / Mutasi DB)");
 
   const runtimeFunctionSummary =
     matchedKeyword?.functionName ||

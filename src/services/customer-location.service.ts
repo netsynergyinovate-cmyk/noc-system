@@ -21,20 +21,18 @@ export interface ResolvedViewportBounds {
   buffer: number;
 }
 
-export function resolveViewportBounds(
-  params?: {
-    minLat?: number;
-    maxLat?: number;
-    minLng?: number;
-    maxLng?: number;
-    south?: number;
-    north?: number;
-    west?: number;
-    east?: number;
-    bbox?: string;
-    buffer?: number;
-  },
-): ResolvedViewportBounds | null {
+export function resolveViewportBounds(params?: {
+  minLat?: number;
+  maxLat?: number;
+  minLng?: number;
+  maxLng?: number;
+  south?: number;
+  north?: number;
+  west?: number;
+  east?: number;
+  bbox?: string;
+  buffer?: number;
+}): ResolvedViewportBounds | null {
   if (!params) return null;
 
   let minLat = params.minLat ?? params.south;
@@ -149,7 +147,10 @@ export async function updateCustomerLocation(
 
   try {
     const condition = isUuid
-      ? or(eq(customers.id, customerId), eq(customers.pppoeUsername, customerId))
+      ? or(
+          eq(customers.id, customerId),
+          eq(customers.pppoeUsername, customerId),
+        )
       : eq(customers.pppoeUsername, customerId);
 
     const existing = await db
@@ -165,7 +166,9 @@ export async function updateCustomerLocation(
       .limit(1);
 
     if (existing.length === 0) {
-      throw new Error(`Pelanggan dengan ID '${customerId}' tidak ditemukan di database.`);
+      throw new Error(
+        `Pelanggan dengan ID '${customerId}' tidak ditemukan di database.`,
+      );
     }
 
     const prev = existing[0];
@@ -188,7 +191,9 @@ export async function updateCustomerLocation(
       });
 
     if (updatedRows.length === 0) {
-      throw new Error(`Gagal memperbarui posisi koordinat pelanggan '${customerId}'.`);
+      throw new Error(
+        `Gagal memperbarui posisi koordinat pelanggan '${customerId}'.`,
+      );
     }
 
     const updated = updatedRows[0];
@@ -261,7 +266,9 @@ export async function clearCustomerLocation(
   actorUserId?: string,
 ): Promise<{ id: string; name: string }> {
   const isUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId);
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      customerId,
+    );
   const condition = isUuid
     ? or(eq(customers.id, customerId), eq(customers.pppoeUsername, customerId))
     : eq(customers.pppoeUsername, customerId);
@@ -324,8 +331,10 @@ export function applyCustomerQueryFilters(
   let filtered = items;
 
   if (query?.status && query.status !== "all") {
-    if (query.status === "online") filtered = filtered.filter((c) => c.isOnline);
-    if (query.status === "offline") filtered = filtered.filter((c) => !c.isOnline);
+    if (query.status === "online")
+      filtered = filtered.filter((c) => c.isOnline);
+    if (query.status === "offline")
+      filtered = filtered.filter((c) => !c.isOnline);
     if (query.status === "weak") {
       filtered = filtered.filter(
         (c) => c.opticalPower !== null && c.opticalPower <= -24.5,
@@ -388,7 +397,9 @@ export function applyCustomerQueryFilters(
     );
   }
 
-  const effectiveSearch = (query?.search || query?.q || "").trim().toLowerCase();
+  const effectiveSearch = (query?.search || query?.q || "")
+    .trim()
+    .toLowerCase();
   if (effectiveSearch) {
     filtered = filtered.filter(
       (c) =>
@@ -436,7 +447,6 @@ export function applyCustomerQueryFilters(
 export async function getGeocodedCustomers(
   query?: GeocodedCustomersQueryInput,
 ): Promise<GeocodedCustomersResult> {
-
   try {
     const rawRows = await db
       .select({
@@ -461,16 +471,17 @@ export async function getGeocodedCustomers(
       .from(customers)
       .leftJoin(routers, eq(customers.routerId, routers.id))
       .leftJoin(oltOnus, eq(oltOnus.customerId, customers.id))
-      .where(
-        and(
-          isNotNull(customers.latitude),
-          isNotNull(customers.longitude),
-        ),
-      )
+      .where(and(isNotNull(customers.latitude), isNotNull(customers.longitude)))
       .orderBy(asc(customers.name));
 
     const rawItems: GeocodedCustomerItem[] = rawRows
-      .filter((r) => r.latitude !== null && r.longitude !== null && Number.isFinite(Number(r.latitude)) && Number.isFinite(Number(r.longitude)))
+      .filter(
+        (r) =>
+          r.latitude !== null &&
+          r.longitude !== null &&
+          Number.isFinite(Number(r.latitude)) &&
+          Number.isFinite(Number(r.longitude)),
+      )
       .map((r) => ({
         id: r.id,
         name: r.name,
@@ -557,7 +568,10 @@ export async function getCustomerMapDetail(
       );
 
     const condition = isUuid
-      ? or(eq(customers.id, customerId), eq(customers.pppoeUsername, customerId))
+      ? or(
+          eq(customers.id, customerId),
+          eq(customers.pppoeUsername, customerId),
+        )
       : eq(customers.pppoeUsername, customerId);
 
     const rows = await db
@@ -621,7 +635,8 @@ export async function getCustomerMapDetail(
             onuIndex: r.onuIndex,
             opticalLevel: r.onuRxPower !== null ? Number(r.onuRxPower) : null,
             txPower: r.onuTxPower !== null ? Number(r.onuTxPower) : null,
-            attenuation: r.onuAttenuation !== null ? Number(r.onuAttenuation) : null,
+            attenuation:
+              r.onuAttenuation !== null ? Number(r.onuAttenuation) : null,
             status: r.onuStatus,
             model: r.onuModel,
             oltId: r.oltId,
@@ -681,4 +696,3 @@ export async function getCustomersByViewport(
     dataSource: result.dataSource,
   };
 }
-

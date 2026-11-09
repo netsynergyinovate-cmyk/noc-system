@@ -33,7 +33,8 @@ export interface SeedRunReport {
 }
 
 export function computePayloadChecksum(payload: unknown): string {
-  const serialized = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const serialized =
+    typeof payload === "string" ? payload : JSON.stringify(payload);
   return `sha256-${createHash("sha256").update(serialized).digest("hex").slice(0, 16)}`;
 }
 
@@ -127,8 +128,16 @@ export async function seedDefaultRecipientsIdempotent(): Promise<SeedResultItem>
   }
 
   const defaultRecipients = [
-    { name: "Kepala Teknisi NOC", target: "6281200000001", type: "individual" as const },
-    { name: "Petugas On-Call NOC", target: "6281200000002", type: "individual" as const },
+    {
+      name: "Kepala Teknisi NOC",
+      target: "6281200000001",
+      type: "individual" as const,
+    },
+    {
+      name: "Petugas On-Call NOC",
+      target: "6281200000002",
+      type: "individual" as const,
+    },
   ];
   const checksum = computePayloadChecksum(defaultRecipients);
 
@@ -212,7 +221,10 @@ export async function seedDefaultRouterIdempotent(): Promise<SeedResultItem> {
     passwordEnc: encryptAES256GCM("NocDefault#2026"),
     status: "aktif" as const,
   };
-  const checksum = computePayloadChecksum({ name: defaultRouter.name, host: defaultRouter.host });
+  const checksum = computePayloadChecksum({
+    name: defaultRouter.name,
+    host: defaultRouter.host,
+  });
 
   const existing = await db
     .select()
@@ -265,7 +277,9 @@ export async function seedDefaultRouterIdempotent(): Promise<SeedResultItem> {
 /**
  * Menjalankan seluruh inisialisasi seed data awal secara idempoten dan mencatat riwayat run.
  */
-export async function runAllInitialSeeds(actor = "system"): Promise<SeedRunReport> {
+export async function runAllInitialSeeds(
+  actor = "system",
+): Promise<SeedRunReport> {
   const startTime = Date.now();
   const results: SeedResultItem[] = [];
 
@@ -279,7 +293,9 @@ export async function runAllInitialSeeds(actor = "system"): Promise<SeedRunRepor
   results.push(await seedDefaultRouterIdempotent());
 
   const newlySeeded = results.filter((r) => r.status === "seeded").length;
-  const alreadySeeded = results.filter((r) => r.status === "already_seeded").length;
+  const alreadySeeded = results.filter(
+    (r) => r.status === "already_seeded",
+  ).length;
   const totalRecords = results.reduce((sum, r) => sum + r.recordsCount, 0);
 
   // Catat run ke dataSyncRuns
@@ -437,7 +453,10 @@ export async function purgeSampleSeedDataFromProduction(): Promise<PurgeReport> 
 
   // 3. Hapus rekam jejak seed contoh dari seed_tracking agar tidak dianggap sebagai konfigurasi nyata
   let purgedSeedTracking = 0;
-  for (const sampleKey of ["seed_default_router_v1", "seed_whatsapp_recipients_v1"]) {
+  for (const sampleKey of [
+    "seed_default_router_v1",
+    "seed_whatsapp_recipients_v1",
+  ]) {
     const res = await db
       .delete(seedTracking)
       .where(eq(seedTracking.seedKey, sampleKey));
@@ -496,4 +515,3 @@ export async function checkSampleSeedDataInProduction(): Promise<{
     sampleSeedTracking: sampleTracking.length,
   };
 }
-

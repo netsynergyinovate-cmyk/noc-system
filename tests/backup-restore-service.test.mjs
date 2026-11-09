@@ -13,12 +13,10 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { createPortableBackupPackage } = await import(
-  "../src/services/portable-backup.service.ts"
-);
-const { checkRestoreEligibility, executeBackupPackageRestore } = await import(
-  "../src/services/backup-restore.service.ts"
-);
+const { createPortableBackupPackage } =
+  await import("../src/services/portable-backup.service.ts");
+const { checkRestoreEligibility, executeBackupPackageRestore } =
+  await import("../src/services/backup-restore.service.ts");
 
 test("checkRestoreEligibility memvalidasi paket cadangan utuh", async () => {
   const pkg = await createPortableBackupPackage({
@@ -53,7 +51,11 @@ test("checkRestoreEligibility menolak paket kosong atau rusak", () => {
 
   const check = checkRestoreEligibility(emptyPkg);
   assert.equal(check.eligible, false);
-  assert.ok(check.reasons.some((r) => r.includes("tidak memuat tabel") || r.includes("rusak")));
+  assert.ok(
+    check.reasons.some(
+      (r) => r.includes("tidak memuat tabel") || r.includes("rusak"),
+    ),
+  );
 });
 
 test("executeBackupPackageRestore dry-run mensimulasikan pemulihan dengan benar", async () => {

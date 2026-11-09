@@ -14,7 +14,10 @@ for (const range of ["1h", "6h", "24h", "7d"]) {
     const h = getNetflowTimeline(NOW, range);
     assert.equal(h.range, range);
     assert.equal(flowHistoryStepSeconds[range], expectedStep[range]);
-    assert.equal(h.points.length, flowRangeSeconds[range] / expectedStep[range]);
+    assert.equal(
+      h.points.length,
+      flowRangeSeconds[range] / expectedStep[range],
+    );
     assert.equal(h.points.at(-1).at, NOW);
     for (let i = 1; i < h.points.length; i++)
       assert.equal(h.points[i].at - h.points[i - 1].at, expectedStep[range]);
@@ -27,7 +30,10 @@ for (const range of ["1h", "6h", "24h", "7d"]) {
 }
 
 test("deterministik dan filter protocol mengurangi trafik", () => {
-  assert.deepEqual(getNetflowTimeline(NOW, "24h"), getNetflowTimeline(NOW, "24h"));
+  assert.deepEqual(
+    getNetflowTimeline(NOW, "24h"),
+    getNetflowTimeline(NOW, "24h"),
+  );
   const sum = (h) => h.points.reduce((s, p) => s + p.bytesPerSec, 0);
   const all = getNetflowTimeline(NOW, "24h", { protocol: "ALL" });
   const udp = getNetflowTimeline(NOW, "24h", { protocol: "UDP" });

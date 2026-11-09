@@ -16,13 +16,20 @@ function generatePassword(length = 24) {
   return pass;
 }
 
-const filled = (v) => (typeof v === "string" && v.trim() !== "" ? v.trim() : undefined);
+const filled = (v) =>
+  typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
 
 let pool;
 try {
-  pool = new Pool({ connectionString: databaseUrl(), max: 1, connectionTimeoutMillis: 5000 });
+  pool = new Pool({
+    connectionString: databaseUrl(),
+    max: 1,
+    connectionTimeoutMillis: 5000,
+  });
   pool.on("error", () => {});
-  const email = (filled(process.env.NOC_ADMIN_EMAIL) ?? DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
+  const email = (filled(process.env.NOC_ADMIN_EMAIL) ?? DEFAULT_ADMIN_EMAIL)
+    .trim()
+    .toLowerCase();
   const name = filled(process.env.NOC_ADMIN_NAME) ?? DEFAULT_ADMIN_NAME;
   const supplied = filled(process.env.NOC_ADMIN_PASSWORD);
   const password = supplied ?? generatePassword();
@@ -32,7 +39,10 @@ try {
   try {
     await client.query("BEGIN");
     const now = new Date();
-    const { rows } = await client.query('SELECT id, role FROM "user" WHERE lower(email) = $1 FOR UPDATE', [email]);
+    const { rows } = await client.query(
+      'SELECT id, role FROM "user" WHERE lower(email) = $1 FOR UPDATE',
+      [email],
+    );
     if (rows.length === 0) {
       const id = randomUUID();
       const hash = await hashPassword(password);
@@ -51,7 +61,10 @@ try {
       if (!supplied) console.log(`Kata sandi: ${password}`);
     } else {
       const existing = rows[0];
-      await client.query('UPDATE "user" SET role = $1, updated_at = $2 WHERE id = $3', ["superadmin", now, existing.id]);
+      await client.query(
+        'UPDATE "user" SET role = $1, updated_at = $2 WHERE id = $3',
+        ["superadmin", now, existing.id],
+      );
       if (resetPassword || supplied) {
         const hash = await hashPassword(password);
         await client.query(
@@ -60,7 +73,9 @@ try {
            ON CONFLICT (account_id, provider_id) DO UPDATE SET password = $3, updated_at = $4`,
           [randomUUID(), existing.id, hash, now],
         );
-        await client.query('DELETE FROM session WHERE user_id = $1', [existing.id]);
+        await client.query("DELETE FROM session WHERE user_id = $1", [
+          existing.id,
+        ]);
         console.log(`Akun superadmin diperbarui & password direset: ${email}`);
         if (!supplied) console.log(`Kata sandi baru: ${password}`);
       } else {

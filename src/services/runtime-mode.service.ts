@@ -26,11 +26,11 @@ export interface RuntimeModeStatus {
  * Deteksi apakah aplikasi berjalan di localhost atau di server remote.
  */
 export function detectEnvironment(hostHeader?: string | null): EnvironmentInfo {
-  const host = (
-    hostHeader ||
-    process.env.BETTER_AUTH_URL ||
-    "localhost:3000"
-  ).replace(/^https?:\/\//i, "").split("/")[0].split(":")[0].toLowerCase();
+  const host = (hostHeader || process.env.BETTER_AUTH_URL || "localhost:3000")
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .split(":")[0]
+    .toLowerCase();
 
   const isLocalhost =
     host === "localhost" ||
@@ -72,9 +72,15 @@ export async function getRuntimeModeStatus(
       databaseConnected = true;
 
       const [rRes, oRes, aRes] = await Promise.all([
-        client.query('SELECT COUNT(*) AS c FROM "routers"').catch(() => ({ rows: [{ c: 0 }] })),
-        client.query('SELECT COUNT(*) AS c FROM "olts"').catch(() => ({ rows: [{ c: 0 }] })),
-        client.query('SELECT COUNT(*) AS c FROM "alerts"').catch(() => ({ rows: [{ c: 0 }] })),
+        client
+          .query('SELECT COUNT(*) AS c FROM "routers"')
+          .catch(() => ({ rows: [{ c: 0 }] })),
+        client
+          .query('SELECT COUNT(*) AS c FROM "olts"')
+          .catch(() => ({ rows: [{ c: 0 }] })),
+        client
+          .query('SELECT COUNT(*) AS c FROM "alerts"')
+          .catch(() => ({ rows: [{ c: 0 }] })),
       ]);
 
       routersCount = Number(rRes.rows[0]?.c ?? 0);

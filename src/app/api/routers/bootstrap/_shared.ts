@@ -20,16 +20,27 @@ export function toConn(c: ConnectionInput): RouterOsConn {
   const defaultPort = c.tls ? 8729 : 8728;
   try {
     const url = sanitizeHost(c.host, c.port);
-    return { host: url.hostname, port: Number(url.port) || defaultPort, tls: c.tls, username: c.username, password: c.password };
+    return {
+      host: url.hostname,
+      port: Number(url.port) || defaultPort,
+      tls: c.tls,
+      username: c.username,
+      password: c.password,
+    };
   } catch (err) {
-    if (err instanceof DeviceConnectionError) throw new ApiError(422, err.code, err.message);
+    if (err instanceof DeviceConnectionError)
+      throw new ApiError(422, err.code, err.message);
     throw err;
   }
 }
 
 // Galat API router -> hasil ok:false. Untuk kegagalan jaringan, sertakan alamat sumber server
 // (sisi server; NAT di jalur bisa membuat router melihat alamat lain) agar allow-list api bisa diisi tanpa menebak.
-export async function failure(err: unknown, c: ConnectionInput, conn: RouterOsConn) {
+export async function failure(
+  err: unknown,
+  c: ConnectionInput,
+  conn: RouterOsConn,
+) {
   if (!(err instanceof RouterOsApiError)) return null;
   let message = redactSecrets(err.message, c);
   if (err.code === "AUTH_FAILED") {
@@ -39,7 +50,12 @@ export async function failure(err: unknown, c: ConnectionInput, conn: RouterOsCo
   } else if (err.code === "TRAP" && /permission/i.test(message)) {
     message = `${message}. Pakai akun dari grup full.`;
   }
-  const network = err.code === "NETWORK_ERROR" || err.code === "TIMEOUT" || err.code === "CONNECTION_REFUSED";
-  const sourceIp = network ? await outboundSourceIp(conn.host, conn.port ?? 8728) : null;
+  const network =
+    err.code === "NETWORK_ERROR" ||
+    err.code === "TIMEOUT" ||
+    err.code === "CONNECTION_REFUSED";
+  const sourceIp = network
+    ? await outboundSourceIp(conn.host, conn.port ?? 8728)
+    : null;
   return { ok: false as const, code: err.code, message, sourceIp };
 }

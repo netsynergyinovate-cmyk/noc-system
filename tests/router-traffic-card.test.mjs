@@ -6,8 +6,14 @@ import {
   isTrafficEmpty,
 } from "../src/lib/dashboard/router-traffic.ts";
 
-const cardSrc = readFileSync("src/components/dashboard/router-traffic-card.tsx", "utf8");
-const tableSrc = readFileSync("src/components/dashboard/router-table.tsx", "utf8");
+const cardSrc = readFileSync(
+  "src/components/dashboard/router-traffic-card.tsx",
+  "utf8",
+);
+const tableSrc = readFileSync(
+  "src/components/dashboard/router-table.tsx",
+  "utf8",
+);
 
 test("getMockRouterTraffic: router aktif punya data, deterministik", () => {
   const a = getMockRouterTraffic("r1");
@@ -32,10 +38,18 @@ test("isTrafficEmpty", () => {
   assert.equal(isTrafficEmpty(getMockRouterTraffic("r1", false)), true);
   assert.equal(isTrafficEmpty(getMockRouterTraffic("r1")), false);
   assert.equal(
-    isTrafficEmpty({ ...getMockRouterTraffic("r1"), rxBps: 0, txBps: 0, peakRxBps: 0 }),
+    isTrafficEmpty({
+      ...getMockRouterTraffic("r1"),
+      rxBps: 0,
+      txBps: 0,
+      peakRxBps: 0,
+    }),
     true,
   );
-  assert.equal(isTrafficEmpty({ ...getMockRouterTraffic("r1"), rxBps: 0, txBps: 0 }), false);
+  assert.equal(
+    isTrafficEmpty({ ...getMockRouterTraffic("r1"), rxBps: 0, txBps: 0 }),
+    false,
+  );
 });
 
 test("RouterTrafficCard: struktur konten dan empty state", () => {

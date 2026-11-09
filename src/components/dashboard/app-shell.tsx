@@ -82,7 +82,9 @@ export function AppShell({
           {/* Versi Aplikasi */}
           <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground/75 select-none">
             <span>Versi Aplikasi</span>
-            <span className="font-mono font-medium text-foreground/80">v{appVersion}</span>
+            <span className="font-mono font-medium text-foreground/80">
+              v{appVersion}
+            </span>
           </div>
         </div>
       </aside>

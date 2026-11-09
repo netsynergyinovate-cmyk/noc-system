@@ -45,9 +45,13 @@ export async function dispatchGateway(
       redirect: "error",
       signal: AbortSignal.timeout(10_000),
     });
-    if (!res.ok) return { ok: false, error: `Gateway membalas HTTP ${res.status}.` };
+    if (!res.ok)
+      return { ok: false, error: `Gateway membalas HTTP ${res.status}.` };
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Gateway tidak terjangkau." };
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Gateway tidak terjangkau.",
+    };
   }
 }

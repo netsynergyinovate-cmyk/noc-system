@@ -1358,8 +1358,9 @@ function parsePingStats(rawRows: unknown): PingStats | null {
   const received =
     Number.isFinite(lastRecv) && lastRecv >= 0 ? lastRecv : rtts.length;
   if (sent === 0) return null;
-  const avgMs =
-    rtts.length ? rtts.reduce((a, b) => a + b, 0) / rtts.length : null;
+  const avgMs = rtts.length
+    ? rtts.reduce((a, b) => a + b, 0) / rtts.length
+    : null;
   const maxMs = rtts.length ? Math.max(...rtts) : null;
   const jitterMs =
     rtts.length > 1
@@ -1434,10 +1435,7 @@ function parseTracerouteHops(rawRows: unknown): TraceHop[] {
   return hops;
 }
 
-function parseDnsResult(
-  name: string,
-  res: Read<unknown>,
-): DnsProbe | null {
+function parseDnsResult(name: string, res: Read<unknown>): DnsProbe | null {
   if (!res.ok) {
     const err = res.error;
     const isDnsFailure =
@@ -1564,8 +1562,12 @@ async function readActive(
 
   const [hist] = await db
     .select({
-      p95Down: sql<number | null>`percentile_cont(0.95) within group (order by ${customerTrafficSamples.downloadMbpsMax}) filter (where ${customerTrafficSamples.downloadMbpsMax} > 0.1)`,
-      p95Up: sql<number | null>`percentile_cont(0.95) within group (order by ${customerTrafficSamples.uploadMbpsMax}) filter (where ${customerTrafficSamples.uploadMbpsMax} > 0.1)`,
+      p95Down: sql<
+        number | null
+      >`percentile_cont(0.95) within group (order by ${customerTrafficSamples.downloadMbpsMax}) filter (where ${customerTrafficSamples.downloadMbpsMax} > 0.1)`,
+      p95Up: sql<
+        number | null
+      >`percentile_cont(0.95) within group (order by ${customerTrafficSamples.uploadMbpsMax}) filter (where ${customerTrafficSamples.uploadMbpsMax} > 0.1)`,
       buckets: sql<number>`count(*) filter (where ${customerTrafficSamples.downloadMbpsMax} > 0.1)::int`,
     })
     .from(customerTrafficSamples)
@@ -1607,7 +1609,6 @@ async function readActive(
 
   return out;
 }
-
 
 // Lapisan hulu: default route & link, utilisasi uplink, ping dari router,
 // riwayat uplink, BGP, IPv6. Masalah di sini adalah gangguan bersama.
@@ -1812,10 +1813,7 @@ async function loadScopeEvidence(
         .select({ count: sql<number>`count(*)::int` })
         .from(oltOnus)
         .where(
-          and(
-            eq(oltOnus.oltId, onu.oltId),
-            eq(oltOnus.ponIndex, onu.ponIndex),
-          ),
+          and(eq(oltOnus.oltId, onu.oltId), eq(oltOnus.ponIndex, onu.ponIndex)),
         ),
       db
         .select({
@@ -1877,7 +1875,10 @@ async function loadPreviousVerdict(
       finishedAt: prev.finishedAt,
     };
   } catch (err) {
-    console.warn("[diagnostics] gagal memuat kesimpulan sebelumnya:", message(err));
+    console.warn(
+      "[diagnostics] gagal memuat kesimpulan sebelumnya:",
+      message(err),
+    );
     return null;
   }
 }

@@ -5,12 +5,10 @@ import { getTableColumns } from "drizzle-orm";
 
 register();
 
-const { billingStatus, billingMatchKinds } = await import(
-  "../src/db/schema/billing-status.ts"
-);
-const { billingMismatches, billingMismatchReasons } = await import(
-  "../src/db/schema/billing-mismatches.ts"
-);
+const { billingStatus, billingMatchKinds } =
+  await import("../src/db/schema/billing-status.ts");
+const { billingMismatches, billingMismatchReasons } =
+  await import("../src/db/schema/billing-mismatches.ts");
 
 test("billing_status schema definition matches expectations", () => {
   const cols = getTableColumns(billingStatus);

@@ -50,11 +50,19 @@ export function deserializeCookies(jsonStr: string): Record<string, string> {
 }
 
 /** True selama `now` < backoffUntil. */
-export function isBackoffActive(backoffUntil: Date | null, now: Date = new Date()): boolean {
+export function isBackoffActive(
+  backoffUntil: Date | null,
+  now: Date = new Date(),
+): boolean {
   return backoffUntil !== null && backoffUntil.getTime() > now.getTime();
 }
 
 /** Gagal berturut-turut >= 3: tahan 6 jam. Kurang dari itu: null (tanpa backoff). */
-export function calculateNextBackoff(failures: number, now: Date = new Date()): Date | null {
-  return failures >= BACKOFF_FAILURE_THRESHOLD ? new Date(now.getTime() + BACKOFF_MS) : null;
+export function calculateNextBackoff(
+  failures: number,
+  now: Date = new Date(),
+): Date | null {
+  return failures >= BACKOFF_FAILURE_THRESHOLD
+    ? new Date(now.getTime() + BACKOFF_MS)
+    : null;
 }

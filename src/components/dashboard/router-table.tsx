@@ -254,12 +254,19 @@ export function RouterTable() {
   const resources = useRouterResources(!isDemo, 2_000);
 
   const [selectedRouterId, setSelectedRouterId] = useState<string | null>(null);
-  const [configRouter, setConfigRouter] = useState<MockRouterDetail | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [configRouter, setConfigRouter] = useState<MockRouterDetail | null>(
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<RouterStatusFilter>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [deviceScope, setDeviceScope] = useState<"all" | "router" | "olt">("all");
+  const [deviceScope, setDeviceScope] = useState<"all" | "router" | "olt">(
+    "all",
+  );
   const [pingModalOpen, setPingModalOpen] = useState(false);
   const [sysEpoch] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -274,11 +281,17 @@ export function RouterTable() {
       if (isDemo) {
         await mockRefresh(navigator.onLine);
       } else if (!(await resources.refresh())) {
-        throw new Error("Server tidak bisa membaca detail router. Coba lagi sebentar.");
+        throw new Error(
+          "Server tidak bisa membaca detail router. Coba lagi sebentar.",
+        );
       }
       dispatch({ type: "success" });
     } catch (e) {
-      dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan data router." });
+      dispatch({
+        type: "fail",
+        message:
+          e instanceof Error ? e.message : "Gagal menyegarkan data router.",
+      });
     }
   }
 
@@ -302,7 +315,9 @@ export function RouterTable() {
   const visible = useMemo(() => {
     let list = filterRouterDetails(details, query, statusFilter);
     if (roleFilter !== "all") {
-      list = list.filter((r) => r.role.toLowerCase().includes(roleFilter.toLowerCase()));
+      list = list.filter((r) =>
+        r.role.toLowerCase().includes(roleFilter.toLowerCase()),
+      );
     }
     return list;
   }, [details, query, statusFilter, roleFilter]);
@@ -335,9 +350,14 @@ export function RouterTable() {
   // atau peak contoh; bila interface/counter belum terbaca, biarkan kartu
   // mengambil riwayatnya sendiri.
   const selectedInitialStats = useMemo(() => {
-    if (!selectedRouter?.active || selectedRouter.currentDownloadMbps === undefined) return undefined;
+    if (
+      !selectedRouter?.active ||
+      selectedRouter.currentDownloadMbps === undefined
+    )
+      return undefined;
     const up = selectedRouter.interfaces?.find(
-      (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
+      (i) =>
+        i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
     );
     if (!up || up.rxByte === undefined) return undefined;
     const rx = selectedRouter.currentDownloadMbps;
@@ -358,11 +378,13 @@ export function RouterTable() {
   }, [selectedRouter, sysEpoch]);
 
   const selectedHealth = useMemo(
-    () => telemetry?.routers.find((h) => h.routerId === selectedRouter?.id) ?? null,
+    () =>
+      telemetry?.routers.find((h) => h.routerId === selectedRouter?.id) ?? null,
     [telemetry, selectedRouter],
   );
   const selectedMethod =
-    selectedRouter?.protocol === "api" || /:(8728|8729)$/.test(selectedRouter?.host ?? "")
+    selectedRouter?.protocol === "api" ||
+    /:(8728|8729)$/.test(selectedRouter?.host ?? "")
       ? "API Biner"
       : "REST";
 
@@ -379,21 +401,30 @@ export function RouterTable() {
   const activeInterfaces = useMemo(() => {
     if (!primaryRouter?.interfaces) return [];
     const list = primaryRouter.interfaces.filter(
-      (i) => !i.name.startsWith("<pppoe-") && i.name !== "lo" && !i.name.startsWith("bridge"),
+      (i) =>
+        !i.name.startsWith("<pppoe-") &&
+        i.name !== "lo" &&
+        !i.name.startsWith("bridge"),
     );
 
     // Prioritaskan interface utama (Uplink, OLT, VLAN aktif) dan urutkan berdasarkan trafik tertinggi
     return list
       .sort((a, b) => {
         // Prioritas port UPLINK
-        const isUpA = a.comment?.toUpperCase().includes("UPLINK") || a.name === "ether2-lan0";
-        const isUpB = b.comment?.toUpperCase().includes("UPLINK") || b.name === "ether2-lan0";
+        const isUpA =
+          a.comment?.toUpperCase().includes("UPLINK") ||
+          a.name === "ether2-lan0";
+        const isUpB =
+          b.comment?.toUpperCase().includes("UPLINK") ||
+          b.name === "ether2-lan0";
         if (isUpA && !isUpB) return -1;
         if (!isUpA && isUpB) return 1;
 
         // Prioritas port OLT
-        const isOltA = a.comment?.toUpperCase().includes("OLT") || a.name === "ether4-lan1";
-        const isOltB = b.comment?.toUpperCase().includes("OLT") || b.name === "ether4-lan1";
+        const isOltA =
+          a.comment?.toUpperCase().includes("OLT") || a.name === "ether4-lan1";
+        const isOltB =
+          b.comment?.toUpperCase().includes("OLT") || b.name === "ether4-lan1";
         if (isOltA && !isOltB) return -1;
         if (!isOltA && isOltB) return 1;
 
@@ -427,25 +458,37 @@ export function RouterTable() {
           <div className="flex items-center gap-2">
             <Network className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground uppercase">OLT:</span>
-            <span className="text-foreground font-semibold">{olt ? `1/1 ${olt.status.toUpperCase()}` : "1/1 AKTIF"}</span>
+            <span className="text-foreground font-semibold">
+              {olt ? `1/1 ${olt.status.toUpperCase()}` : "1/1 AKTIF"}
+            </span>
           </div>
           <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Layers className="size-3.5 text-muted-foreground" />
             <span className="text-muted-foreground uppercase">ONU:</span>
-            <span className="text-foreground font-semibold">{olt ? `${olt.onuTotal} TERDAFTAR` : `${customers.length} TERDAFTAR`}</span>
+            <span className="text-foreground font-semibold">
+              {olt
+                ? `${olt.onuTotal} TERDAFTAR`
+                : `${customers.length} TERDAFTAR`}
+            </span>
           </div>
           <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Users className="size-3.5 text-cyan-400" />
-            <span className="text-muted-foreground uppercase">PPPoE ACTIVE:</span>
-            <span className="text-foreground font-semibold">{totalPppoe} SESI</span>
+            <span className="text-muted-foreground uppercase">
+              PPPoE ACTIVE:
+            </span>
+            <span className="text-foreground font-semibold">
+              {totalPppoe} SESI
+            </span>
           </div>
           <span className="text-border hidden sm:inline">|</span>
           <div className="flex items-center gap-2">
             <Gauge className="size-3.5 text-cyan-400" />
             <span className="text-muted-foreground uppercase">AGGREGATE:</span>
-            <span className="text-foreground font-semibold">{aggregateMbps === undefined ? "—" : `${aggregateMbps} Mbps`}</span>
+            <span className="text-foreground font-semibold">
+              {aggregateMbps === undefined ? "—" : `${aggregateMbps} Mbps`}
+            </span>
           </div>
         </div>
 
@@ -454,7 +497,9 @@ export function RouterTable() {
             type="button"
             onClick={() => setDeviceScope("all")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "all" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              deviceScope === "all"
+                ? "bg-muted text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Semua Perangkat
@@ -463,7 +508,9 @@ export function RouterTable() {
             type="button"
             onClick={() => setDeviceScope("router")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "router" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              deviceScope === "router"
+                ? "bg-muted text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Router Saja
@@ -472,7 +519,9 @@ export function RouterTable() {
             type="button"
             onClick={() => setDeviceScope("olt")}
             className={`px-3 py-1.5 rounded-lg uppercase font-medium transition-colors ${
-              deviceScope === "olt" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              deviceScope === "olt"
+                ? "bg-muted text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             OLT Saja
@@ -495,13 +544,16 @@ export function RouterTable() {
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-foreground tracking-tight">{primaryRouter.name}</h2>
+                      <h2 className="text-base font-bold text-foreground tracking-tight">
+                        {primaryRouter.name}
+                      </h2>
                       <span className="px-2 py-0.5 rounded-md bg-muted border border-border text-muted-foreground font-mono text-[10px]">
                         {primaryRouter.role}
                       </span>
                     </div>
                     <span className="font-mono text-xs text-muted-foreground">
-                      {primaryRouter.host}{primaryRouter.asn ? ` • ${primaryRouter.asn}` : ""}
+                      {primaryRouter.host}
+                      {primaryRouter.asn ? ` • ${primaryRouter.asn}` : ""}
                     </span>
                   </div>
                 </div>
@@ -524,16 +576,27 @@ export function RouterTable() {
                   <div className="flex flex-wrap items-center gap-4 font-mono text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-cyan-400" />
-                      <span className="text-muted-foreground">RX (Download):</span>
-                      <span className="text-foreground font-semibold">{fmtMbps(currentDl)}</span>
+                      <span className="text-muted-foreground">
+                        RX (Download):
+                      </span>
+                      <span className="text-foreground font-semibold">
+                        {fmtMbps(currentDl)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-purple-400" />
-                      <span className="text-muted-foreground">TX (Upload):</span>
-                      <span className="text-foreground font-semibold">{fmtMbps(currentUl)}</span>
+                      <span className="text-muted-foreground">
+                        TX (Upload):
+                      </span>
+                      <span className="text-foreground font-semibold">
+                        {fmtMbps(currentUl)}
+                      </span>
                     </div>
                     <div className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-foreground/90 font-mono text-[10px]">
-                      Peak: <span className="font-semibold text-cyan-400">{fmtMbps(peakVal)}</span>
+                      Peak:{" "}
+                      <span className="font-semibold text-cyan-400">
+                        {fmtMbps(peakVal)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -555,7 +618,9 @@ export function RouterTable() {
               {/* Active Interfaces Bandwidth Breakdown */}
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-                  <span className="uppercase tracking-wider">Status &amp; Throughput Port Antarmuka</span>
+                  <span className="uppercase tracking-wider">
+                    Status &amp; Throughput Port Antarmuka
+                  </span>
                   <span>{activeInterfaces.length} Port Link Up</span>
                 </div>
 
@@ -564,11 +629,21 @@ export function RouterTable() {
                     const dlRate = iface.rxMbps ?? 0;
                     const ulRate = iface.txMbps ?? 0;
                     const maxPortRate = Math.max(dlRate, ulRate, 1);
-                    const isUplink = iface.comment?.toUpperCase().includes("UPLINK") || iface.name === "ether2-lan0";
-                    const isOlt = iface.comment?.toUpperCase().includes("OLT") || iface.name === "ether4-lan1";
+                    const isUplink =
+                      iface.comment?.toUpperCase().includes("UPLINK") ||
+                      iface.name === "ether2-lan0";
+                    const isOlt =
+                      iface.comment?.toUpperCase().includes("OLT") ||
+                      iface.name === "ether4-lan1";
                     const pct = Math.min(
                       100,
-                      Math.max(8, Math.round((maxPortRate / (isUplink ? 150 : isOlt ? 120 : 50)) * 100)),
+                      Math.max(
+                        8,
+                        Math.round(
+                          (maxPortRate / (isUplink ? 150 : isOlt ? 120 : 50)) *
+                            100,
+                        ),
+                      ),
                     );
 
                     return (
@@ -660,7 +735,9 @@ export function RouterTable() {
           {/* Card 1: Router Status */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Router Online</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Router Online
+              </span>
               <CheckCircle className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
@@ -677,11 +754,15 @@ export function RouterTable() {
           {/* Card 2: PPPoE Sessions */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Total PPPoE</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Total PPPoE
+              </span>
               <Users className="size-4 text-cyan-400" />
             </div>
             <div className="my-2">
-              <div className="font-mono text-2xl font-bold text-foreground tracking-tight">{totalPppoe}</div>
+              <div className="font-mono text-2xl font-bold text-foreground tracking-tight">
+                {totalPppoe}
+              </div>
             </div>
             <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>Pelanggan aktif</span>
@@ -692,13 +773,17 @@ export function RouterTable() {
           {/* Card 3: CPU Usage */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">CPU Core CCR</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                CPU Core CCR
+              </span>
               <Cpu className="size-4 text-cyan-400" />
             </div>
             <div className="my-2">
               <div
                 className={`font-mono text-2xl font-bold tracking-tight ${
-                  (primaryRouter?.cpuLoad ?? 0) > 80 ? "text-amber-400" : "text-foreground"
+                  (primaryRouter?.cpuLoad ?? 0) > 80
+                    ? "text-amber-400"
+                    : "text-foreground"
                 }`}
               >
                 {primaryRouter?.cpuLoad ?? 3}%
@@ -707,9 +792,13 @@ export function RouterTable() {
             <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  (primaryRouter?.cpuLoad ?? 0) > 80 ? "bg-amber-400" : "bg-cyan-400"
+                  (primaryRouter?.cpuLoad ?? 0) > 80
+                    ? "bg-amber-400"
+                    : "bg-cyan-400"
                 }`}
-                style={{ width: `${Math.min(100, primaryRouter?.cpuLoad ?? 3)}%` }}
+                style={{
+                  width: `${Math.min(100, primaryRouter?.cpuLoad ?? 3)}%`,
+                }}
               />
             </div>
           </div>
@@ -717,7 +806,9 @@ export function RouterTable() {
           {/* Card 4: RAM Usage */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Alokasi RAM</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Alokasi RAM
+              </span>
               <HardDrive className="size-4 text-muted-foreground" />
             </div>
             <div className="my-2">
@@ -728,7 +819,9 @@ export function RouterTable() {
             <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-zinc-400 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, primaryRouter?.memoryUsage ?? 4)}%` }}
+                style={{
+                  width: `${Math.min(100, primaryRouter?.memoryUsage ?? 4)}%`,
+                }}
               />
             </div>
           </div>
@@ -736,7 +829,9 @@ export function RouterTable() {
           {/* Card 5: Real Default Gateway */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Gateway Utama</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Gateway Utama
+              </span>
               <ShieldCheck className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
@@ -746,7 +841,13 @@ export function RouterTable() {
             </div>
             <div className="flex items-center justify-between text-muted-foreground font-mono text-[10px] pt-1">
               <span>Alamat manajemen router</span>
-              <span className={primaryRouter?.active ? "text-emerald-400 font-medium" : "text-muted-foreground"}>
+              <span
+                className={
+                  primaryRouter?.active
+                    ? "text-emerald-400 font-medium"
+                    : "text-muted-foreground"
+                }
+              >
                 {primaryRouter?.active ? "Terbaca" : "Offline"}
               </span>
             </div>
@@ -755,7 +856,9 @@ export function RouterTable() {
           {/* Card 6: REST API Latency */}
           <div className="p-4 rounded-2xl bg-card flex flex-col justify-between border border-border shadow-sm min-h-[120px]">
             <div className="flex items-center justify-between pb-1">
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Latensi API</span>
+              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+                Latensi API
+              </span>
               <Zap className="size-4 text-emerald-400" />
             </div>
             <div className="my-2">
@@ -809,7 +912,9 @@ export function RouterTable() {
             {/* Filter Status */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as RouterStatusFilter)}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as RouterStatusFilter)
+              }
               aria-label="Filter status router"
               className="h-9 px-3 rounded-xl bg-background border border-border text-foreground font-mono text-xs uppercase focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
             >
@@ -820,8 +925,15 @@ export function RouterTable() {
           </div>
 
           <div className="flex items-center gap-3 justify-between md:justify-end">
-            <span className="font-mono text-xs text-muted-foreground" role="status">
-              Menampilkan <span className="text-foreground font-semibold">{visible.length}</span> dari {details.length} router
+            <span
+              className="font-mono text-xs text-muted-foreground"
+              role="status"
+            >
+              Menampilkan{" "}
+              <span className="text-foreground font-semibold">
+                {visible.length}
+              </span>{" "}
+              dari {details.length} router
             </span>
             <Button
               type="button"
@@ -831,7 +943,9 @@ export function RouterTable() {
               aria-disabled={isRefreshing}
               className="h-9 px-3.5 rounded-xl bg-muted hover:bg-muted border-border text-foreground font-mono text-xs uppercase gap-1.5"
             >
-              <RefreshCw className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`}
+              />
               <span>{isRefreshing ? "Menyegarkan..." : "Segarkan"}</span>
             </Button>
           </div>
@@ -843,7 +957,13 @@ export function RouterTable() {
             className="flex flex-wrap items-center justify-between gap-2 p-3 bg-rose-950/40 border-b border-rose-800/60 text-xs text-rose-300"
           >
             <span>{refreshError}</span>
-            <Button type="button" variant="outline" size="sm" onClick={handleRefresh} className="h-7 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="h-7 text-xs"
+            >
               Coba lagi
             </Button>
           </div>
@@ -854,16 +974,36 @@ export function RouterTable() {
           <table className="w-full text-left whitespace-nowrap">
             <thead className="bg-background/90 text-muted-foreground font-mono text-[11px] uppercase tracking-wider border-b border-border">
               <tr>
-                <th className="py-3 px-4 w-10 text-center" scope="col">#</th>
-                <th className="py-3 px-4" scope="col">Nama Router &amp; Host</th>
-                <th className="py-3 px-4" scope="col">Peran &amp; Model</th>
-                <th className="py-3 px-4" scope="col">Versi RouterOS</th>
-                <th className="py-3 px-4" scope="col">CPU / RAM</th>
-                <th className="py-3 px-4" scope="col">Throughput Saat Ini</th>
-                <th className="py-3 px-4" scope="col">Sesi PPPoE</th>
-                <th className="py-3 px-4" scope="col">Latensi Ping</th>
-                <th className="py-3 px-4" scope="col">Status REST</th>
-                <th className="py-3 px-4 text-right" scope="col">Aksi</th>
+                <th className="py-3 px-4 w-10 text-center" scope="col">
+                  #
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Nama Router &amp; Host
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Peran &amp; Model
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Versi RouterOS
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  CPU / RAM
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Throughput Saat Ini
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Sesi PPPoE
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Latensi Ping
+                </th>
+                <th className="py-3 px-4" scope="col">
+                  Status REST
+                </th>
+                <th className="py-3 px-4 text-right" scope="col">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-mono text-xs">
@@ -877,7 +1017,10 @@ export function RouterTable() {
                 ))
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="h-28 text-center text-muted-foreground">
+                  <td
+                    colSpan={10}
+                    className="h-28 text-center text-muted-foreground"
+                  >
                     {routers.length === 0
                       ? "Belum ada router yang ditambahkan."
                       : "Tidak ada router yang cocok dengan pencarian."}
@@ -890,7 +1033,10 @@ export function RouterTable() {
                   const ulMbps = router.currentUploadMbps;
 
                   return (
-                    <tr key={router.id} className="hover:bg-muted/30 transition-colors group">
+                    <tr
+                      key={router.id}
+                      className="hover:bg-muted/30 transition-colors group"
+                    >
                       <td className="py-3.5 px-4 text-center">
                         <span
                           className={`inline-block size-2 rounded-full ${
@@ -913,25 +1059,33 @@ export function RouterTable() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
-                          <span className="text-foreground font-medium">{router.role}</span>
+                          <span className="text-foreground font-medium">
+                            {router.role}
+                          </span>
                           <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">
                             {router.boardModel}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-muted-foreground text-[11px]">{router.rosVersion}</td>
+                      <td className="py-3.5 px-4 text-muted-foreground text-[11px]">
+                        {router.rosVersion}
+                      </td>
                       <td className="py-3.5 px-4">
                         {router.active ? (
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`font-semibold ${
-                                isCpuWarning(router) ? "text-amber-400" : "text-foreground"
+                                isCpuWarning(router)
+                                  ? "text-amber-400"
+                                  : "text-foreground"
                               }`}
                             >
                               {router.cpuLoad}%
                             </span>
                             <span className="text-zinc-600">/</span>
-                            <span className="text-muted-foreground text-[11px]">{router.memoryUsage}% RAM</span>
+                            <span className="text-muted-foreground text-[11px]">
+                              {router.memoryUsage}% RAM
+                            </span>
                           </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
@@ -951,13 +1105,21 @@ export function RouterTable() {
                       <td className="py-3.5 px-4">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground text-[11px]">
                           <span className="size-1.5 rounded-full bg-cyan-400" />
-                          <span>{pppoeCount === undefined ? "—" : `${pppoeCount} sesi`}</span>
+                          <span>
+                            {pppoeCount === undefined
+                              ? "—"
+                              : `${pppoeCount} sesi`}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
                           <Zap className="size-3" />
-                          <span>{router.latencyMs === undefined ? "—" : `${router.latencyMs} ms avg`}</span>
+                          <span>
+                            {router.latencyMs === undefined
+                              ? "—"
+                              : `${router.latencyMs} ms avg`}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
@@ -994,7 +1156,12 @@ export function RouterTable() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setDeleteTarget({ id: router.id, name: router.name })}
+                            onClick={() =>
+                              setDeleteTarget({
+                                id: router.id,
+                                name: router.name,
+                              })
+                            }
                             className="h-7 px-2 rounded-lg bg-muted hover:bg-muted border-border text-foreground/90 font-mono text-[11px]"
                             title="Hapus Router"
                             aria-label={`Hapus router ${router.name}`}
@@ -1022,14 +1189,18 @@ export function RouterTable() {
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <span className="size-1.5 rounded-full bg-emerald-400" />
-            <span className="text-foreground font-semibold">UPTIME CLUSTER: 99.98%</span>
+            <span className="text-foreground font-semibold">
+              UPTIME CLUSTER: 99.98%
+            </span>
           </div>
         </div>
       </div>
 
       {/* 5. System Status Footer Strip */}
       <footer className="w-full bg-background/60 rounded-xl py-2.5 px-4 border border-border font-mono text-[10px] text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span suppressHydrationWarning>SYS_EPOCH: {sysEpoch} • NOC TELEMETRY ENGINE V4.8.1</span>
+        <span suppressHydrationWarning>
+          SYS_EPOCH: {sysEpoch} • NOC TELEMETRY ENGINE V4.8.1
+        </span>
         <div className="flex items-center gap-4">
           <span>INGRESS: 242.8 GB/S</span>
           <span>EGRESS: 239.2 GB/S</span>
@@ -1042,7 +1213,10 @@ export function RouterTable() {
 
       {/* Dialog Rincian Router MikroTik (Lengkap 5 Tabs) */}
       {selectedRouter && (
-        <Dialog open={!!selectedRouter} onOpenChange={(open) => !open && setSelectedRouterId(null)}>
+        <Dialog
+          open={!!selectedRouter}
+          onOpenChange={(open) => !open && setSelectedRouterId(null)}
+        >
           <DialogContent className="sm:max-w-4xl bg-background border-border text-foreground">
             <DialogHeader>
               <div className="flex items-center justify-between gap-3 pr-6">
@@ -1052,7 +1226,8 @@ export function RouterTable() {
                     <RouterStatusBadge active={selectedRouter.active} />
                   </DialogTitle>
                   <DialogDescription className="font-mono text-xs text-muted-foreground mt-1">
-                    {selectedRouter.host} · {selectedRouter.boardModel} · {selectedRouter.rosVersion}
+                    {selectedRouter.host} · {selectedRouter.boardModel} ·{" "}
+                    {selectedRouter.rosVersion}
                   </DialogDescription>
                 </div>
               </div>
@@ -1060,23 +1235,38 @@ export function RouterTable() {
 
             <Tabs defaultValue="hardware" className="mt-2">
               <TabsList className="grid w-full grid-cols-5 bg-muted border border-border">
-                <TabsTrigger value="hardware" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="hardware"
+                  className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
                   <Cpu className="size-3.5" />
                   Hardware &amp; Sistem
                 </TabsTrigger>
-                <TabsTrigger value="traffic" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="traffic"
+                  className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
                   <Activity className="size-3.5" />
                   Trafik Live
                 </TabsTrigger>
-                <TabsTrigger value="queues" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="queues"
+                  className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
                   <Layers className="size-3.5" />
                   Simple Queue
                 </TabsTrigger>
-                <TabsTrigger value="pppoe" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="pppoe"
+                  className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
                   <Radio className="size-3.5" />
                   Sesi PPPoE
                 </TabsTrigger>
-                <TabsTrigger value="ping" className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="ping"
+                  className="gap-1.5 text-xs text-foreground/90 data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
                   <Terminal className="size-3.5" />
                   Tool Ping ICMP
                 </TabsTrigger>
@@ -1094,12 +1284,20 @@ export function RouterTable() {
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
-                    <span className="text-muted-foreground block mb-1">Metode Koneksi</span>
-                    <strong className="text-lg font-semibold text-foreground">{selectedMethod}</strong>
-                    <p className="text-[11px] text-muted-foreground mt-1 break-words">{selectedRouter.host}</p>
+                    <span className="text-muted-foreground block mb-1">
+                      Metode Koneksi
+                    </span>
+                    <strong className="text-lg font-semibold text-foreground">
+                      {selectedMethod}
+                    </strong>
+                    <p className="text-[11px] text-muted-foreground mt-1 break-words">
+                      {selectedRouter.host}
+                    </p>
                     <p
                       className={`text-[11px] mt-0.5 ${
-                        selectedHealth?.reachable === false ? "text-destructive" : "text-emerald-400"
+                        selectedHealth?.reachable === false
+                          ? "text-destructive"
+                          : "text-emerald-400"
                       }`}
                     >
                       {selectedHealth
@@ -1113,27 +1311,40 @@ export function RouterTable() {
                     </p>
                   </div>
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
-                    <span className="text-muted-foreground block mb-1">Simple Queue Terdaftar</span>
+                    <span className="text-muted-foreground block mb-1">
+                      Simple Queue Terdaftar
+                    </span>
                     <strong className="text-lg font-semibold text-foreground">
-                      {selectedRouter.active ? (selectedRouter.queueCount ?? "—") : "—"}
+                      {selectedRouter.active
+                        ? (selectedRouter.queueCount ?? "—")
+                        : "—"}
                     </strong>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Limitasi antrian bandwidth aktif di router ini
                     </p>
                   </div>
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
-                    <span className="text-muted-foreground block mb-1">Sesi PPPoE Terlayani</span>
+                    <span className="text-muted-foreground block mb-1">
+                      Sesi PPPoE Terlayani
+                    </span>
                     <strong className="text-lg font-semibold text-cyan-400">
-                      {selectedRouter.active ? (selectedRouter.pppoeCount ?? "—") : "—"}
+                      {selectedRouter.active
+                        ? (selectedRouter.pppoeCount ?? "—")
+                        : "—"}
                     </strong>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Klien PPPoE terautentikasi dan aktif
                     </p>
                   </div>
                   <div className="rounded-xl border border-border bg-muted/50 p-3.5">
-                    <span className="text-muted-foreground block mb-1">Latensi REST API</span>
+                    <span className="text-muted-foreground block mb-1">
+                      Latensi REST API
+                    </span>
                     <strong className="text-lg font-semibold text-emerald-400">
-                      {selectedRouter.active && selectedRouter.latencyMs !== undefined ? `${selectedRouter.latencyMs} ms` : "—"}
+                      {selectedRouter.active &&
+                      selectedRouter.latencyMs !== undefined
+                        ? `${selectedRouter.latencyMs} ms`
+                        : "—"}
                     </strong>
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Waktu respons telemetri RouterOS
@@ -1141,42 +1352,62 @@ export function RouterTable() {
                   </div>
                 </div>
 
-                {selectedRouter.interfaces && selectedRouter.interfaces.length > 0 && (
-                  <div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3 font-mono text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground flex items-center gap-2">
-                        <Network className="size-4 text-cyan-400" />
-                        Antarmuka Port &amp; Link Fisik (RouterOS)
-                      </span>
-                      <Badge variant="outline" className="text-[11px] text-foreground/90 border-border">
-                        {selectedRouter.interfaces.length} Port
-                      </Badge>
-                    </div>
-                    <div className="max-h-52 overflow-y-auto divide-y divide-border/80 rounded-lg border border-border bg-background/60 text-[11px]">
-                      {selectedRouter.interfaces.map((iface) => (
-                        <div key={iface.id || iface.name} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 gap-2 hover:bg-muted/30">
-                          <div className="flex items-center gap-2 truncate">
-                            <span className={`size-2 shrink-0 rounded-full ${iface.running ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                            <span className="font-semibold text-foreground truncate">{iface.name}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase">({iface.type})</span>
-                            {iface.comment && (
-                              <span className="text-[10px] text-cyan-400 font-mono truncate max-w-[180px]">
-                                [{iface.comment}]
+                {selectedRouter.interfaces &&
+                  selectedRouter.interfaces.length > 0 && (
+                    <div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3 font-mono text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground flex items-center gap-2">
+                          <Network className="size-4 text-cyan-400" />
+                          Antarmuka Port &amp; Link Fisik (RouterOS)
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] text-foreground/90 border-border"
+                        >
+                          {selectedRouter.interfaces.length} Port
+                        </Badge>
+                      </div>
+                      <div className="max-h-52 overflow-y-auto divide-y divide-border/80 rounded-lg border border-border bg-background/60 text-[11px]">
+                        {selectedRouter.interfaces.map((iface) => (
+                          <div
+                            key={iface.id || iface.name}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 gap-2 hover:bg-muted/30"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span
+                                className={`size-2 shrink-0 rounded-full ${iface.running ? "bg-emerald-400" : "bg-zinc-600"}`}
+                              />
+                              <span className="font-semibold text-foreground truncate">
+                                {iface.name}
                               </span>
-                            )}
+                              <span className="text-[10px] text-muted-foreground uppercase">
+                                ({iface.type})
+                              </span>
+                              {iface.comment && (
+                                <span className="text-[10px] text-cyan-400 font-mono truncate max-w-[180px]">
+                                  [{iface.comment}]
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px] shrink-0 justify-between sm:justify-end">
+                              <span className="text-cyan-400">
+                                RX: {iface.rxMbps ?? 0} Mbps
+                              </span>
+                              <span className="text-purple-400">
+                                TX: {iface.txMbps ?? 0} Mbps
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] uppercase ${iface.running ? "border-emerald-800/80 bg-emerald-950/40 text-emerald-400" : "border-border bg-muted text-muted-foreground"}`}
+                              >
+                                {iface.running ? "Link Up" : "Down"}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 text-muted-foreground font-mono text-[11px] shrink-0 justify-between sm:justify-end">
-                            <span className="text-cyan-400">RX: {iface.rxMbps ?? 0} Mbps</span>
-                            <span className="text-purple-400">TX: {iface.txMbps ?? 0} Mbps</span>
-                            <Badge variant="outline" className={`text-[9px] uppercase ${iface.running ? "border-emerald-800/80 bg-emerald-950/40 text-emerald-400" : "border-border bg-muted text-muted-foreground"}`}>
-                              {iface.running ? "Link Up" : "Down"}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </TabsContent>
 
               <TabsContent value="traffic" className="pt-3">
@@ -1190,11 +1421,17 @@ export function RouterTable() {
               </TabsContent>
 
               <TabsContent value="queues" className="pt-3">
-                <RouterQueueTable routerId={selectedRouter.id} routerName={selectedRouter.name} />
+                <RouterQueueTable
+                  routerId={selectedRouter.id}
+                  routerName={selectedRouter.name}
+                />
               </TabsContent>
 
               <TabsContent value="pppoe" className="pt-3">
-                <RouterPppoeTable routerId={selectedRouter.id} routerName={selectedRouter.name} />
+                <RouterPppoeTable
+                  routerId={selectedRouter.id}
+                  routerName={selectedRouter.name}
+                />
               </TabsContent>
 
               <TabsContent value="ping" className="pt-3">
@@ -1248,7 +1485,8 @@ export function RouterTable() {
                 Ping &amp; Trace: {selectedRouter.name} ({selectedRouter.host})
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground font-mono">
-                Pemeriksaan latensi jaringan riil via ICMP RouterOS &amp; REST API
+                Pemeriksaan latensi jaringan riil via ICMP RouterOS &amp; REST
+                API
               </DialogDescription>
             </DialogHeader>
 

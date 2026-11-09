@@ -43,7 +43,8 @@ export const TRAFFIC_TREND_MOCK_ENTRY = {
   module: "Sampel Trafik & Tren Bandwidth",
   targetDevice: "Router MikroTik SNMP / REST API v7",
   status: "dummy" as const,
-  readPath: "src/lib/dashboard/traffic-trend-data.ts (loadTrafficTrendOverview)",
+  readPath:
+    "src/lib/dashboard/traffic-trend-data.ts (loadTrafficTrendOverview)",
   writePath: "-",
   envKey: "MIKROTIK_REST_HOST",
   notes:
@@ -60,7 +61,12 @@ export const TRAFFIC_RANGE_CONFIG: Readonly<
   "7d": { points: 28, stepSec: 21600, label: "7 hari" },
 };
 
-export const TRAFFIC_RANGES: readonly TrafficTimeRange[] = ["1h", "6h", "24h", "7d"];
+export const TRAFFIC_RANGES: readonly TrafficTimeRange[] = [
+  "1h",
+  "6h",
+  "24h",
+  "7d",
+];
 
 // Hash bilangan bulat -> [0, 1). Deterministik.
 function unit(n: number): number {
@@ -78,7 +84,9 @@ function labelFor(ts: number, range: TrafficTimeRange): string {
   const d = new Date((ts + 7 * 3600) * 1000);
   const p = (n: number) => String(n).padStart(2, "0");
   const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
-  return range === "7d" ? `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${hm}` : hm;
+  return range === "7d"
+    ? `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${hm}`
+    : hm;
 }
 
 // Kurva harian: puncak malam (~20:00 WIB = 13:00 UTC), lembah dini hari.
@@ -116,46 +124,95 @@ export function generateTrafficTrendSeries(
 export function getMockInterfaceSamples(): TrafficInterfaceSample[] {
   return [
     {
-      id: "if-1", routerId: "rtr-core-1", routerName: "RTR-CORE-01",
-      interfaceName: "ether1-WAN-Indosat", role: "wan",
-      rxMbps: 412.6, txMbps: 88.4, rxErrorsPerMin: 0, txErrorsPerMin: 0,
-      status: "up", speedLimitMbps: 1000,
+      id: "if-1",
+      routerId: "rtr-core-1",
+      routerName: "RTR-CORE-01",
+      interfaceName: "ether1-WAN-Indosat",
+      role: "wan",
+      rxMbps: 412.6,
+      txMbps: 88.4,
+      rxErrorsPerMin: 0,
+      txErrorsPerMin: 0,
+      status: "up",
+      speedLimitMbps: 1000,
     },
     {
-      id: "if-2", routerId: "rtr-core-1", routerName: "RTR-CORE-01",
-      interfaceName: "ether2-WAN-Telkom", role: "wan",
-      rxMbps: 356.1, txMbps: 71.9, rxErrorsPerMin: 2, txErrorsPerMin: 0,
-      status: "up", speedLimitMbps: 1000,
+      id: "if-2",
+      routerId: "rtr-core-1",
+      routerName: "RTR-CORE-01",
+      interfaceName: "ether2-WAN-Telkom",
+      role: "wan",
+      rxMbps: 356.1,
+      txMbps: 71.9,
+      rxErrorsPerMin: 2,
+      txErrorsPerMin: 0,
+      status: "up",
+      speedLimitMbps: 1000,
     },
     {
-      id: "if-3", routerId: "rtr-core-1", routerName: "RTR-CORE-01",
-      interfaceName: "sfp-plus1-CORE", role: "uplink",
-      rxMbps: 1840.3, txMbps: 702.8, rxErrorsPerMin: 0, txErrorsPerMin: 0,
-      status: "up", speedLimitMbps: 10000,
+      id: "if-3",
+      routerId: "rtr-core-1",
+      routerName: "RTR-CORE-01",
+      interfaceName: "sfp-plus1-CORE",
+      role: "uplink",
+      rxMbps: 1840.3,
+      txMbps: 702.8,
+      rxErrorsPerMin: 0,
+      txErrorsPerMin: 0,
+      status: "up",
+      speedLimitMbps: 10000,
     },
     {
-      id: "if-4", routerId: "rtr-dist-1", routerName: "RTR-DIST-01",
-      interfaceName: "ether3-LAN-OLT1", role: "lan",
-      rxMbps: 523.7, txMbps: 109.2, rxErrorsPerMin: 1, txErrorsPerMin: 0,
-      status: "up", speedLimitMbps: 1000,
+      id: "if-4",
+      routerId: "rtr-dist-1",
+      routerName: "RTR-DIST-01",
+      interfaceName: "ether3-LAN-OLT1",
+      role: "lan",
+      rxMbps: 523.7,
+      txMbps: 109.2,
+      rxErrorsPerMin: 1,
+      txErrorsPerMin: 0,
+      status: "up",
+      speedLimitMbps: 1000,
     },
     {
-      id: "if-5", routerId: "rtr-dist-1", routerName: "RTR-DIST-01",
-      interfaceName: "ether4-LAN-OLT2", role: "lan",
-      rxMbps: 468.9, txMbps: 95.5, rxErrorsPerMin: 0, txErrorsPerMin: 1,
-      status: "up", speedLimitMbps: 1000,
+      id: "if-5",
+      routerId: "rtr-dist-1",
+      routerName: "RTR-DIST-01",
+      interfaceName: "ether4-LAN-OLT2",
+      role: "lan",
+      rxMbps: 468.9,
+      txMbps: 95.5,
+      rxErrorsPerMin: 0,
+      txErrorsPerMin: 1,
+      status: "up",
+      speedLimitMbps: 1000,
     },
     {
-      id: "if-6", routerId: "rtr-dist-1", routerName: "RTR-DIST-01",
-      interfaceName: "ether5-LAN-OLT3", role: "lan",
-      rxMbps: 0, txMbps: 0, rxErrorsPerMin: 0, txErrorsPerMin: 0,
-      status: "down", speedLimitMbps: 1000,
+      id: "if-6",
+      routerId: "rtr-dist-1",
+      routerName: "RTR-DIST-01",
+      interfaceName: "ether5-LAN-OLT3",
+      role: "lan",
+      rxMbps: 0,
+      txMbps: 0,
+      rxErrorsPerMin: 0,
+      txErrorsPerMin: 0,
+      status: "down",
+      speedLimitMbps: 1000,
     },
     {
-      id: "if-7", routerId: "rtr-hotspot-1", routerName: "RTR-HOTSPOT-01",
-      interfaceName: "bridge-hotspot", role: "hotspot",
-      rxMbps: 64.2, txMbps: 12.7, rxErrorsPerMin: 0, txErrorsPerMin: 0,
-      status: "up", speedLimitMbps: 200,
+      id: "if-7",
+      routerId: "rtr-hotspot-1",
+      routerName: "RTR-HOTSPOT-01",
+      interfaceName: "bridge-hotspot",
+      role: "hotspot",
+      rxMbps: 64.2,
+      txMbps: 12.7,
+      rxErrorsPerMin: 0,
+      txErrorsPerMin: 0,
+      status: "up",
+      speedLimitMbps: 200,
     },
   ];
 }
@@ -176,8 +233,9 @@ export function loadTrafficTrendOverview(
     peakMbps: Math.max(...series.map((p) => p.peakMbps)),
     avgMbps: round2(sumTotal / series.length),
     totalVolumeGb: round2(volumeGb),
-    activeInterfacesCount: getMockInterfaceSamples().filter((i) => i.status === "up")
-      .length,
+    activeInterfacesCount: getMockInterfaceSamples().filter(
+      (i) => i.status === "up",
+    ).length,
     range,
     sourceStatus: "dummy",
     lastSampledAt: new Date(last.timestamp * 1000).toISOString(),

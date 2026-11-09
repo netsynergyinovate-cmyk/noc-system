@@ -65,7 +65,10 @@ export function LocalToServerTransfer() {
     switch (status) {
       case "completed":
         return (
-          <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+          <Badge
+            variant="default"
+            className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+          >
             <CheckCircle2 className="h-3 w-3" />
             Selesai
           </Badge>
@@ -94,10 +97,7 @@ export function LocalToServerTransfer() {
   };
 
   return (
-    <div
-      className="flex flex-col gap-6"
-      data-testid="local-to-server-transfer"
-    >
+    <div className="flex flex-col gap-6" data-testid="local-to-server-transfer">
       {/* Topology Environment Banner */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-6">
@@ -197,11 +197,14 @@ export function LocalToServerTransfer() {
             <CardDescription>Waktu Transfer Terakhir</CardDescription>
             <CardTitle className="text-sm font-semibold truncate">
               {overview.lastBatchRunAt
-                ? new Date(overview.lastBatchRunAt).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  }) + " WIB"
+                ? new Date(overview.lastBatchRunAt).toLocaleTimeString(
+                    "id-ID",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    },
+                  ) + " WIB"
                 : "-"}
             </CardTitle>
           </CardHeader>
@@ -241,7 +244,8 @@ export function LocalToServerTransfer() {
             Daftar Job Transfer Data
           </h2>
           <p className="text-xs text-muted-foreground">
-            Status pemindahan data per tabel dari basis data lokal ke server produksi.
+            Status pemindahan data per tabel dari basis data lokal ke server
+            produksi.
           </p>
         </div>
 
@@ -263,7 +267,9 @@ export function LocalToServerTransfer() {
             onClick={() => handleStartTransfer(false)}
             className="text-xs gap-1.5"
           >
-            <Play className={`h-3.5 w-3.5 ${isTransferring ? "animate-spin" : ""}`} />
+            <Play
+              className={`h-3.5 w-3.5 ${isTransferring ? "animate-spin" : ""}`}
+            />
             {isTransferring ? "Mentransfer..." : "Mulai Transfer Data"}
           </Button>
         </div>

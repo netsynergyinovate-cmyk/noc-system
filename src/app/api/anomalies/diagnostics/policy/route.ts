@@ -16,14 +16,18 @@ export function GET(request: Request) {
 }
 
 export function PUT(request: Request) {
-  return withApiPermission(request, { threshold: ["manage"] }, async (session) => {
-    const input = diagnosticPolicySchema.parse(await readJson(request));
-    const data = await goDiagnostics<DiagnosticPolicyDto>(
-      session.user.id,
-      "/api/v1/diagnostics/policy",
-      { method: "PUT", body: JSON.stringify(input) },
-      ["threshold:manage"],
-    );
-    return Response.json({ data });
-  });
+  return withApiPermission(
+    request,
+    { threshold: ["manage"] },
+    async (session) => {
+      const input = diagnosticPolicySchema.parse(await readJson(request));
+      const data = await goDiagnostics<DiagnosticPolicyDto>(
+        session.user.id,
+        "/api/v1/diagnostics/policy",
+        { method: "PUT", body: JSON.stringify(input) },
+        ["threshold:manage"],
+      );
+      return Response.json({ data });
+    },
+  );
 }

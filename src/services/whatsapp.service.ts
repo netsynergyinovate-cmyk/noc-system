@@ -77,8 +77,19 @@ export interface SendLogEntry {
 
 export type SendRequestResult =
   | { kind: "invalid"; message: string }
-  | { kind: "broadcast"; totalSent: number; totalFailed: number; logs: SendLogEntry[] }
-  | { kind: "single"; ok: boolean; logId: string; target: string; error?: string };
+  | {
+      kind: "broadcast";
+      totalSent: number;
+      totalFailed: number;
+      logs: SendLogEntry[];
+    }
+  | {
+      kind: "single";
+      ok: boolean;
+      logId: string;
+      target: string;
+      error?: string;
+    };
 
 // Satu pintu untuk /api/whatsapp/send: broadcast ke penerima aktif, atau satu target.
 // Dikirim berurutan agar tidak membanjiri gateway; setiap percobaan tetap tercatat di whatsapp_logs.
@@ -103,10 +114,21 @@ export async function sendWhatsappRequest(input: {
         recipientId: r.id,
         alertKind: input.alertKind,
       });
-      logs.push({ logId: res.logId, target: r.target, recipientName: r.name, ok: res.ok, error: res.error });
+      logs.push({
+        logId: res.logId,
+        target: r.target,
+        recipientName: r.name,
+        ok: res.ok,
+        error: res.error,
+      });
     }
     const totalSent = logs.filter((l) => l.ok).length;
-    return { kind: "broadcast", totalSent, totalFailed: logs.length - totalSent, logs };
+    return {
+      kind: "broadcast",
+      totalSent,
+      totalFailed: logs.length - totalSent,
+      logs,
+    };
   }
 
   let target = input.target?.trim();
@@ -123,7 +145,11 @@ export async function sendWhatsappRequest(input: {
   const normalized = target
     ? normalizeTarget(target, "individual") || normalizeTarget(target, "group")
     : null;
-  if (!normalized) return { kind: "invalid", message: "Nomor telepon atau ID grup tidak valid." };
+  if (!normalized)
+    return {
+      kind: "invalid",
+      message: "Nomor telepon atau ID grup tidak valid.",
+    };
   const res = await sendWhatsappMessage({
     target: normalized,
     message: input.message,
@@ -131,13 +157,21 @@ export async function sendWhatsappRequest(input: {
     recipientId: input.recipientId,
     alertKind: input.alertKind,
   });
-  return { kind: "single", ok: res.ok, logId: res.logId, target: normalized, error: res.error };
+  return {
+    kind: "single",
+    ok: res.ok,
+    logId: res.logId,
+    target: normalized,
+    error: res.error,
+  };
 }
 
 const RETRY_WINDOW_MS = 60 * 60 * 1000;
 
 // Kirim ulang log gagal (maks. N terlama dalam 1 jam terakhir); baris yang sama diperbarui, tidak dibuat baru.
-export async function retryFailedWhatsappLogs(params: { maxRetries?: number } = {}) {
+export async function retryFailedWhatsappLogs(
+  params: { maxRetries?: number } = {},
+) {
   const limit = Math.min(Math.max(params.maxRetries ?? 10, 1), 10);
   const rows = await db
     .select({
@@ -160,7 +194,9 @@ export async function retryFailedWhatsappLogs(params: { maxRetries?: number } = 
     async (row) => {
       if (!apiKey || row.recipientTarget === TEST_TARGET) return { ok: true };
       return dispatchGateway(
-        formatGatewayPayload("fonnte", row.recipientTarget, row.message, { apiKey }),
+        formatGatewayPayload("fonnte", row.recipientTarget, row.message, {
+          apiKey,
+        }),
       );
     },
     async (id, result) => {
@@ -189,7 +225,10 @@ export async function triggerAlertWhatsappNotification(
   event: AlertEventInput,
   minSeverity: "critical" | "warning" = "warning",
 ) {
-  if (event.severity === "info" || (event.severity === "warning" && minSeverity === "critical"))
+  if (
+    event.severity === "info" ||
+    (event.severity === "warning" && minSeverity === "critical")
+  )
     return { sent: 0, failed: 0 };
   const recipients = await db
     .select()
@@ -208,13 +247,18 @@ export async function triggerAlertWhatsappNotification(
       }),
     ),
   );
-  const sent = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+  const sent = results.filter(
+    (r) => r.status === "fulfilled" && r.value.ok,
+  ).length;
   return { sent, failed: results.length - sent };
 }
 
 // Kirim satu pesan ke semua penerima aktif; satu kegagalan tidak menghentikan yang lain.
 // Setiap percobaan tercatat di whatsapp_logs oleh sendWhatsappMessage.
-export async function broadcastWhatsappMessage(message: string, alertKind?: string) {
+export async function broadcastWhatsappMessage(
+  message: string,
+  alertKind?: string,
+) {
   const recipients = await db
     .select()
     .from(whatsappRecipients)
@@ -230,7 +274,9 @@ export async function broadcastWhatsappMessage(message: string, alertKind?: stri
       }),
     ),
   );
-  const sent = results.filter((r) => r.status === "fulfilled" && r.value.ok).length;
+  const sent = results.filter(
+    (r) => r.status === "fulfilled" && r.value.ok,
+  ).length;
   return { sent, failed: results.length - sent };
 }
 
@@ -282,9 +328,12 @@ export async function getWhatsappLogSummary() {
     .from(whatsappLogs)
     .groupBy(whatsappLogs.status);
   const n = (s: string) => rows.find((r) => r.status === s)?.n ?? 0;
-  return summarizeLogCounts({ sent: n("sent"), failed: n("failed"), pending: n("pending") });
+  return summarizeLogCounts({
+    sent: n("sent"),
+    failed: n("failed"),
+    pending: n("pending"),
+  });
 }
-
 
 export class RecipientError extends Error {
   constructor(
@@ -316,7 +365,10 @@ function rethrowDuplicate(error: unknown): never {
 }
 
 export function listRecipients() {
-  return db.select().from(whatsappRecipients).orderBy(asc(whatsappRecipients.name));
+  return db
+    .select()
+    .from(whatsappRecipients)
+    .orderBy(asc(whatsappRecipients.name));
 }
 
 export async function createRecipient(input: {
@@ -329,7 +381,12 @@ export async function createRecipient(input: {
   try {
     const [row] = await db
       .insert(whatsappRecipients)
-      .values({ name: input.name, target, type: input.type, isActive: input.isActive ?? true })
+      .values({
+        name: input.name,
+        target,
+        type: input.type,
+        isActive: input.isActive ?? true,
+      })
       .returning();
     return row;
   } catch (error) {
@@ -339,7 +396,12 @@ export async function createRecipient(input: {
 
 export async function updateRecipient(
   id: string,
-  input: Partial<{ name: string; target: string; type: RecipientType; isActive: boolean }>,
+  input: Partial<{
+    name: string;
+    target: string;
+    type: RecipientType;
+    isActive: boolean;
+  }>,
 ) {
   const [current] = await db
     .select()
@@ -347,7 +409,9 @@ export async function updateRecipient(
     .where(eq(whatsappRecipients.id, id));
   if (!current) throw new RecipientError(404, "Penerima tidak ditemukan.");
   const type = input.type ?? current.type;
-  const set: Partial<typeof whatsappRecipients.$inferInsert> = { updatedAt: new Date() };
+  const set: Partial<typeof whatsappRecipients.$inferInsert> = {
+    updatedAt: new Date(),
+  };
   if (input.name !== undefined) set.name = input.name;
   if (input.isActive !== undefined) set.isActive = input.isActive;
   if (input.type !== undefined) set.type = input.type;
@@ -377,4 +441,3 @@ export async function deleteRecipient(id: string) {
 export function toggleRecipientActive(id: string, isActive: boolean) {
   return updateRecipient(id, { isActive });
 }
-

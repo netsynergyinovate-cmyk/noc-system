@@ -66,7 +66,8 @@ const variants: Record<IncidentVariantId, IncidentVariant> = {
   queue: {
     id: "queue",
     label: "Jalur penuh",
-    conclusion: "Pemakaian antrean di atas 95%; paket pelanggan terpakai penuh.",
+    conclusion:
+      "Pemakaian antrean di atas 95%; paket pelanggan terpakai penuh.",
     action: "Periksa pemakaian dan batas paket di simple queue.",
   },
   cpu: {
@@ -100,8 +101,10 @@ const variants: Record<IncidentVariantId, IncidentVariant> = {
 // Penjelasan sesuai penyebab bersama; dipakai bila kartu menggabungkan alert.
 const groupedConclusion: Partial<Record<IncidentCard["cause"], string>> = {
   odp: "Beberapa pelanggan di satu ODP terganggu bersamaan; periksa ODP dan kabel feeder-nya.",
-  router: "Beberapa pelanggan di satu router terganggu bersamaan; periksa router dan uplink-nya.",
-  uplink: "Gangguan terjadi di jalur uplink; periksa link upstream sebelum perangkat pelanggan.",
+  router:
+    "Beberapa pelanggan di satu router terganggu bersamaan; periksa router dan uplink-nya.",
+  uplink:
+    "Gangguan terjadi di jalur uplink; periksa link upstream sebelum perangkat pelanggan.",
 };
 
 export interface ClassifiedIncident extends IncidentVariant {
@@ -117,7 +120,9 @@ export function classifyIncident(
   const kind = card.kinds[0]?.kind ?? card.alerts[0]?.kind ?? "offline";
   const alerts = card.alerts.filter((alert) => alert.kind === kind);
   const first = alerts[0] ?? card.alerts[0];
-  const customer = first?.customerId ? customers.get(first.customerId) : undefined;
+  const customer = first?.customerId
+    ? customers.get(first.customerId)
+    : undefined;
 
   let id: IncidentVariantId;
   switch (kind) {

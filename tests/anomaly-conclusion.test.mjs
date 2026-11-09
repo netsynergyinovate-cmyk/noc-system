@@ -60,8 +60,18 @@ test("empty: array kosong menghasilkan ringkasan kosong aman", () => {
 test("failed runs excluded: status failed/queued/running tidak dihitung dalam kesimpulan", () => {
   const runs = [
     makeRun({ id: "r-done", customerId: "c1", status: "done" }),
-    makeRun({ id: "r-fail-1", customerId: "c2", status: "failed", error: "Timeout router" }),
-    makeRun({ id: "r-fail-2", customerId: "c3", status: "failed", error: "Gagal terhubung" }),
+    makeRun({
+      id: "r-fail-1",
+      customerId: "c2",
+      status: "failed",
+      error: "Timeout router",
+    }),
+    makeRun({
+      id: "r-fail-2",
+      customerId: "c3",
+      status: "failed",
+      error: "Gagal terhubung",
+    }),
     makeRun({ id: "r-queued", customerId: "c4", status: "queued" }),
     makeRun({ id: "r-running", customerId: "c5", status: "running" }),
   ];
@@ -111,7 +121,12 @@ test("shared-fault tanpa customer: deduplikasi per root name", () => {
       customerName: null,
       isSharedFault: true,
       verdictScope: "shared",
-      verdictRoot: { kind: "odp", name: "ODP-MAWAR-01", affected: 3, served: 8 },
+      verdictRoot: {
+        kind: "odp",
+        name: "ODP-MAWAR-01",
+        affected: 3,
+        served: 8,
+      },
       finishedAt: "2026-10-25T10:00:00.000Z",
       verdictLayer: "optik",
     }),
@@ -121,7 +136,12 @@ test("shared-fault tanpa customer: deduplikasi per root name", () => {
       customerName: null,
       isSharedFault: true,
       verdictScope: "shared",
-      verdictRoot: { kind: "odp", name: "ODP-MAWAR-01", affected: 5, served: 8 },
+      verdictRoot: {
+        kind: "odp",
+        name: "ODP-MAWAR-01",
+        affected: 5,
+        served: 8,
+      },
       finishedAt: "2026-10-25T11:30:00.000Z",
       verdictLayer: "optik",
     }),
@@ -131,7 +151,12 @@ test("shared-fault tanpa customer: deduplikasi per root name", () => {
       customerName: null,
       isSharedFault: true,
       verdictScope: "shared",
-      verdictRoot: { kind: "odp", name: "ODP-MELATI-02", affected: 2, served: 8 },
+      verdictRoot: {
+        kind: "odp",
+        name: "ODP-MELATI-02",
+        affected: 2,
+        served: 8,
+      },
       finishedAt: "2026-10-25T11:15:00.000Z",
       verdictLayer: "optik",
     }),
@@ -153,10 +178,42 @@ test("shared-fault tanpa customer: deduplikasi per root name", () => {
 test("gangguan bersama yang sama didiagnosa dari banyak pelanggan: satu kartu per akar, hitungan tetap utuh", () => {
   const root = { kind: "odp", name: "ODP-MAWAR-01", affected: 3, served: 8 };
   const runs = [
-    makeRun({ id: "s1", customerId: "c1", customerName: "Budi", isSharedFault: true, verdictScope: "shared", verdictRoot: root, finishedAt: "2026-10-25T11:00:00.000Z" }),
-    makeRun({ id: "s2", customerId: "c2", customerName: "Siti", isSharedFault: true, verdictScope: "shared", verdictRoot: root, finishedAt: "2026-10-25T11:01:00.000Z" }),
-    makeRun({ id: "s3", customerId: "c3", customerName: null, isSharedFault: true, verdictScope: "shared", verdictRoot: null, finishedAt: "2026-10-25T11:02:00.000Z" }),
-    makeRun({ id: "s4", customerId: "c4", customerName: null, isSharedFault: true, verdictScope: "shared", verdictRoot: null, finishedAt: "2026-10-25T11:03:00.000Z" }),
+    makeRun({
+      id: "s1",
+      customerId: "c1",
+      customerName: "Budi",
+      isSharedFault: true,
+      verdictScope: "shared",
+      verdictRoot: root,
+      finishedAt: "2026-10-25T11:00:00.000Z",
+    }),
+    makeRun({
+      id: "s2",
+      customerId: "c2",
+      customerName: "Siti",
+      isSharedFault: true,
+      verdictScope: "shared",
+      verdictRoot: root,
+      finishedAt: "2026-10-25T11:01:00.000Z",
+    }),
+    makeRun({
+      id: "s3",
+      customerId: "c3",
+      customerName: null,
+      isSharedFault: true,
+      verdictScope: "shared",
+      verdictRoot: null,
+      finishedAt: "2026-10-25T11:02:00.000Z",
+    }),
+    makeRun({
+      id: "s4",
+      customerId: "c4",
+      customerName: null,
+      isSharedFault: true,
+      verdictScope: "shared",
+      verdictRoot: null,
+      finishedAt: "2026-10-25T11:03:00.000Z",
+    }),
   ];
 
   const res = aggregateConclusions(runs, now);
@@ -196,7 +253,12 @@ test("shared-first dan urutan kartu: gangguan bersama didahulukan (most affected
       customerName: null,
       isSharedFault: true,
       verdictScope: "shared",
-      verdictRoot: { kind: "router", name: "UPLINK-UTAMA", affected: 45, served: 100 },
+      verdictRoot: {
+        kind: "router",
+        name: "UPLINK-UTAMA",
+        affected: 45,
+        served: 100,
+      },
       finishedAt: "2026-10-25T10:30:00.000Z",
       verdictLayer: "hulu",
     }),
@@ -229,8 +291,18 @@ test("shared-first dan urutan kartu: gangguan bersama didahulukan (most affected
 
 test("counts & headline: kalimat deterministik", () => {
   const runs = [
-    makeRun({ id: "r1", customerId: "c1", verdictScope: "shared", isSharedFault: true }),
-    makeRun({ id: "r2", customerId: "c2", verdictScope: "shared", isSharedFault: true }),
+    makeRun({
+      id: "r1",
+      customerId: "c1",
+      verdictScope: "shared",
+      isSharedFault: true,
+    }),
+    makeRun({
+      id: "r2",
+      customerId: "c2",
+      verdictScope: "shared",
+      isSharedFault: true,
+    }),
     makeRun({ id: "r3", customerId: "c3", verdictScope: "own" }),
     makeRun({ id: "r4", customerId: "c4", verdictScope: "unknown" }),
   ];
@@ -248,9 +320,25 @@ test("counts & headline: kalimat deterministik", () => {
 
 test("deterministic with shuffled input: hasil identik meskipun urutan input acak", () => {
   const runs = [
-    makeRun({ id: "r1", customerId: "c1", finishedAt: "2026-10-25T11:00:00.000Z", verdictLayer: "optik" }),
-    makeRun({ id: "r2", customerId: "c1", finishedAt: "2026-10-25T11:30:00.000Z", verdictLayer: "optik" }), // newer c1
-    makeRun({ id: "r3", customerId: "c2", finishedAt: "2026-10-25T11:10:00.000Z", verdictLayer: "ont", verdictScope: "own" }),
+    makeRun({
+      id: "r1",
+      customerId: "c1",
+      finishedAt: "2026-10-25T11:00:00.000Z",
+      verdictLayer: "optik",
+    }),
+    makeRun({
+      id: "r2",
+      customerId: "c1",
+      finishedAt: "2026-10-25T11:30:00.000Z",
+      verdictLayer: "optik",
+    }), // newer c1
+    makeRun({
+      id: "r3",
+      customerId: "c2",
+      finishedAt: "2026-10-25T11:10:00.000Z",
+      verdictLayer: "ont",
+      verdictScope: "own",
+    }),
     makeRun({
       id: "r4",
       customerId: null,
@@ -265,7 +353,12 @@ test("deterministic with shuffled input: hasil identik meskipun urutan input aca
       customerId: null,
       isSharedFault: true,
       verdictScope: "shared",
-      verdictRoot: { kind: "router", name: "R-CORE", affected: 50, served: 200 },
+      verdictRoot: {
+        kind: "router",
+        name: "R-CORE",
+        affected: 50,
+        served: 200,
+      },
       finishedAt: "2026-10-25T09:00:00.000Z",
       verdictLayer: "hulu",
     }),
@@ -277,14 +370,21 @@ test("deterministic with shuffled input: hasil identik meskipun urutan input aca
   for (let seed = 1; seed <= 10; seed++) {
     const shuffled = [...runs].sort(() => Math.sin(seed) - 0.5);
     const result = JSON.stringify(aggregateConclusions(shuffled, now));
-    assert.equal(result, baseline, `Gagal deterministik pada iterasi ke-${seed}`);
+    assert.equal(
+      result,
+      baseline,
+      `Gagal deterministik pada iterasi ke-${seed}`,
+    );
   }
 });
 
 test("recommendation exists for every layer in diagnosticLayers", () => {
   for (const layer of diagnosticLayers) {
     const action = RECOMMENDED_ACTIONS[layer.id];
-    assert.ok(action, `Rekomendasi untuk lapisan '${layer.id}' harus terdefinisi`);
+    assert.ok(
+      action,
+      `Rekomendasi untuk lapisan '${layer.id}' harus terdefinisi`,
+    );
     assert.equal(typeof action, "string");
     assert.ok(action.length > 10, `Rekomendasi '${layer.id}' terlalu pendek`);
 
@@ -340,7 +440,10 @@ test("scopeBadgeLabels memetakan 3 status cakupan secara tepat", () => {
 
 test("AnomalyConclusion UI component: kontrak DOM, testid, aksesibilitas, dan tokens", async () => {
   const { readFileSync } = await import("node:fs");
-  const source = readFileSync("src/components/dashboard/anomaly-conclusion.tsx", "utf8");
+  const source = readFileSync(
+    "src/components/dashboard/anomaly-conclusion.tsx",
+    "utf8",
+  );
 
   // Ekspor fungsi komponen
   assert.match(source, /export function AnomalyConclusion/);
@@ -353,16 +456,11 @@ test("AnomalyConclusion UI component: kontrak DOM, testid, aksesibilitas, dan to
   assert.ok(source.includes('data-testid="conclusion-info"'));
 
   // Catatan fakta cara menghitung (50 terbaru)
-  assert.ok(
-    source.includes("Dihitung dari diagnosa terakhir tiap pelanggan"),
-  );
+  assert.ok(source.includes("Dihitung dari diagnosa terakhir tiap pelanggan"));
   assert.ok(source.includes("maks 50 data terbaru"));
 
   // Catatan aturan tetap berdasarkan lapisan
-  assert.match(
-    source,
-    /aturan tetap berdasarkan lapisan, bukan probabilitas/i,
-  );
+  assert.match(source, /aturan tetap berdasarkan lapisan, bukan probabilitas/i);
   // Tombol disclosure 'Apa ini?'
   assert.ok(source.includes("Apa ini?"));
   assert.ok(source.includes("aria-expanded"));
@@ -408,7 +506,9 @@ test("sources & explain terisi pada tiap kartu kesimpulan via layerInfo", () => 
   assert.ok(mikroCard);
   assert.ok(Array.isArray(mikroCard.sources));
   assert.ok(mikroCard.sources.length > 0);
-  assert.ok(typeof mikroCard.explain === "string" && mikroCard.explain.length > 0);
+  assert.ok(
+    typeof mikroCard.explain === "string" && mikroCard.explain.length > 0,
+  );
 
   // Sumber MikroTik harus memiliki format sistem MikroTik dan path RouterOS
   const pppActive = mikroCard.sources.find((s) => s.path === "/ppp/active");

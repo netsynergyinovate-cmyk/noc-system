@@ -113,7 +113,12 @@ const schema = z.object({
   GENIEACS_NBI_URL: z.url().optional(),
   GENIEACS_NBI_USER: z.string().optional(),
   GENIEACS_NBI_PASSWORD: z.string().optional(),
-  GENIEACS_TIMEOUT_MS: z.coerce.number().int().min(500).max(60000).default(5000),
+  GENIEACS_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(500)
+    .max(60000)
+    .default(5000),
   BILLING_URL: z.url().optional(),
   BILLING_PORTAL_URL: z.url().optional(),
   BILLING_USERNAME: z.string().optional(),
@@ -140,7 +145,9 @@ const parsedEnv = schema.parse({
   ALLOW_SIGN_UP: blankToUndefined(process.env.ALLOW_SIGN_UP),
   TRUSTED_PROXIES: blankToUndefined(process.env.TRUSTED_PROXIES),
   LOGTO_ENDPOINT: blankToUndefined(process.env.LOGTO_ENDPOINT),
-  LOGTO_INTERNAL_ENDPOINT: blankToUndefined(process.env.LOGTO_INTERNAL_ENDPOINT),
+  LOGTO_INTERNAL_ENDPOINT: blankToUndefined(
+    process.env.LOGTO_INTERNAL_ENDPOINT,
+  ),
   LOGTO_CLIENT_ID: blankToUndefined(process.env.LOGTO_CLIENT_ID),
   LOGTO_CLIENT_SECRET: blankToUndefined(process.env.LOGTO_CLIENT_SECRET),
   MIKROTIK_REST_HOST: blankToUndefined(process.env.MIKROTIK_REST_HOST),

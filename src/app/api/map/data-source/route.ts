@@ -28,7 +28,8 @@ export function GET(request: Request) {
         {
           success: false,
           error: "Gagal memuat status registri sumber data peta.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );

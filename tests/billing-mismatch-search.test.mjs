@@ -12,9 +12,8 @@ register(
   }
 }`),
 );
-const { filterMismatches } = await import(
-  "../src/lib/dashboard/billing-mismatch.ts"
-);
+const { filterMismatches } =
+  await import("../src/lib/dashboard/billing-mismatch.ts");
 
 const cust = (id, name, pppoe, router) => ({
   customerId: id,
@@ -28,14 +27,22 @@ const list = [
   {
     id: "1",
     kind: "pair",
-    invoice: { invoiceRef: "INV-001", pppoeUsername: "budi01x", status: "paid" },
+    invoice: {
+      invoiceRef: "INV-001",
+      pppoeUsername: "budi01x",
+      status: "paid",
+    },
     customers: [cust("c1", "Budi Santoso", "budi01", "Router A")],
     distance: 1,
   },
   {
     id: "2",
     kind: "invoice-unknown",
-    invoice: { invoiceRef: "INV-002", pppoeUsername: "ghost", status: "unpaid" },
+    invoice: {
+      invoiceRef: "INV-002",
+      pppoeUsername: "ghost",
+      status: "unpaid",
+    },
     customers: [],
     distance: null,
   },

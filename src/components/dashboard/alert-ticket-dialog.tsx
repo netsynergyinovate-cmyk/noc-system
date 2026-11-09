@@ -199,7 +199,9 @@ function FormBody({
             </select>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="ticket-notes">Catatan penanganan / investigasi</Label>
+            <Label htmlFor="ticket-notes">
+              Catatan penanganan / investigasi
+            </Label>
             <textarea
               id="ticket-notes"
               rows={3}

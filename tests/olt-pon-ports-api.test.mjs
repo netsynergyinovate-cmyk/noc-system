@@ -37,7 +37,10 @@ for (const [id, name] of [
       assertSummary(p, id);
       assert.equal(p.oltName, name);
     });
-    assert.deepEqual(ports.map((p) => p.ponIndex), [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.deepEqual(
+      ports.map((p) => p.ponIndex),
+      [1, 2, 3, 4, 5, 6, 7, 8],
+    );
   });
 }
 

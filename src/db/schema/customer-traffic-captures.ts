@@ -32,7 +32,9 @@ export const customerTrafficCaptures = pgTable(
     customerId: uuid("customer_id")
       .notNull()
       .references(() => customers.id, { onDelete: "cascade" }),
-    routerId: uuid("router_id").references(() => routers.id, { onDelete: "set null" }),
+    routerId: uuid("router_id").references(() => routers.id, {
+      onDelete: "set null",
+    }),
     customerIp: text("customer_ip").notNull(),
     durationSeconds: integer("duration_seconds").notNull(), // 15, 30, 60
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
@@ -42,11 +44,19 @@ export const customerTrafficCaptures = pgTable(
     flowCount: integer("flow_count").default(0).notNull(),
     recordedBy: text("recorded_by").default("Operator").notNull(),
     topApp: text("top_app"),
-    flows: jsonb("flows").$type<CustomerCaptureFlowItem[]>().default([]).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    flows: jsonb("flows")
+      .$type<CustomerCaptureFlowItem[]>()
+      .default([])
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
-    index("traffic_captures_customer_idx").on(table.customerId, table.startedAt.desc()),
+    index("traffic_captures_customer_idx").on(
+      table.customerId,
+      table.startedAt.desc(),
+    ),
     index("traffic_captures_time_idx").on(table.startedAt.desc()),
   ],
 );

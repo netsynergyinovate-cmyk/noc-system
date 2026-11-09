@@ -1,4 +1,12 @@
-import { boolean, check, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { deployTargets } from "./deploy-targets";
 
@@ -26,7 +34,10 @@ export const deployRuns = pgTable(
     }),
     versi: text("versi").notNull(),
     jenis: text("jenis").$type<DeployRunType>().notNull(),
-    status: text("status").$type<DeployRunStatus>().notNull().default("berjalan"),
+    status: text("status")
+      .$type<DeployRunStatus>()
+      .notNull()
+      .default("berjalan"),
     titikBalikVersi: text("titik_balik_versi"),
     otomatis: boolean("otomatis").notNull().default(false),
     dijalankanOleh: text("dijalankan_oleh").notNull().default("Operator"),
@@ -34,7 +45,10 @@ export const deployRuns = pgTable(
     selesai: timestamp("selesai", { withTimezone: true }),
   },
   (table) => [
-    check("deploy_runs_jenis_check", sql`${table.jenis} in ('deploy', 'rollback', 'uji')`),
+    check(
+      "deploy_runs_jenis_check",
+      sql`${table.jenis} in ('deploy', 'rollback', 'uji')`,
+    ),
     check(
       "deploy_runs_status_check",
       sql`${table.status} in ('berjalan', 'berhasil', 'gagal')`,
@@ -51,7 +65,10 @@ export const deploySteps = pgTable(
       .references(() => deployRuns.id, { onDelete: "cascade" }),
     urutan: integer("urutan").notNull(),
     nama: text("nama").notNull(),
-    status: text("status").$type<DeployStepStatus>().notNull().default("menunggu"),
+    status: text("status")
+      .$type<DeployStepStatus>()
+      .notNull()
+      .default("menunggu"),
     keluaran: text("keluaran"),
     mulai: timestamp("mulai", { withTimezone: true }),
     selesai: timestamp("selesai", { withTimezone: true }),

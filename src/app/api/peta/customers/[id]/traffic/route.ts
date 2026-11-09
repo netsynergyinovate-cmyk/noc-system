@@ -15,7 +15,10 @@ export function GET(
     const id = idSchema.parse((await props.params).id);
     try {
       const data = await MapDataAdapter.getCustomerTraffic(id);
-      return Response.json({ data }, { headers: { "Cache-Control": "no-store" } });
+      return Response.json(
+        { data },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     } catch (err: unknown) {
       if (err instanceof ClassifiedCentralApiError) {
         throw new ApiError(err.status, err.code, err.message);

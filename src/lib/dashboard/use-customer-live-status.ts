@@ -7,7 +7,9 @@ import { ALERT_EVENTS_SIGNAL } from "./realtime-ws";
 const REFRESH_MS = 60_000;
 
 /** Data langsung per pelanggan (MikroTik + GenieACS + OLT + LOS) diproses di Go backend. */
-export function useCustomerLiveStatus(enabled: boolean): Record<string, CustomerLiveStatus> | undefined {
+export function useCustomerLiveStatus(
+  enabled: boolean,
+): Record<string, CustomerLiveStatus> | undefined {
   const [data, setData] = useState<Record<string, CustomerLiveStatus>>();
 
   useEffect(() => {
@@ -17,7 +19,9 @@ export function useCustomerLiveStatus(enabled: boolean): Record<string, Customer
       try {
         // Direct call ke Go backend dengan tiket autentikasi
         try {
-          const liveData = await backendGet<Record<string, CustomerLiveStatus>>("/api/v1/customers/live-status");
+          const liveData = await backendGet<Record<string, CustomerLiveStatus>>(
+            "/api/v1/customers/live-status",
+          );
           if (alive && liveData && Object.keys(liveData).length > 0) {
             setData(liveData);
             return;
@@ -27,9 +31,12 @@ export function useCustomerLiveStatus(enabled: boolean): Record<string, Customer
         }
 
         // Fallback: ambil lewat route handler Next.js
-        const res = await fetch("/api/customers/live-status", { cache: "no-store" });
+        const res = await fetch("/api/customers/live-status", {
+          cache: "no-store",
+        });
         if (!res.ok) return;
-        const body: { data?: Record<string, CustomerLiveStatus> } | null = await res.json().catch(() => null);
+        const body: { data?: Record<string, CustomerLiveStatus> } | null =
+          await res.json().catch(() => null);
         if (alive && body?.data) setData(body.data);
       } catch {
         // jaringan putus: pertahankan data terakhir

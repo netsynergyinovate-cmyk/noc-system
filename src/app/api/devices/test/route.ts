@@ -9,7 +9,9 @@ export const runtime = "nodejs";
 // diperiksa sebelum body dibaca dan sebelum ada koneksi keluar.
 export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async () => {
-    const parsed = testDeviceConnectionSchema.safeParse(await readJson(request));
+    const parsed = testDeviceConnectionSchema.safeParse(
+      await readJson(request),
+    );
     if (!parsed.success) {
       throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     }

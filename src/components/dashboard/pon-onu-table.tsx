@@ -4,15 +4,31 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatInteger } from "@/lib/dashboard/format";
 import { OnuStatusBadge } from "./onu-status-badge";
 import { OpticalLoss, OpticalRx, OpticalTx } from "./optical-rx";
 import type { PonOnuDetail } from "@/lib/dashboard/pon-ports";
 import { selectClassName } from "./select-class";
-import { classifyOnuTrouble, summarizeOnuTroubles } from "@/lib/dashboard/onu-trouble-classifier";
+import {
+  classifyOnuTrouble,
+  summarizeOnuTroubles,
+} from "@/lib/dashboard/onu-trouble-classifier";
 import { cn } from "@/lib/utils";
 
 // Zona waktu tetap supaya HTML server dan browser sama.
@@ -38,7 +54,11 @@ export function PonOnuTable({ onus }: { onus: readonly PonOnuDetail[] }) {
       if (status === "offline" && o.status !== "offline") return false;
       if (status === "los" && o.status !== "los") return false;
       if (status === "weak" && !o.isWeak) return false;
-      if (q && !o.customerName?.toLowerCase().includes(q) && !o.pppoeUsername?.toLowerCase().includes(q)) {
+      if (
+        q &&
+        !o.customerName?.toLowerCase().includes(q) &&
+        !o.pppoeUsername?.toLowerCase().includes(q)
+      ) {
         return false;
       }
       return true;
@@ -51,10 +71,13 @@ export function PonOnuTable({ onus }: { onus: readonly PonOnuDetail[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Daftar ONU di Port Ini</CardTitle>
-            <CardDescription>Redaman RX di bawah -27 dBm ditandai bahaya.</CardDescription>
+            <CardDescription>
+              Redaman RX di bawah -27 dBm ditandai bahaya.
+            </CardDescription>
           </div>
           <span className="text-xs tabular-nums text-muted-foreground">
-            Menampilkan {formatInteger(rows.length)} dari {formatInteger(onus.length)} ONU
+            Menampilkan {formatInteger(rows.length)} dari{" "}
+            {formatInteger(onus.length)} ONU
           </span>
         </div>
       </CardHeader>
@@ -116,12 +139,18 @@ export function PonOnuTable({ onus }: { onus: readonly PonOnuDetail[] }) {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={9}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     {onus.length === 0 ? (
                       "Belum ada perangkat ONU yang terhubung pada port PON ini."
                     ) : (
                       <div className="flex flex-col items-center gap-2">
-                        <span>Tidak ada ONU yang sesuai dengan filter atau kata kunci.</span>
+                        <span>
+                          Tidak ada ONU yang sesuai dengan filter atau kata
+                          kunci.
+                        </span>
                         <Button
                           type="button"
                           size="sm"
@@ -142,63 +171,92 @@ export function PonOnuTable({ onus }: { onus: readonly PonOnuDetail[] }) {
                 rows.map((o) => {
                   const trouble = classifyOnuTrouble(o);
                   return (
-                  <TableRow
-                    key={o.onuIndex}
-                    data-troubled-row={trouble.isTroubled ? "true" : "false"}
-                    className={cn(trouble.rowClassName)}
-                  >
-                    <TableCell className="font-mono text-xs">{o.onuIndex}</TableCell>
-                    <TableCell>
-                      {o.customerName ? (
-                        <>
-                          <div className="font-medium text-foreground">{o.customerName}</div>
-                          <div className="max-w-[200px] truncate text-xs text-muted-foreground">{o.address ?? ""}</div>
-                        </>
-                      ) : (
-                        <Badge variant="outline">Belum dipetakan</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{o.pppoeUsername ?? "�"}</TableCell>
-                    <TableCell className="font-mono text-xs" title={o.macAddress ?? undefined}>
-                      {o.serialNumber || "—"}
-                    </TableCell>
-                    <TableCell className="text-sm">{o.ontModel ?? "�"}</TableCell>
-                    <TableCell className="text-sm tabular-nums">{o.distanceMeters != null ? `${o.distanceMeters.toLocaleString("id-ID")} m` : "�"}</TableCell>
-                    <TableCell>
-                      <OpticalRx dbm={o.rxPowerDbm} />
-                      <div className="mt-1 flex gap-3 text-muted-foreground">
-                        <span>TX <OpticalTx dbm={o.txPowerDbm} /></span>
-                        <span>Loss <OpticalLoss txDbm={o.txPowerDbm} rxDbm={o.rxPowerDbm} /></span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <OnuStatusBadge status={o.status} />
-                      {trouble.isTroubled && (
-                        <Badge
-                          variant="outline"
-                          data-testid="onu-trouble-badge"
-                          data-trouble-severity={trouble.severity}
-                          title={`${trouble.troubleDescription} Saran: ${trouble.recommendation}`}
-                          className={cn(
-                            "mt-1 block w-fit cursor-help",
-                            trouble.severity === "critical"
-                              ? "border-destructive text-destructive"
-                              : "border-warning text-warning",
-                          )}
-                        >
-                          {trouble.badgeLabel}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      <time
-                        dateTime={new Date(o.lastSeenAt * 1000).toISOString()}
-                        title={o.status === "online" ? "Terakhir diukur" : "Terakhir terlihat online"}
+                    <TableRow
+                      key={o.onuIndex}
+                      data-troubled-row={trouble.isTroubled ? "true" : "false"}
+                      className={cn(trouble.rowClassName)}
+                    >
+                      <TableCell className="font-mono text-xs">
+                        {o.onuIndex}
+                      </TableCell>
+                      <TableCell>
+                        {o.customerName ? (
+                          <>
+                            <div className="font-medium text-foreground">
+                              {o.customerName}
+                            </div>
+                            <div className="max-w-[200px] truncate text-xs text-muted-foreground">
+                              {o.address ?? ""}
+                            </div>
+                          </>
+                        ) : (
+                          <Badge variant="outline">Belum dipetakan</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {o.pppoeUsername ?? "�"}
+                      </TableCell>
+                      <TableCell
+                        className="font-mono text-xs"
+                        title={o.macAddress ?? undefined}
                       >
-                        {timeFormat.format(new Date(o.lastSeenAt * 1000))} WIB
-                      </time>
-                    </TableCell>
-                  </TableRow>
+                        {o.serialNumber || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {o.ontModel ?? "�"}
+                      </TableCell>
+                      <TableCell className="text-sm tabular-nums">
+                        {o.distanceMeters != null
+                          ? `${o.distanceMeters.toLocaleString("id-ID")} m`
+                          : "�"}
+                      </TableCell>
+                      <TableCell>
+                        <OpticalRx dbm={o.rxPowerDbm} />
+                        <div className="mt-1 flex gap-3 text-muted-foreground">
+                          <span>
+                            TX <OpticalTx dbm={o.txPowerDbm} />
+                          </span>
+                          <span>
+                            Loss{" "}
+                            <OpticalLoss
+                              txDbm={o.txPowerDbm}
+                              rxDbm={o.rxPowerDbm}
+                            />
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <OnuStatusBadge status={o.status} />
+                        {trouble.isTroubled && (
+                          <Badge
+                            variant="outline"
+                            data-testid="onu-trouble-badge"
+                            data-trouble-severity={trouble.severity}
+                            title={`${trouble.troubleDescription} Saran: ${trouble.recommendation}`}
+                            className={cn(
+                              "mt-1 block w-fit cursor-help",
+                              trouble.severity === "critical"
+                                ? "border-destructive text-destructive"
+                                : "border-warning text-warning",
+                            )}
+                          >
+                            {trouble.badgeLabel}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <time
+                          dateTime={new Date(o.lastSeenAt * 1000).toISOString()}
+                          title={
+                            o.status === "online"
+                              ? "Terakhir diukur"
+                              : "Terakhir terlihat online"
+                          }
+                        >
+                          {timeFormat.format(new Date(o.lastSeenAt * 1000))} WIB
+                        </time>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}

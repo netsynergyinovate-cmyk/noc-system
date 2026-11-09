@@ -48,7 +48,9 @@ export function ConfigurationStatusBadge({
       >
         <div className="flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <span>Konfigurasi Belum Selesai: Selesaikan langkah wajib router</span>
+          <span>
+            Konfigurasi Belum Selesai: Selesaikan langkah wajib router
+          </span>
         </div>
         <span className="flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-300">
           <span>Atur Sekarang</span>

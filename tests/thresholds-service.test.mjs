@@ -4,9 +4,8 @@ import { register } from "tsx/esm/api";
 
 // Sumber memakai impor tanpa ekstensi, jadi dimuat lewat tsx.
 register();
-const { applyRows, mergeThresholds, toRows } = await import(
-  "../src/lib/dashboard/threshold-rows.ts"
-);
+const { applyRows, mergeThresholds, toRows } =
+  await import("../src/lib/dashboard/threshold-rows.ts");
 const { defaultThresholds, validateThresholds, changedThresholds } =
   await import("../src/lib/dashboard/thresholds.ts");
 
@@ -42,14 +41,19 @@ test("mapping upsert: lima baris, bentuk kolom, dan perubahan", () => {
   });
   const rows = toRows(merged);
   assert.equal(rows.length, 5);
-  assert.deepEqual(rows.find((r) => r.ruleKind === "cpu"), {
-    ruleKind: "cpu",
-    threshold: 70,
-    forSeconds: 60,
-  });
+  assert.deepEqual(
+    rows.find((r) => r.ruleKind === "cpu"),
+    {
+      ruleKind: "cpu",
+      threshold: 70,
+      forSeconds: 60,
+    },
+  );
   assert.equal(rows.find((r) => r.ruleKind === "offline").threshold, null);
   assert.equal(
-    changedThresholds(defaultThresholds(), merged).every((c) => c.kind === "cpu"),
+    changedThresholds(defaultThresholds(), merged).every(
+      (c) => c.kind === "cpu",
+    ),
     true,
   );
 });

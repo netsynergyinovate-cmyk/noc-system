@@ -19,7 +19,10 @@ export async function GET(
 
       if (!data) {
         return NextResponse.json(
-          { ok: false, error: `Titik pelanggan '${id}' tidak ditemukan di sistem peta.` },
+          {
+            ok: false,
+            error: `Titik pelanggan '${id}' tidak ditemukan di sistem peta.`,
+          },
           { status: 404 },
         );
       }
@@ -31,10 +34,7 @@ export async function GET(
     } catch (err) {
       console.error("[GET MAP CUSTOMER LOCATION ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
@@ -76,10 +76,7 @@ export async function PATCH(
       console.error("[PATCH MAP CUSTOMER LOCATION ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
       const status = msg.includes("tidak ditemukan") ? 404 : 500;
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status });
     }
   });
 }

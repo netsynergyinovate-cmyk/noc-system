@@ -1,7 +1,11 @@
 "use client";
 
 import { create } from "zustand";
-import { alertActions, type AlertActions, type HandleAlertResult } from "./alert-actions";
+import {
+  alertActions,
+  type AlertActions,
+  type HandleAlertResult,
+} from "./alert-actions";
 import {
   emptyAlertState,
   handledState,

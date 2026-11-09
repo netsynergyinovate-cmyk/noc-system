@@ -77,5 +77,8 @@ if (dbm === null) {
 
 return {
   writable: false,
-  value: [dbm === null ? "" : String(Math.round(dbm * 100) / 100), "xsd:string"],
+  value: [
+    dbm === null ? "" : String(Math.round(dbm * 100) / 100),
+    "xsd:string",
+  ],
 };

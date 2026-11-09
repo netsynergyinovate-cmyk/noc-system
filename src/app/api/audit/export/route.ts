@@ -26,7 +26,9 @@ export function GET(request: Request) {
         e.createdAt.toISOString(),
         e.action,
         e.target,
-        e.actorName ? `${e.actorName} <${e.actorEmail}>` : (e.actorEmail ?? "Sistem"),
+        e.actorName
+          ? `${e.actorName} <${e.actorEmail}>`
+          : (e.actorEmail ?? "Sistem"),
         JSON.stringify(e.detail ?? {}),
       ]),
     );

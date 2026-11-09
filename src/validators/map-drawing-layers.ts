@@ -76,4 +76,3 @@ export const updateLayerOpacitySchema = z.object({
     .min(0, "Transparansi minimal 0.0")
     .max(1.0, "Transparansi maksimal 1.0"),
 });
-

@@ -5,7 +5,13 @@ import { RefreshCw } from "lucide-react";
 import { DeviceStatusBadge } from "@/components/dashboard/device-status-badge";
 import { DeviceTestButton } from "@/components/dashboard/device-test-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -56,7 +62,13 @@ export function ConnectionTestPanel({
   const sum = summarizeDeviceStatuses(devices, testingIds);
   const tested = sum.total - sum.untested - sum.testing;
   const setLocalTesting = (id: string, b: boolean) =>
-    setLocalTestingIds((prev) => (b ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((x) => x !== id)));
+    setLocalTestingIds((prev) =>
+      b
+        ? prev.includes(id)
+          ? prev
+          : [...prev, id]
+        : prev.filter((x) => x !== id),
+    );
 
   return (
     <Card>
@@ -69,7 +81,9 @@ export function ConnectionTestPanel({
               : tested === 0
                 ? "Belum ada perangkat yang diuji."
                 : `${sum.connected} dari ${sum.total} perangkat terhubung (${tested} sudah diuji${
-                    sum.error + sum.timeout > 0 ? `, ${sum.error} gagal, ${sum.timeout} timeout` : ""
+                    sum.error + sum.timeout > 0
+                      ? `, ${sum.error} gagal, ${sum.timeout} timeout`
+                      : ""
                   }).`}
           </CardDescription>
         </div>
@@ -107,7 +121,11 @@ export function ConnectionTestPanel({
                 const res = results[d.id];
                 const testing = testingIds.includes(d.id);
                 return (
-                  <TableRow key={d.id} data-testid="connection-test-row" data-status={d.status}>
+                  <TableRow
+                    key={d.id}
+                    data-testid="connection-test-row"
+                    data-status={d.status}
+                  >
                     <TableCell>
                       <div className="font-medium">{d.name}</div>
                       <div className="text-xs text-muted-foreground">
@@ -115,13 +133,19 @@ export function ConnectionTestPanel({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <DeviceStatusBadge status={d.status} isTesting={testing} showLatency={false} />
+                      <DeviceStatusBadge
+                        status={d.status}
+                        isTesting={testing}
+                        showLatency={false}
+                      />
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {d.latencyMs != null ? `${d.latencyMs} ms` : "-"}
                     </TableCell>
                     <TableCell className="text-xs">
-                      {d.lastTestedAt ? `${timeFormat.format(new Date(d.lastTestedAt * 1000))} UTC` : "-"}
+                      {d.lastTestedAt
+                        ? `${timeFormat.format(new Date(d.lastTestedAt * 1000))} UTC`
+                        : "-"}
                     </TableCell>
                     <TableCell className="max-w-xs text-xs whitespace-normal">
                       {res ? res.message : "-"}

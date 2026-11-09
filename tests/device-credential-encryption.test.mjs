@@ -13,22 +13,33 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { encryptWithKey, decryptWithKey } = await import("../src/lib/encryption-core.ts");
+const { encryptWithKey, decryptWithKey } =
+  await import("../src/lib/encryption-core.ts");
 const { env } = await import("../src/lib/env.ts");
-const { encryptDeviceCredential, decryptDeviceCredential } = await import("../src/lib/encryption.ts");
-const { encryptCredential, decryptCredential } = await import(
-  "../src/services/device-credentials.service.ts"
-);
+const { encryptDeviceCredential, decryptDeviceCredential } =
+  await import("../src/lib/encryption.ts");
+const { encryptCredential, decryptCredential } =
+  await import("../src/services/device-credentials.service.ts");
 
 const KEY = "k".repeat(32);
-const SAMPLES = ["abc123", "P@ss w0rd!#$%^&*()", "  spasi  ", "sandi-ÄÖü-日本語-🔐", "", "a:b:c"];
+const SAMPLES = [
+  "abc123",
+  "P@ss w0rd!#$%^&*()",
+  "  spasi  ",
+  "sandi-ÄÖü-日本語-🔐",
+  "",
+  "a:b:c",
+];
 
 test("roundtrip core: alfanumerik, simbol, spasi, unicode", () => {
-  for (const t of SAMPLES) assert.equal(decryptWithKey(encryptWithKey(t, KEY), KEY), t);
+  for (const t of SAMPLES)
+    assert.equal(decryptWithKey(encryptWithKey(t, KEY), KEY), t);
 });
 
 test("IV unik: ciphertext berbeda untuk plaintext sama", () => {
-  const set = new Set(Array.from({ length: 50 }, () => encryptWithKey("sama", KEY)));
+  const set = new Set(
+    Array.from({ length: 50 }, () => encryptWithKey("sama", KEY)),
+  );
   assert.equal(set.size, 50);
 });
 
@@ -41,7 +52,11 @@ test("format iv:tag:ciphertext (IV 12 byte, tag 16 byte)", () => {
 
 test("anti-tampering: tag atau ciphertext diubah -> error", () => {
   const [iv, tag, ct] = encryptWithKey("rahasia", KEY).split(":");
-  const flip = (s) => { const b = Buffer.from(s, "base64"); b[0] ^= 1; return b.toString("base64"); };
+  const flip = (s) => {
+    const b = Buffer.from(s, "base64");
+    b[0] ^= 1;
+    return b.toString("base64");
+  };
   assert.throws(() => decryptWithKey(`${iv}:${flip(tag)}:${ct}`, KEY));
   assert.throws(() => decryptWithKey(`${iv}:${tag}:${flip(ct)}`, KEY));
 });
@@ -50,7 +65,9 @@ test("zero-leakage: plaintext tidak ada di ciphertext", () => {
   const plain = "SuperSecretPassword";
   const enc = encryptWithKey(plain, KEY);
   assert.ok(!enc.includes(plain));
-  assert.ok(!Buffer.from(enc.split(":")[2], "base64").toString("utf8").includes(plain));
+  assert.ok(
+    !Buffer.from(enc.split(":")[2], "base64").toString("utf8").includes(plain),
+  );
 });
 
 test("kunci salah -> error", () => {
@@ -80,11 +97,14 @@ test("secret belum diset -> error deskriptif tanpa bocor plaintext", () => {
   env.DEVICE_SECRET = undefined;
   delete process.env.ROUTER_SECRET_KEY;
   const plain = "plaintext-rahasia";
-  assert.throws(() => encryptDeviceCredential(plain), (e) => {
-    assert.match(e.message, /DEVICE_SECRET/);
-    assert.ok(!e.message.includes(plain));
-    return true;
-  });
+  assert.throws(
+    () => encryptDeviceCredential(plain),
+    (e) => {
+      assert.match(e.message, /DEVICE_SECRET/);
+      assert.ok(!e.message.includes(plain));
+      return true;
+    },
+  );
   assert.throws(() => decryptDeviceCredential("a:b:c"), /DEVICE_SECRET/);
 });
 
@@ -105,15 +125,16 @@ test("service: encryptCredential/decryptCredential roundtrip + kompatibel", () =
 });
 
 test("service: GenieACS dari env, null bila URL kosong", async () => {
-  const { getGenieacsDecryptedCredentials } = await import(
-    "../src/services/device-credentials.service.ts"
-  );
+  const { getGenieacsDecryptedCredentials } =
+    await import("../src/services/device-credentials.service.ts");
   env.GENIEACS_NBI_URL = undefined;
   assert.equal(await getGenieacsDecryptedCredentials(), null);
   env.GENIEACS_NBI_URL = "http://10.0.0.5:7557";
   env.GENIEACS_NBI_USER = "u";
   env.GENIEACS_NBI_PASSWORD = "p";
   assert.deepEqual(await getGenieacsDecryptedCredentials(), {
-    url: "http://10.0.0.5:7557", username: "u", password: "p",
+    url: "http://10.0.0.5:7557",
+    username: "u",
+    password: "p",
   });
 });

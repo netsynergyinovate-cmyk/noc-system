@@ -31,7 +31,11 @@ export function RouteColorPicker({
   onChange: (color: string) => void;
 }) {
   return (
-    <div role="radiogroup" aria-label="Warna jalur" className="flex flex-wrap gap-2">
+    <div
+      role="radiogroup"
+      aria-label="Warna jalur"
+      className="flex flex-wrap gap-2"
+    >
       {ROUTE_COLORS.map((c) => (
         <button
           key={c.value}
@@ -54,7 +58,10 @@ export function RouteColorPicker({
 }
 
 const slug = (s: string) =>
-  s.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  s
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 export function RouteDrawingModal({
   isOpen,
@@ -212,12 +219,14 @@ export function RouteDrawingModal({
                   className={inputCls}
                 >
                   <option value="">-- Pilih PON --</option>
-                  {Array.from({ length: ponCount }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n} disabled={usedPon.has(n)}>
-                      PON {n}
-                      {usedPon.has(n) ? ` — dipakai ${usedPon.get(n)}` : ""}
-                    </option>
-                  ))}
+                  {Array.from({ length: ponCount }, (_, i) => i + 1).map(
+                    (n) => (
+                      <option key={n} value={n} disabled={usedPon.has(n)}>
+                        PON {n}
+                        {usedPon.has(n) ? ` — dipakai ${usedPon.get(n)}` : ""}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
 

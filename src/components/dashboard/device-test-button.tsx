@@ -70,8 +70,13 @@ export function DeviceTestButton({
     setBusy(true);
     onTestingChange?.(true);
     try {
-      const r = customTest ? await customTest(device) : await runDeviceTest(device, { forceLocal: useLocal });
-      const full: TestOutcome = { ...r, timestamp: r.timestamp ?? Math.floor(Date.now() / 1000) };
+      const r = customTest
+        ? await customTest(device)
+        : await runDeviceTest(device, { forceLocal: useLocal });
+      const full: TestOutcome = {
+        ...r,
+        timestamp: r.timestamp ?? Math.floor(Date.now() / 1000),
+      };
       setOutcome(full);
       onOutcome?.(full);
     } finally {
@@ -81,10 +86,15 @@ export function DeviceTestButton({
     }
   }
 
-  const status = outcome ? (outcome.status ?? (outcome.ok ? "connected" : "error")) : null;
+  const status = outcome
+    ? (outcome.status ?? (outcome.ok ? "connected" : "error"))
+    : null;
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2" data-testid="device-test-button">
+    <div
+      className="flex flex-wrap items-center justify-end gap-2"
+      data-testid="device-test-button"
+    >
       {showDropdownOrToggle && !forceLocal && (
         <select
           aria-label={`Mode uji untuk ${device.name}`}
@@ -148,12 +158,17 @@ export function DeviceTestButton({
                 {outcome.code ? ` (${outcome.code})` : ""}
               </dd>
               <dt className="text-muted-foreground">Endpoint diuji</dt>
-              <dd className="break-all font-mono text-xs" data-testid="detail-endpoint">
+              <dd
+                className="break-all font-mono text-xs"
+                data-testid="detail-endpoint"
+              >
                 {outcome.endpointTested ?? "-"}
               </dd>
               <dt className="text-muted-foreground">Waktu uji</dt>
               <dd data-testid="detail-time">
-                {outcome.timestamp ? `${timeFormat.format(new Date(outcome.timestamp * 1000))} UTC` : "-"}
+                {outcome.timestamp
+                  ? `${timeFormat.format(new Date(outcome.timestamp * 1000))} UTC`
+                  : "-"}
               </dd>
             </dl>
           </DialogContent>

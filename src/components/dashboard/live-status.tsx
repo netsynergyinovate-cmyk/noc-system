@@ -30,7 +30,10 @@ export function LiveStatus() {
       role="status"
       aria-live="polite"
     >
-      <span className={cn("size-2 shrink-0 rounded-full", view.dot)} aria-hidden="true" />
+      <span
+        className={cn("size-2 shrink-0 rounded-full", view.dot)}
+        aria-hidden="true"
+      />
       <span className="font-medium text-foreground">{view.label}</span>
       {view.fallbackBadge && (
         <span className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -39,7 +42,9 @@ export function LiveStatus() {
       )}
       {view.latency && (
         <>
-          <span className="text-border select-none" aria-hidden="true">•</span>
+          <span className="text-border select-none" aria-hidden="true">
+            •
+          </span>
           <span className="font-mono tabular-nums text-foreground/80">
             {view.latency}
           </span>
@@ -47,7 +52,9 @@ export function LiveStatus() {
       )}
       {lastUpdateAt !== null && (
         <>
-          <span className="text-border select-none" aria-hidden="true">•</span>
+          <span className="text-border select-none" aria-hidden="true">
+            •
+          </span>
           <span className="tabular-nums text-muted-foreground">
             Diperbarui {timeFormat.format(new Date(lastUpdateAt * 1000))}
           </span>

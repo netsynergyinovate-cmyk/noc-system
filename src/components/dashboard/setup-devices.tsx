@@ -37,7 +37,8 @@ const seenFormat = new Intl.DateTimeFormat("id-ID", {
   timeStyle: "medium",
   timeZone: "UTC",
 });
-const formatSeen = (s: number) => `${seenFormat.format(new Date(s * 1000))} UTC`;
+const formatSeen = (s: number) =>
+  `${seenFormat.format(new Date(s * 1000))} UTC`;
 
 const empty: DeviceInput = {
   kind: "router",
@@ -49,12 +50,15 @@ const empty: DeviceInput = {
 
 export function SetupDevices() {
   const uid = useId();
-  const [devices, setDevices] = useState<readonly SetupDevice[]>(mockSetupDevices);
+  const [devices, setDevices] =
+    useState<readonly SetupDevice[]>(mockSetupDevices);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<DeviceInput>(empty);
   const [errors, setErrors] = useState<DeviceErrors>({});
   const [result, setResult] = useState<TestResult | null>(null);
-  const [lastAddedDevice, setLastAddedDevice] = useState<SetupDevice | null>(null);
+  const [lastAddedDevice, setLastAddedDevice] = useState<SetupDevice | null>(
+    null,
+  );
   const [mode, setMode] = useState<DeviceMode>("simulator");
   const progress = evaluateSetupProgress(devices);
 
@@ -223,7 +227,9 @@ export function SetupDevices() {
                   </Badge>
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {d.lastSeenAt === null ? "Belum pernah" : formatSeen(d.lastSeenAt)}
+                  {d.lastSeenAt === null
+                    ? "Belum pernah"
+                    : formatSeen(d.lastSeenAt)}
                 </TableCell>
               </TableRow>
             ))}
@@ -273,7 +279,11 @@ export function SetupDevices() {
           </div>
         </div>
 
-        <form noValidate onSubmit={handleFinalSubmit} className="flex flex-col gap-4">
+        <form
+          noValidate
+          onSubmit={handleFinalSubmit}
+          className="flex flex-col gap-4"
+        >
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -405,18 +415,25 @@ export function SetupDevices() {
                   <li>
                     Jenis:{" "}
                     <span className="font-medium text-foreground">
-                      {DEVICE_KIND_OPTIONS.find((o) => o.value === form.kind)?.label}
+                      {
+                        DEVICE_KIND_OPTIONS.find((o) => o.value === form.kind)
+                          ?.label
+                      }
                     </span>
                   </li>
                   <li>
                     Mode:{" "}
                     <span className="font-medium text-foreground">
-                      {mode === "simulator" ? "Mode Simulator" : "Perangkat Asli"}
+                      {mode === "simulator"
+                        ? "Mode Simulator"
+                        : "Perangkat Asli"}
                     </span>
                   </li>
                   <li>
                     Nama:{" "}
-                    <span className="font-medium text-foreground">{form.name}</span>
+                    <span className="font-medium text-foreground">
+                      {form.name}
+                    </span>
                   </li>
                   <li>
                     Host / IP:{" "}
@@ -474,7 +491,9 @@ export function SetupDevices() {
                 {result.ok && result.diagnostics.firmware && (
                   <div>
                     <dt className="text-muted-foreground">Versi Firmware/OS</dt>
-                    <dd className="font-medium">{result.diagnostics.firmware}</dd>
+                    <dd className="font-medium">
+                      {result.diagnostics.firmware}
+                    </dd>
                   </div>
                 )}
                 {result.ok && result.diagnostics.cpuLoad !== undefined && (

@@ -40,7 +40,9 @@ test("Penentuan langkah rekomendasi berikutnya memilih langkah terbuka pertama",
     new Set(["step-router-mikrotik", "step-test-router-polling"]),
   );
   // Langkah berikutnya harusnya step-olt-hsgq karena step 1 & 2 sudah selesai dan prasyaratnya terpenuhi
-  const nextStep = steps.find((s) => s.status !== "selesai" && s.status !== "terkunci");
+  const nextStep = steps.find(
+    (s) => s.status !== "selesai" && s.status !== "terkunci",
+  );
   assert.ok(nextStep);
   assert.equal(nextStep.id, "step-olt-hsgq");
 });

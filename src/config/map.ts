@@ -17,14 +17,20 @@ export const DEFAULT_MAP_CENTER: [number, number] = [
   Number(process.env.NEXT_PUBLIC_MAP_DEFAULT_LNG) || 101.2185,
 ];
 
-export const DEFAULT_MAP_ZOOM = Number(process.env.NEXT_PUBLIC_MAP_DEFAULT_ZOOM) || 14;
+export const DEFAULT_MAP_ZOOM =
+  Number(process.env.NEXT_PUBLIC_MAP_DEFAULT_ZOOM) || 14;
 
 export function getTileProviders(): Record<MapLayerId, TileProviderConfig> {
   const satelliteUrl =
     process.env.NEXT_PUBLIC_MAP_SATELLITE_URL ||
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
   const satelliteSubdomains = satelliteUrl.includes("{s}")
-    ? (process.env.NEXT_PUBLIC_MAP_SATELLITE_SUBDOMAINS?.split(",") || ["0", "1", "2", "3"])
+    ? process.env.NEXT_PUBLIC_MAP_SATELLITE_SUBDOMAINS?.split(",") || [
+        "0",
+        "1",
+        "2",
+        "3",
+      ]
     : undefined;
   return {
     satellite: {
@@ -67,9 +73,15 @@ export function getTileProviders(): Record<MapLayerId, TileProviderConfig> {
   };
 }
 
-export function getBoundsWithPadding(points: LatLngTuple[], paddingPercent = 0.1): [LatLngTuple, LatLngTuple] | null {
+export function getBoundsWithPadding(
+  points: LatLngTuple[],
+  paddingPercent = 0.1,
+): [LatLngTuple, LatLngTuple] | null {
   if (!points || points.length === 0) return null;
-  let minLat = points[0][0], maxLat = points[0][0], minLng = points[0][1], maxLng = points[0][1];
+  let minLat = points[0][0],
+    maxLat = points[0][0],
+    minLng = points[0][1],
+    maxLng = points[0][1];
   for (const [lat, lng] of points) {
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;

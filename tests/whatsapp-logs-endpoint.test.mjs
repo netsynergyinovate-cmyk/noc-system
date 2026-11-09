@@ -27,7 +27,11 @@ const chain = (q) => {
     offset: (n) => ((q.offset = n), c),
     then: (a, b) =>
       Promise.resolve(
-        q.kind === "summary" ? statusRows : q.kind === "count" ? [{ total }] : rows,
+        q.kind === "summary"
+          ? statusRows
+          : q.kind === "count"
+            ? [{ total }]
+            : rows,
       ).then(a, b),
   };
   return c;
@@ -43,14 +47,15 @@ globalThis.starterPostgresDb = {
 register();
 const { PgDialect } = await import("drizzle-orm/pg-core");
 dialect = new PgDialect();
-const { listWhatsappLogsSchema: s, summarizeLogCounts: sum } = await import(
-  "../src/validators/whatsapp.ts"
-);
+const { listWhatsappLogsSchema: s, summarizeLogCounts: sum } =
+  await import("../src/validators/whatsapp.ts");
 const { GET } = await import("../src/app/api/whatsapp/logs/route.ts");
 const { auth } = await import("../src/lib/auth.ts");
 
 const get = (qs = "") =>
-  new Request(`http://localhost:3101/api/whatsapp/logs${qs}`, { method: "GET" });
+  new Request(`http://localhost:3101/api/whatsapp/logs${qs}`, {
+    method: "GET",
+  });
 
 async function signedIn(fn) {
   const original = auth.api.getSession;
@@ -109,7 +114,10 @@ test("GET tanpa sesi -> 401, DB tidak disentuh", async () => {
 });
 
 test("GET login -> 200 { logs, total, summary }", async () => {
-  rows = [{ id: "l1", status: "sent" }, { id: "l2", status: "failed" }];
+  rows = [
+    { id: "l1", status: "sent" },
+    { id: "l2", status: "failed" },
+  ];
   total = 2;
   statusRows = [
     { status: "sent", n: 3 },
@@ -121,7 +129,10 @@ test("GET login -> 200 { logs, total, summary }", async () => {
     assert.equal(res.status, 200);
     const { data } = await res.json();
     assert.deepEqual(Object.keys(data).sort(), ["logs", "summary", "total"]);
-    assert.deepEqual(data.logs.map((l) => l.id), ["l1", "l2"]);
+    assert.deepEqual(
+      data.logs.map((l) => l.id),
+      ["l1", "l2"],
+    );
     assert.equal(data.total, 2);
     assert.deepEqual(data.summary, {
       totalSent: 3,
@@ -191,7 +202,13 @@ test("filter digabung dengan AND", async () => {
     await GET(get("?status=failed&alertKind=offline&q=budi"));
     const q = queries.find((x) => x.kind === "list");
     assert.match(q.where.sql, /^\(.*\) and \(.*\) and \(.*\)$|and/i);
-    assert.deepEqual(q.where.params, ["failed", "offline", "%budi%", "%budi%", "%budi%"]);
+    assert.deepEqual(q.where.params, [
+      "failed",
+      "offline",
+      "%budi%",
+      "%budi%",
+      "%budi%",
+    ]);
   });
 });
 
@@ -210,7 +227,12 @@ test("?limit=10&offset=0 dan offset > 0 diteruskan; summary tidak ikut difilter"
 
 test("query tidak valid -> 422 tanpa query DB", async () => {
   await signedIn(async () => {
-    for (const qs of ["?status=delivered", "?limit=201", "?limit=0", "?offset=-1"]) {
+    for (const qs of [
+      "?status=delivered",
+      "?limit=201",
+      "?limit=0",
+      "?offset=-1",
+    ]) {
       const res = await GET(get(qs));
       assert.equal(res.status, 422, qs);
       assert.equal((await res.json()).error.code, "VALIDATION_ERROR");

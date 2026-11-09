@@ -1,7 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { google, sheets_v4, drive_v3 } from "googleapis";
-import { GoogleGenAI, Type, FunctionDeclaration, Content, Part } from "@google/genai";
+import {
+  GoogleGenAI,
+  Type,
+  FunctionDeclaration,
+  Content,
+  Part,
+} from "@google/genai";
 
 export type ThinkingStepType =
   | "thought"
@@ -70,7 +76,7 @@ export class GoogleSheetsAutomationService {
 
     if (!clientEmail || !rawPrivateKey || rawPrivateKey.includes("...")) {
       throw new Error(
-        "Kredensial Google Service Account (GOOGLE_CLIENT_EMAIL & GOOGLE_PRIVATE_KEY) belum diatur di .env.local. Masukkan email dan private key JSON Service Account yang sah."
+        "Kredensial Google Service Account (GOOGLE_CLIENT_EMAIL & GOOGLE_PRIVATE_KEY) belum diatur di .env.local. Masukkan email dan private key JSON Service Account yang sah.",
       );
     }
   }
@@ -133,19 +139,25 @@ export class GoogleSheetsAutomationService {
     spreadsheetId: string,
     sheetTitle: string,
     taskId: string,
-    completed: boolean
+    completed: boolean,
   ) {
     this.ensureAuth();
     const range = "'" + sheetTitle + "'!B2:I120";
-    const res = await this.sheets.spreadsheets.values.get({ spreadsheetId, range });
+    const res = await this.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    });
     const rows = (res.data.values as string[][]) || [];
 
     const rowIndex = rows.findIndex(
-      (row) => row[0]?.toString().trim().toLowerCase() === taskId.trim().toLowerCase()
+      (row) =>
+        row[0]?.toString().trim().toLowerCase() === taskId.trim().toLowerCase(),
     );
 
     if (rowIndex === -1) {
-      throw new Error(`Task ID "${taskId}" tidak ditemukan pada tab "${sheetTitle}".`);
+      throw new Error(
+        `Task ID "${taskId}" tidak ditemukan pada tab "${sheetTitle}".`,
+      );
     }
 
     const actualRow = rowIndex + 2;
@@ -174,7 +186,8 @@ export class GoogleSheetsAutomationService {
     if (!fs.existsSync(docPath)) {
       return {
         found: false,
-        message: "Berkas docs/DOKUMENTASI-APLIKASI.md tidak ditemukan di direktori kerja.",
+        message:
+          "Berkas docs/DOKUMENTASI-APLIKASI.md tidak ditemukan di direktori kerja.",
       };
     }
 
@@ -195,7 +208,11 @@ export class GoogleSheetsAutomationService {
     for (const line of lines) {
       if (line.toLowerCase().includes(section.toLowerCase())) {
         capture = true;
-      } else if (capture && line.startsWith("## ") && !line.toLowerCase().includes(section.toLowerCase())) {
+      } else if (
+        capture &&
+        line.startsWith("## ") &&
+        !line.toLowerCase().includes(section.toLowerCase())
+      ) {
         break;
       }
 
@@ -208,19 +225,20 @@ export class GoogleSheetsAutomationService {
     return {
       found: true,
       querySection: section,
-      content: matched.length > 0 ? matched.join("\n") : fullText.slice(0, 3000),
+      content:
+        matched.length > 0 ? matched.join("\n") : fullText.slice(0, 3000),
     };
   }
 
   async upsertFormattedTaskSheet(
     spreadsheetId: string,
     sheetTitle: string,
-    tasks: NocTaskRow[]
+    tasks: NocTaskRow[],
   ) {
     this.ensureAuth();
     const meta = await this.sheets.spreadsheets.get({ spreadsheetId });
     const existingSheet = meta.data.sheets?.find(
-      (s) => s.properties?.title?.toLowerCase() === sheetTitle.toLowerCase()
+      (s) => s.properties?.title?.toLowerCase() === sheetTitle.toLowerCase(),
     );
 
     let sheetId = existingSheet?.properties?.sheetId;
@@ -245,7 +263,8 @@ export class GoogleSheetsAutomationService {
           ],
         },
       });
-      sheetId = addSheetRes.data.replies?.[0]?.addSheet?.properties?.sheetId ?? 0;
+      sheetId =
+        addSheetRes.data.replies?.[0]?.addSheet?.properties?.sheetId ?? 0;
     }
 
     const headers = [
@@ -297,7 +316,7 @@ export class GoogleSheetsAutomationService {
           properties: { pixelSize },
           fields: "pixelSize",
         },
-      })
+      }),
     );
 
     const stylingRequests: sheets_v4.Schema$Request[] = [
@@ -312,7 +331,13 @@ export class GoogleSheetsAutomationService {
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 9 },
+          range: {
+            sheetId,
+            startRowIndex: 0,
+            endRowIndex: 1,
+            startColumnIndex: 0,
+            endColumnIndex: 9,
+          },
           cell: {
             userEnteredFormat: {
               backgroundColor: { red: 0.118, green: 0.161, blue: 0.231 },
@@ -326,12 +351,19 @@ export class GoogleSheetsAutomationService {
               },
             },
           },
-          fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)",
+          fields:
+            "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)",
         },
       },
       {
         repeatCell: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 9 },
+          range: {
+            sheetId,
+            startRowIndex: 1,
+            endRowIndex: totalRows,
+            startColumnIndex: 0,
+            endColumnIndex: 9,
+          },
           cell: {
             userEnteredFormat: {
               verticalAlignment: "TOP",
@@ -339,33 +371,83 @@ export class GoogleSheetsAutomationService {
               textFormat: { fontSize: 10 },
             },
           },
-          fields: "userEnteredFormat(verticalAlignment,wrapStrategy,textFormat)",
+          fields:
+            "userEnteredFormat(verticalAlignment,wrapStrategy,textFormat)",
         },
       },
       ...[0, 1, 7, 8].map((colIdx) => ({
         repeatCell: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: colIdx, endColumnIndex: colIdx + 1 },
+          range: {
+            sheetId,
+            startRowIndex: 1,
+            endRowIndex: totalRows,
+            startColumnIndex: colIdx,
+            endColumnIndex: colIdx + 1,
+          },
           cell: {
-            userEnteredFormat: { horizontalAlignment: "CENTER", verticalAlignment: "MIDDLE" },
+            userEnteredFormat: {
+              horizontalAlignment: "CENTER",
+              verticalAlignment: "MIDDLE",
+            },
           },
           fields: "userEnteredFormat(horizontalAlignment,verticalAlignment)",
         },
       })),
       {
         setDataValidation: {
-          range: { sheetId, startRowIndex: 1, endRowIndex: totalRows, startColumnIndex: 8, endColumnIndex: 9 },
-          rule: { condition: { type: "BOOLEAN" }, showCustomUi: true, strict: true },
+          range: {
+            sheetId,
+            startRowIndex: 1,
+            endRowIndex: totalRows,
+            startColumnIndex: 8,
+            endColumnIndex: 9,
+          },
+          rule: {
+            condition: { type: "BOOLEAN" },
+            showCustomUi: true,
+            strict: true,
+          },
         },
       },
       {
         updateBorders: {
-          range: { sheetId, startRowIndex: 0, endRowIndex: totalRows, startColumnIndex: 0, endColumnIndex: 9 },
-          top: { style: "SOLID", width: 1, color: { red: 0.796, green: 0.835, blue: 0.882 } },
-          bottom: { style: "SOLID", width: 1, color: { red: 0.796, green: 0.835, blue: 0.882 } },
-          left: { style: "SOLID", width: 1, color: { red: 0.796, green: 0.835, blue: 0.882 } },
-          right: { style: "SOLID", width: 1, color: { red: 0.796, green: 0.835, blue: 0.882 } },
-          innerHorizontal: { style: "SOLID", width: 1, color: { red: 0.886, green: 0.91, blue: 0.941 } },
-          innerVertical: { style: "SOLID", width: 1, color: { red: 0.886, green: 0.91, blue: 0.941 } },
+          range: {
+            sheetId,
+            startRowIndex: 0,
+            endRowIndex: totalRows,
+            startColumnIndex: 0,
+            endColumnIndex: 9,
+          },
+          top: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.796, green: 0.835, blue: 0.882 },
+          },
+          bottom: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.796, green: 0.835, blue: 0.882 },
+          },
+          left: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.796, green: 0.835, blue: 0.882 },
+          },
+          right: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.796, green: 0.835, blue: 0.882 },
+          },
+          innerHorizontal: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.886, green: 0.91, blue: 0.941 },
+          },
+          innerVertical: {
+            style: "SOLID",
+            width: 1,
+            color: { red: 0.886, green: 0.91, blue: 0.941 },
+          },
         },
       },
     ];
@@ -380,7 +462,11 @@ export class GoogleSheetsAutomationService {
       spreadsheetId,
       sheetTitle,
       updatedRows: tasks.length,
-      url: "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/edit#gid=" + sheetId,
+      url:
+        "https://docs.google.com/spreadsheets/d/" +
+        spreadsheetId +
+        "/edit#gid=" +
+        sheetId,
     };
   }
 }
@@ -388,7 +474,8 @@ export class GoogleSheetsAutomationService {
 export const sheetsToolDeclarations: FunctionDeclaration[] = [
   {
     name: "search_drive_spreadsheets",
-    description: "Cari berkas Google Spreadsheet di Google Drive berdasarkan kata kunci judul.",
+    description:
+      "Cari berkas Google Spreadsheet di Google Drive berdasarkan kata kunci judul.",
     parameters: {
       type: Type.OBJECT,
       properties: { queryTitle: { type: Type.STRING } },
@@ -397,7 +484,8 @@ export const sheetsToolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: "read_spreadsheet_structure",
-    description: "Baca daftar tab, jumlah baris/kolom, dan sampel baris dari Google Spreadsheet.",
+    description:
+      "Baca daftar tab, jumlah baris/kolom, dan sampel baris dari Google Spreadsheet.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -428,21 +516,29 @@ export const sheetsToolDeclarations: FunctionDeclaration[] = [
       properties: {
         section: {
           type: Type.STRING,
-          description: "Topik atau modul yang dicari, misal: 'alert', 'anomali', 'mikrotik', 'olt', atau 'all'",
+          description:
+            "Topik atau modul yang dicari, misal: 'alert', 'anomali', 'mikrotik', 'olt', atau 'all'",
         },
       },
     },
   },
   {
     name: "update_checklist_status",
-    description: "Perbarui status checklist tugas tertentu (centang atau hapus centang) berdasarkan Task ID unik.",
+    description:
+      "Perbarui status checklist tugas tertentu (centang atau hapus centang) berdasarkan Task ID unik.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         spreadsheetId: { type: Type.STRING },
         sheetTitle: { type: Type.STRING },
-        taskId: { type: Type.STRING, description: "ID Task (contoh: TASK-ALT-001)" },
-        completed: { type: Type.BOOLEAN, description: "True jika tugas selesai, false jika belum" },
+        taskId: {
+          type: Type.STRING,
+          description: "ID Task (contoh: TASK-ALT-001)",
+        },
+        completed: {
+          type: Type.BOOLEAN,
+          description: "True jika tugas selesai, false jika belum",
+        },
       },
       required: ["spreadsheetId", "sheetTitle", "taskId", "completed"],
     },
@@ -470,7 +566,12 @@ export const sheetsToolDeclarations: FunctionDeclaration[] = [
               technicalSolution: { type: Type.STRING },
               priority: {
                 type: Type.STRING,
-                enum: ["P0 (Kritis)", "P1 (Tinggi)", "P2 (Sedang)", "P3 (Rendah)"],
+                enum: [
+                  "P0 (Kritis)",
+                  "P1 (Tinggi)",
+                  "P2 (Sedang)",
+                  "P3 (Rendah)",
+                ],
               },
               completed: { type: Type.BOOLEAN },
             },
@@ -495,12 +596,12 @@ export const sheetsToolDeclarations: FunctionDeclaration[] = [
 
 export async function runNocSheetsAgentWithThinking(
   userPrompt: string,
-  onTrace?: TraceCallback
+  onTrace?: TraceCallback,
 ) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey || apiKey.includes("MASUKKAN")) {
     throw new Error(
-      "GEMINI_API_KEY belum dikonfigurasi di .env.local. Dapatkan API Key di https://aistudio.google.com/."
+      "GEMINI_API_KEY belum dikonfigurasi di .env.local. Dapatkan API Key di https://aistudio.google.com/.",
     );
   }
 
@@ -511,7 +612,7 @@ export async function runNocSheetsAgentWithThinking(
     stepType: ThinkingStepType,
     title: string,
     detail?: string,
-    toolName?: string
+    toolName?: string,
   ) => {
     if (onTrace) {
       onTrace({
@@ -524,10 +625,14 @@ export async function runNocSheetsAgentWithThinking(
     }
   };
 
-  emit("thought", "Menganalisis instruksi operasional dan menyiapkan pembaruan Google Sheets.");
+  emit(
+    "thought",
+    "Menganalisis instruksi operasional dan menyiapkan pembaruan Google Sheets.",
+  );
 
   const defaultSpreadsheetId =
-    process.env.NOC_SPREADSHEET_ID || "1OVtrQUBpxr_TWdjEQ_91v5mkjTROC8MU497rT10tMG4";
+    process.env.NOC_SPREADSHEET_ID ||
+    "1OVtrQUBpxr_TWdjEQ_91v5mkjTROC8MU497rT10tMG4";
 
   const contents: Content[] = [{ role: "user", parts: [{ text: userPrompt }] }];
 
@@ -571,41 +676,88 @@ export async function runNocSheetsAgentWithThinking(
       try {
         if (call.name === "search_drive_spreadsheets") {
           const query = String(args.queryTitle || "");
-          emit("drive_action", `Search Drive: "${query}"`, undefined, call.name);
+          emit(
+            "drive_action",
+            `Search Drive: "${query}"`,
+            undefined,
+            call.name,
+          );
           toolResult = await sheetsService.searchSpreadsheets(query);
         } else if (call.name === "read_spreadsheet_structure") {
           const sId = String(args.spreadsheetId || defaultSpreadsheetId);
           const sampleTab = args.sampleTab ? String(args.sampleTab) : undefined;
-          emit("drive_action", `Read spreadsheet structure (${sId})`, undefined, call.name);
-          toolResult = await sheetsService.readSpreadsheetStructure(sId, sampleTab);
+          emit(
+            "drive_action",
+            `Read spreadsheet structure (${sId})`,
+            undefined,
+            call.name,
+          );
+          toolResult = await sheetsService.readSpreadsheetStructure(
+            sId,
+            sampleTab,
+          );
         } else if (call.name === "rename_spreadsheet") {
           const sId = String(args.spreadsheetId || defaultSpreadsheetId);
           const newTitle = String(args.newTitle || "");
-          emit("drive_action", `Rename spreadsheet: "${newTitle}"`, sId, call.name);
+          emit(
+            "drive_action",
+            `Rename spreadsheet: "${newTitle}"`,
+            sId,
+            call.name,
+          );
           toolResult = await sheetsService.renameSpreadsheet(sId, newTitle);
         } else if (call.name === "read_local_documentation") {
           const section = args.section ? String(args.section) : undefined;
-          emit("local_action", `Check local working directory files (${section || "all"})`, undefined, call.name);
+          emit(
+            "local_action",
+            `Check local working directory files (${section || "all"})`,
+            undefined,
+            call.name,
+          );
           toolResult = await sheetsService.readLocalDocumentation(section);
         } else if (call.name === "update_checklist_status") {
           const sId = String(args.spreadsheetId || defaultSpreadsheetId);
           const sheetTitle = String(args.sheetTitle || "");
           const taskId = String(args.taskId || "");
           const completed = Boolean(args.completed);
-          emit("sheets_action", `Update checklist: ${taskId} -> ${completed ? "Selesai" : "Belum"}`, sId, call.name);
-          toolResult = await sheetsService.updateChecklistStatus(sId, sheetTitle, taskId, completed);
+          emit(
+            "sheets_action",
+            `Update checklist: ${taskId} -> ${completed ? "Selesai" : "Belum"}`,
+            sId,
+            call.name,
+          );
+          toolResult = await sheetsService.updateChecklistStatus(
+            sId,
+            sheetTitle,
+            taskId,
+            completed,
+          );
         } else if (call.name === "upsert_formatted_task_sheet") {
           const sId = String(args.spreadsheetId || defaultSpreadsheetId);
           const sheetTitle = String(args.sheetTitle || "");
           const tasks = (args.tasks || []) as NocTaskRow[];
-          emit("sheets_action", `Update sheet "${sheetTitle}" (${tasks.length} tasks)`, sId, call.name);
-          toolResult = await sheetsService.upsertFormattedTaskSheet(sId, sheetTitle, tasks);
+          emit(
+            "sheets_action",
+            `Update sheet "${sheetTitle}" (${tasks.length} tasks)`,
+            sId,
+            call.name,
+          );
+          toolResult = await sheetsService.upsertFormattedTaskSheet(
+            sId,
+            sheetTitle,
+            tasks,
+          );
         } else {
           throw new Error(`Tool "${call.name}" tidak terdaftar.`);
         }
       } catch (err: unknown) {
         const errObj = err instanceof Error ? err : new Error(String(err));
-        emit("error", `Gagal mengeksekusi ${call.name}: ${errObj.message}`, undefined, call.name);
+        emit(
+          "error",
+          `Gagal mengeksekusi ${call.name}: ${errObj.message}`,
+          undefined,
+          call.name,
+        );
         toolResult = { error: errObj.message };
       }
 

@@ -36,7 +36,10 @@ const RULES: ReadonlyArray<[BillingScrapeErrorCategory, RegExp]> = [
   ],
   ["timeout", /timeout|batas waktu|tidak menjawab/i],
   ["server_error", /gangguan|\b5\d\d\b|5xx|server/i],
-  ["network", /jaringan|tidak dapat dihubungi|gagal menghubungi|tls|sertifikat/i],
+  [
+    "network",
+    /jaringan|tidak dapat dihubungi|gagal menghubungi|tls|sertifikat/i,
+  ],
   [
     "source_changed",
     /struktur|selektor|susunan halaman|tampilan.*berubah|tidak terbaca/i,

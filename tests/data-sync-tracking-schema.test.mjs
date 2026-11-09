@@ -5,9 +5,8 @@ import { register } from "tsx/esm/api";
 register();
 
 const { getTableConfig } = await import("drizzle-orm/pg-core");
-const { dataSyncRuns, seedTracking } = await import(
-  "../src/db/schema/index.ts"
-);
+const { dataSyncRuns, seedTracking } =
+  await import("../src/db/schema/index.ts");
 
 const cols = (t) =>
   Object.fromEntries(getTableConfig(t).columns.map((c) => [c.name, c]));

@@ -15,7 +15,8 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { getRouterResourcesSummary } = await import("../src/services/router-resources.service.ts");
+const { getRouterResourcesSummary } =
+  await import("../src/services/router-resources.service.ts");
 
 const summaryKeys = [
   "activeRouters",
@@ -34,8 +35,14 @@ test("demo: envelope { summary, items } dengan invarian", async () => {
   assert.deepEqual(Object.keys(data).sort(), ["items", "summary"]);
   assert.ok(data.items.length > 0);
   assert.equal(data.summary.totalRouters, data.items.length);
-  assert.equal(data.summary.activeRouters, data.items.filter((i) => i.active).length);
-  assert.equal(data.summary.offlineRouters, data.items.filter((i) => !i.active).length);
+  assert.equal(
+    data.summary.activeRouters,
+    data.items.filter((i) => i.active).length,
+  );
+  assert.equal(
+    data.summary.offlineRouters,
+    data.items.filter((i) => !i.active).length,
+  );
 });
 
 test("demo: bentuk summary cocok RouterResourceSummary", async () => {
@@ -46,7 +53,8 @@ test("demo: bentuk summary cocok RouterResourceSummary", async () => {
   }
   assert.ok(
     summary.peakCpuLoad === null ||
-      (typeof summary.peakCpuLoad.routerName === "string" && typeof summary.peakCpuLoad.value === "number"),
+      (typeof summary.peakCpuLoad.routerName === "string" &&
+        typeof summary.peakCpuLoad.value === "number"),
   );
 });
 

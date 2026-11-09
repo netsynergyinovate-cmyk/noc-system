@@ -15,7 +15,8 @@ register();
 
 const routeExport = await import("../src/app/api/export/route.ts");
 const routeReports = await import("../src/app/api/reports/route.ts");
-const { generateRealExportData } = await import("../src/services/export.service.ts");
+const { generateRealExportData } =
+  await import("../src/services/export.service.ts");
 
 const NOW = Date.UTC(2026, 5, 15, 12, 0, 0) / 1000;
 
@@ -65,7 +66,17 @@ test("generateRealExportData: mampu menghasilkan laporan CSV dan JSON", async ()
 });
 
 test("generateRealExportData: rentang waktu mempengaruhi hasil dataset berbasis waktu", async () => {
-  const res24h = await generateRealExportData("alerts-history", "csv", "24h", NOW);
-  const res7d = await generateRealExportData("alerts-history", "csv", "7d", NOW);
+  const res24h = await generateRealExportData(
+    "alerts-history",
+    "csv",
+    "24h",
+    NOW,
+  );
+  const res7d = await generateRealExportData(
+    "alerts-history",
+    "csv",
+    "7d",
+    NOW,
+  );
   assert.ok(res24h.rowCount <= res7d.rowCount);
 });

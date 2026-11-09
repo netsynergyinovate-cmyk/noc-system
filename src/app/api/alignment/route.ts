@@ -15,7 +15,9 @@ export function GET(request: Request) {
 
 export function POST(request: Request) {
   return withApiSession(request, async (session) => {
-    let body: { steps?: Array<"billing_status" | "thresholds" | "customers" | "routers"> } = {};
+    let body: {
+      steps?: Array<"billing_status" | "thresholds" | "customers" | "routers">;
+    } = {};
     try {
       body = await request.json();
     } catch {

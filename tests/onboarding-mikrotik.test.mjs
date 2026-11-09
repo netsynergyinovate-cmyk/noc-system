@@ -47,16 +47,31 @@ test("simulateOnboardingMikrotikTest mendeteksi kegagalan koneksi jika host offl
 
 test("ONBOARDING_MIKROTIK_MOCK_ENTRY terdaftar dalam registry dummy", () => {
   assert.equal(ONBOARDING_MIKROTIK_MOCK_ENTRY.status, "dummy");
-  assert.ok(ONBOARDING_MIKROTIK_MOCK_ENTRY.readPath.includes("onboarding-mikrotik"));
+  assert.ok(
+    ONBOARDING_MIKROTIK_MOCK_ENTRY.readPath.includes("onboarding-mikrotik"),
+  );
 });
 
 test("splitHostInput memisah host, port, dan skema", async () => {
-  const { splitHostInput, defaultRestPort } = await import("../src/lib/dashboard/onboarding-mikrotik.ts");
+  const { splitHostInput, defaultRestPort } =
+    await import("../src/lib/dashboard/onboarding-mikrotik.ts");
   assert.deepEqual(splitHostInput("203.0.113.10"), { host: "203.0.113.10" });
-  assert.deepEqual(splitHostInput(" 203.0.113.10:2024 "), { host: "203.0.113.10", port: 2024 });
-  assert.deepEqual(splitHostInput("https://r.example.com"), { host: "r.example.com", useTls: true });
-  assert.deepEqual(splitHostInput("http://10.0.0.1:8080/"), { host: "10.0.0.1", port: 8080, useTls: false });
-  assert.deepEqual(splitHostInput("10.0.0.1:99999"), { host: "10.0.0.1:99999" });
+  assert.deepEqual(splitHostInput(" 203.0.113.10:2024 "), {
+    host: "203.0.113.10",
+    port: 2024,
+  });
+  assert.deepEqual(splitHostInput("https://r.example.com"), {
+    host: "r.example.com",
+    useTls: true,
+  });
+  assert.deepEqual(splitHostInput("http://10.0.0.1:8080/"), {
+    host: "10.0.0.1",
+    port: 8080,
+    useTls: false,
+  });
+  assert.deepEqual(splitHostInput("10.0.0.1:99999"), {
+    host: "10.0.0.1:99999",
+  });
   assert.deepEqual(splitHostInput("10.0.0.1:"), { host: "10.0.0.1:" });
   assert.equal(defaultRestPort(true), 443);
   assert.equal(defaultRestPort(false), 80);

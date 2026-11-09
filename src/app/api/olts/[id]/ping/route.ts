@@ -10,7 +10,10 @@ import { oltIdSchema } from "@/validators/devices";
 
 export const runtime = "nodejs";
 
-export const POST = (request: Request, { params }: { params: Promise<{ id: string }> }) =>
+export const POST = (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) =>
   withApiPermission(request, { router: ["manage"] }, async () => {
     const { id } = await params;
     if (!oltIdSchema.safeParse(id).success) {
@@ -18,7 +21,12 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     }
 
     const [olt] = await db
-      .select({ id: olts.id, name: olts.name, host: olts.host, driver: olts.driver })
+      .select({
+        id: olts.id,
+        name: olts.name,
+        host: olts.host,
+        driver: olts.driver,
+      })
       .from(olts)
       .where(eq(olts.id, id))
       .limit(1);

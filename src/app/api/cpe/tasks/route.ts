@@ -35,7 +35,12 @@ export function POST(request: Request) {
     audit(request, async (session) => {
       const body = await readJson(request);
 
-      if (body && typeof body === "object" && "deviceId" in body && "taskName" in body) {
+      if (
+        body &&
+        typeof body === "object" &&
+        "deviceId" in body &&
+        "taskName" in body
+      ) {
         const { deviceId, taskName, parameterValues } = body as {
           deviceId: string;
           taskName: string;
@@ -47,11 +52,17 @@ export function POST(request: Request) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: taskName, parameterValues: parameterValues ?? [] }),
+            body: JSON.stringify({
+              name: taskName,
+              parameterValues: parameterValues ?? [],
+            }),
           },
         );
         const json = await res.json().catch(() => ({}));
-        return Response.json({ ok: res.ok, status: res.status, data: json }, { status: res.status });
+        return Response.json(
+          { ok: res.ok, status: res.status, data: json },
+          { status: res.status },
+        );
       }
 
       // Cek apakah request berupa changeWifi atau diagnostic task

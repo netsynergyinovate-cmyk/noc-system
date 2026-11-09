@@ -11,15 +11,20 @@ import {
 import { desc, eq, sql } from "drizzle-orm";
 
 const RUNSNET_URL = process.env.RUNSNET_URL || "https://app.runsnet.id";
-const RUNSNET_USERNAME = process.env.RUNSNET_USERNAME || "netsynergyinovate@yahoo.com";
-const RUNSNET_PASSWORD = process.env.RUNSNET_PASSWORD || "netsynergyinovate@yahoo.com";
+const RUNSNET_USERNAME =
+  process.env.RUNSNET_USERNAME || "netsynergyinovate@yahoo.com";
+const RUNSNET_PASSWORD =
+  process.env.RUNSNET_PASSWORD || "netsynergyinovate@yahoo.com";
 const RUNSNET_TARGET = process.env.RUNSNET_TARGET || "ID00000000024";
 // Batas waktu pengambilan IP/MAC saat sinkron; sisanya dilewati supaya total sinkron tetap di bawah batas proxy.
 const SESSION_ENRICH_BUDGET_MS = 25_000;
 
 function stripHtml(raw: unknown): string {
   if (raw === null || raw === undefined) return "";
-  return String(raw).replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+  return String(raw)
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
 }
 
 function parseCurrency(raw: unknown): number {
@@ -49,7 +54,10 @@ function buildDtParams(start = 0, length = 100, search = "") {
     p.append(`columns[${i}][data]`, String(i));
     p.append(`columns[${i}][name]`, "");
     p.append(`columns[${i}][searchable]`, "true");
-    p.append(`columns[${i}][orderable]`, i === 0 || i === 11 ? "false" : "true");
+    p.append(
+      `columns[${i}][orderable]`,
+      i === 0 || i === 11 ? "false" : "true",
+    );
     p.append(`columns[${i}][search][value]`, "");
     p.append(`columns[${i}][search][regex]`, "false");
   }
@@ -63,21 +71,30 @@ async function rfetch(url: string, init?: RequestInit): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
-      if (res.status < 502 || res.status > 504 || attempt === attempts) return res;
+      const res = await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (res.status < 502 || res.status > 504 || attempt === attempts)
+        return res;
     } catch (err) {
       lastError = err;
     }
     await new Promise((r) => setTimeout(r, attempt * 1000));
   }
-  const cause = (lastError as { cause?: { code?: string } } | undefined)?.cause?.code;
-  throw new Error(`Tidak dapat menghubungi RunsNet setelah ${attempts} percobaan${cause ? ` (${cause})` : ""}. Periksa koneksi internet server.`);
+  const cause = (lastError as { cause?: { code?: string } } | undefined)?.cause
+    ?.code;
+  throw new Error(
+    `Tidak dapat menghubungi RunsNet setelah ${attempts} percobaan${cause ? ` (${cause})` : ""}. Periksa koneksi internet server.`,
+  );
 }
 
 // Semua halaman harus terbaca; hasil sebagian tidak boleh dianggap sukses.
 function assertComplete(label: string, start: number, total: number) {
   if (Number.isFinite(total) && start < total) {
-    throw new Error(`Data ${label} RunsNet tidak lengkap: ${start} dari ${total} baris terbaca.`);
+    throw new Error(
+      `Data ${label} RunsNet tidak lengkap: ${start} dari ${total} baris terbaca.`,
+    );
   }
 }
 
@@ -95,7 +112,8 @@ function paymentTo(): string {
 export async function loginRunsnet(): Promise<string> {
   const getLogin = await rfetch(`${RUNSNET_URL}/login.php`, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     },
   });
 
@@ -107,19 +125,24 @@ export async function loginRunsnet(): Promise<string> {
   loginParams.append("password", RUNSNET_PASSWORD);
   loginParams.append("simpan", "");
 
-  const postLogin = await rfetch(`${RUNSNET_URL}/view/control/bagan_login.php`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Cookie": `PHPSESSID=${phpsessid}`,
-      "Referer": `${RUNSNET_URL}/login.php`,
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  const postLogin = await rfetch(
+    `${RUNSNET_URL}/view/control/bagan_login.php`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Cookie: `PHPSESSID=${phpsessid}`,
+        Referer: `${RUNSNET_URL}/login.php`,
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      body: loginParams.toString(),
     },
-    body: loginParams.toString(),
-  });
+  );
 
   const postCookies = postLogin.headers.get("set-cookie") || "";
-  const finalSession = (postCookies.match(/PHPSESSID=([^;]+)/) || [])[1] || phpsessid;
+  const finalSession =
+    (postCookies.match(/PHPSESSID=([^;]+)/) || [])[1] || phpsessid;
 
   if (!finalSession) {
     throw new Error("Gagal mendapatkan session login dari RunsNet");
@@ -170,7 +193,9 @@ export interface ParsedPayment {
 /**
  * Menarik semua pelanggan dari RunsNet dengan pagination lengkap.
  */
-export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCustomer[]> {
+export async function scrapeRunsnetCustomers(
+  session: string,
+): Promise<ParsedCustomer[]> {
   const result: ParsedCustomer[] = [];
   let start = 0;
   const length = 100;
@@ -181,10 +206,11 @@ export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCus
     const res = await rfetch(url, {
       method: "POST",
       headers: {
-        "Cookie": `PHPSESSID=${session}`,
+        Cookie: `PHPSESSID=${session}`,
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
       body: buildDtParams(start, length).toString(),
     });
@@ -193,7 +219,10 @@ export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCus
       throw new Error(`Gagal memuat pelanggan RunsNet HTTP ${res.status}`);
     }
 
-    const json = (await res.json()) as { recordsFiltered: number; data: (string | null)[][] };
+    const json = (await res.json()) as {
+      recordsFiltered: number;
+      data: (string | null)[][];
+    };
     total = json.recordsFiltered || 0;
 
     if (!json.data || json.data.length === 0) break;
@@ -235,7 +264,10 @@ export async function scrapeRunsnetCustomers(session: string): Promise<ParsedCus
 /**
  * Menarik semua invoice dari RunsNet dengan pagination lengkap.
  */
-export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Promise<ParsedInvoice[]> {
+export async function scrapeRunsnetInvoices(
+  session: string,
+  maxPages = 200,
+): Promise<ParsedInvoice[]> {
   const result: ParsedInvoice[] = [];
   let start = 0;
   const length = 100;
@@ -248,10 +280,11 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Pr
     const res = await rfetch(url, {
       method: "POST",
       headers: {
-        "Cookie": `PHPSESSID=${session}`,
+        Cookie: `PHPSESSID=${session}`,
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
       body: buildDtParams(start, length).toString(),
     });
@@ -260,13 +293,17 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Pr
       throw new Error(`Gagal memuat invoice RunsNet HTTP ${res.status}`);
     }
 
-    const json = (await res.json()) as { recordsFiltered: number; data: (string | null)[][] };
+    const json = (await res.json()) as {
+      recordsFiltered: number;
+      data: (string | null)[][];
+    };
     total = json.recordsFiltered || 0;
 
     if (!json.data || json.data.length === 0) break;
 
     for (const row of json.data) {
-      const invoiceCode = stripHtml(row[1]) || extractAttr(row[0], "value") || "";
+      const invoiceCode =
+        stripHtml(row[1]) || extractAttr(row[0], "value") || "";
       if (!invoiceCode) continue;
 
       const custId = stripHtml(row[2]);
@@ -279,7 +316,11 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Pr
       const fileUrl = extractAttr(row[10], "href");
 
       const status: "unpaid" | "paid" | "partial" =
-        remainingAmount <= 0 ? "paid" : remainingAmount < amount ? "partial" : "unpaid";
+        remainingAmount <= 0
+          ? "paid"
+          : remainingAmount < amount
+            ? "partial"
+            : "unpaid";
 
       result.push({
         invoiceCode,
@@ -305,7 +346,10 @@ export async function scrapeRunsnetInvoices(session: string, maxPages = 200): Pr
 /**
  * Menarik riwayat payment dari RunsNet dengan rentang tanggal luas.
  */
-export async function scrapeRunsnetPayments(session: string, maxPages = 200): Promise<ParsedPayment[]> {
+export async function scrapeRunsnetPayments(
+  session: string,
+  maxPages = 200,
+): Promise<ParsedPayment[]> {
   const result: ParsedPayment[] = [];
   let start = 0;
   const length = 100;
@@ -318,10 +362,11 @@ export async function scrapeRunsnetPayments(session: string, maxPages = 200): Pr
     const res = await rfetch(url, {
       method: "POST",
       headers: {
-        "Cookie": `PHPSESSID=${session}`,
+        Cookie: `PHPSESSID=${session}`,
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
       body: buildDtParams(start, length).toString(),
     });
@@ -330,13 +375,17 @@ export async function scrapeRunsnetPayments(session: string, maxPages = 200): Pr
       throw new Error(`Gagal memuat payment RunsNet HTTP ${res.status}`);
     }
 
-    const json = (await res.json()) as { recordsFiltered: number; data: (string | null)[][] };
+    const json = (await res.json()) as {
+      recordsFiltered: number;
+      data: (string | null)[][];
+    };
     total = json.recordsFiltered || 0;
 
     if (!json.data || json.data.length === 0) break;
 
     for (const row of json.data) {
-      const paymentCode = stripHtml(row[1]) || extractAttr(row[0], "value") || "";
+      const paymentCode =
+        stripHtml(row[1]) || extractAttr(row[0], "value") || "";
       if (!paymentCode) continue;
 
       const invoiceCode = stripHtml(row[2]) || null;
@@ -427,7 +476,8 @@ export async function runRunsnetSync() {
         });
 
       // Sinkronkan nama dan billing status ke tabel customers utama NOC
-      const billingStatusVal = c.status.toLowerCase() === "isolir" ? "isolir" : "lunas";
+      const billingStatusVal =
+        c.status.toLowerCase() === "isolir" ? "isolir" : "lunas";
       const possibleUsernames = [c.custId, `${c.custId}@runsnet.id`];
 
       for (const uname of possibleUsernames) {
@@ -516,7 +566,9 @@ export async function runRunsnetSync() {
     // batch baru tidak dimulai setelah batas habis; sisanya tetap memakai nilai lama dan dihitung di "n dari m".
     let sessionRead = 0;
     const ordered = [...customersData].sort(
-      (a, b) => Number(b.connectivity.toLowerCase() === "terhubung") - Number(a.connectivity.toLowerCase() === "terhubung"),
+      (a, b) =>
+        Number(b.connectivity.toLowerCase() === "terhubung") -
+        Number(a.connectivity.toLowerCase() === "terhubung"),
     );
     const deadline = Date.now() + SESSION_ENRICH_BUDGET_MS;
     for (let i = 0; i < ordered.length && Date.now() < deadline; i += 6) {
@@ -527,11 +579,19 @@ export async function runRunsnetSync() {
             if (live === null || live === "expired") return;
             await db
               .update(runsnetCustomers)
-              .set({ ipAddress: live.ipAddress, macAddress: live.macAddress, ipSyncedAt: new Date() })
+              .set({
+                ipAddress: live.ipAddress,
+                macAddress: live.macAddress,
+                ipSyncedAt: new Date(),
+              })
               .where(eq(runsnetCustomers.custId, c.custId));
             sessionRead++;
           } catch (err) {
-            console.warn("[RUNSNET SYNC] IP/MAC gagal diambil", c.custId, err instanceof Error ? err.message : err);
+            console.warn(
+              "[RUNSNET SYNC] IP/MAC gagal diambil",
+              c.custId,
+              err instanceof Error ? err.message : err,
+            );
           }
         }),
       );
@@ -599,11 +659,14 @@ export async function getRunsnetOverview(selectedPeriode?: string) {
       period: sql<string>`DISTINCT substring(${runsnetInvoices.periode}, 1, 7)`,
     })
     .from(runsnetInvoices)
-    .where(sql`${runsnetInvoices.periode} is not null and length(${runsnetInvoices.periode}) >= 7`)
+    .where(
+      sql`${runsnetInvoices.periode} is not null and length(${runsnetInvoices.periode}) >= 7`,
+    )
     .orderBy(sql`substring(${runsnetInvoices.periode}, 1, 7) DESC`);
 
   const availablePeriods = periodRows.map((r) => r.period).filter(Boolean);
-  const currentPeriod = selectedPeriode && selectedPeriode !== "all" ? selectedPeriode : null;
+  const currentPeriod =
+    selectedPeriode && selectedPeriode !== "all" ? selectedPeriode : null;
 
   // 2. Data Pelanggan Keseluruhan
   const [totalCustRow] = await db
@@ -655,7 +718,9 @@ export async function getRunsnetOverview(selectedPeriode?: string) {
       count: sql<number>`count(distinct ${runsnetInvoices.custId})::int`,
     })
     .from(runsnetInvoices)
-    .where(sql`${runsnetInvoices.remainingAmount} > 0 and ${invoiceWhereClause}`);
+    .where(
+      sql`${runsnetInvoices.remainingAmount} > 0 and ${invoiceWhereClause}`,
+    );
 
   const [lastSync] = await db
     .select()
@@ -741,7 +806,9 @@ export interface RunsnetCustomerLive {
  */
 export function parseCustomerLive(html: string): RunsnetCustomerLive {
   const fields = new Map<string, string>();
-  for (const m of html.matchAll(/<b>([^<]+)<\/b>\s*<\/div>\s*<div[^>]*>\s*:?\s*([\s\S]*?)<\/div>/g)) {
+  for (const m of html.matchAll(
+    /<b>([^<]+)<\/b>\s*<\/div>\s*<div[^>]*>\s*:?\s*([\s\S]*?)<\/div>/g,
+  )) {
     fields.set(m[1].trim().toLowerCase(), stripHtml(m[2]).replace(/^:\s*/, ""));
   }
   const pick = (test: (label: string) => boolean) => {
@@ -765,21 +832,32 @@ let liveSession: { id: string; at: number } | null = null;
 const LIVE_SESSION_MS = 10 * 60_000;
 
 /** null = RunsNet tidak menjawab/ pelanggan offline; "expired" = jawaban tanpa isi detail (sesi kedaluwarsa). */
-async function fetchLiveWith(session: string, custId: string): Promise<RunsnetCustomerLive | null | "expired"> {
+async function fetchLiveWith(
+  session: string,
+  custId: string,
+): Promise<RunsnetCustomerLive | null | "expired"> {
   try {
-    const res = await fetch(`${RUNSNET_URL}/view/model/previewc/fungsi/pelanggan_detail.php?data1=${encodeURIComponent(custId)}`, {
-      method: "POST",
-      headers: {
-        Cookie: `PHPSESSID=${session}`,
-        "X-Requested-With": "XMLHttpRequest",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    const res = await fetch(
+      `${RUNSNET_URL}/view/model/previewc/fungsi/pelanggan_detail.php?data1=${encodeURIComponent(custId)}`,
+      {
+        method: "POST",
+        headers: {
+          Cookie: `PHPSESSID=${session}`,
+          "X-Requested-With": "XMLHttpRequest",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+        signal: AbortSignal.timeout(10_000),
       },
-      signal: AbortSignal.timeout(10_000),
-    });
+    );
     if (!res.ok) return null;
-    const json: { data?: { data_a?: string } } | null = await res.json().catch(() => null);
+    const json: { data?: { data_a?: string } } | null = await res
+      .json()
+      .catch(() => null);
     const html = json?.data?.data_a;
-    return typeof html === "string" && html.includes("IP Address") ? parseCustomerLive(html) : "expired";
+    return typeof html === "string" && html.includes("IP Address")
+      ? parseCustomerLive(html)
+      : "expired";
   } catch {
     return null;
   }
@@ -789,13 +867,24 @@ async function fetchLiveWith(session: string, custId: string): Promise<RunsnetCu
  * Info sesi pelanggan langsung dari RunsNet. null bila RunsNet tidak menjawab (mis. pelanggan offline: server
  * RunsNet menunggu perangkat sampai habis waktu), jadi pemanggil tampil "tidak tersedia" dan bukan galat.
  */
-export async function getRunsnetCustomerLive(custId: string): Promise<RunsnetCustomerLive | null> {
-  if (!/^[A-Za-z0-9_-]{1,32}$/.test(custId)) throw new Error("ID pelanggan tidak valid.");
+export async function getRunsnetCustomerLive(
+  custId: string,
+): Promise<RunsnetCustomerLive | null> {
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(custId))
+    throw new Error("ID pelanggan tidak valid.");
   // Hanya pelanggan yang sudah ada di database: endpoint ini bukan proxy bebas ke RunsNet dengan akun bersama.
-  const [known] = await db.select({ id: runsnetCustomers.custId }).from(runsnetCustomers).where(eq(runsnetCustomers.custId, custId)).limit(1);
+  const [known] = await db
+    .select({ id: runsnetCustomers.custId })
+    .from(runsnetCustomers)
+    .where(eq(runsnetCustomers.custId, custId))
+    .limit(1);
   if (!known) return null;
   for (const fresh of [false, true]) {
-    if (fresh || !liveSession || Date.now() - liveSession.at > LIVE_SESSION_MS) {
+    if (
+      fresh ||
+      !liveSession ||
+      Date.now() - liveSession.at > LIVE_SESSION_MS
+    ) {
       liveSession = { id: await loginRunsnet(), at: Date.now() };
     }
     const live = await fetchLiveWith(liveSession.id, custId);
@@ -836,12 +925,19 @@ export async function getRunsnetCustomerDetail(custId: string) {
 /**
  * Mengambil daftar data pelanggan RunsNet.
  */
-export async function getRunsnetCustomers(limit = 100, offset = 0, statusFilter?: string) {
+export async function getRunsnetCustomers(
+  limit = 100,
+  offset = 0,
+  statusFilter?: string,
+) {
   const query = db.select().from(runsnetCustomers);
   if (statusFilter && statusFilter !== "all") {
     query.where(eq(runsnetCustomers.status, statusFilter));
   }
-  return await query.orderBy(desc(runsnetCustomers.syncedAt)).limit(limit).offset(offset);
+  return await query
+    .orderBy(desc(runsnetCustomers.syncedAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 /**
@@ -877,7 +973,11 @@ export async function getRunsnetInvoices(
 /**
  * Mengambil daftar payment RunsNet dengan filter bulan.
  */
-export async function getRunsnetPayments(limit = 100, offset = 0, periode?: string) {
+export async function getRunsnetPayments(
+  limit = 100,
+  offset = 0,
+  periode?: string,
+) {
   let where = sql`1=1`;
 
   if (periode && periode !== "all") {
@@ -966,7 +1066,11 @@ export async function syncCustomerNamesFromBilling(options?: {
 
   let matchedCount = 0;
   let updatedCount = 0;
-  const unmatched: Array<{ id: string; pppoeUsername: string; currentName: string }> = [];
+  const unmatched: Array<{
+    id: string;
+    pppoeUsername: string;
+    currentName: string;
+  }> = [];
   const updatedCustomers: Array<{
     id: string;
     pppoeUsername: string;
@@ -985,7 +1089,8 @@ export async function syncCustomerNamesFromBilling(options?: {
 
     if (matchedRunsnet && matchedRunsnet.name) {
       matchedCount++;
-      const newStatus = matchedRunsnet.status?.toLowerCase() === "isolir" ? "isolir" : "lunas";
+      const newStatus =
+        matchedRunsnet.status?.toLowerCase() === "isolir" ? "isolir" : "lunas";
       // Yang ditampilkan ke dasbor: router dulu, billing cadangan (billing_status tetap data billing).
       const shown = effectiveBillingStatus(c.isolirRouter, newStatus);
       const isNameDiff = c.name !== matchedRunsnet.name;
@@ -1040,4 +1145,3 @@ export async function syncCustomerNamesFromBilling(options?: {
     syncedAt: new Date().toISOString(),
   };
 }
-

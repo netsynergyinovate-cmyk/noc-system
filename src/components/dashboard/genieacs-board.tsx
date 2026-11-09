@@ -5,22 +5,43 @@ import { ExternalLink, RefreshCw, Search } from "lucide-react";
 import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { CpeDevice } from "@/lib/dashboard/cpe";
 import { fetchLiveCpe } from "@/lib/dashboard/cpe-live";
 import { formatAgo } from "@/lib/dashboard/customer-live";
 import { formatDbm } from "@/lib/dashboard/format";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GenieacsDeviceDialog } from "@/components/dashboard/genieacs-device-dialog";
-import { GenieacsConfigPanel, type GenieacsConfigView, type NbiStatusView } from "@/components/dashboard/genieacs-config-panel";
+import {
+  GenieacsConfigPanel,
+  type GenieacsConfigView,
+  type NbiStatusView,
+} from "@/components/dashboard/genieacs-config-panel";
 
 const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
 function rxTone(dbm: number): string {
-  return dbm >= -24 ? "text-success" : dbm >= -27 ? "text-warning" : "text-destructive";
+  return dbm >= -24
+    ? "text-success"
+    : dbm >= -27
+      ? "text-warning"
+      : "text-destructive";
 }
 
 export function GenieacsBoard() {
@@ -34,24 +55,53 @@ export function GenieacsBoard() {
 
   // Pencocokan ke pelanggan di sini: service GenieACS hanya tahu username PPPoE.
   const customers = useDashboardStore((s) => s.customers);
-  const byPppoe = useMemo(() => new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])), [customers]);
+  const byPppoe = useMemo(
+    () =>
+      new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])),
+    [customers],
+  );
   const checkNbi = useCallback(async () => {
     try {
-      const res = await fetch("/api/cpe/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      const data: { ok?: boolean; latencyMs?: number; deviceCount?: number; message?: string; error?: string } | null = await res.json().catch(() => null);
+      const res = await fetch("/api/cpe/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data: {
+        ok?: boolean;
+        latencyMs?: number;
+        deviceCount?: number;
+        message?: string;
+        error?: string;
+      } | null = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
-        setNbi({ ok: true, latencyMs: data.latencyMs, deviceCount: data.deviceCount });
+        setNbi({
+          ok: true,
+          latencyMs: data.latencyMs,
+          deviceCount: data.deviceCount,
+        });
         return;
       }
       // Uji koneksi hanya untuk admin (403); akun lain cukup bukti bahwa daftar modem terbaca.
       if (res.status === 403) {
         const probe = await fetch("/api/cpe?limit=1");
-        setNbi(probe.ok ? { ok: true } : { ok: false, message: "GenieACS NBI tidak merespons" });
+        setNbi(
+          probe.ok
+            ? { ok: true }
+            : { ok: false, message: "GenieACS NBI tidak merespons" },
+        );
         return;
       }
-      setNbi({ ok: false, message: data?.message ?? data?.error ?? "Gagal terhubung ke NBI GenieACS" });
+      setNbi({
+        ok: false,
+        message:
+          data?.message ?? data?.error ?? "Gagal terhubung ke NBI GenieACS",
+      });
     } catch {
-      setNbi({ ok: false, message: "Tidak dapat menghubungi API lokal aplikasi" });
+      setNbi({
+        ok: false,
+        message: "Tidak dapat menghubungi API lokal aplikasi",
+      });
     }
   }, []);
 
@@ -59,7 +109,9 @@ export function GenieacsBoard() {
     setLoading(true);
     const cfg = fetch("/api/cpe/config", { cache: "no-store" })
       .then(async (r) => {
-        const body: { data?: GenieacsConfigView } | null = await r.json().catch(() => null);
+        const body: { data?: GenieacsConfigView } | null = await r
+          .json()
+          .catch(() => null);
         if (r.ok && body?.data) {
           setConfig(body.data);
           setConfigError(false);
@@ -95,7 +147,9 @@ export function GenieacsBoard() {
       (d) =>
         d.serialNumber.toLowerCase().includes(q) ||
         d.pppoeUsername.toLowerCase().includes(q) ||
-        (byPppoe.get(d.pppoeUsername.trim().toLowerCase())?.name ?? "").toLowerCase().includes(q) ||
+        (byPppoe.get(d.pppoeUsername.trim().toLowerCase())?.name ?? "")
+          .toLowerCase()
+          .includes(q) ||
         d.model.toLowerCase().includes(q) ||
         d.macAddress.toLowerCase().includes(q) ||
         d.wanIp.toLowerCase().includes(q) ||
@@ -108,10 +162,20 @@ export function GenieacsBoard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-0.5">
           <h1 className="text-2xl font-semibold tracking-tight">GenieACS</h1>
-          <p className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="genieacs-summary">
+          <p
+            className="flex items-center gap-2 text-xs text-muted-foreground"
+            data-testid="genieacs-summary"
+          >
             <span
               aria-hidden="true"
-              className={cn("size-2 rounded-full", nbi === null ? "bg-muted-foreground" : nbi.ok ? "bg-success" : "bg-destructive")}
+              className={cn(
+                "size-2 rounded-full",
+                nbi === null
+                  ? "bg-muted-foreground"
+                  : nbi.ok
+                    ? "bg-success"
+                    : "bg-destructive",
+              )}
             />
             {nbi === null
               ? "Memeriksa NBI…"
@@ -120,7 +184,15 @@ export function GenieacsBoard() {
                 : `NBI tidak terhubung: ${nbi.message ?? ""}`}
           </p>
         </div>
-        <Button type="button" variant="outline" size="icon" aria-label="Segarkan" title="Segarkan" onClick={() => void loadAll()} disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Segarkan"
+          title="Segarkan"
+          onClick={() => void loadAll()}
+          disabled={loading}
+        >
           <RefreshCw className={cn("size-4", loading && "animate-spin")} />
         </Button>
       </div>
@@ -138,21 +210,34 @@ export function GenieacsBoard() {
                 <div>
                   <CardTitle className="text-base">Modem terdaftar</CardTitle>
                   <CardDescription>
-                    Status “Melapor” = modem mengirim inform TR-069 dalam 15 menit terakhir. Itu bukan status internet.
+                    Status “Melapor” = modem mengirim inform TR-069 dalam 15
+                    menit terakhir. Itu bukan status internet.
                   </CardDescription>
                 </div>
                 <div className="relative w-64">
-                  <Search aria-hidden="true" className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                  <Input placeholder="Cari serial, nama, IP…" value={query} onChange={(e) => setQuery(e.target.value)} className="h-8 pl-8 text-xs" />
+                  <Search
+                    aria-hidden="true"
+                    className="absolute left-2.5 top-2.5 size-4 text-muted-foreground"
+                  />
+                  <Input
+                    placeholder="Cari serial, nama, IP…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="h-8 pl-8 text-xs"
+                  />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               {loading && devices.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">Mengambil daftar modem dari GenieACS…</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  Mengambil daftar modem dari GenieACS…
+                </p>
               ) : rows.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  {devices.length === 0 ? "Belum ada modem yang terdaftar di GenieACS." : "Tidak ada modem yang cocok."}
+                  {devices.length === 0
+                    ? "Belum ada modem yang terdaftar di GenieACS."
+                    : "Tidak ada modem yang cocok."}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -170,18 +255,31 @@ export function GenieacsBoard() {
                     </TableHeader>
                     <TableBody>
                       {rows.map((d) => {
-                        const customer = byPppoe.get(d.pppoeUsername.trim().toLowerCase());
+                        const customer = byPppoe.get(
+                          d.pppoeUsername.trim().toLowerCase(),
+                        );
                         const rx = d.isOnline ? d.optical.rxDbm : null;
-                        const ageText = d.lastInformAt > 0 ? formatAgo(nowSec - d.lastInformAt) : "belum pernah";
+                        const ageText =
+                          d.lastInformAt > 0
+                            ? formatAgo(nowSec - d.lastInformAt)
+                            : "belum pernah";
                         return (
                           <TableRow key={d.deviceId}>
                             <TableCell>
-                              <div className="text-sm font-medium">{customer?.name ?? "Belum terpetakan"}</div>
-                              <div className="font-mono text-[11px] text-muted-foreground">{d.pppoeUsername || "—"}</div>
+                              <div className="text-sm font-medium">
+                                {customer?.name ?? "Belum terpetakan"}
+                              </div>
+                              <div className="font-mono text-[11px] text-muted-foreground">
+                                {d.pppoeUsername || "—"}
+                              </div>
                             </TableCell>
                             <TableCell className="text-xs">
-                              {[d.manufacturer, d.model].filter(Boolean).join(" ") || "—"}
-                              <div className="font-mono text-[11px] text-muted-foreground">{d.serialNumber}</div>
+                              {[d.manufacturer, d.model]
+                                .filter(Boolean)
+                                .join(" ") || "—"}
+                              <div className="font-mono text-[11px] text-muted-foreground">
+                                {d.serialNumber}
+                              </div>
                             </TableCell>
                             <TableCell className="font-mono text-xs">
                               {d.wanIp && IPV4.test(d.wanIp) ? (
@@ -195,7 +293,10 @@ export function GenieacsBoard() {
                                     title="Buka di tab baru"
                                     className="text-muted-foreground hover:text-foreground"
                                   >
-                                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                                    <ExternalLink
+                                      className="size-3.5"
+                                      aria-hidden="true"
+                                    />
                                   </a>
                                 </span>
                               ) : (
@@ -206,29 +307,51 @@ export function GenieacsBoard() {
                               {rx != null ? (
                                 <span className={rxTone(rx)}>
                                   {formatDbm(rx)}
-                                  <div className="text-[10px] font-sans text-muted-foreground">GenieACS</div>
+                                  <div className="text-[10px] font-sans text-muted-foreground">
+                                    GenieACS
+                                  </div>
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs">{d.wifi.ssid || "—"}</TableCell>
+                            <TableCell className="text-xs">
+                              {d.wifi.ssid || "—"}
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant="outline"
-                                className={cn("text-[10px]", d.isOnline ? "border-success/40 text-success" : "border-warning/40 text-warning")}
+                                className={cn(
+                                  "text-[10px]",
+                                  d.isOnline
+                                    ? "border-success/40 text-success"
+                                    : "border-warning/40 text-warning",
+                                )}
                               >
                                 {d.isOnline ? "Melapor" : "Tidak melapor"}
                               </Badge>
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">inform {ageText}</div>
+                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                inform {ageText}
+                              </div>
                               {customer && (
-                                <div className={cn("text-[11px]", customer.isOnline ? "text-success" : "text-muted-foreground")}>
-                                  Internet {customer.isOnline ? "online" : "offline"}
+                                <div
+                                  className={cn(
+                                    "text-[11px]",
+                                    customer.isOnline
+                                      ? "text-success"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  Internet{" "}
+                                  {customer.isOnline ? "online" : "offline"}
                                 </div>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <GenieacsDeviceDialog deviceId={d.deviceId} label={d.pppoeUsername || d.serialNumber} />
+                              <GenieacsDeviceDialog
+                                deviceId={d.deviceId}
+                                label={d.pppoeUsername || d.serialNumber}
+                              />
                             </TableCell>
                           </TableRow>
                         );
@@ -241,9 +364,14 @@ export function GenieacsBoard() {
           </Card>
         </TabsContent>
 
-
         <TabsContent value="config" className="mt-4">
-          <GenieacsConfigPanel config={config} configError={configError} nbi={nbi} devices={devices} nowSec={nowSec} />
+          <GenieacsConfigPanel
+            config={config}
+            configError={configError}
+            nbi={nbi}
+            devices={devices}
+            nowSec={nowSec}
+          />
         </TabsContent>
       </Tabs>
     </div>

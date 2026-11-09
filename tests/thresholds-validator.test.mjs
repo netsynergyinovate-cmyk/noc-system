@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { updateThresholdsSchema: s } = await import(
-  "../src/validators/thresholds.ts"
-);
+const { updateThresholdsSchema: s } =
+  await import("../src/validators/thresholds.ts");
 
 test("menerima input valid dan objek kosong", () => {
   assert.ok(s.safeParse({}).success);
@@ -18,7 +17,9 @@ test("menerima input valid dan objek kosong", () => {
       offline: { forSeconds: 120 },
     }).success,
   );
-  assert.ok(s.safeParse({ offline: { threshold: null, forSeconds: 60 } }).success);
+  assert.ok(
+    s.safeParse({ offline: { threshold: null, forSeconds: 60 } }).success,
+  );
 });
 
 test("menolak angka di luar range", () => {

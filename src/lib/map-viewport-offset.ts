@@ -9,7 +9,9 @@ export interface ViewportClearanceOffset {
  * Menghitung offset piksel kamera agar titik marker tidak tertutup oleh panel detail
  * di pojok kanan bawah atau legenda bawah pada berbagai ukuran layar.
  */
-export function getPanelClearanceOffset(viewportWidth: number): ViewportClearanceOffset {
+export function getPanelClearanceOffset(
+  viewportWidth: number,
+): ViewportClearanceOffset {
   // Layar sempit/mobile: panel detail menutupi area bawah layar penuh
   if (viewportWidth < 768) {
     return { offsetX: 0, offsetY: -130 };

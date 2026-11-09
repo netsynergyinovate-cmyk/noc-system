@@ -20,7 +20,10 @@ const STATUSES = ["online", "offline", "los"];
 
 function assertInvariant(r) {
   assert.equal(r.summary.total, r.items.length);
-  assert.equal(r.summary.online + r.summary.offline + r.summary.los, r.summary.total);
+  assert.equal(
+    r.summary.online + r.summary.offline + r.summary.los,
+    r.summary.total,
+  );
 }
 
 test("mock OLT -> daftar ONU lengkap dengan status valid", async () => {
@@ -58,7 +61,10 @@ test("filter q (serial number, tanpa peduli huruf besar/kecil)", async () => {
   const r = await getOltLiveOnus("olt-1", { q: sn.toLowerCase() });
   assert.equal(r.items.length, 1);
   assert.equal(r.items[0].serialNumber, sn);
-  assert.equal((await getOltLiveOnus("olt-1", { q: "TIDAK-ADA" })).items.length, 0);
+  assert.equal(
+    (await getOltLiveOnus("olt-1", { q: "TIDAK-ADA" })).items.length,
+    0,
+  );
 });
 
 test("filter isWeak membagi himpunan tanpa sisa", async () => {
@@ -77,6 +83,9 @@ test("skema filter: koersi angka, tolak kunci asing & nilai buruk", () => {
   assert.equal(liveOnuFilterSchema.parse({ ponIndex: "5" }).ponIndex, 5);
   assert.equal(liveOnuFilterSchema.safeParse({ status: "x" }).success, false);
   assert.equal(liveOnuFilterSchema.safeParse({ ponIndex: "0" }).success, false);
-  assert.equal(liveOnuFilterSchema.safeParse({ ponIndex: "129" }).success, false);
+  assert.equal(
+    liveOnuFilterSchema.safeParse({ ponIndex: "129" }).success,
+    false,
+  );
   assert.equal(liveOnuFilterSchema.safeParse({ foo: "1" }).success, false);
 });

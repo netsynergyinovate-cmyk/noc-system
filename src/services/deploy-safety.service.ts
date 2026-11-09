@@ -110,7 +110,9 @@ export async function getRealSystemHealthChecks(): Promise<HealthCheckItem[]> {
   try {
     const client = await pool.connect();
     try {
-      const res = await client.query("SELECT COUNT(*) AS count FROM routers WHERE status = 'aktif'");
+      const res = await client.query(
+        "SELECT COUNT(*) AS count FROM routers WHERE status = 'aktif'",
+      );
       routerCount = Number(res.rows[0]?.count ?? 0);
       netLatency = Math.max(1, Date.now() - netStart);
     } finally {
@@ -180,6 +182,7 @@ export async function getRealDeploySafetyOverview(): Promise<DeploySafetyOvervie
     latestSnapshotAt: MOCK_BACKUP_SNAPSHOTS[0]?.createdAt ?? null,
     rollbackReady: true,
     lastDeploymentAt: new Date().toISOString(),
-    targetEnvironment: process.env.NODE_ENV === "production" ? "production" : "local_test",
+    targetEnvironment:
+      process.env.NODE_ENV === "production" ? "production" : "local_test",
   };
 }

@@ -6,7 +6,6 @@ const { SETUP_DATA_SOURCE_REGISTRY, SETUP_PAGE_TIPS, evaluateSetupProgress } =
   await import("../src/lib/dashboard/setup-extended.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
-
 test("evaluateSetupProgress: gerbang butuh router aktif", () => {
   const none = evaluateSetupProgress([
     { kind: "olt", status: "aktif" },

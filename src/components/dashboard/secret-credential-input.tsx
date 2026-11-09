@@ -89,7 +89,11 @@ export function SecretCredentialInput({
           disabled={!value || disabled}
           onClick={() => setShowSecret((shown) => !shown)}
         >
-          {showSecret ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+          {showSecret ? (
+            <EyeOff aria-hidden="true" />
+          ) : (
+            <Eye aria-hidden="true" />
+          )}
         </Button>
       </div>
       {hasStoredSecret && (

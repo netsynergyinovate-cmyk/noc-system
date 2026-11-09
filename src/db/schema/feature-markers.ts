@@ -19,10 +19,14 @@ export const featureMarkers = pgTable(
     userRole: varchar("user_role", { length: 50 }).notNull(),
     pagePath: varchar("page_path", { length: 255 }).notNull(),
     pageTitle: varchar("page_title", { length: 255 }).default("").notNull(),
-    elementSelector: varchar("element_selector", { length: 500 }).default("").notNull(),
+    elementSelector: varchar("element_selector", { length: 500 })
+      .default("")
+      .notNull(),
     elementText: text("element_text").default("").notNull(),
     featureName: varchar("feature_name", { length: 255 }).notNull(),
-    category: varchar("category", { length: 50 }).default("used_frequently").notNull(),
+    category: varchar("category", { length: 50 })
+      .default("used_frequently")
+      .notNull(),
     frequency: varchar("frequency", { length: 50 }).default("daily").notNull(),
     notes: text("notes").default("").notNull(),
     status: varchar("status", { length: 50 }).default("baru").notNull(),

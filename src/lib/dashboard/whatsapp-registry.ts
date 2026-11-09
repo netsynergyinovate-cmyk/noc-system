@@ -12,7 +12,10 @@ import {
 
 export const WHATSAPP_STORAGE_KEY = "whatsappConfig";
 
-export type WhatsappStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+export type WhatsappStorage = Pick<
+  Storage,
+  "getItem" | "setItem" | "removeItem"
+>;
 
 const providers: WaProvider[] = ["fonnte", "wablas", "custom"];
 
@@ -35,7 +38,8 @@ function parse(raw: string | null): WhatsappConfig {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return base;
   const o = v as Record<string, unknown>;
   if (typeof o.enabled === "boolean") base.enabled = o.enabled;
-  if (providers.includes(o.provider as WaProvider)) base.provider = o.provider as WaProvider;
+  if (providers.includes(o.provider as WaProvider))
+    base.provider = o.provider as WaProvider;
   if (typeof o.gatewayUrl === "string") base.gatewayUrl = o.gatewayUrl;
   if (typeof o.apiKey === "string") base.apiKey = o.apiKey;
   if (Array.isArray(o.recipients)) {
@@ -49,18 +53,29 @@ function parse(raw: string | null): WhatsappConfig {
             ? (r as Record<string, unknown>)
             : {};
       const type = x.type === "group" ? "group" : "personal";
-      const phone = typeof x.phone === "string" ? normalizeRecipientPhone(x.phone, type) : "";
+      const phone =
+        typeof x.phone === "string"
+          ? normalizeRecipientPhone(x.phone, type)
+          : "";
       const name = typeof x.name === "string" ? x.name.trim() : "";
       if (!phone || !name || out.some((e) => e.phone === phone)) continue;
-      let id = typeof x.id === "string" && x.id ? x.id : `rcp-${out.length + 1}`;
+      let id =
+        typeof x.id === "string" && x.id ? x.id : `rcp-${out.length + 1}`;
       while (out.some((e) => e.id === id)) id = `${id}-x`;
-      out.push({ id, name, phone, type, active: typeof x.active === "boolean" ? x.active : true });
+      out.push({
+        id,
+        name,
+        phone,
+        type,
+        active: typeof x.active === "boolean" ? x.active : true,
+      });
     }
     base.recipients = out;
   }
   if (o.minSeverity === "critical" || o.minSeverity === "warning")
     base.minSeverity = o.minSeverity;
-  if (typeof o.template === "string" && o.template.trim()) base.template = o.template;
+  if (typeof o.template === "string" && o.template.trim())
+    base.template = o.template;
   return base;
 }
 
@@ -145,7 +160,13 @@ export function createWhatsappRegistry(
   }
 
   const serverSnapshot = cloneDefault();
-  return { get, save, reset, subscribe, getServerSnapshot: () => serverSnapshot };
+  return {
+    get,
+    save,
+    reset,
+    subscribe,
+    getServerSnapshot: () => serverSnapshot,
+  };
 }
 
 const registry = createWhatsappRegistry();

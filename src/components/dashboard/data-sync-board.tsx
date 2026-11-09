@@ -33,8 +33,8 @@ import {
 } from "@/lib/dashboard/data-sync";
 
 export function DataSyncBoard() {
-  const [modules, setModules] = useState<readonly DataSyncModuleItem[]>(
-    () => getMockDataSyncModules(),
+  const [modules, setModules] = useState<readonly DataSyncModuleItem[]>(() =>
+    getMockDataSyncModules(),
   );
   const [filter, setFilter] = useState<DataSyncFilter>({
     status: "all",
@@ -91,7 +91,10 @@ export function DataSyncBoard() {
     switch (status) {
       case "in_sync":
         return (
-          <Badge variant="default" className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+          <Badge
+            variant="default"
+            className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+          >
             <CheckCircle2 className="h-3 w-3" />
             Sinkron
           </Badge>
@@ -166,7 +169,8 @@ export function DataSyncBoard() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {overview.pendingModules} tertunda · {overview.failedModules} gagal
+              {overview.pendingModules} tertunda · {overview.failedModules}{" "}
+              gagal
             </p>
           </CardContent>
         </Card>
@@ -190,11 +194,14 @@ export function DataSyncBoard() {
             <CardDescription>Sinkronisasi Terakhir</CardDescription>
             <CardTitle className="text-sm font-semibold truncate">
               {overview.lastGlobalSyncAt
-                ? new Date(overview.lastGlobalSyncAt).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  }) + " WIB"
+                ? new Date(overview.lastGlobalSyncAt).toLocaleTimeString(
+                    "id-ID",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    },
+                  ) + " WIB"
                 : "-"}
             </CardTitle>
           </CardHeader>

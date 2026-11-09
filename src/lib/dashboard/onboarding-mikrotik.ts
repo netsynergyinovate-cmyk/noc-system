@@ -57,12 +57,19 @@ export const DEFAULT_ONBOARDING_MIKROTIK: OnboardingMikrotikInput = {
  * Pisahkan "host", "host:port", atau "http(s)://host[:port]" menjadi host dan
  * (bila ada) port dan skema. Dipakai form dan server agar membaca isian sama.
  */
-export function splitHostInput(raw: string): { host: string; port?: number; useTls?: boolean } {
-  const m = /^(?:(https?):\/\/)?(\[[^\]]+\]|[^:/\s]+)(?::(\d{1,5}))?\/?$/i.exec(raw.trim());
+export function splitHostInput(raw: string): {
+  host: string;
+  port?: number;
+  useTls?: boolean;
+} {
+  const m = /^(?:(https?):\/\/)?(\[[^\]]+\]|[^:/\s]+)(?::(\d{1,5}))?\/?$/i.exec(
+    raw.trim(),
+  );
   if (!m) return { host: raw.trim() };
   const port = m[3] ? Number(m[3]) : undefined;
   // Port di luar 1-65535 jangan dibuang diam-diam: biarkan isian utuh agar validasi menolaknya.
-  if (port !== undefined && (port < 1 || port > 65535)) return { host: raw.trim() };
+  if (port !== undefined && (port < 1 || port > 65535))
+    return { host: raw.trim() };
   return {
     host: m[2],
     ...(port !== undefined && { port }),
@@ -87,7 +94,10 @@ export function validateOnboardingMikrotikInput(
   const rawHost = input.host.trim();
   if (!rawHost) {
     errors.host = "IP host atau domain router wajib diisi.";
-  } else if (/[!@#$%^&*()+=<>[\]{}|\\~`"',?]/g.test(rawHost) || /\s/.test(rawHost)) {
+  } else if (
+    /[!@#$%^&*()+=<>[\]{}|\\~`"',?]/g.test(rawHost) ||
+    /\s/.test(rawHost)
+  ) {
     errors.host = "Host memuat karakter tidak valid.";
   }
 
@@ -130,7 +140,9 @@ export function simulateOnboardingMikrotikTest(
       latencyMs: 320,
       testedAt: new Date().toISOString(),
       message: `Gagal terhubung ke host ${input.host}:${input.port} (Connection Refused / Timeout).`,
-      errors: ["Pastikan REST API aktif di /ip/service dan port terbuka di firewall."],
+      errors: [
+        "Pastikan REST API aktif di /ip/service dan port terbuka di firewall.",
+      ],
     };
   }
 

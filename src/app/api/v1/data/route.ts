@@ -18,11 +18,23 @@ export function GET(request: Request) {
     );
     if (!dataset) return Response.json({ data: externalDatasetNames });
     if (!isExternalDataset(dataset))
-      throw new ApiError(404, "UNKNOWN_DATASET", "Unknown dataset. GET /api/v1/data lists them.");
-    const { rows, hasMore } = await readExternalDataset(dataset, { limit, offset });
+      throw new ApiError(
+        404,
+        "UNKNOWN_DATASET",
+        "Unknown dataset. GET /api/v1/data lists them.",
+      );
+    const { rows, hasMore } = await readExternalDataset(dataset, {
+      limit,
+      offset,
+    });
     return Response.json({
       data: rows,
-      meta: { dataset, limit, offset, nextOffset: hasMore ? offset + limit : null },
+      meta: {
+        dataset,
+        limit,
+        offset,
+        nextOffset: hasMore ? offset + limit : null,
+      },
     });
   });
 }

@@ -9,7 +9,9 @@ async function run() {
   });
   const page = await context.newPage();
 
-  page.on("console", (msg) => console.log(`[PAGE LOG] ${msg.type()}: ${msg.text()}`));
+  page.on("console", (msg) =>
+    console.log(`[PAGE LOG] ${msg.type()}: ${msg.text()}`),
+  );
   page.on("response", (res) => {
     if (res.status() >= 400) {
       console.log(`[HTTP ERROR] ${res.status()} ${res.url()}`);
@@ -17,7 +19,9 @@ async function run() {
   });
 
   console.log("Navigating to https://app.runsnet.id/login.php...");
-  await page.goto("https://app.runsnet.id/login.php", { waitUntil: "networkidle" });
+  await page.goto("https://app.runsnet.id/login.php", {
+    waitUntil: "networkidle",
+  });
 
   console.log("Filling login form...");
   await page.fill('input[name="username"]', "netsynergyinovate@yahoo.com");
@@ -25,7 +29,9 @@ async function run() {
 
   console.log("Submitting login form...");
   await Promise.all([
-    page.waitForNavigation({ timeout: 15000 }).catch((e) => console.log("Navigation note:", e.message)),
+    page
+      .waitForNavigation({ timeout: 15000 })
+      .catch((e) => console.log("Navigation note:", e.message)),
     page.click('button[name="simpan"]'),
   ]);
 
@@ -34,7 +40,9 @@ async function run() {
 
   fs.mkdirSync("screenshots/runsnet", { recursive: true });
   await page.screenshot({ path: "screenshots/runsnet/01-after-login.png" });
-  console.log("Screenshot after login saved to screenshots/runsnet/01-after-login.png");
+  console.log(
+    "Screenshot after login saved to screenshots/runsnet/01-after-login.png",
+  );
 
   // Inspect navigation links / menu
   const menuLinks = await page.evaluate(() => {
@@ -52,10 +60,13 @@ async function run() {
   console.log("Detected Menu items (sample):");
   console.log(menuLinks.slice(0, 30));
 
-  await fs.promises.writeFile("runsnet-dashboard.html", await page.content(), "utf-8");
+  await fs.promises.writeFile(
+    "runsnet-dashboard.html",
+    await page.content(),
+    "utf-8",
+  );
 
   await browser.close();
 }
 
 run().catch(console.error);
-

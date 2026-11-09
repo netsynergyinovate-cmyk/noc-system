@@ -5,14 +5,22 @@
 
 // Nomor seri ONT: DeviceInfo.SerialNumber; bila kosong, serial dari DeviceID.
 let sn = "";
-for (const p of declare("InternetGatewayDevice.DeviceInfo.SerialNumber", {value: 1})) {
+for (const p of declare("InternetGatewayDevice.DeviceInfo.SerialNumber", {
+  value: 1,
+})) {
   const v = p.value && p.value[0];
-  if (v) { sn = String(v); break; }
-}
-if (!sn) {
-  for (const p of declare("DeviceID.SerialNumber", {value: 1})) {
-    const v = p.value && p.value[0];
-    if (v) { sn = String(v); break; }
+  if (v) {
+    sn = String(v);
+    break;
   }
 }
-return {writable: false, value: [sn, "xsd:string"]};
+if (!sn) {
+  for (const p of declare("DeviceID.SerialNumber", { value: 1 })) {
+    const v = p.value && p.value[0];
+    if (v) {
+      sn = String(v);
+      break;
+    }
+  }
+}
+return { writable: false, value: [sn, "xsd:string"] };

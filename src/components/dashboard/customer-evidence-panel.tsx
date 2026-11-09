@@ -264,7 +264,8 @@ export function CustomerEvidencePanel({
           </CardTitle>
           <CardDescription>
             Riwayat putus-nyambung dan analisis trafik jam sibuk (WIB) untuk
-            verifikasi keluhan &ldquo;ngelag&rdquo; atau &ldquo;putus-putus&rdquo;.
+            verifikasi keluhan &ldquo;ngelag&rdquo; atau
+            &ldquo;putus-putus&rdquo;.
           </CardDescription>
         </div>
 
@@ -394,7 +395,10 @@ export function CustomerEvidencePanel({
                   <span className="text-[11px] font-semibold text-foreground">
                     Gangguan nyata
                   </span>
-                  <Info className="size-3 text-muted-foreground" aria-hidden="true" />
+                  <Info
+                    className="size-3 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="mt-1 font-mono text-xl font-bold tabular-nums text-destructive">
                   {evidence.incidentSummary.real}{" "}
@@ -404,17 +408,27 @@ export function CustomerEvidencePanel({
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground border-t border-border/50 pt-1">
                   <span title="Data trafik sekitar belum ada atau insiden masih berjalan/baru selesai">
-                    Belum terverifikasi: <strong className="text-foreground">{evidence.incidentSummary.belumTerverifikasi}</strong>
+                    Belum terverifikasi:{" "}
+                    <strong className="text-foreground">
+                      {evidence.incidentSummary.belumTerverifikasi}
+                    </strong>
                   </span>
                   <span title="Trafik tetap mengalir saat tercatat down">
-                    Tidak terbukti: <strong className="text-foreground">{evidence.incidentSummary.tidakTerbukti}</strong>
+                    Tidak terbukti:{" "}
+                    <strong className="text-foreground">
+                      {evidence.incidentSummary.tidakTerbukti}
+                    </strong>
                   </span>
                   <span title="Putus &lt; 5 menit tunggal tanpa flap berulang (diabaikan)">
-                    Kedipan: <strong className="text-foreground">{evidence.incidentSummary.kedipan}</strong>
+                    Kedipan:{" "}
+                    <strong className="text-foreground">
+                      {evidence.incidentSummary.kedipan}
+                    </strong>
                   </span>
                 </div>
                 <span className="mt-1 text-[10px] text-muted-foreground">
-                  Kejadian putus tercatat: {evidence.connection.summary.outageCount} kali
+                  Kejadian putus tercatat:{" "}
+                  {evidence.connection.summary.outageCount} kali
                 </span>
               </div>
 
@@ -468,7 +482,10 @@ export function CustomerEvidencePanel({
             {/* (b) Coverage notes & batasan */}
             <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted/20 p-3 text-xs leading-relaxed">
               <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <Clock className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <Clock
+                  className="size-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <span>
                   Bukti dihitung dari {formatWibDateTime(evidence.from)} sampai{" "}
                   {formatWibDateTime(evidence.to)}
@@ -647,9 +664,7 @@ export function CustomerEvidencePanel({
                       return (
                         <TableRow
                           key={win.id}
-                          className={cn(
-                            isOffPeak && "bg-muted/15 font-normal",
-                          )}
+                          className={cn(isOffPeak && "bg-muted/15 font-normal")}
                         >
                           <TableCell className="font-medium">
                             {getWindowLabelWithSpan(win)}
@@ -782,7 +797,8 @@ export function CustomerEvidencePanel({
 
               {filteredIncidents.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                  Tidak ada gangguan dengan status &ldquo;{filterVerdict}&rdquo; pada rentang ini.
+                  Tidak ada gangguan dengan status &ldquo;{filterVerdict}&rdquo;
+                  pada rentang ini.
                 </div>
               ) : (
                 <>
@@ -791,15 +807,21 @@ export function CustomerEvidencePanel({
                       <TableHeader>
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableHead className="w-8" />
-                          <TableHead className="font-medium">Mulai (WIB)</TableHead>
-                          <TableHead className="font-medium">Selesai (WIB)</TableHead>
+                          <TableHead className="font-medium">
+                            Mulai (WIB)
+                          </TableHead>
+                          <TableHead className="font-medium">
+                            Selesai (WIB)
+                          </TableHead>
                           <TableHead className="font-medium text-right">
                             Durasi down
                           </TableHead>
                           <TableHead className="font-medium text-center">
                             Putus digabung
                           </TableHead>
-                          <TableHead className="font-medium">Jam sibuk</TableHead>
+                          <TableHead className="font-medium">
+                            Jam sibuk
+                          </TableHead>
                           <TableHead className="font-medium text-center">
                             Status
                           </TableHead>
@@ -901,8 +923,7 @@ export function CustomerEvidencePanel({
                                           }
                                           className={cn(
                                             "px-1 py-0 text-[9px]",
-                                            isStart &&
-                                              "ring-1 ring-primary/40",
+                                            isStart && "ring-1 ring-primary/40",
                                           )}
                                           title={
                                             isStart
@@ -1091,7 +1112,9 @@ export function CustomerEvidencePanel({
                             );
                           })}
                           <TableCell className="text-right font-mono tabular-nums">
-                            {formatMbpsOrDash(day.windows[OFF_PEAK_ID]?.avgDownMbps)}
+                            {formatMbpsOrDash(
+                              day.windows[OFF_PEAK_ID]?.avgDownMbps,
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

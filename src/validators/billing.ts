@@ -7,7 +7,8 @@ export const mismatchResolutionActions = [
   "manual_pair",
 ] as const;
 
-export type MismatchResolutionAction = (typeof mismatchResolutionActions)[number];
+export type MismatchResolutionAction =
+  (typeof mismatchResolutionActions)[number];
 
 export const updateMismatchSchema = z.object({
   mismatchKey: z.string().min(1, "Kunci mismatch tidak boleh kosong"),

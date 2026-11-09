@@ -8,7 +8,12 @@ import { TRAFFIC_WINDOW } from "./constants";
 import { createMockIncidentHub } from "./incident-sync";
 import { connectRealtimeWs } from "./realtime-ws";
 import { useDashboardStore } from "./store";
-import type { ConnectionStatus, DashboardCustomer, DashboardDelta, DashboardSnapshot } from "./types";
+import type {
+  ConnectionStatus,
+  DashboardCustomer,
+  DashboardDelta,
+  DashboardSnapshot,
+} from "./types";
 import type { IncidentCard } from "./incident-cards";
 import type { Telemetry } from "./telemetry";
 

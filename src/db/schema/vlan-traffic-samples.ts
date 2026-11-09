@@ -28,7 +28,10 @@ export const vlanTrafficSamples = pgTable(
       name: "vlan_traffic_samples_pkey",
       columns: [table.vlanName, table.sampledAt],
     }),
-    index("vlan_traffic_samples_vlan_time_idx").on(table.vlanName, table.sampledAt.desc()),
+    index("vlan_traffic_samples_vlan_time_idx").on(
+      table.vlanName,
+      table.sampledAt.desc(),
+    ),
     index("vlan_traffic_samples_time_idx").on(table.sampledAt.desc()),
     check(
       "vlan_traffic_samples_nonnegative_check",
@@ -36,4 +39,3 @@ export const vlanTrafficSamples = pgTable(
     ),
   ],
 );
-

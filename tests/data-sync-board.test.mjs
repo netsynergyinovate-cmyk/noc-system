@@ -9,9 +9,8 @@ const {
   filterDataSyncModules,
 } = await import("../src/lib/dashboard/data-sync.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 test("DATA_SYNC_MOCK_ENTRY terdaftar di SETUP_DATA_SOURCE_REGISTRY (Fase 4 dummy)", () => {
   assert.equal(DATA_SYNC_MOCK_ENTRY.id, "data-sync-status");

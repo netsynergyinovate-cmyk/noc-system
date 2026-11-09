@@ -32,7 +32,8 @@ export async function createNewBackupSnapshot(
 
   const pkg = await createPortableBackupPackage({
     type: pkgType,
-    label: label ?? `Cadangan ${type} (${new Date().toLocaleDateString("id-ID")})`,
+    label:
+      label ?? `Cadangan ${type} (${new Date().toLocaleDateString("id-ID")})`,
   });
 
   const typeLabel =

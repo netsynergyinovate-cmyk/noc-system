@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { withApiSession } from "@/lib/api";
-import { getCableMapData, getCablesByZoom, createCable } from "@/services/cable-map.service";
+import {
+  getCableMapData,
+  getCablesByZoom,
+  createCable,
+} from "@/services/cable-map.service";
 import { cableZoomQuerySchema } from "@/validators/cable-query";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +14,16 @@ export async function POST(request: Request) {
   return withApiSession(request, async () => {
     try {
       const body = await request.json().catch(() => null);
-      if (!body?.name || !body?.sourceId || !Array.isArray(body?.polyline) || body.polyline.length < 2) {
-        return NextResponse.json({ ok: false, error: "Data tidak lengkap." }, { status: 400 });
+      if (
+        !body?.name ||
+        !body?.sourceId ||
+        !Array.isArray(body?.polyline) ||
+        body.polyline.length < 2
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "Data tidak lengkap." },
+          { status: 400 },
+        );
       }
       const result = await createCable({
         name: String(body.name),
@@ -74,11 +86,11 @@ export async function GET(request: Request) {
       });
     } catch (error) {
       console.error("[GET_CABLE_MAP_API_ERROR]", error);
-      const msg = error instanceof Error ? error.message : "Gagal mengambil data jalur kabel jaringan";
-      return NextResponse.json(
-        { error: msg },
-        { status: 500 },
-      );
+      const msg =
+        error instanceof Error
+          ? error.message
+          : "Gagal mengambil data jalur kabel jaringan";
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
   });
 }

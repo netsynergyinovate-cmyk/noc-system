@@ -35,16 +35,21 @@ function MiniStat({
   return (
     <div className="flex items-center gap-2.5">
       <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
-        <Icon
-          className="size-3.5 text-muted-foreground"
-          aria-hidden="true"
-        />
+        <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground leading-none">{label}</p>
+        <p className="text-[11px] text-muted-foreground leading-none">
+          {label}
+        </p>
         <div className="flex items-baseline gap-1.5 mt-1">
-          <span className="text-sm font-semibold tabular-nums text-foreground">{value}</span>
-          {hint && <span className="text-[10px] text-muted-foreground/80 leading-none">({hint})</span>}
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            {value}
+          </span>
+          {hint && (
+            <span className="text-[10px] text-muted-foreground/80 leading-none">
+              ({hint})
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -74,7 +79,8 @@ export function DashboardMetricBoard() {
       if (c.billingStatus === "lunas") billingPaidCount += 1;
       else if (c.billingStatus === "isolir") billingIsolatedCount += 1;
     }
-    const last = (arr?: readonly number[]) => (arr && arr.length > 0 ? arr[arr.length - 1] : 0);
+    const last = (arr?: readonly number[]) =>
+      arr && arr.length > 0 ? arr[arr.length - 1] : 0;
     return {
       onlineCount,
       offlineCount: customers.length - onlineCount,
@@ -86,16 +92,16 @@ export function DashboardMetricBoard() {
       totalBandwidthInMbps: Math.round(last(traffic?.rx) * 10) / 10,
       totalBandwidthOutMbps: Math.round(last(traffic?.tx) * 10) / 10,
       activeAlertsCount: activeAlerts?.length ?? 0,
-      criticalAlertsCount: activeAlerts?.filter((a) => a.severity === "critical").length ?? 0,
-      warningAlertsCount: activeAlerts?.filter((a) => a.severity === "warning").length ?? 0,
+      criticalAlertsCount:
+        activeAlerts?.filter((a) => a.severity === "critical").length ?? 0,
+      warningAlertsCount:
+        activeAlerts?.filter((a) => a.severity === "warning").length ?? 0,
       billingPaidCount,
       billingIsolatedCount,
     };
   }, [customers, routers, traffic, activeAlerts]);
   const pct = (count: number) =>
-    m.totalCustomers === 0
-      ? 0
-      : Math.round((count / m.totalCustomers) * 100);
+    m.totalCustomers === 0 ? 0 : Math.round((count / m.totalCustomers) * 100);
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,7 +113,8 @@ export function DashboardMetricBoard() {
               Belum Ada Perangkat Terhubung
             </p>
             <p className="text-xs text-muted-foreground">
-              Hubungkan router MikroTik atau OLT untuk mulai mengumpulkan telemetri jaringan.
+              Hubungkan router MikroTik atau OLT untuk mulai mengumpulkan
+              telemetri jaringan.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -153,10 +160,15 @@ export function DashboardMetricBoard() {
         />
       </section>
 
-      <Card data-testid="metric-board-summary" className="py-2.5 px-4 shadow-2xs">
+      <Card
+        data-testid="metric-board-summary"
+        className="py-2.5 px-4 shadow-2xs"
+      >
         <CardContent className="p-0 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2 shrink-0">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ringkasan terpadu</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Ringkasan terpadu
+            </h2>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
             <MiniStat

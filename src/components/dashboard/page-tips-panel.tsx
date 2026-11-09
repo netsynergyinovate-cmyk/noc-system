@@ -113,7 +113,9 @@ export function PageTipsPanel({
                     key={m.name}
                     className="flex flex-col gap-0.5 rounded-lg border bg-secondary/30 p-2.5"
                   >
-                    <span className="font-semibold text-foreground">{m.name}</span>
+                    <span className="font-semibold text-foreground">
+                      {m.name}
+                    </span>
                     <span className="text-[11px] text-muted-foreground">
                       {m.description}
                     </span>

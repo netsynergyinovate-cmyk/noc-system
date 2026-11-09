@@ -58,12 +58,22 @@ test("loadDatabaseEnvConfig: override pool dan alias, dibatasi min/max", () => {
   assert.equal(c.maxConnections, 20);
   assert.equal(c.connectionTimeoutMs, 9000);
   assert.equal(c.idleTimeoutMs, 1000);
-  const hi = loadDatabaseEnvConfig({ DATABASE_URL: URL1, PG_MAX_CONNECTIONS: "999", PG_TIMEOUT_MS: "1" });
+  const hi = loadDatabaseEnvConfig({
+    DATABASE_URL: URL1,
+    PG_MAX_CONNECTIONS: "999",
+    PG_TIMEOUT_MS: "1",
+  });
   assert.equal(hi.maxConnections, 100);
   assert.equal(hi.connectionTimeoutMs, 500);
-  const lo = loadDatabaseEnvConfig({ DATABASE_URL: URL1, PG_MAX_CONNECTIONS: "0" });
+  const lo = loadDatabaseEnvConfig({
+    DATABASE_URL: URL1,
+    PG_MAX_CONNECTIONS: "0",
+  });
   assert.equal(lo.maxConnections, 1);
-  const bad = loadDatabaseEnvConfig({ DATABASE_URL: URL1, PG_MAX_CONNECTIONS: "abc" });
+  const bad = loadDatabaseEnvConfig({
+    DATABASE_URL: URL1,
+    PG_MAX_CONNECTIONS: "abc",
+  });
   assert.equal(bad.maxConnections, 5);
 });
 
@@ -73,7 +83,9 @@ test("loadDatabaseEnvConfig: null bila DATABASE_URL kosong", () => {
 });
 
 test("validateDatabaseEnvConfig: password tidak bocor", () => {
-  const v = validateDatabaseEnvConfig(loadDatabaseEnvConfig({ DATABASE_URL: URL1 }));
+  const v = validateDatabaseEnvConfig(
+    loadDatabaseEnvConfig({ DATABASE_URL: URL1 }),
+  );
   assert.equal(v.valid, true);
   assert.deepEqual(v.errors, []);
   assert.equal(v.sanitizedUrl, "postgresql://noc:***@db.local:6543/nocdb");
@@ -84,26 +96,43 @@ test("validateDatabaseEnvConfig: error bila null atau database kosong", () => {
   const n = validateDatabaseEnvConfig(null);
   assert.equal(n.valid, false);
   assert.match(n.errors[0], /DATABASE_URL/);
-  const e = validateDatabaseEnvConfig(loadDatabaseEnvConfig({ DATABASE_URL: "postgres://u:p@h" }));
+  const e = validateDatabaseEnvConfig(
+    loadDatabaseEnvConfig({ DATABASE_URL: "postgres://u:p@h" }),
+  );
   assert.equal(e.valid, false);
 });
 
 test("formatDatabaseSanitizedSummary: tanpa kredensial", () => {
-  const s = formatDatabaseSanitizedSummary(loadDatabaseEnvConfig({ DATABASE_URL: URL1 }));
-  assert.equal(s, "postgresql://noc@db.local:6543/nocdb (max: 5, timeout: 5000ms)");
+  const s = formatDatabaseSanitizedSummary(
+    loadDatabaseEnvConfig({ DATABASE_URL: URL1 }),
+  );
+  assert.equal(
+    s,
+    "postgresql://noc@db.local:6543/nocdb (max: 5, timeout: 5000ms)",
+  );
   assert.ok(!s.includes("s3cret"));
 });
 
 test("service db-config mengekspor fungsi yang benar", () => {
-  const src = readFileSync(new URL("../src/services/db-config.service.ts", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("../src/services/db-config.service.ts", import.meta.url),
+    "utf8",
+  );
   assert.match(src, /^import "server-only"/);
-  for (const fn of ["getDatabaseConfig", "getDatabaseSanitizedSummary", "validateDatabaseConfig"]) {
+  for (const fn of [
+    "getDatabaseConfig",
+    "getDatabaseSanitizedSummary",
+    "validateDatabaseConfig",
+  ]) {
     assert.match(src, new RegExp(`export function ${fn}\\(`));
   }
 });
 
 test("src/db/index.ts membaca konfigurasi pool dari env", () => {
-  const src = readFileSync(new URL("../src/db/index.ts", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("../src/db/index.ts", import.meta.url),
+    "utf8",
+  );
   assert.match(src, /loadDatabaseEnvConfig\(process\.env\)/);
   assert.match(src, /config\?\.maxConnections/);
   assert.match(src, /config\?\.connectionTimeoutMs/);

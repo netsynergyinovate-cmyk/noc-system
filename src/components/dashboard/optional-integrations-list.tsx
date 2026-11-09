@@ -55,7 +55,10 @@ export function OptionalIntegrationsList() {
 
   const overview = evaluateOptionalIntegrations(process.env, customStates);
 
-  const handleToggleStatus = async (id: string, current: OptionalIntegrationStatus) => {
+  const handleToggleStatus = async (
+    id: string,
+    current: OptionalIntegrationStatus,
+  ) => {
     const next: OptionalIntegrationStatus =
       current === "terkonfigurasi"
         ? "belum-dikonfigurasi"
@@ -91,11 +94,11 @@ export function OptionalIntegrationsList() {
               Daftar Integrasi Opsional Terpandu (Fase 6)
             </h3>
             <p className="text-xs text-muted-foreground">
-              Modul tambahan yang dapat dikonfigurasi bertahap setelah gerbang router utama aktif.
+              Modul tambahan yang dapat dikonfigurasi bertahap setelah gerbang
+              router utama aktif.
             </p>
           </div>
         </div>
-
       </div>
 
       {notice && (
@@ -111,7 +114,9 @@ export function OptionalIntegrationsList() {
       {/* Ringkasan Status */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-secondary/30 p-3.5">
-          <span className="text-xs text-muted-foreground">Total Modul Opsional</span>
+          <span className="text-xs text-muted-foreground">
+            Total Modul Opsional
+          </span>
           <p className="mt-1 text-2xl font-bold text-foreground">
             {overview.total} Layanan
           </p>
@@ -205,7 +210,9 @@ export function OptionalIntegrationsList() {
 
                 {/* Variabel Environment */}
                 <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                  <span className="font-medium text-muted-foreground">Env Kunci:</span>
+                  <span className="font-medium text-muted-foreground">
+                    Env Kunci:
+                  </span>
                   {item.requiredVars.map((v) => (
                     <code
                       key={v}

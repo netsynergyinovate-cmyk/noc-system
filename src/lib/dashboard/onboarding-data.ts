@@ -5,10 +5,7 @@ import type { DataSourceEntry } from "./setup-extended.ts";
 
 export type OnboardingStepType = "wajib" | "opsional";
 export type OnboardingStepStatus =
-  | "selesai"
-  | "sedang-berjalan"
-  | "belum-mulai"
-  | "terkunci";
+  "selesai" | "sedang-berjalan" | "belum-mulai" | "terkunci";
 
 export interface OnboardingStep {
   id: string;
@@ -195,10 +192,7 @@ export const MOCK_ONBOARDING_STEPS: readonly OnboardingStep[] = [
     status: "belum-mulai",
     targetUrl: "/app/uji-stack",
     targetLabel: "Periksa Uji Stack",
-    prerequisites: [
-      "step-router-mikrotik",
-      "step-test-router-polling",
-    ],
+    prerequisites: ["step-router-mikrotik", "step-test-router-polling"],
     prerequisiteTitles: [
       "1. Hubungkan Router MikroTik Utama",
       "2. Verifikasi Polling Resource",
@@ -258,7 +252,9 @@ export function isStepUnlocked(
   step: OnboardingStep,
   completedStepIds: ReadonlySet<string>,
 ): { unlocked: boolean; missingPrereqs: string[] } {
-  const missingPrereqs = step.prerequisites.filter((p) => !completedStepIds.has(p));
+  const missingPrereqs = step.prerequisites.filter(
+    (p) => !completedStepIds.has(p),
+  );
   return {
     unlocked: missingPrereqs.length === 0,
     missingPrereqs,
@@ -295,16 +291,20 @@ export function computeStepStatuses(
 /**
  * Memvalidasi apakah graf prasyarat langkah valid dan bebas dari siklus sirkular.
  */
-export function validatePrerequisiteGraph(
-  steps: readonly OnboardingStep[],
-): { valid: boolean; cycles: string[]; missingReferences: string[] } {
+export function validatePrerequisiteGraph(steps: readonly OnboardingStep[]): {
+  valid: boolean;
+  cycles: string[];
+  missingReferences: string[];
+} {
   const stepIds = new Set(steps.map((s) => s.id));
   const missingReferences: string[] = [];
 
   for (const s of steps) {
     for (const p of s.prerequisites) {
       if (!stepIds.has(p)) {
-        missingReferences.push(`Langkah ${s.id} merujuk prasyarat tak dikenal ${p}`);
+        missingReferences.push(
+          `Langkah ${s.id} merujuk prasyarat tak dikenal ${p}`,
+        );
       }
     }
   }
@@ -356,7 +356,9 @@ export function getMockOnboardingOverview(
 
   const requiredSteps = steps.filter((s) => s.type === "wajib");
   const requiredTotal = requiredSteps.length;
-  const requiredCompleted = requiredSteps.filter((s) => s.status === "selesai").length;
+  const requiredCompleted = requiredSteps.filter(
+    (s) => s.status === "selesai",
+  ).length;
 
   // Gerbang konfigurasi wajib lulus jika langkah router wajib sudah selesai
   const routerStep = steps.find((s) => s.id === "step-router-mikrotik");

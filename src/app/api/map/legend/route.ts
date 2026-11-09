@@ -30,10 +30,7 @@ export async function GET(request: Request) {
     } catch (err) {
       console.error("[GET MAP LEGEND METADATA ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }

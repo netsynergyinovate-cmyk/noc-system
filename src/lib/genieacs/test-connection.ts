@@ -3,7 +3,11 @@
 // dan device-connection.service.
 
 import { GenieAcsClient } from "./client.ts";
-import { getGenieacsConfig, GENIEACS_SIMULATOR_URL, sanitizeGenieacsUrl } from "./config.ts";
+import {
+  getGenieacsConfig,
+  GENIEACS_SIMULATOR_URL,
+  sanitizeGenieacsUrl,
+} from "./config.ts";
 import type { GenieAcsConfig } from "./config.ts";
 
 export interface GenieAcsTestInput {
@@ -31,14 +35,25 @@ export function buildGenieacsTestConfig(
   const username = input.username?.trim() || undefined;
   const base = getGenieacsConfig(env);
 
-  if (!host && !username && !input.password && !input.mode && input.port === undefined) {
+  if (
+    !host &&
+    !username &&
+    !input.password &&
+    !input.mode &&
+    input.port === undefined
+  ) {
     return base;
   }
   if (input.mode === "simulator") {
-    return { url: GENIEACS_SIMULATOR_URL, timeoutMs: base.timeoutMs, mode: "simulator" };
+    return {
+      url: GENIEACS_SIMULATOR_URL,
+      timeoutMs: base.timeoutMs,
+      mode: "simulator",
+    };
   }
   if (!host) {
-    if (input.mode === "real") throw new Error("Host wajib diisi untuk mode real.");
+    if (input.mode === "real")
+      throw new Error("Host wajib diisi untuk mode real.");
     return base;
   }
 
@@ -46,7 +61,8 @@ export function buildGenieacsTestConfig(
     throw new Error("Protokol harus http atau https.");
   }
   const parsed = new URL(/^https?:\/\//i.test(host) ? host : `http://${host}`);
-  if (input.port !== undefined && !parsed.port) parsed.port = String(input.port);
+  if (input.port !== undefined && !parsed.port)
+    parsed.port = String(input.port);
   const config: GenieAcsConfig = {
     url: sanitizeGenieacsUrl(parsed.toString()),
     timeoutMs: base.timeoutMs,
@@ -63,20 +79,33 @@ export function buildGenieacsTestConfig(
 /** Buang kata sandi dan header Basic dari teks error sebelum dikirim ke klien. */
 export function scrubSecrets(text: string, config: GenieAcsConfig): string {
   let out = text;
-  const secrets = [config.password, config.authHeader, config.authHeader?.replace(/^Basic /, "")];
+  const secrets = [
+    config.password,
+    config.authHeader,
+    config.authHeader?.replace(/^Basic /, ""),
+  ];
   for (const s of secrets) if (s) out = out.split(s).join("***");
   return out.replace(/\/\/[^/@\s]*:[^/@\s]*@/g, "//***@");
 }
 
 /** Hasil uji GenieACS dalam bentuk seragam DeviceTestResult (7 field wajib) + field lama. */
-export function toStandardTestResult(config: GenieAcsConfig, r: GenieAcsTestResult) {
+export function toStandardTestResult(
+  config: GenieAcsConfig,
+  r: GenieAcsTestResult,
+) {
   const timedOut = !r.ok && /timeout|timed? ?out|abort/i.test(r.error ?? "");
   const authFailed = !r.ok && /\b40[13]\b/.test(r.error ?? "");
   return {
     ...r,
     ok: r.ok,
     status: r.ok ? "connected" : timedOut ? "timeout" : "error",
-    code: r.ok ? "OK" : timedOut ? "TIMEOUT" : authFailed ? "AUTH_FAILED" : "HTTP_ERROR",
+    code: r.ok
+      ? "OK"
+      : timedOut
+        ? "TIMEOUT"
+        : authFailed
+          ? "AUTH_FAILED"
+          : "HTTP_ERROR",
     message: r.ok
       ? `Sukses: NBI GenieACS /devices menjawab (${r.deviceCount ?? 0} perangkat).`
       : (r.error ?? "Gagal terhubung ke GenieACS"),

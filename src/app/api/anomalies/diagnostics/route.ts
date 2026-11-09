@@ -1,5 +1,9 @@
 import { readJson, withApiSession } from "@/lib/api";
-import { goDiagnostics, shapeRun, type GoRun } from "@/lib/diagnostics/go-backend";
+import {
+  goDiagnostics,
+  shapeRun,
+  type GoRun,
+} from "@/lib/diagnostics/go-backend";
 import { startDiagnosticSchema } from "@/validators/diagnostics";
 
 export const runtime = "nodejs";

@@ -34,7 +34,11 @@ function Body({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q
-      ? customers.filter((c) => c.name.toLowerCase().includes(q) || c.pppoeUsername.toLowerCase().includes(q))
+      ? customers.filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.pppoeUsername.toLowerCase().includes(q),
+        )
       : customers;
     return list.slice(0, 50);
   }, [customers, query]);
@@ -42,8 +46,12 @@ function Body({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{onu.customerId ? "Ubah Pemetaan ONU" : "Petakan ONU ke Pelanggan"}</DialogTitle>
-        <DialogDescription>Pilih pelanggan yang menggunakan ONU ini.</DialogDescription>
+        <DialogTitle>
+          {onu.customerId ? "Ubah Pemetaan ONU" : "Petakan ONU ke Pelanggan"}
+        </DialogTitle>
+        <DialogDescription>
+          Pilih pelanggan yang menggunakan ONU ini.
+        </DialogDescription>
       </DialogHeader>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
@@ -53,14 +61,20 @@ function Body({
         <dd>{onu.model}</dd>
         <dt className="text-muted-foreground">OLT &amp; Port</dt>
         <dd>
-          {onu.oltName} <span className="font-mono text-xs text-muted-foreground">{onu.ponPort}</span>
+          {onu.oltName}{" "}
+          <span className="font-mono text-xs text-muted-foreground">
+            {onu.ponPort}
+          </span>
         </dd>
         <dt className="text-muted-foreground">Status saat ini</dt>
         <dd>
           {onu.customerId ? (
             <>
-              Terpetakan ke <span className="font-medium">{onu.customerName}</span>{" "}
-              <span className="font-mono text-xs text-muted-foreground">({onu.pppoeUsername})</span>
+              Terpetakan ke{" "}
+              <span className="font-medium">{onu.customerName}</span>{" "}
+              <span className="font-mono text-xs text-muted-foreground">
+                ({onu.pppoeUsername})
+              </span>
             </>
           ) : (
             "Belum dipasangkan"
@@ -70,7 +84,10 @@ function Body({
 
       <div className="space-y-2">
         <div className="relative">
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            aria-hidden="true"
+            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             type="search"
             aria-label="Cari pelanggan"
@@ -86,7 +103,9 @@ function Body({
           className="max-h-48 overflow-y-auto rounded-md border"
         >
           {matches.length === 0 ? (
-            <li className="p-3 text-center text-sm text-muted-foreground">Pelanggan tidak ditemukan.</li>
+            <li className="p-3 text-center text-sm text-muted-foreground">
+              Pelanggan tidak ditemukan.
+            </li>
           ) : (
             matches.map((c) => (
               <li key={c.id} role="option" aria-selected={c.id === selectedId}>
@@ -98,7 +117,9 @@ function Body({
                   }`}
                 >
                   <span>{c.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground">{c.pppoeUsername}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {c.pppoeUsername}
+                  </span>
                 </button>
               </li>
             ))
@@ -107,15 +128,27 @@ function Body({
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+        >
           Batal
         </Button>
         {onu.customerId !== null && (
-          <Button type="button" variant="outline" onClick={() => onSave(onu.id, null)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onSave(onu.id, null)}
+          >
             Lepas Pemetaan
           </Button>
         )}
-        <Button type="button" disabled={selectedId === null} onClick={() => selectedId && onSave(onu.id, selectedId)}>
+        <Button
+          type="button"
+          disabled={selectedId === null}
+          onClick={() => selectedId && onSave(onu.id, selectedId)}
+        >
           Simpan Pemetaan
         </Button>
       </div>
@@ -123,13 +156,25 @@ function Body({
   );
 }
 
-export function MapOnuDialog({ onu, open, onOpenChange, onSave, customers }: Props) {
+export function MapOnuDialog({
+  onu,
+  open,
+  onOpenChange,
+  onSave,
+  customers,
+}: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="map-onu-dialog">
         {/* key: reset pencarian & pilihan setiap ONU berganti */}
         {onu && (
-          <Body key={onu.id} onu={onu} onOpenChange={onOpenChange} onSave={onSave} customers={customers} />
+          <Body
+            key={onu.id}
+            onu={onu}
+            onOpenChange={onOpenChange}
+            onSave={onSave}
+            customers={customers}
+          />
         )}
       </DialogContent>
     </Dialog>

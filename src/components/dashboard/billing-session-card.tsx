@@ -141,8 +141,8 @@ export function BillingCredentialsDialog({
             <DialogHeader>
               <DialogTitle>Atur kredensial scraper</DialogTitle>
               <DialogDescription>
-                Akun yang dipakai scraper untuk masuk ke portal billing. Kosongkan
-                kata sandi untuk mempertahankan yang lama.
+                Akun yang dipakai scraper untuk masuk ke portal billing.
+                Kosongkan kata sandi untuk mempertahankan yang lama.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
@@ -253,7 +253,9 @@ export function BillingSessionCard({
             </span>
           </Item>
           <Item label="Token CSRF">
-            <span data-testid="billing-csrf">{csrfLabel[session.csrfStatus]}</span>
+            <span data-testid="billing-csrf">
+              {csrfLabel[session.csrfStatus]}
+            </span>
           </Item>
         </dl>
         <BillingCredentialsDialog session={session} />

@@ -14,10 +14,15 @@ export function GET(
 ) {
   return withApiSession(request, async () => {
     const id = idSchema.parse((await props.params).id);
-    const range = rangeSchema.parse(new URL(request.url).searchParams.get("range") ?? "live");
+    const range = rangeSchema.parse(
+      new URL(request.url).searchParams.get("range") ?? "live",
+    );
     try {
       const { detail, choices } = await MapDataAdapter.getOltDetail(id, range);
-      return Response.json({ data: detail, choices }, { headers: { "Cache-Control": "no-store" } });
+      return Response.json(
+        { data: detail, choices },
+        { headers: { "Cache-Control": "no-store" } },
+      );
     } catch (err: unknown) {
       if (err instanceof ClassifiedCentralApiError) {
         throw new ApiError(err.status, err.code, err.message);

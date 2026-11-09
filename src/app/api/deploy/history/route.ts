@@ -1,6 +1,13 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployRuns, getDeployRunDetail, cancelDeployRun } from "@/services/deploy-runner.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployRuns,
+  getDeployRunDetail,
+  cancelDeployRun,
+} from "@/services/deploy-runner.service";
 
 export const runtime = "nodejs";
 
@@ -16,7 +23,10 @@ export async function GET(request: Request) {
     if (runId) {
       const detail = await getDeployRunDetail(runId);
       if (!detail) {
-        return Response.json({ error: "Deploy run tidak ditemukan" }, { status: 404 });
+        return Response.json(
+          { error: "Deploy run tidak ditemukan" },
+          { status: 404 },
+        );
       }
       return Response.json({ data: detail });
     }
@@ -61,6 +71,9 @@ export async function POST(request: Request) {
     }
 
     await cancelDeployRun(runId);
-    return Response.json({ ok: true, message: "Deploy run berhasil ditandai gagal / dihentikan." });
+    return Response.json({
+      ok: true,
+      message: "Deploy run berhasil ditandai gagal / dihentikan.",
+    });
   });
 }

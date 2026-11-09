@@ -13,9 +13,8 @@ const {
   filterSchemaMigrations,
 } = await import("../src/lib/dashboard/schema-migrations.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
@@ -140,7 +139,9 @@ test("MOCK_FAILED_MIGRATION_SAMPLE memuat atribut galat dan terhitung di overvie
 });
 
 test("Komponen SchemaMigrationsBoard dan halaman terpasang dengan baik", () => {
-  const boardSrc = read("../src/components/dashboard/schema-migrations-board.tsx");
+  const boardSrc = read(
+    "../src/components/dashboard/schema-migrations-board.tsx",
+  );
   assert.match(boardSrc, /data-testid="schema-migrations-board"/);
   assert.match(boardSrc, /data-testid="migration-row"/);
   assert.match(boardSrc, /data-testid="migration-status-failed"/);

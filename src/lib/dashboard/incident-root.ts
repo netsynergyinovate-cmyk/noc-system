@@ -103,8 +103,16 @@ export function groupImpact(
 }
 
 // Direktori dari data tiruan.
-const mockCustomers: { id: string; name: string; routerId?: string; odpName?: string }[] = [];
-const customerById = new Map<string, { id: string; name: string; routerId?: string; odpName?: string }>();
+const mockCustomers: {
+  id: string;
+  name: string;
+  routerId?: string;
+  odpName?: string;
+}[] = [];
+const customerById = new Map<
+  string,
+  { id: string; name: string; routerId?: string; odpName?: string }
+>();
 const routerById = new Map<string, { id: string; name: string }>();
 
 export const mockDirectory: ServiceDirectory = {

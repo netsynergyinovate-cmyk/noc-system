@@ -11,12 +11,7 @@ export function GET(request: Request) {
     const includeHierarchy = url.searchParams.get("hierarchy") === "true";
     const search = url.searchParams.get("search") || undefined;
     const status = url.searchParams.get("status") as
-      | "all"
-      | "active"
-      | "inactive"
-      | "online"
-      | "offline"
-      | undefined;
+      "all" | "active" | "inactive" | "online" | "offline" | undefined;
 
     // Selalu ambil data nyata terpadu dari PostgreSQL operasional (zero-dummy compliance)
     // Menghilangkan seluruh fallback data tiruan / mock di endpoint peta

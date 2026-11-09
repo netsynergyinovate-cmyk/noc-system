@@ -14,7 +14,8 @@ const bodySchema = z.object({
 export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async () => {
     const parsed = bodySchema.safeParse(await readJson(request));
-    if (!parsed.success) throw new ApiError(422, "VALIDATION_ERROR", "Isi host dengan benar.");
+    if (!parsed.success)
+      throw new ApiError(422, "VALIDATION_ERROR", "Isi host dengan benar.");
     let url: URL;
     try {
       url = sanitizeHost(parsed.data.host, parsed.data.port);
@@ -26,5 +27,8 @@ export const POST = (request: Request) =>
     }
     const host = url.hostname.replace(/^\[|\]$/g, "");
     const port = Number(url.port || 80);
-    return NextResponse.json({ success: true, data: { host, port, sourceIp: await sourceIpFor(host, port) } });
+    return NextResponse.json({
+      success: true,
+      data: { host, port, sourceIp: await sourceIpFor(host, port) },
+    });
   });

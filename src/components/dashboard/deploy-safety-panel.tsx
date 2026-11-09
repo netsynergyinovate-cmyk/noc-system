@@ -35,10 +35,7 @@ export function DeploySafetyPanel() {
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   return (
-    <div
-      data-testid="deploy-safety-panel"
-      className="flex flex-col gap-6"
-    >
+    <div data-testid="deploy-safety-panel" className="flex flex-col gap-6">
       {/* Kartu Ringkasan Kesiapan Deploy */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 shadow-xs">
@@ -58,7 +55,8 @@ export function DeploySafetyPanel() {
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Target: <strong className="capitalize">{overview.targetEnvironment}</strong>
+            Target:{" "}
+            <strong className="capitalize">{overview.targetEnvironment}</strong>
           </p>
         </div>
 
@@ -96,7 +94,10 @@ export function DeploySafetyPanel() {
             <span className="text-xs text-muted-foreground">tersedia</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground truncate">
-            Terbaru: {overview.latestSnapshotAt ? new Date(overview.latestSnapshotAt).toLocaleTimeString("id-ID") : "-"}
+            Terbaru:{" "}
+            {overview.latestSnapshotAt
+              ? new Date(overview.latestSnapshotAt).toLocaleTimeString("id-ID")
+              : "-"}
           </p>
         </div>
 
@@ -165,9 +166,12 @@ export function DeploySafetyPanel() {
         {/* Tab 3: Pre-flight Checklist */}
         <TabsContent value="preflight" className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <h2 className="text-sm font-semibold">Pemeriksaan Pra-Rilis (Pre-Flight)</h2>
+            <h2 className="text-sm font-semibold">
+              Pemeriksaan Pra-Rilis (Pre-Flight)
+            </h2>
             <p className="text-xs text-muted-foreground">
-              Daftar verifikasi otomatis sebelum rilis baru dipromosikan ke server produksi.
+              Daftar verifikasi otomatis sebelum rilis baru dipromosikan ke
+              server produksi.
             </p>
           </div>
 

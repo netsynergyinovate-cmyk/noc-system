@@ -28,17 +28,31 @@ export const POST = (request: Request) =>
     const parsed = bodySchema.safeParse(await readJson(request));
     const target = parsed.success ? parseTarget(parsed.data.host) : null;
     if (!target || target.port !== undefined || target.useTls !== undefined) {
-      throw new ApiError(422, "INVALID_HOST", "Isi alamat IP atau nama host OLT saja, tanpa port atau http://.");
+      throw new ApiError(
+        422,
+        "INVALID_HOST",
+        "Isi alamat IP atau nama host OLT saja, tanpa port atau http://.",
+      );
     }
     if (!allowScan(session.user.id)) {
-      throw new ApiError(429, "RATE_LIMITED", "Terlalu sering mencari port. Tunggu sebentar lalu coba lagi.");
+      throw new ApiError(
+        429,
+        "RATE_LIMITED",
+        "Terlalu sering mencari port. Tunggu sebentar lalu coba lagi.",
+      );
     }
     let ip: string;
     try {
       ip = await resolveScanTarget(target.host);
     } catch (e) {
-      const msg = e instanceof Error && e.message.startsWith("Alamat") ? e.message : "Host tidak ditemukan. Pastikan alamat OLT benar.";
+      const msg =
+        e instanceof Error && e.message.startsWith("Alamat")
+          ? e.message
+          : "Host tidak ditemukan. Pastikan alamat OLT benar.";
       throw new ApiError(422, "INVALID_HOST", msg);
     }
-    return NextResponse.json({ success: true, data: await scanTelnetPorts(ip) });
+    return NextResponse.json({
+      success: true,
+      data: await scanTelnetPorts(ip),
+    });
   });

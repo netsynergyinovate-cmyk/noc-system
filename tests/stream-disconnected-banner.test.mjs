@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { streamDisconnectedView } = await import(
-  "../src/lib/dashboard/stream-disconnected-view.ts"
-);
+const { streamDisconnectedView } =
+  await import("../src/lib/dashboard/stream-disconnected-view.ts");
 
 const clock = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",

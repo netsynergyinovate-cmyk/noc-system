@@ -78,15 +78,48 @@ const ranges: { value: FlowRange; label: string }[] = [
   { value: "7d", label: "7 Hari" },
 ];
 const protocols: FlowProtocol[] = ["TCP", "UDP", "ICMP"];
-const ponPorts = ["PON-1", "PON-2", "PON-3", "PON-4", "PON-5", "PON-6", "PON-7", "PON-8"];
+const ponPorts = [
+  "PON-1",
+  "PON-2",
+  "PON-3",
+  "PON-4",
+  "PON-5",
+  "PON-6",
+  "PON-7",
+  "PON-8",
+];
 
 const sortOptions: { value: string; label: string; sort: FlowSortOption }[] = [
-  { value: "bytes-desc", label: "Ukuran Data (Terbesar)", sort: { field: "bytes", direction: "desc" } },
-  { value: "bytes-asc", label: "Ukuran Data (Terkecil)", sort: { field: "bytes", direction: "asc" } },
-  { value: "packets-desc", label: "Paket (Terbanyak)", sort: { field: "packets", direction: "desc" } },
-  { value: "throughput-desc", label: "Laju Throughput (Tertinggi)", sort: { field: "throughput", direction: "desc" } },
-  { value: "duration-desc", label: "Durasi (Terlama)", sort: { field: "duration", direction: "desc" } },
-  { value: "startedAt-desc", label: "Waktu Terbaru", sort: { field: "startedAt", direction: "desc" } },
+  {
+    value: "bytes-desc",
+    label: "Ukuran Data (Terbesar)",
+    sort: { field: "bytes", direction: "desc" },
+  },
+  {
+    value: "bytes-asc",
+    label: "Ukuran Data (Terkecil)",
+    sort: { field: "bytes", direction: "asc" },
+  },
+  {
+    value: "packets-desc",
+    label: "Paket (Terbanyak)",
+    sort: { field: "packets", direction: "desc" },
+  },
+  {
+    value: "throughput-desc",
+    label: "Laju Throughput (Tertinggi)",
+    sort: { field: "throughput", direction: "desc" },
+  },
+  {
+    value: "duration-desc",
+    label: "Durasi (Terlama)",
+    sort: { field: "duration", direction: "desc" },
+  },
+  {
+    value: "startedAt-desc",
+    label: "Waktu Terbaru",
+    sort: { field: "startedAt", direction: "desc" },
+  },
 ];
 
 const selectClass =
@@ -124,10 +157,17 @@ export function NetflowBoard() {
   const isDemoMode = useSession(selectPreviewEnabled);
   const storeRouters = useDashboardStore((state) => state.routers);
   const storeCustomers = useDashboardStore((state) => state.customers);
-  const [selectedCaptureCustomer, setSelectedCaptureCustomer] = useState<{ id: string; name: string; pppoeUsername: string } | null>(null);
+  const [selectedCaptureCustomer, setSelectedCaptureCustomer] = useState<{
+    id: string;
+    name: string;
+    pppoeUsername: string;
+  } | null>(null);
   const routersList = storeRouters;
 
-  const loadFn = useCallback((now: number) => loadNetflow(now, isDemoMode), [isDemoMode]);
+  const loadFn = useCallback(
+    (now: number) => loadNetflow(now, isDemoMode),
+    [isDemoMode],
+  );
   const { state, failed, retry } = usePolled(loadFn, REFRESH_MS);
   const [filter, setFilter] = useState<FlowFilter>(defaultFlowFilter);
   const [sortValue, setSortValue] = useState(sortOptions[0].value);
@@ -136,9 +176,15 @@ export function NetflowBoard() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [goSummary, setGoSummary] = useState<GoSummaryData | null>(null);
-  const [goTopTalkers, setGoTopTalkers] = useState<GoTopTalkerRecord[] | null>(null);
-  const [goCustomerUsage, setGoCustomerUsage] = useState<GoCustomerUsageRecord[] | null>(null);
-  const [goExporters, setGoExporters] = useState<GoExporterStatus[] | null>(null);
+  const [goTopTalkers, setGoTopTalkers] = useState<GoTopTalkerRecord[] | null>(
+    null,
+  );
+  const [goCustomerUsage, setGoCustomerUsage] = useState<
+    GoCustomerUsageRecord[] | null
+  >(null);
+  const [goExporters, setGoExporters] = useState<GoExporterStatus[] | null>(
+    null,
+  );
   const [goHealth, setGoHealth] = useState<ReceiverHealth | null>(null);
   const searchParams = useSearchParams();
   const linkedAlertId = searchParams.get("alertId");
@@ -156,15 +202,25 @@ export function NetflowBoard() {
 
       Promise.allSettled([
         backendGet<GoSummaryData>("/api/v1/netflow/summary", params),
-        backendGet<GoTopTalkerRecord[]>("/api/v1/netflow/top-talkers", { ...params, limit: 10 }),
-        backendGet<GoCustomerUsageRecord[]>("/api/v1/netflow/customers/usage", { range: "30d", limit: 50 }),
+        backendGet<GoTopTalkerRecord[]>("/api/v1/netflow/top-talkers", {
+          ...params,
+          limit: 10,
+        }),
+        backendGet<GoCustomerUsageRecord[]>("/api/v1/netflow/customers/usage", {
+          range: "30d",
+          limit: 50,
+        }),
         backendGet<GoExporterStatus[]>("/api/v1/netflow/exporters"),
         backendGet<ReceiverHealth>("/api/v1/netflow/status"),
       ])
         .then(([resSum, resTalkers, resUsage, resExp, resHealth]) => {
           if (cancelled) return;
-          if (resSum.status === "fulfilled" && resSum.value) setGoSummary(resSum.value);
-          if (resTalkers.status === "fulfilled" && Array.isArray(resTalkers.value))
+          if (resSum.status === "fulfilled" && resSum.value)
+            setGoSummary(resSum.value);
+          if (
+            resTalkers.status === "fulfilled" &&
+            Array.isArray(resTalkers.value)
+          )
             setGoTopTalkers(resTalkers.value);
           if (resUsage.status === "fulfilled" && Array.isArray(resUsage.value))
             setGoCustomerUsage(resUsage.value);
@@ -187,7 +243,9 @@ export function NetflowBoard() {
   const set = (patch: Partial<FlowFilter>) =>
     setFilter((current) => ({ ...current, ...patch }));
 
-  const sort = (sortOptions.find((o) => o.value === sortValue) ?? sortOptions[0]).sort;
+  const sort = (
+    sortOptions.find((o) => o.value === sortValue) ?? sortOptions[0]
+  ).sort;
 
   const hasActiveFilter =
     filter.routerId !== null ||
@@ -223,19 +281,19 @@ export function NetflowBoard() {
               : null,
           }
         : isDemoMode
-        ? summarizeDirectionalNetflow(flows, filter.range)
-        : {
-            rxBytes: 0,
-            txBytes: 0,
-            rxBps: 0,
-            txBps: 0,
-            totalBytes: 0,
-            totalBps: 0,
-            uplinkCapacityBps: null,
-            uplinkUsagePercent: null,
-            uplinkRemainingBps: null,
-            busyInterface: null,
-          },
+          ? summarizeDirectionalNetflow(flows, filter.range)
+          : {
+              rxBytes: 0,
+              txBytes: 0,
+              rxBps: 0,
+              txBps: 0,
+              totalBytes: 0,
+              totalBps: 0,
+              uplinkCapacityBps: null,
+              uplinkUsagePercent: null,
+              uplinkRemainingBps: null,
+              busyInterface: null,
+            },
       top: sorted.slice(0, 30),
       allFlows: sorted,
       count: flows.length,
@@ -260,13 +318,15 @@ export function NetflowBoard() {
               flowCount: t.flows,
             }))
           : isDemoMode
-          ? getTopTalkers(flows, 10)
-          : [],
+            ? getTopTalkers(flows, 10)
+            : [],
       customerFup:
         goCustomerUsage && goCustomerUsage.length > 0
           ? goCustomerUsage.map((u) => {
               const statusVal: FupStatus =
-                u.status === "exceeded" || u.status === "warning" || u.status === "normal"
+                u.status === "exceeded" ||
+                u.status === "warning" ||
+                u.status === "normal"
                   ? u.status
                   : "untracked";
               return {
@@ -287,16 +347,28 @@ export function NetflowBoard() {
               };
             })
           : isDemoMode
-          ? buildCustomerFupUsage(flows)
-          : [],
+            ? buildCustomerFupUsage(flows)
+            : [],
       exporters:
         goExporters && goExporters.length > 0
-          ? goExporters.map((e) => mapGoExporterToView(e, routersList, state.now * 1000))
+          ? goExporters.map((e) =>
+              mapGoExporterToView(e, routersList, state.now * 1000),
+            )
           : isDemoMode
-          ? getMockExporters(flows)
-          : [],
+            ? getMockExporters(flows)
+            : [],
     };
-  }, [state, filter, sort, goSummary, goTopTalkers, goCustomerUsage, goExporters, isDemoMode, routersList]);
+  }, [
+    state,
+    filter,
+    sort,
+    goSummary,
+    goTopTalkers,
+    goCustomerUsage,
+    goExporters,
+    isDemoMode,
+    routersList,
+  ]);
 
   const filteredFupList = useMemo(() => {
     if (!view) return [];
@@ -348,7 +420,8 @@ export function NetflowBoard() {
             className="h-auto w-fit gap-1.5 whitespace-normal py-1 text-xs font-normal border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
             data-testid="netflow-mock-badge"
           >
-            Data Tiruan NetFlow (Fase 2) · Wajib beralih ke Kolektor UDP 2055 nyata di Fase 5
+            Data Tiruan NetFlow (Fase 2) · Wajib beralih ke Kolektor UDP 2055
+            nyata di Fase 5
           </Badge>
         )}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -375,11 +448,19 @@ export function NetflowBoard() {
               </span>
               {linkedFrom && (
                 <span className="text-muted-foreground">
-                  · Sekitar {new Date(Number(linkedFrom) * 1000).toLocaleTimeString("id-ID")}
+                  · Sekitar{" "}
+                  {new Date(Number(linkedFrom) * 1000).toLocaleTimeString(
+                    "id-ID",
+                  )}
                 </span>
               )}
             </div>
-            <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs font-medium">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs font-medium"
+            >
               <Link href="/app/alert">
                 <span>Kembali ke Alert</span>
                 <span aria-hidden="true">&rarr;</span>
@@ -391,9 +472,13 @@ export function NetflowBoard() {
 
       {failed && (
         <Card className="border-destructive/50 bg-destructive/10 p-3">
-          <div className="flex items-center justify-between text-sm text-destructive" role="alert">
+          <div
+            className="flex items-center justify-between text-sm text-destructive"
+            role="alert"
+          >
             <span>
-              Gagal memuat NetFlow. Nilai metrik ditampilkan sebagai &quot;tidak dapat dibaca&quot;.
+              Gagal memuat NetFlow. Nilai metrik ditampilkan sebagai &quot;tidak
+              dapat dibaca&quot;.
             </span>
             <button
               type="button"
@@ -466,7 +551,9 @@ export function NetflowBoard() {
               className={selectClass}
               value={filter.protocol ?? ""}
               onChange={(e) =>
-                set({ protocol: (e.target.value || null) as FlowProtocol | null })
+                set({
+                  protocol: (e.target.value || null) as FlowProtocol | null,
+                })
               }
               aria-label="Saring menurut Protokol"
             >
@@ -581,30 +668,48 @@ export function NetflowBoard() {
         className="w-full gap-4"
       >
         <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5 sm:w-auto h-auto p-1 bg-muted/60">
-          <TabsTrigger value="ringkasan" className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm">
+          <TabsTrigger
+            value="ringkasan"
+            className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm"
+          >
             <Activity className="size-4" />
             <span>Ringkasan & Tren</span>
           </TabsTrigger>
-          <TabsTrigger value="sesi" className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm">
+          <TabsTrigger
+            value="sesi"
+            className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm"
+          >
             <ArrowDownUp className="size-4" />
             <span>Sesi & Percakapan</span>
           </TabsTrigger>
-          <TabsTrigger value="fup" className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm">
+          <TabsTrigger
+            value="fup"
+            className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm"
+          >
             <Users className="size-4" />
             <span>Pemakaian Pelanggan (FUP)</span>
           </TabsTrigger>
-          <TabsTrigger value="capture" className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm">
+          <TabsTrigger
+            value="capture"
+            className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm"
+          >
             <Radio className="size-4" />
             <span>Tangkapan Akses (Torch)</span>
           </TabsTrigger>
-          <TabsTrigger value="exporter" className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm">
+          <TabsTrigger
+            value="exporter"
+            className="flex items-center gap-1.5 py-1.5 text-xs sm:text-sm"
+          >
             <Server className="size-4" />
             <span>Exporter & Kesehatan</span>
           </TabsTrigger>
         </TabsList>
 
         {!view ? (
-          <p className="text-sm text-muted-foreground py-8 text-center" role="status">
+          <p
+            className="text-sm text-muted-foreground py-8 text-center"
+            role="status"
+          >
             Memuat aliran NetFlow…
           </p>
         ) : state && state.data.length === 0 ? (
@@ -663,12 +768,16 @@ export function NetflowBoard() {
                 <Kpi
                   label="Pemakaian Uplink"
                   value={
-                    failed || !view || view.directional.uplinkUsagePercent === null
+                    failed ||
+                    !view ||
+                    view.directional.uplinkUsagePercent === null
                       ? "tidak dapat dibaca"
                       : `${view.directional.uplinkUsagePercent.toFixed(1)}% kapasitas`
                   }
                   sub={
-                    failed || !view || view.directional.uplinkRemainingBps === null
+                    failed ||
+                    !view ||
+                    view.directional.uplinkRemainingBps === null
                       ? "Kapasitas uplink belum diset"
                       : `Sisa ruang: ${formatBandwidthRate(view.directional.uplinkRemainingBps)}`
                   }
@@ -691,7 +800,9 @@ export function NetflowBoard() {
               {/* Secondary Metric Bar */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Card className="p-3 shadow-2xs">
-                  <div className="text-xs text-muted-foreground">Total Throughput Aliran</div>
+                  <div className="text-xs text-muted-foreground">
+                    Total Throughput Aliran
+                  </div>
                   <div className="mt-1 text-base font-semibold tabular-nums">
                     {failed || !view
                       ? "tidak dapat dibaca"
@@ -699,7 +810,9 @@ export function NetflowBoard() {
                   </div>
                 </Card>
                 <Card className="p-3 shadow-2xs">
-                  <div className="text-xs text-muted-foreground">Laju Aliran (Flows/detik)</div>
+                  <div className="text-xs text-muted-foreground">
+                    Laju Aliran (Flows/detik)
+                  </div>
                   <div className="mt-1 text-base font-semibold tabular-nums">
                     {failed || !view
                       ? "tidak dapat dibaca"
@@ -707,19 +820,23 @@ export function NetflowBoard() {
                   </div>
                 </Card>
                 <Card className="p-3 shadow-2xs">
-                  <div className="text-xs text-muted-foreground">Protokol Teratas</div>
+                  <div className="text-xs text-muted-foreground">
+                    Protokol Teratas
+                  </div>
                   <div className="mt-1 text-base font-semibold">
                     {failed || !view
                       ? "tidak dapat dibaca"
-                      : view.summary.topProtocol ?? "-"}
+                      : (view.summary.topProtocol ?? "-")}
                   </div>
                 </Card>
                 <Card className="p-3 shadow-2xs">
-                  <div className="text-xs text-muted-foreground">Aplikasi Teratas</div>
+                  <div className="text-xs text-muted-foreground">
+                    Aplikasi Teratas
+                  </div>
                   <div className="mt-1 text-base font-semibold">
                     {failed || !view
                       ? "tidak dapat dibaca"
-                      : view.summary.topApp ?? "-"}
+                      : (view.summary.topApp ?? "-")}
                   </div>
                 </Card>
               </div>
@@ -727,9 +844,12 @@ export function NetflowBoard() {
               {/* Trend Chart */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2 text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Tren Throughput Aliran Trafik</span>
+                  <span className="font-semibold text-foreground">
+                    Tren Throughput Aliran Trafik
+                  </span>
                   <span className="text-xs">
-                    Rentang {ranges.find((r) => r.value === filter.range)?.label}
+                    Rentang{" "}
+                    {ranges.find((r) => r.value === filter.range)?.label}
                   </span>
                 </CardHeader>
                 <CardContent>
@@ -745,7 +865,8 @@ export function NetflowBoard() {
                       Top Talkers (Pemakai Trafik Terbesar)
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Daftar pengguna dengan throughput tertinggi yang dipetakan ke pelanggan
+                      Daftar pengguna dengan throughput tertinggi yang dipetakan
+                      ke pelanggan
                     </p>
                   </div>
                   <Badge variant="outline" className="text-xs">
@@ -758,23 +879,38 @@ export function NetflowBoard() {
                       <thead className="border-b text-xs text-muted-foreground uppercase">
                         <tr>
                           <th className="py-2 pr-3 font-medium">No</th>
-                          <th className="py-2 pr-3 font-medium">Pelanggan / Identitas</th>
+                          <th className="py-2 pr-3 font-medium">
+                            Pelanggan / Identitas
+                          </th>
                           <th className="py-2 pr-3 font-medium">IP Klien</th>
-                          <th className="py-2 pr-3 font-medium">Aplikasi Dominan</th>
-                          <th className="py-2 pr-3 text-right font-medium">Volume Data</th>
-                          <th className="py-2 pr-3 text-right font-medium">Throughput</th>
+                          <th className="py-2 pr-3 font-medium">
+                            Aplikasi Dominan
+                          </th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Volume Data
+                          </th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Throughput
+                          </th>
                           <th className="py-2 text-right font-medium">Sesi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {view.topTalkers.map((talker, idx) => (
-                          <tr key={talker.ip} className="hover:bg-muted/40 transition-colors">
-                            <td className="py-2.5 pr-3 tabular-nums">{idx + 1}</td>
+                          <tr
+                            key={talker.ip}
+                            className="hover:bg-muted/40 transition-colors"
+                          >
+                            <td className="py-2.5 pr-3 tabular-nums">
+                              {idx + 1}
+                            </td>
                             <td className="py-2.5 pr-3">
                               {talker.customer ? (
                                 <div className="flex flex-col">
                                   <span className="font-medium text-foreground">
-                                    {isDemoMode ? talker.customer.name : `Pelanggan #${idx + 1}`}
+                                    {isDemoMode
+                                      ? talker.customer.name
+                                      : `Pelanggan #${idx + 1}`}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
                                     {isDemoMode
@@ -784,7 +920,9 @@ export function NetflowBoard() {
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-mono text-xs">{talker.ip}</span>
+                                  <span className="font-mono text-xs">
+                                    {talker.ip}
+                                  </span>
                                   <Badge
                                     variant="outline"
                                     className="border-dashed text-[10px] text-amber-700 dark:text-amber-300"
@@ -794,7 +932,9 @@ export function NetflowBoard() {
                                 </div>
                               )}
                             </td>
-                            <td className="py-2.5 pr-3 font-mono text-xs">{talker.ip}</td>
+                            <td className="py-2.5 pr-3 font-mono text-xs">
+                              {talker.ip}
+                            </td>
                             <td className="py-2.5 pr-3">
                               <span className="rounded border px-1.5 py-0.5 text-xs font-medium">
                                 {talker.topApp}
@@ -831,8 +971,9 @@ export function NetflowBoard() {
                       Daftar Sesi & Percakapan Jaringan
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Menampilkan {view.top.length} flow dari total {formatInteger(view.count)} flow aktif
-                      ({sortOptions.find((o) => o.value === sortValue)?.label})
+                      Menampilkan {view.top.length} flow dari total{" "}
+                      {formatInteger(view.count)} flow aktif (
+                      {sortOptions.find((o) => o.value === sortValue)?.label})
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -872,7 +1013,9 @@ export function NetflowBoard() {
                         <thead className="border-b text-xs text-muted-foreground uppercase">
                           <tr>
                             <th className="py-2 pr-3 font-medium">No</th>
-                            <th className="py-2 pr-3 font-medium">Waktu Mulai</th>
+                            <th className="py-2 pr-3 font-medium">
+                              Waktu Mulai
+                            </th>
                             <th className="py-2 pr-3 font-medium">Router</th>
                             <th className="py-2 pr-3 font-medium">
                               IP Asal:Port → IP Tujuan:Port
@@ -901,19 +1044,27 @@ export function NetflowBoard() {
                                 className="hover:bg-muted/30 transition-colors"
                                 data-testid="netflow-row"
                               >
-                                <td className="py-2 pr-3 tabular-nums">{i + 1}</td>
-                                <td className="py-2 pr-3 whitespace-nowrap">
-                                  {formatAlertTime(f.startedAt, state?.now ?? f.startedAt)}
+                                <td className="py-2 pr-3 tabular-nums">
+                                  {i + 1}
                                 </td>
                                 <td className="py-2 pr-3 whitespace-nowrap">
-                                  <div className="font-medium text-xs">{f.routerName}</div>
+                                  {formatAlertTime(
+                                    f.startedAt,
+                                    state?.now ?? f.startedAt,
+                                  )}
+                                </td>
+                                <td className="py-2 pr-3 whitespace-nowrap">
+                                  <div className="font-medium text-xs">
+                                    {f.routerName}
+                                  </div>
                                   <div className="text-[10px] text-muted-foreground">
                                     {flowPonPort(f.srcIp)}
                                   </div>
                                 </td>
                                 <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
                                   <div className="text-foreground">
-                                    {f.srcIp}:{f.srcPort} → {f.dstIp}:{f.dstPort}
+                                    {f.srcIp}:{f.srcPort} → {f.dstIp}:
+                                    {f.dstPort}
                                   </div>
                                   {cust ? (
                                     <div className="text-[11px] font-sans text-muted-foreground truncate max-w-[200px]">
@@ -955,7 +1106,9 @@ export function NetflowBoard() {
                                   className="py-2 pr-3 text-right tabular-nums"
                                   title={`Durasi ${formatTrafficDuration(f.durationSec)}`}
                                 >
-                                  {formatBandwidthRate((f.bytes * 8) / Math.max(1, f.durationSec))}
+                                  {formatBandwidthRate(
+                                    (f.bytes * 8) / Math.max(1, f.durationSec),
+                                  )}
                                 </td>
                                 <td className="py-2">
                                   <button
@@ -991,7 +1144,8 @@ export function NetflowBoard() {
                       Pemakaian Pelanggan (Bahan Penilaian FUP)
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Akumulasi kuota trafik nyata per pelanggan sesuai jendela retensi (7 hari) dengan deteksi lonjakan puncak
+                      Akumulasi kuota trafik nyata per pelanggan sesuai jendela
+                      retensi (7 hari) dengan deteksi lonjakan puncak
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1023,26 +1177,49 @@ export function NetflowBoard() {
                       <thead className="border-b text-xs text-muted-foreground uppercase">
                         <tr>
                           <th className="py-2 pr-3 font-medium">No</th>
-                          <th className="py-2 pr-3 font-medium">Nama Pelanggan</th>
-                          <th className="py-2 pr-3 font-medium">Username PPPoE</th>
+                          <th className="py-2 pr-3 font-medium">
+                            Nama Pelanggan
+                          </th>
+                          <th className="py-2 pr-3 font-medium">
+                            Username PPPoE
+                          </th>
                           <th className="py-2 pr-3 font-medium">Paket</th>
                           <th className="py-2 pr-3 font-medium">Lokasi ODP</th>
-                          <th className="py-2 pr-3 text-right font-medium">Unduh (Rx)</th>
-                          <th className="py-2 pr-3 text-right font-medium">Unggah (Tx)</th>
-                          <th className="py-2 pr-3 text-right font-medium">Total Pemakaian</th>
-                          <th className="py-2 pr-3 text-right font-medium">Puncak Lonjakan</th>
-                          <th className="py-2 text-right font-medium">Status FUP</th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Unduh (Rx)
+                          </th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Unggah (Tx)
+                          </th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Total Pemakaian
+                          </th>
+                          <th className="py-2 pr-3 text-right font-medium">
+                            Puncak Lonjakan
+                          </th>
+                          <th className="py-2 text-right font-medium">
+                            Status FUP
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {filteredFupList.slice(0, 25).map((cust, i) => (
-                          <tr key={cust.customerId} className="hover:bg-muted/30 transition-colors">
-                            <td className="py-2.5 pr-3 tabular-nums">{i + 1}</td>
+                          <tr
+                            key={cust.customerId}
+                            className="hover:bg-muted/30 transition-colors"
+                          >
+                            <td className="py-2.5 pr-3 tabular-nums">
+                              {i + 1}
+                            </td>
                             <td className="py-2.5 pr-3 font-medium text-foreground">
-                              {isDemoMode ? cust.customerName : `Pelanggan #${i + 1}`}
+                              {isDemoMode
+                                ? cust.customerName
+                                : `Pelanggan #${i + 1}`}
                             </td>
                             <td className="py-2.5 pr-3 font-mono text-xs text-muted-foreground">
-                              {isDemoMode ? cust.pppoeUsername : `${cust.pppoeUsername.slice(0, 3)}***`}
+                              {isDemoMode
+                                ? cust.pppoeUsername
+                                : `${cust.pppoeUsername.slice(0, 3)}***`}
                             </td>
                             <td className="py-2.5 pr-3">
                               <Badge variant="secondary" className="text-xs">
@@ -1065,42 +1242,62 @@ export function NetflowBoard() {
                               {cust.peakThroughputBps !== null ? (
                                 <>
                                   <div className="font-medium text-foreground">
-                                    {formatBandwidthRate(cust.peakThroughputBps)}
+                                    {formatBandwidthRate(
+                                      cust.peakThroughputBps,
+                                    )}
                                   </div>
                                   {cust.peakTime && (
                                     <div className="text-[10px] text-muted-foreground">
-                                      {formatAlertTime(cust.peakTime, state?.now ?? cust.peakTime)}
+                                      {formatAlertTime(
+                                        cust.peakTime,
+                                        state?.now ?? cust.peakTime,
+                                      )}
                                     </div>
                                   )}
                                 </>
                               ) : (
-                                <span className="text-muted-foreground">tidak dapat dibaca</span>
+                                <span className="text-muted-foreground">
+                                  tidak dapat dibaca
+                                </span>
                               )}
                             </td>
                             <td className="py-2.5 text-right">
                               {cust.fupPercent !== null ? (
                                 cust.status === "exceeded" ? (
-                                  <Badge variant="destructive" className="text-[11px]">
-                                    Melewati Batas ({cust.fupPercent.toFixed(0)}%)
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-[11px]"
+                                  >
+                                    Melewati Batas ({cust.fupPercent.toFixed(0)}
+                                    %)
                                   </Badge>
                                 ) : cust.status === "warning" ? (
                                   <Badge
                                     variant="outline"
                                     className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px]"
                                   >
-                                    Mendekati Batas ({cust.fupPercent.toFixed(0)}%)
+                                    Mendekati Batas (
+                                    {cust.fupPercent.toFixed(0)}%)
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[11px] text-emerald-600 dark:text-emerald-400"
+                                  >
                                     Aman ({cust.fupPercent.toFixed(0)}%)
                                   </Badge>
                                 )
                               ) : cust.status === "untracked" ? (
-                                <Badge variant="outline" className="text-[11px] text-muted-foreground">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] text-muted-foreground"
+                                >
                                   Belum dipantau
                                 </Badge>
                               ) : (
-                                <span className="text-xs text-muted-foreground">Tidak ditetapkan</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Tidak ditetapkan
+                                </span>
                               )}
                             </td>
                           </tr>
@@ -1127,21 +1324,31 @@ export function NetflowBoard() {
                         Status Kesehatan Penerima NetFlow Backend Go
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        Penerima multi-format v5, v9, dan IPFIX pada port UDP 2055 dengan pelacak router aktif
+                        Penerima multi-format v5, v9, dan IPFIX pada port UDP
+                        2055 dengan pelacak router aktif
                       </p>
                     </div>
                     {goHealth ? (
                       goHealth.active ? (
-                        <Badge variant="outline" className="w-fit text-emerald-600 dark:text-emerald-400">
+                        <Badge
+                          variant="outline"
+                          className="w-fit text-emerald-600 dark:text-emerald-400"
+                        >
                           Penerima Aktif · Port {goHealth.addr}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="w-fit border-amber-500/50 text-amber-700 dark:text-amber-300">
+                        <Badge
+                          variant="outline"
+                          className="w-fit border-amber-500/50 text-amber-700 dark:text-amber-300"
+                        >
                           Penerima Tidak Aktif
                         </Badge>
                       )
                     ) : (
-                      <Badge variant="outline" className="w-fit text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="w-fit text-muted-foreground"
+                      >
                         Menghubungkan ke Backend...
                       </Badge>
                     )}
@@ -1150,21 +1357,31 @@ export function NetflowBoard() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="rounded-md border p-3">
-                      <div className="text-xs text-muted-foreground">Port & Multi-Format</div>
-                      <div className="mt-1 text-base font-semibold">UDP 2055 (v5, v9, IPFIX)</div>
+                      <div className="text-xs text-muted-foreground">
+                        Port & Multi-Format
+                      </div>
+                      <div className="mt-1 text-base font-semibold">
+                        UDP 2055 (v5, v9, IPFIX)
+                      </div>
                       <div className="text-[11px] text-muted-foreground">
                         Penerimaan paket aliran UDP non-blocking
                       </div>
                     </div>
                     <div className="rounded-md border p-3">
-                      <div className="text-xs text-muted-foreground">Pengali Sampling Rate</div>
-                      <div className="mt-1 text-base font-semibold text-primary">Terapkan Otomatis</div>
+                      <div className="text-xs text-muted-foreground">
+                        Pengali Sampling Rate
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-primary">
+                        Terapkan Otomatis
+                      </div>
                       <div className="text-[11px] text-muted-foreground">
                         Angka trafik diskalakan sebelum masuk analisis
                       </div>
                     </div>
                     <div className="rounded-md border p-3">
-                      <div className="text-xs text-muted-foreground">Ketahanan Aliran</div>
+                      <div className="text-xs text-muted-foreground">
+                        Ketahanan Aliran
+                      </div>
                       <div className="mt-1 text-base font-semibold">
                         {goHealth
                           ? goHealth.totalPackets > 0
@@ -1189,21 +1406,42 @@ export function NetflowBoard() {
                       <table className="w-full text-left text-sm">
                         <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                           <tr>
-                            <th className="py-2 px-3 font-medium">Nama Router</th>
+                            <th className="py-2 px-3 font-medium">
+                              Nama Router
+                            </th>
                             <th className="py-2 px-3 font-medium">Host IP</th>
-                            <th className="py-2 px-3 font-medium">Format NetFlow</th>
-                            <th className="py-2 px-3 font-medium">Sampling Rate</th>
-                            <th className="py-2 px-3 text-right font-medium">Total Flow</th>
-                            <th className="py-2 px-3 text-right font-medium">Total Paket</th>
-                            <th className="py-2 px-3 font-medium">Terakhir Terlihat</th>
-                            <th className="py-2 px-3 text-right font-medium">Status</th>
+                            <th className="py-2 px-3 font-medium">
+                              Format NetFlow
+                            </th>
+                            <th className="py-2 px-3 font-medium">
+                              Sampling Rate
+                            </th>
+                            <th className="py-2 px-3 text-right font-medium">
+                              Total Flow
+                            </th>
+                            <th className="py-2 px-3 text-right font-medium">
+                              Total Paket
+                            </th>
+                            <th className="py-2 px-3 font-medium">
+                              Terakhir Terlihat
+                            </th>
+                            <th className="py-2 px-3 text-right font-medium">
+                              Status
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {view.exporters.map((exp) => (
-                            <tr key={exp.routerId} className="hover:bg-muted/20">
-                              <td className="py-2.5 px-3 font-medium">{exp.routerName}</td>
-                              <td className="py-2.5 px-3 font-mono text-xs">{exp.host}</td>
+                            <tr
+                              key={exp.routerId}
+                              className="hover:bg-muted/20"
+                            >
+                              <td className="py-2.5 px-3 font-medium">
+                                {exp.routerName}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-xs">
+                                {exp.host}
+                              </td>
                               <td className="py-2.5 px-3">
                                 <Badge variant="secondary" className="text-xs">
                                   {exp.version}
@@ -1259,7 +1497,8 @@ export function NetflowBoard() {
                         Pilih Pelanggan untuk Perekaman Torch
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        Pilih akun pelanggan untuk menjalankan inspeksi aliran paket real-time (15s / 30s / 1m) langsung ke router
+                        Pilih akun pelanggan untuk menjalankan inspeksi aliran
+                        paket real-time (15s / 30s / 1m) langsung ke router
                       </p>
                     </div>
                   </div>
@@ -1270,7 +1509,9 @@ export function NetflowBoard() {
                       className={selectClass}
                       value={selectedCaptureCustomer?.id ?? ""}
                       onChange={(e) => {
-                        const found = (storeCustomers || []).find((c) => c.id === e.target.value);
+                        const found = (storeCustomers || []).find(
+                          (c) => c.id === e.target.value,
+                        );
                         if (found) {
                           setSelectedCaptureCustomer({
                             id: found.id,
@@ -1284,13 +1525,16 @@ export function NetflowBoard() {
                       <option value="">-- Pilih Akun Pelanggan PPPoE --</option>
                       {(storeCustomers || []).map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.isOnline ? "🟢 Online — " : "⚪ Offline — "} {c.name} ({c.pppoeUsername})
+                          {c.isOnline ? "🟢 Online — " : "⚪ Offline — "}{" "}
+                          {c.name} ({c.pppoeUsername})
                         </option>
                       ))}
                     </select>
                     {selectedCaptureCustomer && (
                       <span className="text-xs text-muted-foreground">
-                        Terpilih: <strong>{selectedCaptureCustomer.name}</strong> ({selectedCaptureCustomer.pppoeUsername})
+                        Terpilih:{" "}
+                        <strong>{selectedCaptureCustomer.name}</strong> (
+                        {selectedCaptureCustomer.pppoeUsername})
                       </span>
                     )}
                   </div>
@@ -1305,7 +1549,8 @@ export function NetflowBoard() {
                 />
               ) : (
                 <Card className="p-8 text-center text-xs text-muted-foreground border-dashed">
-                  Silakan pilih salah satu pelanggan di atas untuk memulai sesi inspeksi aliran paket (Torch).
+                  Silakan pilih salah satu pelanggan di atas untuk memulai sesi
+                  inspeksi aliran paket (Torch).
                 </Card>
               )}
             </TabsContent>

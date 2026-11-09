@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import * as z from "zod";
 import { withApiPermission, readJson, ApiError } from "@/lib/api";
 import { withAudit } from "@/lib/audit-middleware";
-import { applyProvision, previewProvision } from "@/services/router-provision.service";
+import {
+  applyProvision,
+  previewProvision,
+} from "@/services/router-provision.service";
 import { connectionSchema, failure, toConn } from "../_shared";
 
 export const runtime = "nodejs";
@@ -27,24 +30,39 @@ const bodySchema = z
   })
   .strict();
 
-const PLAN_ERRORS = /^(Sertifikat www-ssl wajib|Akun REST tidak boleh|Layanan .* tidak ditemukan)/;
+const PLAN_ERRORS =
+  /^(Sertifikat www-ssl wajib|Akun REST tidak boleh|Layanan .* tidak ditemukan)/;
 
 // Body (berisi kata sandi) tidak pernah ikut audit: target hanya URL.
 export const POST = (request: Request) => {
-  const audit = withAudit({ action: "router-provisioned", getTarget: () => request.url });
+  const audit = withAudit({
+    action: "router-provisioned",
+    getTarget: () => request.url,
+  });
   return withApiPermission(
     request,
     { router: ["manage"] },
     audit(request, async () => {
       const parsed = bodySchema.safeParse(await readJson(request));
-      if (!parsed.success) throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
+      if (!parsed.success)
+        throw new ApiError(
+          422,
+          "VALIDATION_ERROR",
+          "Check the supplied fields.",
+        );
       const { connection, options, dryRun } = parsed.data;
       if (options.restUser === connection.username) {
-        throw new ApiError(422, "VALIDATION_ERROR", "Akun REST tidak boleh sama dengan akun admin yang dipakai masuk");
+        throw new ApiError(
+          422,
+          "VALIDATION_ERROR",
+          "Akun REST tidak boleh sama dengan akun admin yang dipakai masuk",
+        );
       }
       const conn = toConn(connection);
       try {
-        const data = dryRun ? await previewProvision(conn, options) : await applyProvision(conn, options);
+        const data = dryRun
+          ? await previewProvision(conn, options)
+          : await applyProvision(conn, options);
         return NextResponse.json({ success: true, data });
       } catch (err) {
         const f = await failure(err, connection, conn);

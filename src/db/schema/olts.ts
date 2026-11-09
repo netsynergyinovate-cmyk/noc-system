@@ -1,4 +1,11 @@
-import { check, doublePrecision, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  doublePrecision,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { DeviceStatus } from "./routers";
 
@@ -25,7 +32,9 @@ export const olts = pgTable(
     // Saat pengikatan TR-069 otomatis pertama dinyalakan untuk OLT ini. Hanya ONU
     // yang pertama terlihat sesudah saat ini yang diikat (mode "new"); ONU yang
     // sudah ada tidak disentuh.
-    tr069AutobindSince: timestamp("tr069_autobind_since", { withTimezone: true }),
+    tr069AutobindSince: timestamp("tr069_autobind_since", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

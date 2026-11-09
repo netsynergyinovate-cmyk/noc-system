@@ -74,7 +74,9 @@ export async function createTestRouter(
   const id = overrides.id ?? randomUUID();
   const suffix = id.slice(0, 8);
   const name = overrides.name ?? `e2e-router-${suffix}`;
-  const host = overrides.host ?? `192.0.2.${Math.floor(Math.random() * 200) + 10}:${Math.floor(Math.random() * 8000) + 1000}`;
+  const host =
+    overrides.host ??
+    `192.0.2.${Math.floor(Math.random() * 200) + 10}:${Math.floor(Math.random() * 8000) + 1000}`;
 
   await pool.query(
     `INSERT INTO routers (id, name, host, username, password_enc, status, created_at)
@@ -106,7 +108,12 @@ export async function createTestAlert(
   pool: Pool,
   routerId: string,
   customerId: string,
-  overrides: { id?: string; ticketNotes?: string | null; type?: string; severity?: string } = {},
+  overrides: {
+    id?: string;
+    ticketNotes?: string | null;
+    type?: string;
+    severity?: string;
+  } = {},
 ): Promise<SeededAlert> {
   const id = overrides.id ?? randomUUID();
   const type = overrides.type ?? "offline";
@@ -140,7 +147,9 @@ export async function createTestDiagnosticRun(
   const verdictDetail = input.verdictDetail ?? null;
   const isSharedFault = input.isSharedFault ?? false;
   const verdictScope = input.verdictScope ?? (isSharedFault ? "shared" : "own");
-  const verdictRoot = input.verdictRoot ? JSON.stringify(input.verdictRoot) : null;
+  const verdictRoot = input.verdictRoot
+    ? JSON.stringify(input.verdictRoot)
+    : null;
   const verdictSecondary = JSON.stringify(input.verdictSecondary ?? []);
   const verdictHeld = input.verdictHeld ?? false;
   const createdAt = input.createdAt ?? new Date();
@@ -207,8 +216,12 @@ export async function createTestDiagnosticRun(
 
 export async function cleanupDiagnosticTestData(pool: Pool): Promise<void> {
   // Cascades to diagnostic_findings via FK on run_id
-  await pool.query(`DELETE FROM diagnostic_runs WHERE trigger_reason LIKE 'e2e_%'`);
+  await pool.query(
+    `DELETE FROM diagnostic_runs WHERE trigger_reason LIKE 'e2e_%'`,
+  );
   await pool.query(`DELETE FROM alerts WHERE message LIKE 'e2e_%'`);
   await pool.query(`DELETE FROM customers WHERE pppoe_username LIKE 'e2e_%'`);
-  await pool.query(`DELETE FROM routers WHERE host LIKE '192.0.2.%' OR name LIKE 'e2e-%'`);
+  await pool.query(
+    `DELETE FROM routers WHERE host LIKE '192.0.2.%' OR name LIKE 'e2e-%'`,
+  );
 }

@@ -47,7 +47,10 @@ export function POST(request: Request) {
 
     return Response.json(
       { data: marker },
-      { status: 201, headers: { Location: `/api/feature-markers/${marker.id}` } },
+      {
+        status: 201,
+        headers: { Location: `/api/feature-markers/${marker.id}` },
+      },
     );
   });
 }

@@ -32,10 +32,7 @@ export async function GET(
     } catch (err) {
       console.error("[GET CUSTOMER LOCATION ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
@@ -76,10 +73,7 @@ export async function PATCH(
       console.error("[PATCH CUSTOMER LOCATION ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
       const status = msg.includes("tidak ditemukan") ? 404 : 500;
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status });
     }
   });
 }
@@ -117,4 +111,3 @@ export async function POST(
 ) {
   return PATCH(request, context);
 }
-

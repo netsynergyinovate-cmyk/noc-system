@@ -29,19 +29,25 @@ export async function GET(request: Request) {
       url.searchParams.get("dataset") ||
       url.searchParams.get("type") ||
       "alerts-history";
-    const dataset = VALID_DATASETS[rawDataset.toLowerCase()] || "alerts-history";
+    const dataset =
+      VALID_DATASETS[rawDataset.toLowerCase()] || "alerts-history";
 
     const rawFormat = url.searchParams.get("format") || "csv";
-    const format: ExportFormat = rawFormat.toLowerCase() === "json" ? "json" : "csv";
+    const format: ExportFormat =
+      rawFormat.toLowerCase() === "json" ? "json" : "csv";
 
     const rawRange = url.searchParams.get("range") || "7d";
     const validRanges: ExportTimeRange[] = ["24h", "7d", "30d", "all"];
-    const range: ExportTimeRange = validRanges.includes(rawRange as ExportTimeRange)
+    const range: ExportTimeRange = validRanges.includes(
+      rawRange as ExportTimeRange,
+    )
       ? (rawRange as ExportTimeRange)
       : "7d";
 
     const nowSecParam = url.searchParams.get("nowSec");
-    const nowSec = nowSecParam ? parseInt(nowSecParam, 10) : Math.floor(Date.now() / 1000);
+    const nowSec = nowSecParam
+      ? parseInt(nowSecParam, 10)
+      : Math.floor(Date.now() / 1000);
 
     const isDownload = url.searchParams.get("download") !== "false";
     const allowEmpty = url.searchParams.get("allowEmpty") !== "false";
@@ -121,14 +127,18 @@ export async function POST(request: Request) {
     }
 
     const rawDataset = String(body.dataset || body.type || "alerts-history");
-    const dataset = VALID_DATASETS[rawDataset.toLowerCase()] || "alerts-history";
+    const dataset =
+      VALID_DATASETS[rawDataset.toLowerCase()] || "alerts-history";
 
     const rawFormat = String(body.format || "csv");
-    const format: ExportFormat = rawFormat.toLowerCase() === "json" ? "json" : "csv";
+    const format: ExportFormat =
+      rawFormat.toLowerCase() === "json" ? "json" : "csv";
 
     const rawRange = String(body.range || "7d");
     const validRanges: ExportTimeRange[] = ["24h", "7d", "30d", "all"];
-    const range: ExportTimeRange = validRanges.includes(rawRange as ExportTimeRange)
+    const range: ExportTimeRange = validRanges.includes(
+      rawRange as ExportTimeRange,
+    )
       ? (rawRange as ExportTimeRange)
       : "7d";
 

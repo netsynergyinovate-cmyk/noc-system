@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { refreshReducer, initialRefresh, mockRefresh } = await import("../src/lib/dashboard/refresh-state.ts");
+const { refreshReducer, initialRefresh, mockRefresh } =
+  await import("../src/lib/dashboard/refresh-state.ts");
 
 test("idle -> loading -> success", () => {
   let s = refreshReducer(initialRefresh, { type: "start" });
@@ -26,8 +27,14 @@ test("start saat loading tidak memicu refresh ganda", () => {
 });
 
 test("success/fail di luar loading diabaikan", () => {
-  assert.equal(refreshReducer(initialRefresh, { type: "success" }), initialRefresh);
-  assert.equal(refreshReducer(initialRefresh, { type: "fail", message: "x" }), initialRefresh);
+  assert.equal(
+    refreshReducer(initialRefresh, { type: "success" }),
+    initialRefresh,
+  );
+  assert.equal(
+    refreshReducer(initialRefresh, { type: "fail", message: "x" }),
+    initialRefresh,
+  );
 });
 
 test("mockRefresh resolve saat online, reject saat offline", async () => {

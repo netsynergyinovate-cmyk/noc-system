@@ -8,7 +8,15 @@ globalThis.window = new EventTarget();
 window.addEventListener("noc:alert-events", () => events.push(1));
 const { useDashboardStore } = await import("../src/lib/dashboard/store.ts");
 
-const tele = (ids) => ({ routers: [], olts: [], vlans: [], pons: [], criticalOptics: [], latency: {}, alerts: { total: ids.length, items: ids.map((id) => ({ id })) } });
+const tele = (ids) => ({
+  routers: [],
+  olts: [],
+  vlans: [],
+  pons: [],
+  criticalOptics: [],
+  latency: {},
+  alerts: { total: ids.length, items: ids.map((id) => ({ id })) },
+});
 
 test("daftar alert aktif berganti memicu pemuatan ulang; telemetri sama tidak", () => {
   const { applyTelemetry } = useDashboardStore.getState();

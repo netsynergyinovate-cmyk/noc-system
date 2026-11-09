@@ -11,7 +11,11 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import type { HierarchyTreeNode, MapCustomer, MapDevice } from "@/services/map/types";
+import type {
+  HierarchyTreeNode,
+  MapCustomer,
+  MapDevice,
+} from "@/services/map/types";
 import { capacityUse } from "@/services/map/loss-budget";
 import { DEVICE_TYPE_STYLE } from "./map-style";
 
@@ -41,7 +45,11 @@ const customerNode = (c: MapCustomer): HierarchyTreeNode => ({
 });
 
 // Ringkasan masalah jaringan dari data peta: pelanggan loss/isolir/offline dan ODP/ODC penuh
-export function AlertWidget({ customers, devices, onSelect }: AlertWidgetProps) {
+export function AlertWidget({
+  customers,
+  devices,
+  onSelect,
+}: AlertWidgetProps) {
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<string | null>(null);
 
@@ -70,10 +78,34 @@ export function AlertWidget({ customers, devices, onSelect }: AlertWidgetProps) 
   });
 
   const groups: Group[] = [
-    { key: "loss", label: "Loss / Gangguan", color: "#ef4444", Icon: XCircle, items: byStatus("loss") },
-    { key: "isolir", label: "Isolir", color: "#eab308", Icon: Ban, items: byStatus("isolir") },
-    { key: "offline", label: "Offline", color: "#71717a", Icon: WifiOff, items: byStatus("offline") },
-    { key: "full", label: "ODP/ODC penuh", color: "#ef4444", Icon: AlertTriangle, items: full },
+    {
+      key: "loss",
+      label: "Loss / Gangguan",
+      color: "#ef4444",
+      Icon: XCircle,
+      items: byStatus("loss"),
+    },
+    {
+      key: "isolir",
+      label: "Isolir",
+      color: "#eab308",
+      Icon: Ban,
+      items: byStatus("isolir"),
+    },
+    {
+      key: "offline",
+      label: "Offline",
+      color: "#71717a",
+      Icon: WifiOff,
+      items: byStatus("offline"),
+    },
+    {
+      key: "full",
+      label: "ODP/ODC penuh",
+      color: "#ef4444",
+      Icon: AlertTriangle,
+      items: full,
+    },
   ];
   const total = groups.reduce((sum, g) => sum + g.items.length, 0);
   const urgent = groups[0].items.length + groups[3].items.length;
@@ -87,7 +119,9 @@ export function AlertWidget({ customers, devices, onSelect }: AlertWidgetProps) 
         className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/50 transition-colors"
       >
         <span className="flex items-center gap-1.5 font-semibold text-foreground">
-          <BellRing className={`w-3.5 h-3.5 ${urgent ? "text-rose-500" : "text-primary"}`} />
+          <BellRing
+            className={`w-3.5 h-3.5 ${urgent ? "text-rose-500" : "text-primary"}`}
+          />
           Peringatan Jaringan
           {total > 0 && (
             <span
@@ -118,10 +152,18 @@ export function AlertWidget({ customers, devices, onSelect }: AlertWidgetProps) 
                   className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-muted disabled:opacity-50 disabled:hover:bg-transparent"
                 >
                   <span className="flex items-center gap-1.5 text-foreground">
-                    <g.Icon aria-hidden className="w-3.5 h-3.5" style={{ color: g.color }} strokeWidth={2.5} />
+                    <g.Icon
+                      aria-hidden
+                      className="w-3.5 h-3.5"
+                      style={{ color: g.color }}
+                      strokeWidth={2.5}
+                    />
                     {g.label}
                   </span>
-                  <span className="font-mono font-bold" style={{ color: g.items.length ? g.color : undefined }}>
+                  <span
+                    className="font-mono font-bold"
+                    style={{ color: g.items.length ? g.color : undefined }}
+                  >
                     {g.items.length}
                   </span>
                 </button>
@@ -134,8 +176,12 @@ export function AlertWidget({ customers, devices, onSelect }: AlertWidgetProps) 
                           onClick={() => onSelect(node)}
                           className="w-full text-left px-2 py-1 rounded hover:bg-muted"
                         >
-                          <span className="block text-foreground truncate">{node.name}</span>
-                          <span className="block font-mono text-[10px] text-muted-foreground truncate">{sub}</span>
+                          <span className="block text-foreground truncate">
+                            {node.name}
+                          </span>
+                          <span className="block font-mono text-[10px] text-muted-foreground truncate">
+                            {sub}
+                          </span>
                         </button>
                       </li>
                     ))}

@@ -33,7 +33,8 @@ const fakeDb = {
       where: (w) => ((select.conds = w), c),
       orderBy: () => c,
       limit: () => c,
-      then: (res, rej) => Promise.resolve(stored ? [stored] : []).then(res, rej),
+      then: (res, rej) =>
+        Promise.resolve(stored ? [stored] : []).then(res, rej),
     };
     return c;
   },
@@ -43,17 +44,35 @@ globalThis.starterPostgresDb = fakeDb;
 register();
 const schema = await import("../src/db/schema/device-test-results.ts");
 const svc = await import("../src/services/device-test-results.service.ts");
-const index = readFileSync(new URL("../src/db/schema/index.ts", import.meta.url), "utf8");
+const index = readFileSync(
+  new URL("../src/db/schema/index.ts", import.meta.url),
+  "utf8",
+);
 
 const cols = (cfg) => Object.fromEntries(cfg.columns.map((c) => [c.name, c]));
 
 test("konstanta tipe, status, dan kode", () => {
-  assert.deepEqual([...schema.deviceTypes], ["mikrotik", "olt", "genieacs", "billing"]);
-  assert.deepEqual([...schema.deviceTestStatuses], ["connected", "disconnected", "error", "timeout", "untested"]);
-  assert.deepEqual([...schema.deviceTestCodes], [
-    "OK", "TIMEOUT", "AUTH_FAILED", "CONNECTION_REFUSED",
-    "INVALID_PORT", "INVALID_HOST", "HTTP_ERROR", "DNS_ERROR",
-  ]);
+  assert.deepEqual(
+    [...schema.deviceTypes],
+    ["mikrotik", "olt", "genieacs", "billing"],
+  );
+  assert.deepEqual(
+    [...schema.deviceTestStatuses],
+    ["connected", "disconnected", "error", "timeout", "untested"],
+  );
+  assert.deepEqual(
+    [...schema.deviceTestCodes],
+    [
+      "OK",
+      "TIMEOUT",
+      "AUTH_FAILED",
+      "CONNECTION_REFUSED",
+      "INVALID_PORT",
+      "INVALID_HOST",
+      "HTTP_ERROR",
+      "DNS_ERROR",
+    ],
+  );
   assert.match(index, /export \* from "\.\/device-test-results";/);
 });
 
@@ -62,15 +81,49 @@ test("device_test_results: kolom dan nullability", () => {
   assert.equal(cfg.name, "device_test_results");
   const c = cols(cfg);
   assert.deepEqual(Object.keys(c), [
-    "id", "device_type", "device_id", "host", "port", "username", "endpoint_tested",
-    "mode", "status", "code", "status_code", "message", "latency_ms", "ok",
-    "details", "tested_by", "tested_at", "created_at",
+    "id",
+    "device_type",
+    "device_id",
+    "host",
+    "port",
+    "username",
+    "endpoint_tested",
+    "mode",
+    "status",
+    "code",
+    "status_code",
+    "message",
+    "latency_ms",
+    "ok",
+    "details",
+    "tested_by",
+    "tested_at",
+    "created_at",
   ]);
   assert.ok(c.id.primary && c.id.hasDefault);
-  for (const n of ["device_type", "host", "port", "endpoint_tested", "mode", "status", "code", "message", "ok", "details", "tested_at", "created_at"]) {
+  for (const n of [
+    "device_type",
+    "host",
+    "port",
+    "endpoint_tested",
+    "mode",
+    "status",
+    "code",
+    "message",
+    "ok",
+    "details",
+    "tested_at",
+    "created_at",
+  ]) {
     assert.ok(c[n].notNull, n);
   }
-  for (const n of ["device_id", "username", "status_code", "latency_ms", "tested_by"]) {
+  for (const n of [
+    "device_id",
+    "username",
+    "status_code",
+    "latency_ms",
+    "tested_by",
+  ]) {
     assert.ok(!c[n].notNull, n);
   }
   assert.equal(c.mode.default, "real");
@@ -83,15 +136,23 @@ test("device_test_results: kolom dan nullability", () => {
 
 test("device_test_results: index dan check", () => {
   const cfg = getTableConfig(schema.deviceTestResults);
-  const idx = Object.fromEntries(cfg.indexes.map((i) => [i.config.name, i.config]));
+  const idx = Object.fromEntries(
+    cfg.indexes.map((i) => [i.config.name, i.config]),
+  );
   assert.deepEqual(Object.keys(idx).sort(), [
     "device_test_results_device_id_idx",
     "device_test_results_host_idx",
     "device_test_results_tested_at_idx",
     "device_test_results_type_idx",
   ]);
-  assert.deepEqual(idx.device_test_results_type_idx.columns.map((x) => x.name), ["device_type", "tested_at"]);
-  assert.equal(idx.device_test_results_type_idx.columns[1].indexConfig.order, "desc");
+  assert.deepEqual(
+    idx.device_test_results_type_idx.columns.map((x) => x.name),
+    ["device_type", "tested_at"],
+  );
+  assert.equal(
+    idx.device_test_results_type_idx.columns[1].indexConfig.order,
+    "desc",
+  );
   assert.deepEqual(cfg.checks.map((x) => x.name).sort(), [
     "device_test_results_code_check",
     "device_test_results_status_check",
@@ -101,7 +162,9 @@ test("device_test_results: index dan check", () => {
 
 test("migrasi 0013 memuat CREATE TABLE device_test_results", () => {
   const dir = new URL("../drizzle/", import.meta.url);
-  const files = readdirSync(dir).filter((f) => f.startsWith("0013_") && f.endsWith(".sql"));
+  const files = readdirSync(dir).filter(
+    (f) => f.startsWith("0013_") && f.endsWith(".sql"),
+  );
   assert.equal(files.length, 1);
   const sql = readFileSync(new URL(files[0], dir), "utf8");
   assert.match(sql, /CREATE TABLE "device_test_results"/);
@@ -146,8 +209,15 @@ test("saveDeviceTestResult menyimpan dan mengembalikan baris, tanpa password", a
 
 test("saveDeviceTestResult: default null untuk opsional", async () => {
   await svc.saveDeviceTestResult({
-    type: "olt", mode: "simulator", ok: false, status: "timeout", code: "TIMEOUT",
-    message: "x", latencyMs: null, endpointTested: "-", timestamp: 1,
+    type: "olt",
+    mode: "simulator",
+    ok: false,
+    status: "timeout",
+    code: "TIMEOUT",
+    message: "x",
+    latencyMs: null,
+    endpointTested: "-",
+    timestamp: 1,
   });
   const v = inserted.at(-1);
   assert.equal(v.testedBy, null);
@@ -158,10 +228,16 @@ test("saveDeviceTestResult: default null untuk opsional", async () => {
 });
 
 test("getLatestDeviceTestResult: baris terbaru atau null", async () => {
-  assert.equal(await svc.getLatestDeviceTestResult("mikrotik", "10.0.0.1"), stored);
+  assert.equal(
+    await svc.getLatestDeviceTestResult("mikrotik", "10.0.0.1"),
+    stored,
+  );
   const saved = stored;
   stored = null;
   assert.equal(await svc.getLatestDeviceTestResult("olt"), null);
   stored = saved;
-  assert.equal(await svc.getLatestDeviceTestResult("olt", undefined, "id"), stored);
+  assert.equal(
+    await svc.getLatestDeviceTestResult("olt", undefined, "id"),
+    stored,
+  );
 });

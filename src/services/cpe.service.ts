@@ -30,7 +30,10 @@ async function resolveDeviceId(
   return simulator ? `sim-${customer.pppoeUsername}` : null;
 }
 
-export async function enqueueChangeWifi(input: ChangeWifiInput, userId: string) {
+export async function enqueueChangeWifi(
+  input: ChangeWifiInput,
+  userId: string,
+) {
   // Masukkan dua task: satu untuk ganti SSID, satu untuk password
   const tasks = await db.transaction(async (tx) => {
     const inserted = await tx
@@ -69,17 +72,39 @@ export async function enqueueChangeWifi(input: ChangeWifiInput, userId: string) 
   try {
     const config = getGenieacsConfig();
     const client = new GenieAcsClient(config);
-    const deviceId = await resolveDeviceId(client, config.mode === "simulator", input.customerId);
+    const deviceId = await resolveDeviceId(
+      client,
+      config.mode === "simulator",
+      input.customerId,
+    );
     if (deviceId) {
       // Jalur baru: tulis ke parameter sandi yang benar-benar ada di modem itu, lalu baca ulang
       // untuk memastikan. Null (simulator) atau modem tanpa parameter sandi yang dikenal: jalur lama.
       try {
-        const changed = await changeDeviceWifi(deviceId, { index: 1, ssid: input.ssid, password: input.password }, client);
-        ok = changed !== null ? true : (await client.setWifiConfig(deviceId, { ssid: input.ssid, password: input.password })).ok;
+        const changed = await changeDeviceWifi(
+          deviceId,
+          { index: 1, ssid: input.ssid, password: input.password },
+          client,
+        );
+        ok =
+          changed !== null
+            ? true
+            : (
+                await client.setWifiConfig(deviceId, {
+                  ssid: input.ssid,
+                  password: input.password,
+                })
+              ).ok;
       } catch (err) {
-        ok = err instanceof WifiChangeError
-          ? (await client.setWifiConfig(deviceId, { ssid: input.ssid, password: input.password })).ok
-          : false;
+        ok =
+          err instanceof WifiChangeError
+            ? (
+                await client.setWifiConfig(deviceId, {
+                  ssid: input.ssid,
+                  password: input.password,
+                })
+              ).ok
+            : false;
       }
     }
   } catch {
@@ -104,9 +129,16 @@ export async function enqueueChangeWifi(input: ChangeWifiInput, userId: string) 
   return tasks.map((t) => ({ ...t, status }));
 }
 
-export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, userId: string) {
+export async function enqueueDiagnosticTask(
+  input: CreateDiagnosticTaskInput,
+  userId: string,
+) {
   const [customer] = await db
-    .select({ id: customers.id, name: customers.name, pppoeUsername: customers.pppoeUsername })
+    .select({
+      id: customers.id,
+      name: customers.name,
+      pppoeUsername: customers.pppoeUsername,
+    })
     .from(customers)
     .where(eq(customers.id, input.customerId))
     .limit(1);
@@ -135,7 +167,11 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
       userId,
       action: `cpe_diagnostic_${input.action}`,
       target: input.customerId,
-      detail: { taskId: inserted[0].id, action: input.action, parameters: input.parameters },
+      detail: {
+        taskId: inserted[0].id,
+        action: input.action,
+        parameters: input.parameters,
+      },
     });
 
     return inserted;
@@ -150,16 +186,22 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
   try {
     const config = getGenieacsConfig();
     const client = new GenieAcsClient(config);
-    const deviceId = await resolveDeviceId(client, config.mode === "simulator", input.customerId);
+    const deviceId = await resolveDeviceId(
+      client,
+      config.mode === "simulator",
+      input.customerId,
+    );
 
     if (!deviceId) {
       ok = false;
-      errorReason = "Perangkat tidak ditemukan di GenieACS atau pelanggan offline.";
+      errorReason =
+        "Perangkat tidak ditemukan di GenieACS atau pelanggan offline.";
     } else if (config.mode === "simulator") {
       ok = true;
       if (input.action === "ping_test") {
         latencyMs = 15;
-        resultSummary = "4/4 paket diterima (0% packet loss), RTT min/avg/max = 12/15/18 ms";
+        resultSummary =
+          "4/4 paket diterima (0% packet loss), RTT min/avg/max = 12/15/18 ms";
       } else if (input.action === "traceroute") {
         latencyMs = 24;
         resultSummary = "Traceroute selesai: 5 hop tercapai tanpa packet loss";
@@ -177,22 +219,44 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
       }
     } else {
       // Real mode: dorong ke GenieACS tasks
-      let postRes: { ok: boolean; error?: string; status?: number } = { ok: false };
+      let postRes: { ok: boolean; error?: string; status?: number } = {
+        ok: false,
+      };
       if (input.action === "reboot_device") {
-        postRes = await client.postTask(deviceId, { name: "reboot" }, true, 5000);
+        postRes = await client.postTask(
+          deviceId,
+          { name: "reboot" },
+          true,
+          5000,
+        );
       } else if (input.action === "factory_reset") {
-        postRes = await client.postTask(deviceId, { name: "factoryReset" }, true, 5000);
+        postRes = await client.postTask(
+          deviceId,
+          { name: "factoryReset" },
+          true,
+          5000,
+        );
       } else {
         // Diagnostic task TR-069
-        postRes = await client.postTask(deviceId, {
-          name: "setParameterValues",
-          parameterValues: Object.entries(input.parameters).map(([k, v]) => [k, String(v), "xsd:string"]),
-        }, true, 5000);
+        postRes = await client.postTask(
+          deviceId,
+          {
+            name: "setParameterValues",
+            parameterValues: Object.entries(input.parameters).map(([k, v]) => [
+              k,
+              String(v),
+              "xsd:string",
+            ]),
+          },
+          true,
+          5000,
+        );
       }
 
       ok = postRes.ok;
       if (!ok) {
-        errorReason = postRes.error || "Gagal mengirim tugas ke perangkat via GenieACS";
+        errorReason =
+          postRes.error || "Gagal mengirim tugas ke perangkat via GenieACS";
       } else if (postRes.status === 202) {
         resultSummary = `Tugas ${input.action} diantrekan di GenieACS (menunggu inform perangkat berikutnya)`;
       } else {
@@ -201,7 +265,8 @@ export async function enqueueDiagnosticTask(input: CreateDiagnosticTaskInput, us
     }
   } catch (err) {
     ok = false;
-    errorReason = err instanceof Error ? err.message : "Gagal memproses diagnostik CPE";
+    errorReason =
+      err instanceof Error ? err.message : "Gagal memproses diagnostik CPE";
   }
 
   const finalStatus = ok ? "success" : "failed";
@@ -256,10 +321,7 @@ export async function listCpeDiagnosticTasks(params: ListCpeTasksParams) {
       .orderBy(desc(cpeTasks.createdAt))
       .limit(params.limit)
       .offset(params.offset),
-    db
-      .select({ total: count() })
-      .from(cpeTasks)
-      .where(where),
+    db.select({ total: count() }).from(cpeTasks).where(where),
   ]);
 
   return { items, total };

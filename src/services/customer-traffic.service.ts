@@ -8,7 +8,10 @@ import type { CustomerTrafficRange } from "@/validators/customer-traffic";
 // Histori dari customer_traffic_samples (bucket 5 menit, diisi backend Go),
 // diringkas seperti grafik MikroTik: 24 jam per 5 menit, 7 hari per 30 menit,
 // 30 hari per 2 jam.
-const HISTORY: Record<Exclude<CustomerTrafficRange, "live">, { seconds: number; step: number }> = {
+const HISTORY: Record<
+  Exclude<CustomerTrafficRange, "live">,
+  { seconds: number; step: number }
+> = {
   "24h": { seconds: 24 * 3600, step: 300 },
   "3d": { seconds: 3 * 24 * 3600, step: 900 },
   "7d": { seconds: 7 * 24 * 3600, step: 1800 },
@@ -45,7 +48,11 @@ const num = (v: unknown) => (v == null ? 0 : Number(v));
 
 export async function customerExists(customerId: string) {
   const [row] = await db
-    .select({ id: customers.id, routerId: customers.routerId, pppoeUsername: customers.pppoeUsername })
+    .select({
+      id: customers.id,
+      routerId: customers.routerId,
+      pppoeUsername: customers.pppoeUsername,
+    })
     .from(customers)
     .where(eq(customers.id, customerId))
     .limit(1);
@@ -111,7 +118,10 @@ export async function getCustomerLiveTraffic(customer: {
   pppoeUsername: string;
 }): Promise<CustomerLiveTraffic | null> {
   const name = `<pppoe-${customer.pppoeUsername}>`;
-  const queues = await getRouterQueues(customer.routerId, customer.pppoeUsername);
+  const queues = await getRouterQueues(
+    customer.routerId,
+    customer.pppoeUsername,
+  );
   const q = queues.find((item) => item.name === name);
   return q
     ? {

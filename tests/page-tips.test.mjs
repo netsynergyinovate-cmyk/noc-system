@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { PAGE_TIPS_REGISTRY, PAGE_TIPS_MOCK_ENTRY, getPageTips } = await import(
-  "../src/lib/dashboard/page-tips-data.ts"
-);
+const { PAGE_TIPS_REGISTRY, PAGE_TIPS_MOCK_ENTRY, getPageTips } =
+  await import("../src/lib/dashboard/page-tips-data.ts");
 
 test("PAGE_TIPS_REGISTRY memuat panduan untuk seluruh halaman penting", () => {
   const paths = Object.keys(PAGE_TIPS_REGISTRY);
@@ -29,7 +28,10 @@ test("Setiap entri tips memuat fungsi, metrik, dan troubleshooting", () => {
   for (const [p, item] of Object.entries(PAGE_TIPS_REGISTRY)) {
     assert.equal(item.pagePath, p);
     assert.ok(item.summary.length > 10, `Summary halaman ${p} harus jelas`);
-    assert.ok(item.metrics.length > 0, `Metrik halaman ${p} tidak boleh kosong`);
+    assert.ok(
+      item.metrics.length > 0,
+      `Metrik halaman ${p} tidak boleh kosong`,
+    );
     assert.ok(
       item.troubleshooting.length > 0,
       `Troubleshooting halaman ${p} tidak boleh kosong`,

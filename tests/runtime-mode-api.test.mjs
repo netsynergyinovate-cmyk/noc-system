@@ -13,10 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const {
-  detectEnvironment,
-  getRuntimeModeStatus,
-} = await import("../src/services/runtime-mode.service.ts");
+const { detectEnvironment, getRuntimeModeStatus } =
+  await import("../src/services/runtime-mode.service.ts");
 
 test("detectEnvironment mengidentifikasi localhost sebagai local", () => {
   const local1 = detectEnvironment("localhost:3000");

@@ -3,10 +3,16 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { runSimulatorDeviceTest } = await import("../src/lib/device-connection.ts");
+const { runSimulatorDeviceTest } =
+  await import("../src/lib/device-connection.ts");
 
 const run = (host, extra = {}) =>
-  runSimulatorDeviceTest({ type: "mikrotik", mode: "simulator", host, ...extra });
+  runSimulatorDeviceTest({
+    type: "mikrotik",
+    mode: "simulator",
+    host,
+    ...extra,
+  });
 
 test("host normal: sukses dengan data resource", () => {
   const r = run("10.10.0.1", { username: "api", password: "x" });

@@ -25,7 +25,11 @@ export function evaluateOnboardingGate(options: {
   isLiveMode?: boolean;
   forceLocked?: boolean;
 }): OnboardingGateState {
-  const { hasConnectedRouter = false, isLiveMode = false, forceLocked = false } = options;
+  const {
+    hasConnectedRouter = false,
+    isLiveMode = false,
+    forceLocked = false,
+  } = options;
 
   // Gerbang menahan fungsi utama jika:
   // 1. forceLocked disetel eksplisit, ATAU
@@ -48,7 +52,8 @@ export function evaluateOnboardingGate(options: {
   return {
     isLocked: false,
     status: "lulus",
-    reason: "Konfigurasi perangkat wajib telah lulus. Seluruh fungsi operasional terbuka.",
+    reason:
+      "Konfigurasi perangkat wajib telah lulus. Seluruh fungsi operasional terbuka.",
     mandatoryDevice: "router",
     unlockedPaths: ONBOARDING_GATE_UNLOCKED_PATHS,
     bannerNotice: "",

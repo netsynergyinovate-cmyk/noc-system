@@ -11,9 +11,8 @@ const {
   createRefreshedSyncHistoryEntry,
 } = await import("../src/lib/dashboard/sync-history.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 test("SYNC_HISTORY_MOCK_ENTRY terdaftar di SETUP_DATA_SOURCE_REGISTRY", () => {
   assert.equal(SYNC_HISTORY_MOCK_ENTRY.id, "sync-history-log");
@@ -43,10 +42,7 @@ test("getMockSyncHistoryList memuat 5 entri riwayat sinkronisasi lengkap", () =>
 });
 
 test("createRefreshedSyncHistoryEntry menghasilkan entri riwayat baru yang valid", () => {
-  const newEntry = createRefreshedSyncHistoryEntry(
-    "Operator Uji",
-    "customers",
-  );
+  const newEntry = createRefreshedSyncHistoryEntry("Operator Uji", "customers");
   assert.ok(newEntry.id.startsWith("run-"));
   assert.equal(newEntry.actor, "Operator Uji");
   assert.equal(newEntry.scope, "customers");

@@ -37,10 +37,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       const result = await updateDeviceRelation(id, parsed.data);
 
       if (!result.success) {
-        return NextResponse.json(
-          { error: result.message },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: result.message }, { status: 404 });
       }
 
       return NextResponse.json({
@@ -53,7 +50,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json(
         {
           error: "Gagal memperbarui relasi perangkat.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );
@@ -75,10 +73,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       const result = await deleteDeviceRelation(id);
 
       if (!result.success) {
-        return NextResponse.json(
-          { error: result.message },
-          { status: 404 },
-        );
+        return NextResponse.json({ error: result.message }, { status: 404 });
       }
 
       return NextResponse.json({
@@ -90,7 +85,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       return NextResponse.json(
         {
           error: "Gagal menghapus relasi perangkat.",
-          message: error instanceof Error ? error.message : "Internal Server Error",
+          message:
+            error instanceof Error ? error.message : "Internal Server Error",
         },
         { status: 500 },
       );

@@ -4,7 +4,10 @@ import { enqueueDiagnosticTask } from "@/services/cpe.service";
 
 export const runtime = "nodejs";
 
-export function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   let target = "";
   const audit = withAudit({
     action: "cpe-changed",
@@ -22,13 +25,17 @@ export function POST(request: Request, { params }: { params: Promise<{ id: strin
         session.user.id,
       );
 
-      const ok = task.status === "success" || task.status === "pending" || task.status === "queued";
+      const ok =
+        task.status === "success" ||
+        task.status === "pending" ||
+        task.status === "queued";
       return Response.json(
         {
           ok,
           message: ok
             ? "Perintah reboot berhasil dikirim ke GenieACS."
-            : (task.payload?.errorReason ?? "GenieACS gagal menjalankan perintah reboot."),
+            : (task.payload?.errorReason ??
+              "GenieACS gagal menjalankan perintah reboot."),
           data: task,
         },
         { status: ok ? 200 : 400 },

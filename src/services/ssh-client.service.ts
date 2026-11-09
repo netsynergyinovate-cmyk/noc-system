@@ -118,8 +118,13 @@ export function classifySshError(
  * Uji koneksi SSH ke SERVER NATIVE dan catat host key server (Trust-On-First-Use).
  */
 export async function testSshConnection(
-  target: Pick<DeployTarget, "host" | "port" | "sshUser" | "mode"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
+  target: Pick<DeployTarget, "host" | "port" | "sshUser" | "mode"> & {
+    hostKeyFingerprint?: string | null;
+  },
+  credential: Pick<
+    DecryptedSshCredential,
+    "privateKey" | "passphrase" | "password"
+  >,
   effectiveHost?: string,
   timeoutMs = 7000,
 ): Promise<SshTestResult> {
@@ -177,9 +182,12 @@ export async function testSshConnection(
     });
   });
   if (credential.password) {
-    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
-      finish(prompts.map(() => credential.password || ""));
-    });
+    conn.on(
+      "keyboard-interactive",
+      (_name, _instructions, _lang, prompts, finish) => {
+        finish(prompts.map(() => credential.password || ""));
+      },
+    );
   }
 
   const connectConfig: ConnectConfig = {
@@ -192,10 +200,17 @@ export async function testSshConnection(
     tryKeyboard: Boolean(credential.password),
     readyTimeout: timeoutMs,
     hostVerifier: (key: Buffer) => {
-      const hash = crypto.createHash("sha256").update(key).digest("base64").replace(/=+$/, "");
+      const hash = crypto
+        .createHash("sha256")
+        .update(key)
+        .digest("base64")
+        .replace(/=+$/, "");
       seenHostKey = `SHA256:${hash}`;
       // Jika host key sudah pernah disimpan, lakukan verifikasi ketat (anti-MITM)
-      if (target.hostKeyFingerprint && seenHostKey !== target.hostKeyFingerprint) {
+      if (
+        target.hostKeyFingerprint &&
+        seenHostKey !== target.hostKeyFingerprint
+      ) {
         return false;
       }
       return true;
@@ -224,15 +239,21 @@ export async function testSshConnection(
  * Menjalankan satu perintah SSH di SERVER NATIVE dan mengembalikan stdout/stderr.
  */
 export async function executeSshCommand(
-  target: Pick<DeployTarget, "host" | "port" | "sshUser"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
+  target: Pick<DeployTarget, "host" | "port" | "sshUser"> & {
+    hostKeyFingerprint?: string | null;
+  },
+  credential: Pick<
+    DecryptedSshCredential,
+    "privateKey" | "passphrase" | "password"
+  >,
   command: string,
   effectiveHost?: string,
   timeoutMs = 60000,
   onOutput?: (chunk: string) => void,
 ): Promise<SshExecutionResult> {
   const host = effectiveHost || target.host;
-  const { promise, resolve, reject } = Promise.withResolvers<SshExecutionResult>();
+  const { promise, resolve, reject } =
+    Promise.withResolvers<SshExecutionResult>();
 
   const conn = new Client();
   let stdout = "";
@@ -247,7 +268,11 @@ export async function executeSshCommand(
       } catch {
         // ignore
       }
-      reject(new Error(`Perintah SSH melampaui batas waktu (${timeoutMs / 1000} detik): ${command}`));
+      reject(
+        new Error(
+          `Perintah SSH melampaui batas waktu (${timeoutMs / 1000} detik): ${command}`,
+        ),
+      );
     }
   }, timeoutMs);
 
@@ -294,9 +319,12 @@ export async function executeSshCommand(
     }
   });
   if (credential.password) {
-    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
-      finish(prompts.map(() => credential.password || ""));
-    });
+    conn.on(
+      "keyboard-interactive",
+      (_name, _instructions, _lang, prompts, finish) => {
+        finish(prompts.map(() => credential.password || ""));
+      },
+    );
   }
 
   conn.connect({
@@ -310,7 +338,11 @@ export async function executeSshCommand(
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {
-        const hash = crypto.createHash("sha256").update(key).digest("base64").replace(/=+$/, "");
+        const hash = crypto
+          .createHash("sha256")
+          .update(key)
+          .digest("base64")
+          .replace(/=+$/, "");
         return `SHA256:${hash}` === target.hostKeyFingerprint;
       }
       return true;
@@ -323,8 +355,13 @@ export async function executeSshCommand(
  * Menjalankan perintah SSH dengan mengalirkan data melalui stdin stream.
  */
 export async function executeSshScript(
-  target: Pick<DeployTarget, "host" | "port" | "sshUser"> & { hostKeyFingerprint?: string | null },
-  credential: Pick<DecryptedSshCredential, "privateKey" | "passphrase" | "password">,
+  target: Pick<DeployTarget, "host" | "port" | "sshUser"> & {
+    hostKeyFingerprint?: string | null;
+  },
+  credential: Pick<
+    DecryptedSshCredential,
+    "privateKey" | "passphrase" | "password"
+  >,
   command: string,
   stdinContent: string,
   effectiveHost?: string,
@@ -332,7 +369,8 @@ export async function executeSshScript(
   onOutput?: (chunk: string) => void,
 ): Promise<SshExecutionResult> {
   const host = effectiveHost || target.host;
-  const { promise, resolve, reject } = Promise.withResolvers<SshExecutionResult>();
+  const { promise, resolve, reject } =
+    Promise.withResolvers<SshExecutionResult>();
 
   const conn = new Client();
   let stdout = "";
@@ -347,7 +385,11 @@ export async function executeSshScript(
       } catch {
         // ignore
       }
-      reject(new Error(`Skrip SSH melampaui batas waktu (${timeoutMs / 1000} detik)`));
+      reject(
+        new Error(
+          `Skrip SSH melampaui batas waktu (${timeoutMs / 1000} detik)`,
+        ),
+      );
     }
   }, timeoutMs);
 
@@ -396,9 +438,12 @@ export async function executeSshScript(
     }
   });
   if (credential.password) {
-    conn.on("keyboard-interactive", (_name, _instructions, _lang, prompts, finish) => {
-      finish(prompts.map(() => credential.password || ""));
-    });
+    conn.on(
+      "keyboard-interactive",
+      (_name, _instructions, _lang, prompts, finish) => {
+        finish(prompts.map(() => credential.password || ""));
+      },
+    );
   }
 
   conn.connect({
@@ -412,7 +457,11 @@ export async function executeSshScript(
     readyTimeout: 10000,
     hostVerifier: (key: Buffer) => {
       if (target.hostKeyFingerprint) {
-        const hash = crypto.createHash("sha256").update(key).digest("base64").replace(/=+$/, "");
+        const hash = crypto
+          .createHash("sha256")
+          .update(key)
+          .digest("base64")
+          .replace(/=+$/, "");
         return `SHA256:${hash}` === target.hostKeyFingerprint;
       }
       return true;

@@ -4,15 +4,10 @@ import { register } from "tsx/esm/api";
 
 register();
 
-const {
-  classifyAlertCategory,
-  summarizeAlertCategories,
-  ALERT_CATEGORY_MAP,
-} = await import("../src/lib/dashboard/alert-categories.ts");
-const {
-  filterResolvedAlerts,
-  defaultResolvedFilters,
-} = await import("../src/lib/dashboard/resolved-filter.ts");
+const { classifyAlertCategory, summarizeAlertCategories, ALERT_CATEGORY_MAP } =
+  await import("../src/lib/dashboard/alert-categories.ts");
+const { filterResolvedAlerts, defaultResolvedFilters } =
+  await import("../src/lib/dashboard/resolved-filter.ts");
 
 test("classifyAlertCategory: membedakan optik, core, dan pelanggan offline", () => {
   // Optik: diputuskan oleh kind/type
@@ -31,17 +26,28 @@ test("classifyAlertCategory: membedakan optik, core, dan pelanggan offline", () 
     "customer",
   );
   assert.equal(
-    classifyAlertCategory({ type: "offline", customerId: "c-456", title: "Pelanggan offline" }),
+    classifyAlertCategory({
+      type: "offline",
+      customerId: "c-456",
+      title: "Pelanggan offline",
+    }),
     "customer",
   );
 
   // Router Core unreachable
   assert.equal(
-    classifyAlertCategory({ kind: "offline", customerId: null, routerId: "r-1" }),
+    classifyAlertCategory({
+      kind: "offline",
+      customerId: null,
+      routerId: "r-1",
+    }),
     "core",
   );
   assert.equal(
-    classifyAlertCategory({ type: "offline", title: "Router tidak terjangkau" }),
+    classifyAlertCategory({
+      type: "offline",
+      title: "Router tidak terjangkau",
+    }),
     "core",
   );
 
@@ -49,8 +55,14 @@ test("classifyAlertCategory: membedakan optik, core, dan pelanggan offline", () 
   assert.equal(classifyAlertCategory({ kind: "cpu" }), "core");
   assert.equal(classifyAlertCategory({ kind: "queue" }), "core");
   assert.equal(classifyAlertCategory({ kind: "port" }), "core");
-  assert.equal(classifyAlertCategory({ type: "cpu", title: "CPU router tinggi" }), "core");
-  assert.equal(classifyAlertCategory({ type: "queue", title: "Antrean penuh" }), "core");
+  assert.equal(
+    classifyAlertCategory({ type: "cpu", title: "CPU router tinggi" }),
+    "core",
+  );
+  assert.equal(
+    classifyAlertCategory({ type: "queue", title: "Antrean penuh" }),
+    "core",
+  );
 
   // Lainnya
   assert.equal(classifyAlertCategory({ kind: "billing_mismatch" }), "other");
@@ -76,7 +88,13 @@ test("summarizeAlertCategories: menghitung setiap kategori dan total secara pres
 });
 
 test("filterResolvedAlerts: menyaring riwayat berdasarkan kategori", () => {
-  const loc = { name: "Lokasi", address: null, odpName: null, latitude: null, longitude: null };
+  const loc = {
+    name: "Lokasi",
+    address: null,
+    odpName: null,
+    latitude: null,
+    longitude: null,
+  };
   const directory = {
     routerName: () => "Core CIARA",
     customer: () => ({ name: "Budi", pppoeUsername: "budi" }),

@@ -60,13 +60,16 @@ test("getAppDisplayVersion: membaca versi package.json atau environment", () => 
 
 test("CLI noc-system: perintah version menghasilkan output versi 1.0.0.0", async () => {
   const { execSync } = await import("node:child_process");
-  const output = execSync("node bin/noc-system.mjs version", { encoding: "utf-8" });
+  const output = execSync("node bin/noc-system.mjs version", {
+    encoding: "utf-8",
+  });
   assert.ok(output.includes("Versi lokal (package.json):"));
   assert.ok(output.includes("1.0.0.0"));
 });
 
 test("deploy-version.service: getAppVersion mengembalikan 4-digit semver dan fullVersion", async () => {
-  const { getAppVersion } = await import("../src/services/deploy-version.service.ts");
+  const { getAppVersion } =
+    await import("../src/services/deploy-version.service.ts");
   const versionInfo = await getAppVersion();
   assert.equal(versionInfo.semver, "1.0.0.0");
   assert.equal(versionInfo.fullVersion, "1.0.0.0");
@@ -100,11 +103,20 @@ test("Simulasi auto-bump build: menaikkan build berdasarkan rilis sebelumnya", (
   assert.equal(computeNextRelease("1.0.0.0", ["1.0.0.0"]), "1.0.0.1");
 
   // Ada rilis 1.0.0.0 dan 1.0.0.1 -> naik ke 1.0.0.2
-  assert.equal(computeNextRelease("1.0.0.0", ["1.0.0.0", "1.0.0.1"]), "1.0.0.2");
+  assert.equal(
+    computeNextRelease("1.0.0.0", ["1.0.0.0", "1.0.0.1"]),
+    "1.0.0.2",
+  );
 
   // Setelah upgrade minor ke 1.1.0.0 (rilis lama masih 1.0.0.x) -> rilis baru mulai di 1.1.0.0
-  assert.equal(computeNextRelease("1.1.0.0", ["1.0.0.0", "1.0.0.1", "1.0.0.2"]), "1.1.0.0");
+  assert.equal(
+    computeNextRelease("1.1.0.0", ["1.0.0.0", "1.0.0.1", "1.0.0.2"]),
+    "1.1.0.0",
+  );
 
   // Rilis kedua pada 1.1.0.0 -> naik ke 1.1.0.1
-  assert.equal(computeNextRelease("1.1.0.0", ["1.0.0.0", "1.0.0.1", "1.1.0.0"]), "1.1.0.1");
+  assert.equal(
+    computeNextRelease("1.1.0.0", ["1.0.0.0", "1.0.0.1", "1.1.0.0"]),
+    "1.1.0.1",
+  );
 });

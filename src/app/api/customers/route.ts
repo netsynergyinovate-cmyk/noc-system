@@ -11,12 +11,10 @@ export function GET(request: Request) {
     try {
       const url = new URL(request.url);
       if (url.searchParams.get("geocoded") === "true") {
-        const { getGeocodedCustomers } = await import(
-          "@/services/customer-location.service"
-        );
-        const { geocodedCustomersQuerySchema } = await import(
-          "@/validators/customer-location"
-        );
+        const { getGeocodedCustomers } =
+          await import("@/services/customer-location.service");
+        const { geocodedCustomersQuerySchema } =
+          await import("@/validators/customer-location");
         const rawParams = {
           status: url.searchParams.get("status") ?? undefined,
           odp: url.searchParams.get("odp") ?? undefined,
@@ -67,11 +65,7 @@ export function GET(request: Request) {
     } catch (err) {
       console.error("[GET CUSTOMERS ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
-

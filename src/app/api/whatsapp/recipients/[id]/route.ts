@@ -4,7 +4,10 @@ import {
   RecipientError,
   updateRecipient,
 } from "@/services/whatsapp.service";
-import { recipientIdSchema, updateRecipientSchema } from "@/validators/whatsapp";
+import {
+  recipientIdSchema,
+  updateRecipientSchema,
+} from "@/validators/whatsapp";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };

@@ -99,7 +99,8 @@ export async function detectConnectionPath(
       tailscaleReachable,
       resolvedMode: "tailscale",
       resolvedHost: target.tailscaleHost || target.host,
-      reason: "Tailscale (Paksaan Manual) — server terjangkau di jaringan lokal, tetapi Tailscale dipaksa aktif oleh operator.",
+      reason:
+        "Tailscale (Paksaan Manual) — server terjangkau di jaringan lokal, tetapi Tailscale dipaksa aktif oleh operator.",
       isManualOverride: true,
     };
   }
@@ -111,7 +112,8 @@ export async function detectConnectionPath(
       tailscaleReachable,
       resolvedMode: "lan",
       resolvedHost: target.host,
-      reason: "LAN — server terjangkau langsung di jaringan lokal (Tailscale tidak diaktifkan).",
+      reason:
+        "LAN — server terjangkau langsung di jaringan lokal (Tailscale tidak diaktifkan).",
       isManualOverride: false,
     };
   }
@@ -133,7 +135,10 @@ export async function detectConnectionPath(
     lanReachable,
     tailscaleReachable,
     resolvedMode: target.mode,
-    resolvedHost: target.mode === "tailscale" && target.tailscaleHost ? target.tailscaleHost : target.host,
+    resolvedHost:
+      target.mode === "tailscale" && target.tailscaleHost
+        ? target.tailscaleHost
+        : target.host,
     reason: target.tailscaleHost
       ? "Tidak terjangkau — host LAN maupun Tailscale tidak merespons pada port SSH."
       : "Tidak terjangkau — host LAN tidak merespons pada port SSH.",
@@ -152,7 +157,9 @@ export async function getDeployTarget(): Promise<DeployTarget | null> {
 /**
  * Menyimpan atau memperbarui konfigurasi target server deploy (tunggal).
  */
-export async function saveDeployTarget(input: SaveTargetInput): Promise<DeployTarget> {
+export async function saveDeployTarget(
+  input: SaveTargetInput,
+): Promise<DeployTarget> {
   const existing = await getDeployTarget();
 
   if (existing) {
@@ -164,9 +171,16 @@ export async function saveDeployTarget(input: SaveTargetInput): Promise<DeployTa
         port: input.port ?? existing.port,
         sshUser: input.sshUser.trim(),
         mode: input.mode ?? existing.mode,
-        tailscaleHost: input.tailscaleHost !== undefined ? input.tailscaleHost?.trim() || null : existing.tailscaleHost,
-        connectionReason: input.connectionReason !== undefined ? input.connectionReason : existing.connectionReason,
-        deviceAccessLevel: input.deviceAccessLevel ?? existing.deviceAccessLevel,
+        tailscaleHost:
+          input.tailscaleHost !== undefined
+            ? input.tailscaleHost?.trim() || null
+            : existing.tailscaleHost,
+        connectionReason:
+          input.connectionReason !== undefined
+            ? input.connectionReason
+            : existing.connectionReason,
+        deviceAccessLevel:
+          input.deviceAccessLevel ?? existing.deviceAccessLevel,
         updatedAt: new Date(),
       })
       .where(eq(deployTargets.id, existing.id))

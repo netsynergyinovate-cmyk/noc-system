@@ -62,7 +62,8 @@ const CustomerRow = memo(function CustomerRow({
   const optical = {
     dbm: live?.onuLos
       ? null
-      : (live?.rxDbm ?? (customer.isOnline ? (customer.opticalPowerDbm ?? null) : null)),
+      : (live?.rxDbm ??
+        (customer.isOnline ? (customer.opticalPowerDbm ?? null) : null)),
   };
   const staleTitle =
     live?.informAt && !live.modemOnline
@@ -118,27 +119,43 @@ const CustomerRow = memo(function CustomerRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`} title={staleTitle}>
+      <td
+        className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`}
+        title={staleTitle}
+      >
         {live?.uptime ?? "—"}
-        {live?.uptime && live.staleNote && <div className="text-[10px] font-normal">{live.staleNote}</div>}
+        {live?.uptime && live.staleNote && (
+          <div className="text-[10px] font-normal">{live.staleNote}</div>
+        )}
       </td>
-      <td className="px-4 py-3 text-xs">{live?.ssid ?? <span className="text-muted-foreground">—</span>}</td>
-      <td className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`} title={staleTitle}>
+      <td className="px-4 py-3 text-xs">
+        {live?.ssid ?? <span className="text-muted-foreground">—</span>}
+      </td>
+      <td
+        className={`px-4 py-3 text-xs tabular-nums ${live?.modemOnline ? "" : "text-muted-foreground"}`}
+        title={staleTitle}
+      >
         {live?.clients ?? "—"}
-        {live?.clients != null && live.staleNote && <div className="text-[10px] font-normal">{live.staleNote}</div>}
+        {live?.clients != null && live.staleNote && (
+          <div className="text-[10px] font-normal">{live.staleNote}</div>
+        )}
       </td>
       <td className="px-4 py-3 tabular-nums">
         {optical.dbm !== null ? (
           <div>
             <OpticalRx dbm={optical.dbm} />
             {live?.rxSource && (
-              <div className="mt-0.5 text-[10px] text-muted-foreground">{live.rxSource === "genieacs" ? "dari modem" : "dari OLT"}</div>
+              <div className="mt-0.5 text-[10px] text-muted-foreground">
+                {live.rxSource === "genieacs" ? "dari modem" : "dari OLT"}
+              </div>
             )}
           </div>
         ) : live?.onuLos ? (
           <div>
             <OpticalRx dbm={null} />
-            <div className="mt-0.5 text-[10px] font-semibold text-destructive">Kabel Putus (LOS OLT)</div>
+            <div className="mt-0.5 text-[10px] font-semibold text-destructive">
+              Kabel Putus (LOS OLT)
+            </div>
           </div>
         ) : (
           <span className="text-xs text-muted-foreground">Belum ada data</span>
@@ -172,13 +189,20 @@ export function CustomerTable() {
       fetch("/api/customers")
         .then((res) => res.json())
         .then((json) => {
-          if (active && json.ok && Array.isArray(json.data) && json.data.length > 0) {
+          if (
+            active &&
+            json.ok &&
+            Array.isArray(json.data) &&
+            json.data.length > 0
+          ) {
             const list = json.data as DashboardCustomer[];
             useDashboardStore.setState({
               customers: list,
               onlineCount: list.filter((c) => c.isOnline).length,
               offlineCount: list.filter((c) => !c.isOnline).length,
-              weakSignalCount: list.filter((c) => getCustomerHealth(c) === "warning").length,
+              weakSignalCount: list.filter(
+                (c) => getCustomerHealth(c) === "warning",
+              ).length,
             });
           }
         })
@@ -202,13 +226,21 @@ export function CustomerTable() {
       if (res.ok && json.ok) {
         setSyncFeedback({
           type: "success",
-          message: json.message || "Nama pelanggan berhasil dicocokkan dan diperbarui dari billing.",
+          message:
+            json.message ||
+            "Nama pelanggan berhasil dicocokkan dan diperbarui dari billing.",
         });
 
         if (Array.isArray(json.data?.updatedCustomers)) {
-          type SyncedCustomerItem = { id: string; newName: string; billingStatus: BillingStatus };
+          type SyncedCustomerItem = {
+            id: string;
+            newName: string;
+            billingStatus: BillingStatus;
+          };
           const items = json.data.updatedCustomers as SyncedCustomerItem[];
-          const map = new Map<string, SyncedCustomerItem>(items.map((u) => [u.id, u]));
+          const map = new Map<string, SyncedCustomerItem>(
+            items.map((u) => [u.id, u]),
+          );
           useDashboardStore.setState((prev) => ({
             customers: prev.customers.map((c) => {
               const u = map.get(c.id);
@@ -232,7 +264,8 @@ export function CustomerTable() {
     } catch (err) {
       setSyncFeedback({
         type: "error",
-        message: err instanceof Error ? err.message : "Gagal terhubung ke server.",
+        message:
+          err instanceof Error ? err.message : "Gagal terhubung ke server.",
       });
     } finally {
       setIsSyncingBilling(false);
@@ -282,7 +315,9 @@ export function CustomerTable() {
   return (
     <Card>
       <CardHeader className="py-3 px-4">
-        <CardTitle className="text-base font-semibold">Status pelanggan</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Status pelanggan
+        </CardTitle>
         <CardDescription role="status" className="text-xs">
           {filtered
             ? `Menampilkan ${formatInteger(visible.length)} dari ${formatInteger(customers.length)} pelanggan PPPoE`
@@ -364,8 +399,12 @@ export function CustomerTable() {
               disabled={isSyncingBilling}
               title="Cocokkan ID PPPoE dan tarik nama pelanggan riil dari RunsNet Billing"
             >
-              <RefreshCw className={`size-3.5 ${isSyncingBilling ? "animate-spin" : ""}`} />
-              {isSyncingBilling ? "Menarik dari Billing..." : "Tarik Nama dari Billing"}
+              <RefreshCw
+                className={`size-3.5 ${isSyncingBilling ? "animate-spin" : ""}`}
+              />
+              {isSyncingBilling
+                ? "Menarik dari Billing..."
+                : "Tarik Nama dari Billing"}
             </Button>
             <Button
               variant="ghost"
@@ -388,7 +427,9 @@ export function CustomerTable() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${syncFeedback.type === "success" ? "bg-emerald-400" : "bg-rose-400"}`} />
+              <span
+                className={`h-2 w-2 rounded-full ${syncFeedback.type === "success" ? "bg-emerald-400" : "bg-rose-400"}`}
+              />
               <span>{syncFeedback.message}</span>
             </div>
             <button

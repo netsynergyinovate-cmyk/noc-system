@@ -65,7 +65,10 @@ export async function getMapDrawingLayers(
     conditions.length > 0
       ? await query
           .where(and(...conditions))
-          .orderBy(asc(mapDrawingLayers.zIndex), desc(mapDrawingLayers.createdAt))
+          .orderBy(
+            asc(mapDrawingLayers.zIndex),
+            desc(mapDrawingLayers.createdAt),
+          )
       : await query.orderBy(
           asc(mapDrawingLayers.zIndex),
           desc(mapDrawingLayers.createdAt),
@@ -118,7 +121,10 @@ export async function createMapDrawingLayer(
     .values({
       name: input.name.trim(),
       description: input.description?.trim() || null,
-      opacity: input.opacity !== undefined ? Math.min(Math.max(input.opacity, 0), 1) : 1.0,
+      opacity:
+        input.opacity !== undefined
+          ? Math.min(Math.max(input.opacity, 0), 1)
+          : 1.0,
       zIndex: input.zIndex !== undefined ? input.zIndex : 1,
       isVisible: input.isVisible !== undefined ? input.isVisible : true,
       shapes: input.shapes || [],
@@ -142,8 +148,10 @@ export async function updateMapDrawingLayer(
   };
 
   if (input.name !== undefined) updateData.name = input.name.trim();
-  if (input.description !== undefined) updateData.description = input.description.trim() || null;
-  if (input.opacity !== undefined) updateData.opacity = Math.min(Math.max(input.opacity, 0), 1);
+  if (input.description !== undefined)
+    updateData.description = input.description.trim() || null;
+  if (input.opacity !== undefined)
+    updateData.opacity = Math.min(Math.max(input.opacity, 0), 1);
   if (input.zIndex !== undefined) updateData.zIndex = input.zIndex;
   if (input.isVisible !== undefined) updateData.isVisible = input.isVisible;
   if (input.shapes !== undefined) updateData.shapes = input.shapes;
@@ -259,5 +267,3 @@ export async function updateMapDrawingLayerOpacity(
 
   return updated || null;
 }
-
-

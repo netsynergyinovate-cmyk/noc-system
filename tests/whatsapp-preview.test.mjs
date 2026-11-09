@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultWhatsappConfig, renderWhatsappMessage, templateVariables } from "../src/lib/dashboard/whatsapp.ts";
+import {
+  defaultWhatsappConfig,
+  renderWhatsappMessage,
+  templateVariables,
+} from "../src/lib/dashboard/whatsapp.ts";
 import {
   parseWhatsappFormat,
   previewScenarios,
@@ -39,7 +43,10 @@ test("template bawaan dirender untuk tiap skenario", () => {
     assert.ok(!/\{\w+\}/.test(out), s.id);
     assert.ok(out.includes(`[${s.alert.severity}]`), s.id);
     assert.ok(out.includes(s.alert.message), s.id);
-    assert.ok(parseWhatsappFormat(out).some((g) => g.type === "bold"), s.id);
+    assert.ok(
+      parseWhatsappFormat(out).some((g) => g.type === "bold"),
+      s.id,
+    );
   }
   const [down, , cpu, ok] = previewScenarios;
   assert.equal(down.alert.severity, "KRITIS");
@@ -48,7 +55,14 @@ test("template bawaan dirender untuk tiap skenario", () => {
 });
 
 test("variabel aktif", () => {
-  assert.deepEqual(usedTemplateVariables("{kind} {kind} {x} {time}", templateVariables), ["kind", "time"]);
+  assert.deepEqual(
+    usedTemplateVariables("{kind} {kind} {x} {time}", templateVariables),
+    ["kind", "time"],
+  );
   assert.deepEqual(usedTemplateVariables("tanpa", templateVariables), []);
-  assert.equal(usedTemplateVariables(defaultWhatsappConfig.template, templateVariables).length, 6);
+  assert.equal(
+    usedTemplateVariables(defaultWhatsappConfig.template, templateVariables)
+      .length,
+    6,
+  );
 });

@@ -180,7 +180,9 @@ test("kartu insiden tampil sesuai hasil pengelompokan, lengkap dengan akar, damp
       await expect(kinds).toHaveCount(0);
     }
     // Waktu mulai sampai detik, dengan penanda sumbernya, dari anggota tertua.
-    const time = view.locator("time:not([data-testid=incident-duration])").first();
+    const time = view
+      .locator("time:not([data-testid=incident-duration])")
+      .first();
     await expect(time).toHaveAttribute(
       "datetime",
       new Date(card.startedAt * 1000).toISOString(),

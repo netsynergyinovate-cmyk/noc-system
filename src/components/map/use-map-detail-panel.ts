@@ -39,8 +39,10 @@ export function useMapDetailPanel({
   onFlyToCoords,
 }: UseMapDetailPanelOptions = {}) {
   // Entitas terpilih
-  const [selectedCustomer, setSelectedCustomer] = useState<NetworkCustomerPoint | null>(null);
-  const [selectedInfra, setSelectedInfra] = useState<NetworkInfrastructurePoint | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<NetworkCustomerPoint | null>(null);
+  const [selectedInfra, setSelectedInfra] =
+    useState<NetworkInfrastructurePoint | null>(null);
 
   // State mode edit lokasi titik pelanggan
   const [customerEdit, setCustomerEdit] = useState<CustomerLocationEditState>({
@@ -152,8 +154,14 @@ export function useMapDetailPanel({
         ...prev,
         isEditing: nextIsEditing,
         draftCoords:
-          nextIsEditing && selectedCustomer && selectedCustomer.latitude !== null && selectedCustomer.longitude !== null
-            ? { lat: selectedCustomer.latitude, lng: selectedCustomer.longitude }
+          nextIsEditing &&
+          selectedCustomer &&
+          selectedCustomer.latitude !== null &&
+          selectedCustomer.longitude !== null
+            ? {
+                lat: selectedCustomer.latitude,
+                lng: selectedCustomer.longitude,
+              }
             : null,
         successMessage: null,
         errorMessage: null,
@@ -170,13 +178,16 @@ export function useMapDetailPanel({
     }));
   }, []);
 
-  const setCustomerDraftCoords = useCallback((coords: { lat: number; lng: number } | null) => {
-    setCustomerEdit((prev) => ({
-      ...prev,
-      draftCoords: coords,
-      errorMessage: null,
-    }));
-  }, []);
+  const setCustomerDraftCoords = useCallback(
+    (coords: { lat: number; lng: number } | null) => {
+      setCustomerEdit((prev) => ({
+        ...prev,
+        draftCoords: coords,
+        errorMessage: null,
+      }));
+    },
+    [],
+  );
 
   const saveCustomerLocation = useCallback(
     async (overrideCoords?: { lat: number; lng: number }) => {
@@ -197,18 +208,23 @@ export function useMapDetailPanel({
       }));
 
       try {
-        const res = await fetch(`/api/map/customers/${selectedCustomer.id}/location`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            latitude: targetCoords.lat,
-            longitude: targetCoords.lng,
-          }),
-        });
+        const res = await fetch(
+          `/api/map/customers/${selectedCustomer.id}/location`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              latitude: targetCoords.lat,
+              longitude: targetCoords.lng,
+            }),
+          },
+        );
 
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          throw new Error(json.error || "Gagal menyimpan koordinat baru pelanggan.");
+          throw new Error(
+            json.error || "Gagal menyimpan koordinat baru pelanggan.",
+          );
         }
 
         // Perbarui entitas terpilih di state panel
@@ -250,7 +266,10 @@ export function useMapDetailPanel({
     if (!selectedInfra) return;
     setInfraMove({
       isMoving: true,
-      draftCoords: { lat: selectedInfra.latitude, lng: selectedInfra.longitude },
+      draftCoords: {
+        lat: selectedInfra.latitude,
+        lng: selectedInfra.longitude,
+      },
       isSaving: false,
       isDeleting: false,
       successMessage: null,
@@ -268,16 +287,21 @@ export function useMapDetailPanel({
     }));
   }, []);
 
-  const setInfraMoveDraftCoords = useCallback((coords: { lat: number; lng: number } | null) => {
-    setInfraMove((prev) => ({
-      ...prev,
-      draftCoords: coords,
-      errorMessage: null,
-    }));
-  }, []);
+  const setInfraMoveDraftCoords = useCallback(
+    (coords: { lat: number; lng: number } | null) => {
+      setInfraMove((prev) => ({
+        ...prev,
+        draftCoords: coords,
+        errorMessage: null,
+      }));
+    },
+    [],
+  );
 
   const saveInfraMove = useCallback(
-    async (onSuccessCallback?: (updated: NetworkInfrastructurePoint) => void) => {
+    async (
+      onSuccessCallback?: (updated: NetworkInfrastructurePoint) => void,
+    ) => {
       if (!selectedInfra || !infraMove.draftCoords) return false;
 
       setInfraMove((prev) => ({
@@ -338,7 +362,13 @@ export function useMapDetailPanel({
   );
 
   const deleteInfra = useCallback(
-    async (onSuccessCallback?: (deletedId: string, deletedType: string, deletedName: string) => void) => {
+    async (
+      onSuccessCallback?: (
+        deletedId: string,
+        deletedType: string,
+        deletedName: string,
+      ) => void,
+    ) => {
       if (!selectedInfra) return false;
       const deletedId = selectedInfra.id;
       const deletedType = selectedInfra.type;
@@ -357,7 +387,9 @@ export function useMapDetailPanel({
 
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          throw new Error(json.error || "Gagal menghapus perangkat infrastruktur.");
+          throw new Error(
+            json.error || "Gagal menghapus perangkat infrastruktur.",
+          );
         }
 
         setSelectedInfra(null);

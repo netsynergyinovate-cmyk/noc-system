@@ -2,7 +2,13 @@ import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { effectiveBillingStatusSql } from "./customer-isolir";
-import { customers, olts, oltOnus, routers, networkInfrastructure } from "@/db/schema";
+import {
+  customers,
+  olts,
+  oltOnus,
+  routers,
+  networkInfrastructure,
+} from "@/db/schema";
 import { getLocalMockMapData } from "./network-map-mock";
 
 export { getLocalMockMapData } from "./network-map-mock";
@@ -90,201 +96,205 @@ export async function getNetworkMapData(options?: {
 
   try {
     // 1. Ambil data pelanggan riil beserta join ONU
-  const rawCustomers = await db
-    .select({
-      id: customers.id,
-      name: customers.name,
-      pppoeUsername: customers.pppoeUsername,
-      routerId: customers.routerId,
-      routerName: routers.name,
-      address: customers.address,
-      latitude: customers.latitude,
-      longitude: customers.longitude,
-      odpName: customers.odpName,
-      billingStatus: effectiveBillingStatusSql,
-      opticalPower: customers.opticalPower,
-      isOnline: customers.isOnline,
-      lastUpdatedAt: customers.lastUpdatedAt,
-      onuSerial: oltOnus.serialNumber,
-      onuPonIndex: oltOnus.ponIndex,
-      onuIndex: oltOnus.onuIndex,
-      onuRxPower: oltOnus.rxPower,
-    })
-    .from(customers)
-    .leftJoin(routers, eq(customers.routerId, routers.id))
-    .leftJoin(oltOnus, eq(oltOnus.customerId, customers.id))
-    .orderBy(asc(customers.name));
+    const rawCustomers = await db
+      .select({
+        id: customers.id,
+        name: customers.name,
+        pppoeUsername: customers.pppoeUsername,
+        routerId: customers.routerId,
+        routerName: routers.name,
+        address: customers.address,
+        latitude: customers.latitude,
+        longitude: customers.longitude,
+        odpName: customers.odpName,
+        billingStatus: effectiveBillingStatusSql,
+        opticalPower: customers.opticalPower,
+        isOnline: customers.isOnline,
+        lastUpdatedAt: customers.lastUpdatedAt,
+        onuSerial: oltOnus.serialNumber,
+        onuPonIndex: oltOnus.ponIndex,
+        onuIndex: oltOnus.onuIndex,
+        onuRxPower: oltOnus.rxPower,
+      })
+      .from(customers)
+      .leftJoin(routers, eq(customers.routerId, routers.id))
+      .leftJoin(oltOnus, eq(oltOnus.customerId, customers.id))
+      .orderBy(asc(customers.name));
 
-  // 2. Ambil OLT dan Routers riil
-  const rawOlts = await db
-    .select({
-      id: olts.id,
-      name: olts.name,
-      host: olts.host,
-      status: olts.status,
-      brand: olts.brand,
-      latitude: olts.latitude,
-      longitude: olts.longitude,
-    })
-    .from(olts);
+    // 2. Ambil OLT dan Routers riil
+    const rawOlts = await db
+      .select({
+        id: olts.id,
+        name: olts.name,
+        host: olts.host,
+        status: olts.status,
+        brand: olts.brand,
+        latitude: olts.latitude,
+        longitude: olts.longitude,
+      })
+      .from(olts);
 
-  const rawRouters = await db
-    .select({
-      id: routers.id,
-      name: routers.name,
-      host: routers.host,
-      status: routers.status,
-      latitude: routers.latitude,
-      longitude: routers.longitude,
-    })
-    .from(routers);
+    const rawRouters = await db
+      .select({
+        id: routers.id,
+        name: routers.name,
+        host: routers.host,
+        status: routers.status,
+        latitude: routers.latitude,
+        longitude: routers.longitude,
+      })
+      .from(routers);
 
-  // 3. Bangun titik infrastruktur
-  const infrastructure: NetworkInfrastructurePoint[] = [];
+    // 3. Bangun titik infrastruktur
+    const infrastructure: NetworkInfrastructurePoint[] = [];
 
-  // Core Router — hanya tampilkan jika koordinat sudah diisi
-  for (const r of rawRouters) {
-    if (r.latitude === null || r.longitude === null) continue;
-    infrastructure.push({
-      id: `router-${r.id}`,
-      name: r.name,
-      type: "router",
-      host: r.host,
-      status: r.status,
-      latitude: Number(r.latitude),
-      longitude: Number(r.longitude),
-      details: { role: "Core Gateway BGP/PPPoE" },
-    });
-  }
-
-  // OLT — hanya tampilkan jika koordinat sudah diisi
-  for (const o of rawOlts) {
-    if (o.latitude === null || o.longitude === null) continue;
-    infrastructure.push({
-      id: `olt-${o.id}`,
-      name: o.name,
-      type: "olt",
-      host: o.host,
-      status: o.status,
-      latitude: Number(o.latitude),
-      longitude: Number(o.longitude),
-      details: { brand: o.brand },
-    });
-  }
-
-  // Hitung ODP unik dari data pelanggan untuk summary saja
-  // (tidak lagi auto-generate titik peta dengan koordinat palsu)
-  const odpMap = new Map<string, number>();
-  for (const c of rawCustomers) {
-    if (c.odpName) {
-      odpMap.set(c.odpName, (odpMap.get(c.odpName) ?? 0) + 1);
+    // Core Router — hanya tampilkan jika koordinat sudah diisi
+    for (const r of rawRouters) {
+      if (r.latitude === null || r.longitude === null) continue;
+      infrastructure.push({
+        id: `router-${r.id}`,
+        name: r.name,
+        type: "router",
+        host: r.host,
+        status: r.status,
+        latitude: Number(r.latitude),
+        longitude: Number(r.longitude),
+        details: { role: "Core Gateway BGP/PPPoE" },
+      });
     }
-  }
 
-  // 3b. Muat titik infrastruktur riil (ODC, ODP, Tiang, dsb.) dari tabel network_infrastructure
-  try {
-    const realInfraRows = await db
-      .select()
-      .from(networkInfrastructure)
-      .orderBy(asc(networkInfrastructure.name));
+    // OLT — hanya tampilkan jika koordinat sudah diisi
+    for (const o of rawOlts) {
+      if (o.latitude === null || o.longitude === null) continue;
+      infrastructure.push({
+        id: `olt-${o.id}`,
+        name: o.name,
+        type: "olt",
+        host: o.host,
+        status: o.status,
+        latitude: Number(o.latitude),
+        longitude: Number(o.longitude),
+        details: { brand: o.brand },
+      });
+    }
 
-    for (const row of realInfraRows) {
-      const existingIdx = infrastructure.findIndex(
-        (i) => i.id === row.id || i.name.toLowerCase() === row.name.toLowerCase(),
-      );
-      const pointData: NetworkInfrastructurePoint = {
-        id: row.id,
-        name: row.name,
-        type: row.type as "router" | "olt" | "odp" | "odc" | "pole",
-        host: row.host || undefined,
-        status: row.status,
-        latitude: Number(row.latitude),
-        longitude: Number(row.longitude),
-        parentId: row.parentId,
-        details: (row.details as Record<string, unknown>) || {},
-      };
-
-      if (existingIdx >= 0) {
-        infrastructure[existingIdx] = pointData;
-      } else {
-        infrastructure.push(pointData);
+    // Hitung ODP unik dari data pelanggan untuk summary saja
+    // (tidak lagi auto-generate titik peta dengan koordinat palsu)
+    const odpMap = new Map<string, number>();
+    for (const c of rawCustomers) {
+      if (c.odpName) {
+        odpMap.set(c.odpName, (odpMap.get(c.odpName) ?? 0) + 1);
       }
     }
-  } catch (err) {
-    console.error("[GET_NETWORK_MAP_DATA INFRA DB ERROR]", err);
-  }
 
-  // 4. Petakan data pelanggan
-  let onlineCount = 0;
-  let offlineCount = 0;
-  let criticalOpticsCount = 0;
-  let geocodedCount = 0;
+    // 3b. Muat titik infrastruktur riil (ODC, ODP, Tiang, dsb.) dari tabel network_infrastructure
+    try {
+      const realInfraRows = await db
+        .select()
+        .from(networkInfrastructure)
+        .orderBy(asc(networkInfrastructure.name));
 
-  const mappedCustomers: NetworkCustomerPoint[] = rawCustomers.map((c) => {
-    if (c.isOnline) onlineCount++;
-    else offlineCount++;
+      for (const row of realInfraRows) {
+        const existingIdx = infrastructure.findIndex(
+          (i) =>
+            i.id === row.id || i.name.toLowerCase() === row.name.toLowerCase(),
+        );
+        const pointData: NetworkInfrastructurePoint = {
+          id: row.id,
+          name: row.name,
+          type: row.type as "router" | "olt" | "odp" | "odc" | "pole",
+          host: row.host || undefined,
+          status: row.status,
+          latitude: Number(row.latitude),
+          longitude: Number(row.longitude),
+          parentId: row.parentId,
+          details: (row.details as Record<string, unknown>) || {},
+        };
 
-    const optical = c.onuRxPower ?? c.opticalPower ?? null;
-    if (optical !== null && optical <= -24.5) {
-      criticalOpticsCount++;
+        if (existingIdx >= 0) {
+          infrastructure[existingIdx] = pointData;
+        } else {
+          infrastructure.push(pointData);
+        }
+      }
+    } catch (err) {
+      console.error("[GET_NETWORK_MAP_DATA INFRA DB ERROR]", err);
     }
 
-    const hasRealCoords =
-      c.latitude !== null &&
-      c.longitude !== null &&
-      Number.isFinite(c.latitude) &&
-      Number.isFinite(c.longitude);
+    // 4. Petakan data pelanggan
+    let onlineCount = 0;
+    let offlineCount = 0;
+    let criticalOpticsCount = 0;
+    let geocodedCount = 0;
 
-    if (hasRealCoords) {
-      geocodedCount++;
-    }
+    const mappedCustomers: NetworkCustomerPoint[] = rawCustomers.map((c) => {
+      if (c.isOnline) onlineCount++;
+      else offlineCount++;
+
+      const optical = c.onuRxPower ?? c.opticalPower ?? null;
+      if (optical !== null && optical <= -24.5) {
+        criticalOpticsCount++;
+      }
+
+      const hasRealCoords =
+        c.latitude !== null &&
+        c.longitude !== null &&
+        Number.isFinite(c.latitude) &&
+        Number.isFinite(c.longitude);
+
+      if (hasRealCoords) {
+        geocodedCount++;
+      }
+
+      return {
+        id: c.id,
+        name: c.name,
+        pppoeUsername: c.pppoeUsername,
+        routerId: c.routerId,
+        routerName: c.routerName ?? undefined,
+        address: c.address,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        odpName: c.odpName,
+        billingStatus: c.billingStatus as "lunas" | "isolir",
+        opticalPower: optical,
+        isOnline: c.isOnline,
+        lastUpdatedAt: c.lastUpdatedAt,
+        onuDetails: c.onuSerial
+          ? {
+              serialNumber: c.onuSerial,
+              ponIndex: c.onuPonIndex,
+              onuIndex: c.onuIndex,
+              opticalLevel: c.onuRxPower,
+            }
+          : null,
+      };
+    });
 
     return {
-      id: c.id,
-      name: c.name,
-      pppoeUsername: c.pppoeUsername,
-      routerId: c.routerId,
-      routerName: c.routerName ?? undefined,
-      address: c.address,
-      latitude: c.latitude,
-      longitude: c.longitude,
-      odpName: c.odpName,
-      billingStatus: c.billingStatus as "lunas" | "isolir",
-      opticalPower: optical,
-      isOnline: c.isOnline,
-      lastUpdatedAt: c.lastUpdatedAt,
-      onuDetails: c.onuSerial
-        ? {
-            serialNumber: c.onuSerial,
-            ponIndex: c.onuPonIndex,
-            onuIndex: c.onuIndex,
-            opticalLevel: c.onuRxPower,
-          }
-        : null,
+      customers: mappedCustomers,
+      infrastructure,
+      summary: {
+        totalCustomers: rawCustomers.length,
+        geocodedCustomers: geocodedCount,
+        onlineCustomers: onlineCount,
+        offlineCustomers: offlineCount,
+        criticalOpticsCount,
+        totalOlts: rawOlts.length,
+        totalRouters: rawRouters.length,
+        totalOdps: odpMap.size,
+      },
+      dataSource: {
+        provider: "PostgreSQL Database (NOC Operational)",
+        isRealData: true,
+        lastSynchronizedAt: new Date().toISOString(),
+      },
     };
-  });
-
-  return {
-    customers: mappedCustomers,
-    infrastructure,
-    summary: {
-      totalCustomers: rawCustomers.length,
-      geocodedCustomers: geocodedCount,
-      onlineCustomers: onlineCount,
-      offlineCustomers: offlineCount,
-      criticalOpticsCount,
-      totalOlts: rawOlts.length,
-      totalRouters: rawRouters.length,
-      totalOdps: odpMap.size,
-    },
-    dataSource: {
-      provider: "PostgreSQL Database (NOC Operational)",
-      isRealData: true,
-      lastSynchronizedAt: new Date().toISOString(),
-    },
-  };
   } catch (err) {
-    console.error("[network-map] Gagal mengambil data peta dari PostgreSQL:", err);
+    console.error(
+      "[network-map] Gagal mengambil data peta dari PostgreSQL:",
+      err,
+    );
     throw err;
   }
 }

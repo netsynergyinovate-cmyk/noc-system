@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sendMockWhatsappAlert, defaultWhatsappConfig } from "../src/lib/dashboard/whatsapp.ts";
+import {
+  sendMockWhatsappAlert,
+  defaultWhatsappConfig,
+} from "../src/lib/dashboard/whatsapp.ts";
 import { createWhatsappLogStore } from "../src/lib/dashboard/whatsapp-log.ts";
 
 const alert = {
@@ -27,21 +30,31 @@ const fakeStorage = () => {
 
 test("sukses: log per nomor aktif, latensi valid", async () => {
   const store = createWhatsappLogStore(() => fakeStorage());
-  const r = await sendMockWhatsappAlert(cfg(), alert, { delayMs: 20, record: store.record });
+  const r = await sendMockWhatsappAlert(cfg(), alert, {
+    delayMs: 20,
+    record: store.record,
+  });
   assert.equal(r.ok, true);
   assert.equal(r.sentCount, 2);
   assert.deepEqual(r.phones, ["6281234567890", "6289876543210"]);
   assert.ok(r.latencyMs >= 20);
   const logs = store.read();
   assert.equal(logs.length, 2);
-  assert.ok(logs.every((l) => l.status === "delivered" && l.message.includes("Router offline")));
+  assert.ok(
+    logs.every(
+      (l) => l.status === "delivered" && l.message.includes("Router offline"),
+    ),
+  );
 });
 
 test("hanya nomor aktif menerima", async () => {
   const store = createWhatsappLogStore(() => fakeStorage());
   const c = cfg();
   c.recipients[1].active = false;
-  const r = await sendMockWhatsappAlert(c, alert, { delayMs: 1, record: store.record });
+  const r = await sendMockWhatsappAlert(c, alert, {
+    delayMs: 1,
+    record: store.record,
+  });
   assert.equal(r.sentCount, 1);
   assert.equal(store.read().length, 1);
 });
@@ -49,14 +62,27 @@ test("hanya nomor aktif menerima", async () => {
 test("gagal: tanpa nomor aktif, URL invalid, tanpa token; tidak mencatat", async () => {
   const store = createWhatsappLogStore(() => fakeStorage());
   const opt = { delayMs: 1, record: store.record };
-  const none = cfg({ recipients: cfg().recipients.map((r) => ({ ...r, active: false })) });
+  const none = cfg({
+    recipients: cfg().recipients.map((r) => ({ ...r, active: false })),
+  });
   assert.deepEqual(await sendMockWhatsappAlert(none, alert, opt), {
     ok: false,
     error: "Tidak ada nomor penerima aktif.",
   });
-  assert.equal((await sendMockWhatsappAlert(cfg({ gatewayUrl: "bukan url" }), alert, opt)).ok, false);
-  assert.equal((await sendMockWhatsappAlert(cfg({ gatewayUrl: "ftp://x.id" }), alert, opt)).ok, false);
-  assert.equal((await sendMockWhatsappAlert(cfg({ apiKey: " " }), alert, opt)).ok, false);
+  assert.equal(
+    (await sendMockWhatsappAlert(cfg({ gatewayUrl: "bukan url" }), alert, opt))
+      .ok,
+    false,
+  );
+  assert.equal(
+    (await sendMockWhatsappAlert(cfg({ gatewayUrl: "ftp://x.id" }), alert, opt))
+      .ok,
+    false,
+  );
+  assert.equal(
+    (await sendMockWhatsappAlert(cfg({ apiKey: " " }), alert, opt)).ok,
+    false,
+  );
   assert.equal(store.read().length, 0);
 });
 

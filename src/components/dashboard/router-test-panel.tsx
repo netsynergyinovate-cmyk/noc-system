@@ -34,7 +34,12 @@ export function RouterTestPanel({
 }: Props) {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<DeviceConnectionTestResult | null>(null);
-  const [groupCheck, setGroupCheck] = useState<{ group: string; policy: string; missing: string[]; fix: string | null } | null>(null);
+  const [groupCheck, setGroupCheck] = useState<{
+    group: string;
+    policy: string;
+    missing: string[];
+    fix: string | null;
+  } | null>(null);
 
   async function runTest() {
     if (testing) return;
@@ -66,7 +71,9 @@ export function RouterTestPanel({
           mode: "real",
           code: testData?.ok ? undefined : testData?.code,
           latencyMs: testData?.latencyMs,
-          message: testData?.message ?? (testData?.ok ? "Terhubung ke MikroTik" : "Gagal terhubung"),
+          message:
+            testData?.message ??
+            (testData?.ok ? "Terhubung ke MikroTik" : "Gagal terhubung"),
           data: {
             version: testData?.version,
             boardName: testData?.["board-name"],
@@ -103,7 +110,8 @@ export function RouterTestPanel({
         type: "mikrotik",
         mode: "real",
         code: "NETWORK_ERROR",
-        message: "Server aplikasi tidak menjawab permintaan uji. Periksa koneksi lalu coba lagi.",
+        message:
+          "Server aplikasi tidak menjawab permintaan uji. Periksa koneksi lalu coba lagi.",
       };
       setResult(failRes);
       onTestComplete?.(failRes);
@@ -114,10 +122,16 @@ export function RouterTestPanel({
 
   const metrics = result?.ok
     ? [
-        ["Latensi", result.latencyMs !== undefined ? `${result.latencyMs} ms` : "-"],
+        [
+          "Latensi",
+          result.latencyMs !== undefined ? `${result.latencyMs} ms` : "-",
+        ],
         ["Versi RouterOS", String(result.data?.version ?? "-")],
         ["Model Board", String(result.data?.boardName ?? "-")],
-        ["Beban CPU", result.data?.cpuLoad !== undefined ? `${result.data.cpuLoad}%` : "-"],
+        [
+          "Beban CPU",
+          result.data?.cpuLoad !== undefined ? `${result.data.cpuLoad}%` : "-",
+        ],
         ["Uptime", String(result.data?.uptime ?? "-")],
       ]
     : [];
@@ -169,8 +183,16 @@ export function RouterTestPanel({
           deviceType="mikrotik"
           protocol={protocol}
           target={host}
-          sourceIp={typeof result.data?.sourceIp === "string" ? result.data.sourceIp : undefined}
-          localSourceIp={typeof result.data?.localSourceIp === "string" ? result.data.localSourceIp : undefined}
+          sourceIp={
+            typeof result.data?.sourceIp === "string"
+              ? result.data.sourceIp
+              : undefined
+          }
+          localSourceIp={
+            typeof result.data?.localSourceIp === "string"
+              ? result.data.localSourceIp
+              : undefined
+          }
           onRetry={runTest}
           isRetrying={testing}
           compact={compact}
@@ -196,14 +218,21 @@ export function RouterTestPanel({
       {result?.ok && groupCheck && (
         <div className="mt-3 space-y-1 text-sm">
           {groupCheck.missing.length === 0 ? (
-            <p className="text-success">Izin grup <code>{groupCheck.group}</code> cukup (read, write, api, rest-api).</p>
+            <p className="text-success">
+              Izin grup <code>{groupCheck.group}</code> cukup (read, write, api,
+              rest-api).
+            </p>
           ) : (
             <>
               <p className="text-amber-600">
-                Grup <code>{groupCheck.group}</code> belum memuat izin: {groupCheck.missing.join(", ")}.{" "}
-                <code>write</code> dibutuhkan agar aplikasi bisa menjalankan perintah ke router. Jalankan di terminal MikroTik:
+                Grup <code>{groupCheck.group}</code> belum memuat izin:{" "}
+                {groupCheck.missing.join(", ")}. <code>write</code> dibutuhkan
+                agar aplikasi bisa menjalankan perintah ke router. Jalankan di
+                terminal MikroTik:
               </p>
-              <pre className="overflow-x-auto rounded-md border bg-background p-2 font-mono text-xs">{groupCheck.fix}</pre>
+              <pre className="overflow-x-auto rounded-md border bg-background p-2 font-mono text-xs">
+                {groupCheck.fix}
+              </pre>
             </>
           )}
         </div>

@@ -25,7 +25,12 @@ export interface HsgqTestResult {
   statusCode?: number;
   endpointTested?: string;
   timestamp?: number;
-  data?: { model?: string; firmware?: string; uptime?: string; ponPortCount?: number };
+  data?: {
+    model?: string;
+    firmware?: string;
+    uptime?: string;
+    ponPortCount?: number;
+  };
 }
 
 export interface HsgqPonPort {
@@ -63,7 +68,8 @@ const numOrNull = (v: unknown) => {
   return Number.isFinite(n) ? n : null;
 };
 const numOr = (v: unknown, d: number) => numOrNull(v) ?? d;
-const hex = (n: number, len: number) => n.toString(16).toUpperCase().padStart(len, "0");
+const hex = (n: number, len: number) =>
+  n.toString(16).toUpperCase().padStart(len, "0");
 
 function simOnus(): HsgqOnu[] {
   const out: HsgqOnu[] = [];
@@ -124,14 +130,18 @@ export class HsgqClient {
       host: this.opts.host,
       port: this.opts.port,
     });
-    return r.ok ? null : new DeviceConnectionError(r.code ?? "CONNECTION_FAILED", r.message);
+    return r.ok
+      ? null
+      : new DeviceConnectionError(r.code ?? "CONNECTION_FAILED", r.message);
   }
 
   private async request(path: string): Promise<unknown> {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     try {
-      const auth = Buffer.from(`${this.opts.username}:${this.opts.password}`).toString("base64");
+      const auth = Buffer.from(
+        `${this.opts.username}:${this.opts.password}`,
+      ).toString("base64");
       const res = await fetch(new URL(path, this.url), {
         method: "GET",
         headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
@@ -145,7 +155,10 @@ export class HsgqClient {
         );
       }
       if (res.status >= 300) {
-        throw new DeviceConnectionError("HTTP_ERROR", `${LABEL} membalas HTTP ${res.status}.`);
+        throw new DeviceConnectionError(
+          "HTTP_ERROR",
+          `${LABEL} membalas HTTP ${res.status}.`,
+        );
       }
       return await res.json();
     } catch (e) {
@@ -170,7 +183,12 @@ export class HsgqClient {
         message: r.message,
         code: r.code,
         data: r.ok
-          ? { model: "HSGQ-XPON-8", firmware: "V2.1.5", uptime: "12d3h45m", ponPortCount: SIM_PON_COUNT }
+          ? {
+              model: "HSGQ-XPON-8",
+              firmware: "V2.1.5",
+              uptime: "12d3h45m",
+              ponPortCount: SIM_PON_COUNT,
+            }
           : undefined,
       };
     }
@@ -193,7 +211,12 @@ export class HsgqClient {
     } catch (e) {
       const err =
         e instanceof DeviceConnectionError ? e : describeNetworkError(e, LABEL);
-      return { ok: false, latencyMs: Date.now() - started, message: err.message, code: err.code };
+      return {
+        ok: false,
+        latencyMs: Date.now() - started,
+        message: err.message,
+        code: err.code,
+      };
     }
   }
 
@@ -212,7 +235,9 @@ export class HsgqClient {
           rxPowerDbm: -(19 + (i % 4)),
           txPowerDbm: 3.5,
           attenuationDb: 22 + (i % 4),
-          onuOnlineCount: onus.filter((o) => o.ponIndex === ponIndex && o.status === "online").length,
+          onuOnlineCount: onus.filter(
+            (o) => o.ponIndex === ponIndex && o.status === "online",
+          ).length,
         };
       });
     }
@@ -238,9 +263,14 @@ export class HsgqClient {
       const fail = this.simulatorFailure();
       if (fail) throw fail;
       const all = simOnus();
-      return ponIndex === undefined ? all : all.filter((o) => o.ponIndex === ponIndex);
+      return ponIndex === undefined
+        ? all
+        : all.filter((o) => o.ponIndex === ponIndex);
     }
-    const path = ponIndex === undefined ? "/api/v1/onu" : `/api/v1/onu?pon=${encodeURIComponent(String(ponIndex))}`;
+    const path =
+      ponIndex === undefined
+        ? "/api/v1/onu"
+        : `/api/v1/onu?pon=${encodeURIComponent(String(ponIndex))}`;
     const data = await this.request(path);
     if (!Array.isArray(data)) return [];
     const list = (data as Raw[]).map((d): HsgqOnu => {
@@ -256,6 +286,8 @@ export class HsgqClient {
         distanceMeters: numOrNull(d["distanceMeters"]),
       };
     });
-    return ponIndex === undefined ? list : list.filter((o) => o.ponIndex === ponIndex);
+    return ponIndex === undefined
+      ? list
+      : list.filter((o) => o.ponIndex === ponIndex);
   }
 }

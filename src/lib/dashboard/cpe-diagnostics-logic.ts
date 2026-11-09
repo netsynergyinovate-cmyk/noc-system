@@ -87,7 +87,9 @@ function newId(): string {
 
 // Terbaru dulu.
 export function getDiagnosticTasks(customerId?: string): CpeDiagnosticTask[] {
-  const all = [...read()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const all = [...read()].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
   return customerId ? all.filter((t) => t.customerId === customerId) : all;
 }
 
@@ -107,13 +109,18 @@ export function enqueueDiagnosticTask(
 export function updateTaskStatus(
   taskId: string,
   status: CpeDiagnosticStatus,
-  outcome?: { resultSummary?: string; latencyMs?: number; errorReason?: string },
+  outcome?: {
+    resultSummary?: string;
+    latencyMs?: number;
+    errorReason?: string;
+  },
 ): CpeDiagnosticTask | null {
   const all = read();
   const idx = all.findIndex((t) => t.id === taskId);
   if (idx < 0) return null;
   const updated: CpeDiagnosticTask = { ...all[idx], status, ...outcome };
-  if (status === "success" || status === "failed") updated.completedAt = new Date().toISOString();
+  if (status === "success" || status === "failed")
+    updated.completedAt = new Date().toISOString();
   const next = [...all];
   next[idx] = updated;
   write(next);
@@ -151,13 +158,70 @@ export function generateMockSeedTasks(): CpeDiagnosticTask[] {
     error?: string;
     params?: Record<string, string | number | boolean>;
   }> = [
-    { c: 0, action: "ping_test", status: "success", minsAgo: 5, by: "Rina (NOC)", summary: "4/4 paket diterima, loss 0%", latency: 12, params: { host: "8.8.8.8" } },
-    { c: 1, action: "check_optical", status: "success", minsAgo: 22, by: "Rina (NOC)", summary: "RX -23.4 dBm, TX 2.1 dBm, normal" },
-    { c: 2, action: "reboot_device", status: "failed", minsAgo: 47, by: "Dimas (NOC)", error: "CPE tidak inform ke ACS (timeout 30 dtk)", params: { mode: "soft" } },
-    { c: 3, action: "speed_test", status: "success", minsAgo: 95, by: "Dimas (NOC)", summary: "Down 48.2 Mbps / Up 19.7 Mbps", latency: 18 },
-    { c: 0, action: "traceroute", status: "success", minsAgo: 180, by: "Rina (NOC)", summary: "7 hop sampai 1.1.1.1", latency: 21, params: { host: "1.1.1.1" } },
-    { c: 1, action: "ping_test", status: "failed", minsAgo: 300, by: "Sistem", error: "Host tujuan tidak merespons (loss 100%)", params: { host: "10.20.30.40" } },
-    { c: 2, action: "reboot_device", status: "success", minsAgo: 1500, by: "Rina (NOC)", summary: "Modem menyala ulang dalam 84 detik", params: { mode: "hard" } },
+    {
+      c: 0,
+      action: "ping_test",
+      status: "success",
+      minsAgo: 5,
+      by: "Rina (NOC)",
+      summary: "4/4 paket diterima, loss 0%",
+      latency: 12,
+      params: { host: "8.8.8.8" },
+    },
+    {
+      c: 1,
+      action: "check_optical",
+      status: "success",
+      minsAgo: 22,
+      by: "Rina (NOC)",
+      summary: "RX -23.4 dBm, TX 2.1 dBm, normal",
+    },
+    {
+      c: 2,
+      action: "reboot_device",
+      status: "failed",
+      minsAgo: 47,
+      by: "Dimas (NOC)",
+      error: "CPE tidak inform ke ACS (timeout 30 dtk)",
+      params: { mode: "soft" },
+    },
+    {
+      c: 3,
+      action: "speed_test",
+      status: "success",
+      minsAgo: 95,
+      by: "Dimas (NOC)",
+      summary: "Down 48.2 Mbps / Up 19.7 Mbps",
+      latency: 18,
+    },
+    {
+      c: 0,
+      action: "traceroute",
+      status: "success",
+      minsAgo: 180,
+      by: "Rina (NOC)",
+      summary: "7 hop sampai 1.1.1.1",
+      latency: 21,
+      params: { host: "1.1.1.1" },
+    },
+    {
+      c: 1,
+      action: "ping_test",
+      status: "failed",
+      minsAgo: 300,
+      by: "Sistem",
+      error: "Host tujuan tidak merespons (loss 100%)",
+      params: { host: "10.20.30.40" },
+    },
+    {
+      c: 2,
+      action: "reboot_device",
+      status: "success",
+      minsAgo: 1500,
+      by: "Rina (NOC)",
+      summary: "Modem menyala ulang dalam 84 detik",
+      params: { mode: "hard" },
+    },
   ];
   return defs.map((d, i) => {
     const cust = seedCustomers[d.c];

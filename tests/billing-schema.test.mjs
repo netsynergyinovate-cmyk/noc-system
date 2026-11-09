@@ -236,13 +236,22 @@ test("the journal lists the billing sync migration and the snapshots form one ch
   // Tiap snapshot menunjuk snapshot sebelumnya, tanpa cabang.
   const snapshots = entries
     .map((e) => {
-      const p = resolve(migrationsFolder, "meta", `${e.tag.slice(0, 4)}_snapshot.json`);
-      return existsSync(p) ? readJson("drizzle", "meta", `${e.tag.slice(0, 4)}_snapshot.json`) : null;
+      const p = resolve(
+        migrationsFolder,
+        "meta",
+        `${e.tag.slice(0, 4)}_snapshot.json`,
+      );
+      return existsSync(p)
+        ? readJson("drizzle", "meta", `${e.tag.slice(0, 4)}_snapshot.json`)
+        : null;
     })
     .filter(Boolean);
   snapshots.forEach((snapshot, index) => {
     if (index > 0 && snapshot.prevId) {
-      assert.ok(snapshots.some((s) => s.id === snapshot.prevId), "snapshot chains to a valid predecessor");
+      assert.ok(
+        snapshots.some((s) => s.id === snapshot.prevId),
+        "snapshot chains to a valid predecessor",
+      );
     }
   });
   assert.equal(new Set(snapshots.map((s) => s.id)).size, snapshots.length);
@@ -1214,7 +1223,9 @@ test("migration 0006 keeps existing customers and billing_status rows intact", a
         assert.deepEqual(
           customersAfter.map((row) =>
             Object.fromEntries(
-              Object.entries(row).filter(([name]) => initialKeys.includes(name)),
+              Object.entries(row).filter(([name]) =>
+                initialKeys.includes(name),
+              ),
             ),
           ),
           customersBefore,

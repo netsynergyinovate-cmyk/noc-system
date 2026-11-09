@@ -17,7 +17,9 @@ export async function applyTimescaleSetup(poolOrClient, options = {}) {
   if (options.enabled === false) {
     return { enabled: false, reason: "TIMESCALE_ENABLED tidak diaktifkan" };
   }
-  const days = normalizeRetentionDays(options.retentionDays ?? DEFAULT_RETENTION_DAYS);
+  const days = normalizeRetentionDays(
+    options.retentionDays ?? DEFAULT_RETENTION_DAYS,
+  );
   try {
     const ext = await poolOrClient.query(
       "SELECT EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'timescaledb') AS exists",
@@ -34,7 +36,8 @@ export async function applyTimescaleSetup(poolOrClient, options = {}) {
     if (table.rows[0]?.exists === false) {
       return {
         enabled: false,
-        reason: "Tabel traffic_samples belum ada; jalankan npm run db:migrate dulu",
+        reason:
+          "Tabel traffic_samples belum ada; jalankan npm run db:migrate dulu",
       };
     }
     await poolOrClient.query("CREATE EXTENSION IF NOT EXISTS timescaledb;");
@@ -62,7 +65,9 @@ async function main() {
   let pool;
   try {
     pool = new Pool({
-      connectionString: databaseUrl(process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL),
+      connectionString: databaseUrl(
+        process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL,
+      ),
       max: 1,
       connectionTimeoutMillis: 5000,
     });
@@ -83,4 +88,5 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  await main();

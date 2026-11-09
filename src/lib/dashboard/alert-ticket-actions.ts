@@ -4,10 +4,7 @@
 // storage diblokir. Backend nyata: POST /api/v1/alerts/{id}/ticket.
 
 export type AlertTicketStatus =
-  | "open"
-  | "in_progress"
-  | "resolved"
-  | "escalated";
+  "open" | "in_progress" | "resolved" | "escalated";
 export type AlertTicketPriority = "low" | "medium" | "high" | "critical";
 
 export interface AlertTicketResponseRecord {
@@ -162,7 +159,9 @@ export function getTicketResponses(
   alertId?: string,
 ): AlertTicketResponseRecord[] {
   const all = readAll();
-  return alertId === undefined ? [...all] : all.filter((r) => r.alertId === alertId);
+  return alertId === undefined
+    ? [...all]
+    : all.filter((r) => r.alertId === alertId);
 }
 
 export function getLatestTicketResponse(

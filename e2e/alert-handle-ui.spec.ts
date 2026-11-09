@@ -186,9 +186,9 @@ test("tiap baris alert aktif punya tombol Tandai ditangani yang namanya menyebut
   for (const alert of alerts) {
     const button = handleButton(page, alert.id);
     // Di dalam kartunya sendiri, satu per alert.
-    await expect(
-      row(page, alert.id).getByTestId("handle-alert"),
-    ).toHaveCount(1);
+    await expect(row(page, alert.id).getByTestId("handle-alert")).toHaveCount(
+      1,
+    );
     // Terlihat tanpa menggulir mendatar: seluruh lebar tombol ada di dalam daftar.
     const [frame, box] = await Promise.all([
       page.getByRole("region", { name: "Daftar alert aktif" }).boundingBox(),

@@ -87,41 +87,44 @@ test("Task: Buat Endpoint Data Peta Terpadu (Backend)", async (t) => {
     );
   });
 
-  await t.test("3. Service getCompleteRealMapData: Agregasi Multi-Tabel PostgreSQL", () => {
-    assert.match(
-      serviceContent,
-      /db\.select\(\)[\s\S]*?\.from\(networkInfrastructure\)/,
-      "Service wajib membaca tabel network_infrastructure fisik",
-    );
-    assert.match(
-      serviceContent,
-      /\.from\(customers\)/,
-      "Service wajib membaca tabel customers dengan geocoding riil",
-    );
-    assert.match(
-      serviceContent,
-      /\.from\(networkCables\)/,
-      "Service wajib membaca bentangan kabel network_cables",
-    );
-    assert.match(
-      serviceContent,
-      /getDeviceHierarchyTree/,
-      "Service wajib mendukung pemanggilan getDeviceHierarchyTree untuk relasi hierarki",
-    );
-    assert.match(
-      serviceContent,
-      /totalCustomers[\s\S]*?totalDevices[\s\S]*?totalCables/,
-      "Service wajib mengkalkulasi metrik ringkasan telemetri terpadu",
-    );
-    assert.match(
-      serviceContent,
-      /isRealData:\s*true/,
-      "Service wajib menandai isRealData bernilai true saat membaca database operasional",
-    );
-    assert.doesNotMatch(
-      serviceContent,
-      /dummy_node|dummy_customer|fake_point/i,
-      "Service dilarang menyematkan data dummy palsu (kepatuhan zero-dummy)",
-    );
-  });
+  await t.test(
+    "3. Service getCompleteRealMapData: Agregasi Multi-Tabel PostgreSQL",
+    () => {
+      assert.match(
+        serviceContent,
+        /db\.select\(\)[\s\S]*?\.from\(networkInfrastructure\)/,
+        "Service wajib membaca tabel network_infrastructure fisik",
+      );
+      assert.match(
+        serviceContent,
+        /\.from\(customers\)/,
+        "Service wajib membaca tabel customers dengan geocoding riil",
+      );
+      assert.match(
+        serviceContent,
+        /\.from\(networkCables\)/,
+        "Service wajib membaca bentangan kabel network_cables",
+      );
+      assert.match(
+        serviceContent,
+        /getDeviceHierarchyTree/,
+        "Service wajib mendukung pemanggilan getDeviceHierarchyTree untuk relasi hierarki",
+      );
+      assert.match(
+        serviceContent,
+        /totalCustomers[\s\S]*?totalDevices[\s\S]*?totalCables/,
+        "Service wajib mengkalkulasi metrik ringkasan telemetri terpadu",
+      );
+      assert.match(
+        serviceContent,
+        /isRealData:\s*true/,
+        "Service wajib menandai isRealData bernilai true saat membaca database operasional",
+      );
+      assert.doesNotMatch(
+        serviceContent,
+        /dummy_node|dummy_customer|fake_point/i,
+        "Service dilarang menyematkan data dummy palsu (kepatuhan zero-dummy)",
+      );
+    },
+  );
 });

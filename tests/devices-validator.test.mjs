@@ -37,8 +37,14 @@ test("menolak melebihi batas panjang", () => {
   assert.ok(s.safeParse({ ...ok, host: "a".repeat(255) }).success);
   assert.equal(s.safeParse({ ...ok, brand: "a".repeat(51) }).success, false);
   assert.equal(s.safeParse({ ...ok, driver: "a".repeat(51) }).success, false);
-  assert.equal(s.safeParse({ ...ok, username: "a".repeat(101) }).success, false);
-  assert.equal(s.safeParse({ ...ok, password: "a".repeat(101) }).success, false);
+  assert.equal(
+    s.safeParse({ ...ok, username: "a".repeat(101) }).success,
+    false,
+  );
+  assert.equal(
+    s.safeParse({ ...ok, password: "a".repeat(101) }).success,
+    false,
+  );
 });
 
 test("menolak tipe salah dan kunci asing", () => {

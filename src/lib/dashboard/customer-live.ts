@@ -44,13 +44,15 @@ export interface LiveBillingInput {
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
-const clean = (s: string | null | undefined) => (s && s.trim() && s.trim() !== "—" ? s.trim() : null);
+const clean = (s: string | null | undefined) =>
+  s && s.trim() && s.trim() !== "—" ? s.trim() : null;
 
 /** `17060001092@runsnet.id` -> `17060001092`; username lain apa adanya. */
 const billingKey = (pppoe: string) => norm(pppoe).replace(/@runsnet\.id$/, "");
 
 // 0 dBm dan NaN adalah nilai bawaan pemeta ("tidak dilaporkan"), bukan bacaan sungguhan.
-const reported = (v: number | null | undefined) => (v != null && Number.isFinite(v) && v !== 0 ? v : null);
+const reported = (v: number | null | undefined) =>
+  v != null && Number.isFinite(v) && v !== 0 ? v : null;
 
 /** Umur bacaan untuk label redup, mis. "7 jam lalu". */
 export function formatAgo(seconds: number): string {
@@ -70,7 +72,11 @@ export function combineCustomerLive(
 ): Record<string, CustomerLiveStatus> {
   const cpeByUser = new Map((cpe ?? []).map((d) => [norm(d.pppoeUsername), d]));
   const onuByCustomer = new Map(onus.map((o) => [o.customerId, o]));
-  const ipByBilling = new Map(billing.filter((b) => b.ipAddress).map((b) => [norm(b.custId), b.ipAddress as string]));
+  const ipByBilling = new Map(
+    billing
+      .filter((b) => b.ipAddress)
+      .map((b) => [norm(b.custId), b.ipAddress as string]),
+  );
 
   const out: Record<string, CustomerLiveStatus> = {};
   for (const c of customers) {
@@ -80,13 +86,19 @@ export function combineCustomerLive(
     const oltRx = onu && onu.status !== "los" ? reported(onu.rxPower) : null;
     const rxDbm = genieRx ?? oltRx;
     out[c.id] = {
-      ip: clean(device?.wanIp) ?? ipByBilling.get(billingKey(c.pppoeUsername)) ?? null,
+      ip:
+        clean(device?.wanIp) ??
+        ipByBilling.get(billingKey(c.pppoeUsername)) ??
+        null,
       uptime: clean(device?.uptimeText),
       ssid: clean(device?.wifi?.ssid),
       clients: device?.wifi ? device.wifi.clientCount : null,
       modemOnline: device?.isOnline ?? false,
       informAt: device && device.lastInformAt > 0 ? device.lastInformAt : null,
-      staleNote: device && !device.isOnline && device.lastInformAt > 0 ? `per ${formatAgo(nowSec - device.lastInformAt)}` : null,
+      staleNote:
+        device && !device.isOnline && device.lastInformAt > 0
+          ? `per ${formatAgo(nowSec - device.lastInformAt)}`
+          : null,
       rxDbm,
       rxSource: rxDbm === null ? null : genieRx !== null ? "genieacs" : "olt",
       onuLos: onu?.status === "los",

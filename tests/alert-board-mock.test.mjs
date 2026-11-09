@@ -2,14 +2,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const {
-  generateMockAlertKpi,
-  isAlertBoardMockActive,
-  ALERT_BOARD_MOCK_ENTRY,
-} = await import("../src/lib/dashboard/alert-board-mock.ts");
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { generateMockAlertKpi, isAlertBoardMockActive, ALERT_BOARD_MOCK_ENTRY } =
+  await import("../src/lib/dashboard/alert-board-mock.ts");
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
 const NOW = 1_700_000_000;
@@ -50,8 +46,16 @@ test("generateMockAlertKpi: tanpa argumen aman dan deterministik", () => {
   assert.equal(k.totalActive, 0);
   assert.equal(k.resolvedPast7d, 0);
   assert.deepEqual(
-    generateMockAlertKpi([{ severity: "critical" }], [{ endedAt: NOW - 5 }], NOW),
-    generateMockAlertKpi([{ severity: "critical" }], [{ endedAt: NOW - 5 }], NOW),
+    generateMockAlertKpi(
+      [{ severity: "critical" }],
+      [{ endedAt: NOW - 5 }],
+      NOW,
+    ),
+    generateMockAlertKpi(
+      [{ severity: "critical" }],
+      [{ endedAt: NOW - 5 }],
+      NOW,
+    ),
   );
 });
 
@@ -59,7 +63,9 @@ test("ALERT_BOARD_MOCK_ENTRY tercatat di SETUP_DATA_SOURCE_REGISTRY", () => {
   assert.equal(ALERT_BOARD_MOCK_ENTRY.id, "alert-board-data");
   assert.equal(ALERT_BOARD_MOCK_ENTRY.status, "dummy");
   assert.match(ALERT_BOARD_MOCK_ENTRY.notes, /Fase 5/);
-  const entry = SETUP_DATA_SOURCE_REGISTRY.find((e) => e.id === "alert-board-data");
+  const entry = SETUP_DATA_SOURCE_REGISTRY.find(
+    (e) => e.id === "alert-board-data",
+  );
   assert.ok(entry);
   assert.deepEqual(entry, ALERT_BOARD_MOCK_ENTRY);
   assert.ok(SETUP_DATA_SOURCE_REGISTRY.length >= 14);
@@ -84,7 +90,9 @@ test("AlertMetricSummary diekspor dan dipasang di AlertBoard", () => {
     assert.ok(src.includes(`label="${t}"`), t);
   }
   const board = read("../src/components/dashboard/alert-board.tsx");
-  const a = board.indexOf("<AlertMetricSummary active={active} resolved={resolved} />");
+  const a = board.indexOf(
+    "<AlertMetricSummary active={active} resolved={resolved} />",
+  );
   const b = board.indexOf("<ActiveAlertList");
   assert.ok(a > 0 && a < b, "ringkasan tepat di atas daftar aktif");
 });

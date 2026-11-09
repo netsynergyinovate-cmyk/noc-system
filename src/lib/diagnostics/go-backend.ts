@@ -40,9 +40,11 @@ export async function goDiagnostics<T>(
       "Backend Go tidak dapat dihubungi.",
     );
   }
-  const json = (await res.json().catch(() => null)) as
-    | { data?: T; error?: string; message?: string }
-    | null;
+  const json = (await res.json().catch(() => null)) as {
+    data?: T;
+    error?: string;
+    message?: string;
+  } | null;
   if (!res.ok) {
     throw new ApiError(
       res.status,

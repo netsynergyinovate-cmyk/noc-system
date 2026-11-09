@@ -10,13 +10,30 @@ import {
   mapOverrides,
   mapDevices as networkDevices,
 } from "@/db/schema";
-import { fetchCpe, fetchDataset, fetchRouterQueues, fetchSnap, fetchVlanTraffic } from "./client";
+import {
+  fetchCpe,
+  fetchDataset,
+  fetchRouterQueues,
+  fetchSnap,
+  fetchVlanTraffic,
+} from "./client";
 import { generateSegmentSamples } from "./geo";
-import { customerPortCount, portCount, SPLITTER_RATIOS, TAP_RATIOS } from "./loss-budget";
+import {
+  customerPortCount,
+  portCount,
+  SPLITTER_RATIOS,
+  TAP_RATIOS,
+} from "./loss-budget";
 
 // shortcut: ambang Rx ONU lemah tetap -27 dBm (sensitivitas EPON PX20); jadikan per model ONU bila perlu
 const ONU_RX_WEAK_DBM = -27;
-import { chainEndDeviceId, createsCycle, oltPonCount, renameForType, routePon } from "./topology";
+import {
+  chainEndDeviceId,
+  createsCycle,
+  oltPonCount,
+  renameForType,
+  routePon,
+} from "./topology";
 import { created as createdRow, saveUndo, snapshot } from "./undo";
 import {
   CentralBillingCustomer,
@@ -91,7 +108,8 @@ async function recomputeRouteTotal(tx: Tx, routeId: string): Promise<number> {
     .select({ lengthM: cableSegments.lengthM })
     .from(cableSegments)
     .where(eq(cableSegments.routeId, routeId));
-  const total = Math.round(rows.reduce((sum, s) => sum + s.lengthM, 0) * 10) / 10;
+  const total =
+    Math.round(rows.reduce((sum, s) => sum + s.lengthM, 0) * 10) / 10;
   await tx
     .update(cableRoutes)
     .set({ totalLengthM: total, updatedAt: new Date() })
@@ -303,21 +321,32 @@ export class MapDataAdapter {
   // Rincian lengkap satu pelanggan pusat: modem/WiFi, ONU, billing, invoice, pembayaran, alert.
   // Dataset pusat belum bisa difilter, jadi ditarik utuh lalu disaring di sini (ukurannya ribuan baris).
   static async getCustomerDetail(id: string): Promise<CustomerDetail | null> {
-    if (this.getDataSource() !== "central-api" || (await this.isLocal("customer", id))) {
+    if (
+      this.getDataSource() !== "central-api" ||
+      (await this.isLocal("customer", id))
+    ) {
       return null; // pelanggan lokal: panel memakai kolom tabel lokal
     }
     const customer = (
-      await fetchDataset<CentralCustomer & { lastUpdatedAt?: string | null }>("customers")
+      await fetchDataset<CentralCustomer & { lastUpdatedAt?: string | null }>(
+        "customers",
+      )
     ).find((c) => c.id === id);
     if (!customer) throw customerNotFound();
     const username = customer.pppoeUsername;
     const custId = username.split("@")[0];
 
     const parts = {
-      cpe: fetchCpe<{ data?: (NonNullable<CustomerDetail["cpe"]> & {
-        pppoeUsername: string;
-        optical?: { rxDbm: number | null; txDbm: number | null; temperatureC: number | null };
-      })[] }>(username),
+      cpe: fetchCpe<{
+        data?: (NonNullable<CustomerDetail["cpe"]> & {
+          pppoeUsername: string;
+          optical?: {
+            rxDbm: number | null;
+            txDbm: number | null;
+            temperatureC: number | null;
+          };
+        })[];
+      }>(username),
       onu: fetchDataset<CentralOnu & Record<string, unknown>>("olt-onus"),
       billing: fetchDataset<Record<string, unknown>>("runsnet-customers"),
       invoices: fetchDataset<Record<string, unknown>>("runsnet-invoices"),
@@ -328,7 +357,9 @@ export class MapDataAdapter {
     const settled = await Promise.allSettled(Object.values(parts));
     const ok = <K extends keyof typeof parts>(k: K) => {
       const r = settled[names.indexOf(k)];
-      return r.status === "fulfilled" ? (r.value as Awaited<(typeof parts)[K]>) : null;
+      return r.status === "fulfilled"
+        ? (r.value as Awaited<(typeof parts)[K]>)
+        : null;
     };
     const str = (v: unknown) => (typeof v === "string" && v ? v : null);
     const num = (v: unknown) => (typeof v === "number" ? v : 0);
@@ -336,8 +367,9 @@ export class MapDataAdapter {
     const cpe = ok("cpe")?.data?.find((d) => d.pppoeUsername === username);
     const onu = ok("onu")?.find((o) => o.customerId === id);
     const billing = ok("billing")?.find((b) => String(b.custId) === custId);
-    const desc = (k: string) => (a: Record<string, unknown>, b: Record<string, unknown>) =>
-      String(b[k] ?? "").localeCompare(String(a[k] ?? ""));
+    const desc =
+      (k: string) => (a: Record<string, unknown>, b: Record<string, unknown>) =>
+        String(b[k] ?? "").localeCompare(String(a[k] ?? ""));
 
     return {
       lastUpdatedAt: customer.lastUpdatedAt ?? null,
@@ -367,7 +399,8 @@ export class MapDataAdapter {
             description: str(onu.description),
             rxPower: onu.rxPower,
             txPower: typeof onu.txPower === "number" ? onu.txPower : null,
-            attenuation: typeof onu.attenuation === "number" ? onu.attenuation : null,
+            attenuation:
+              typeof onu.attenuation === "number" ? onu.attenuation : null,
             status: onu.status,
             capturedAt: str(onu.capturedAt),
           }
@@ -407,9 +440,10 @@ export class MapDataAdapter {
       // Alert aktif dulu, lalu yang terbaru
       alerts: (ok("alerts") ?? [])
         .filter((a) => a.customerId === id)
-        .sort((a, b) =>
-          Number(b.status !== "resolved") - Number(a.status !== "resolved") ||
-          desc("startedAt")(a, b),
+        .sort(
+          (a, b) =>
+            Number(b.status !== "resolved") - Number(a.status !== "resolved") ||
+            desc("startedAt")(a, b),
         )
         .slice(0, 10)
         .map((a) => ({
@@ -430,34 +464,60 @@ export class MapDataAdapter {
   static async getOltDetail(
     id: string,
     range: OltRange,
-  ): Promise<{ detail: OltDetail | null; choices: { id: string; name: string }[] }> {
+  ): Promise<{
+    detail: OltDetail | null;
+    choices: { id: string; name: string }[];
+  }> {
     const device = (await this.getMapData()).devices.find((d) => d.id === id);
     if (!device) throw deviceNotFound();
     if (device.type !== "server") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Rincian OLT hanya untuk perangkat Server/OLT.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Rincian OLT hanya untuk perangkat Server/OLT.",
+        422,
+      );
     }
     if (!device.centralOlt) {
-      const olts = this.getDataSource() === "central-api" ? await fetchDataset<CentralOlt>("olts") : [];
-      return { detail: null, choices: olts.map((o) => ({ id: o.id, name: o.name })) };
+      const olts =
+        this.getDataSource() === "central-api"
+          ? await fetchDataset<CentralOlt>("olts")
+          : [];
+      return {
+        detail: null,
+        choices: olts.map((o) => ({ id: o.id, name: o.name })),
+      };
     }
-    return { detail: await this.oltDetail(device.centralOlt.id, range), choices: [] };
+    return {
+      detail: await this.oltDetail(device.centralOlt.id, range),
+      choices: [],
+    };
   }
 
-  private static async oltDetail(oltId: string, range: OltRange): Promise<OltDetail> {
-
+  private static async oltDetail(
+    oltId: string,
+    range: OltRange,
+  ): Promise<OltDetail> {
     const parts = {
       olts: fetchDataset<CentralOlt & Record<string, unknown>>("olts"),
-      ports: fetchDataset<CentralPonPort & Record<string, unknown>>("olt-pon-ports"),
+      ports: fetchDataset<CentralPonPort & Record<string, unknown>>(
+        "olt-pon-ports",
+      ),
       onus: fetchDataset<CentralOnu>("olt-onus"),
-      traffic: fetchVlanTraffic<{ data?: { polledAt?: string; items?: Record<string, unknown>[] } }>(range),
+      traffic: fetchVlanTraffic<{
+        data?: { polledAt?: string; items?: Record<string, unknown>[] };
+      }>(range),
     };
     const names = Object.keys(parts) as (keyof typeof parts)[];
     const settled = await Promise.allSettled(Object.values(parts));
     const ok = <K extends keyof typeof parts>(k: K) => {
       const r = settled[names.indexOf(k)];
-      return r.status === "fulfilled" ? (r.value as Awaited<(typeof parts)[K]>) : null;
+      return r.status === "fulfilled"
+        ? (r.value as Awaited<(typeof parts)[K]>)
+        : null;
     };
-    const unavailable: string[] = names.filter((_, i) => settled[i].status === "rejected");
+    const unavailable: string[] = names.filter(
+      (_, i) => settled[i].status === "rejected",
+    );
 
     const olt = ok("olts")?.find((o) => o.id === oltId);
     const ref = { id: oltId, name: olt?.name ?? "OLT" };
@@ -465,12 +525,20 @@ export class MapDataAdapter {
     const onus = (ok("onus") ?? []).filter((o) => o.oltId === oltId);
     // Trafik VLAN pusat hanya untuk OLT aktifnya; dipakai bila namanya sama dengan OLT titik ini
     const trafficData = ok("traffic")?.data;
-    const items = (trafficData?.items ?? []).filter((i) => i.oltName === ref.name);
-    if (trafficData && items.length === 0) unavailable.push("trafik (OLT di data trafik pusat berbeda)");
+    const items = (trafficData?.items ?? []).filter(
+      (i) => i.oltName === ref.name,
+    );
+    if (trafficData && items.length === 0)
+      unavailable.push("trafik (OLT di data trafik pusat berbeda)");
 
-    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+    const num = (v: unknown) =>
+      typeof v === "number" && Number.isFinite(v) ? v : 0;
     const ponIndexes = [
-      ...new Set([...ports.map((p) => p.ponIndex), ...onus.map((o) => o.ponIndex), ...items.map((i) => num(i.ponIndex))]),
+      ...new Set([
+        ...ports.map((p) => p.ponIndex),
+        ...onus.map((o) => o.ponIndex),
+        ...items.map((i) => num(i.ponIndex)),
+      ]),
     ].sort((a, b) => a - b);
 
     return {
@@ -486,19 +554,29 @@ export class MapDataAdapter {
       pons: ponIndexes.map((ponIndex) => {
         const port = ports.find((p) => p.ponIndex === ponIndex);
         const ponOnus = onus.filter((o) => o.ponIndex === ponIndex);
-        const rxs = ponOnus.map((o) => o.rxPower).filter((v): v is number => typeof v === "number");
+        const rxs = ponOnus
+          .map((o) => o.rxPower)
+          .filter((v): v is number => typeof v === "number");
         const item = items.find((i) => num(i.ponIndex) === ponIndex);
-        const series = Array.isArray(item?.series) ? (item.series as Record<string, unknown>[]) : [];
+        const series = Array.isArray(item?.series)
+          ? (item.series as Record<string, unknown>[])
+          : [];
         return {
           ponIndex,
           rxPower: port?.rxPower ?? null,
           txPower: typeof port?.txPower === "number" ? port.txPower : null,
-          onuOnline: ponOnus.filter((o) => o.status === "online").length || (port?.onuOnlineCount ?? 0),
+          onuOnline:
+            ponOnus.filter((o) => o.status === "online").length ||
+            (port?.onuOnlineCount ?? 0),
           onuTotal: ponOnus.length,
           onuOffline: ponOnus.filter((o) => o.status !== "online").length,
           weakSignal: rxs.filter((v) => v < ONU_RX_WEAK_DBM).length,
-          avgOnuRx: rxs.length ? Math.round((rxs.reduce((a, b) => a + b, 0) / rxs.length) * 100) / 100 : null,
-          capturedAt: typeof port?.capturedAt === "string" ? port.capturedAt : null,
+          avgOnuRx: rxs.length
+            ? Math.round((rxs.reduce((a, b) => a + b, 0) / rxs.length) * 100) /
+              100
+            : null,
+          capturedAt:
+            typeof port?.capturedAt === "string" ? port.capturedAt : null,
           traffic: item
             ? {
                 currentDown: num(item.currentDownloadMbps),
@@ -523,11 +601,16 @@ export class MapDataAdapter {
 
   // Trafik live: simple queue dinamis "<pppoe-username>" di router pelanggan. null = sesi tidak aktif.
   static async getCustomerTraffic(id: string): Promise<CustomerTraffic | null> {
-    if (this.getDataSource() !== "central-api" || (await this.isLocal("customer", id))) {
+    if (
+      this.getDataSource() !== "central-api" ||
+      (await this.isLocal("customer", id))
+    ) {
       return null;
     }
     const customer = (
-      await fetchDataset<CentralCustomer & { routerId?: string | null }>("customers")
+      await fetchDataset<CentralCustomer & { routerId?: string | null }>(
+        "customers",
+      )
     ).find((c) => c.id === id);
     if (!customer) throw customerNotFound();
     if (!customer.routerId) return null;
@@ -536,7 +619,9 @@ export class MapDataAdapter {
     const res = await fetchRouterQueues<{
       data?: { name: string; maxLimit: Pair; rate: Pair; bytes: Pair }[];
     }>(customer.routerId, customer.pppoeUsername);
-    const q = res?.data?.find((r) => r.name === `<pppoe-${customer.pppoeUsername}>`);
+    const q = res?.data?.find(
+      (r) => r.name === `<pppoe-${customer.pppoeUsername}>`,
+    );
     return q
       ? {
           downloadBps: q.rate.download,
@@ -555,8 +640,16 @@ export class MapDataAdapter {
     if (!UUID_RE.test(id)) return false;
     const [row] =
       kind === "customer"
-        ? await db.select({ id: customers.id }).from(customers).where(eq(customers.id, id)).limit(1)
-        : await db.select({ id: networkDevices.id }).from(networkDevices).where(eq(networkDevices.id, id)).limit(1);
+        ? await db
+            .select({ id: customers.id })
+            .from(customers)
+            .where(eq(customers.id, id))
+            .limit(1)
+        : await db
+            .select({ id: networkDevices.id })
+            .from(networkDevices)
+            .where(eq(networkDevices.id, id))
+            .limit(1);
     return Boolean(row);
   }
 
@@ -624,12 +717,20 @@ export class MapDataAdapter {
     const target = data?.devices.find((d) => d.id === odpId);
     if (data && !target) throw deviceNotFound();
     if (target && target.type !== "odp" && target.type !== "odc") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Pelanggan hanya bisa disambung ke ODP atau ODC.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Pelanggan hanya bisa disambung ke ODP atau ODC.",
+        422,
+      );
     }
     // Pindah ODP: port lama tidak berlaku lagi di ODP baru
     const movedOdp =
-      data && data.customers.find((c) => c.id === id)?.odpId !== odpId ? { odpPort: null } : {};
-    const label = odpId ? "Hubungkan pelanggan ke ODP" : "Geser titik pelanggan";
+      data && data.customers.find((c) => c.id === id)?.odpId !== odpId
+        ? { odpPort: null }
+        : {};
+    const label = odpId
+      ? "Hubungkan pelanggan ke ODP"
+      : "Geser titik pelanggan";
     if (await this.isLocal("customer", id)) {
       return this.updateLocal(
         "customer",
@@ -643,7 +744,11 @@ export class MapDataAdapter {
     return this.saveOverride(
       "customer",
       id,
-      { latitude, longitude, ...(odpId && { parentDeviceId: odpId, ...movedOdp }) },
+      {
+        latitude,
+        longitude,
+        ...(odpId && { parentDeviceId: odpId, ...movedOdp }),
+      },
       label,
     );
   }
@@ -662,7 +767,8 @@ export class MapDataAdapter {
       kind === "customer"
         ? data.customers.find((c) => c.id === id)
         : data.devices.find((d) => d.id === id && d.type === "odp");
-    if (!child) throw kind === "customer" ? customerNotFound() : deviceNotFound();
+    if (!child)
+      throw kind === "customer" ? customerNotFound() : deviceNotFound();
     const seatInOdc = kind === "device" && port !== null && odcId !== undefined;
     const parentId = seatInOdc
       ? odcId
@@ -670,7 +776,9 @@ export class MapDataAdapter {
         ? child.odpId
         : (child as MapDevice).parentDeviceId;
     const parent = data.devices.find(
-      (d) => d.id === parentId && (d.type === "odc" || (kind === "customer" && d.type === "odp")),
+      (d) =>
+        d.id === parentId &&
+        (d.type === "odc" || (kind === "customer" && d.type === "odp")),
     );
     const portOf = (x: MapCustomer | MapDevice) =>
       "customerNumber" in x ? x.odpPort : x.odcPort;
@@ -692,7 +800,8 @@ export class MapDataAdapter {
         );
       }
       // Nomor port terpisah: ODP di port splitter ODC, pelanggan di port pelanggan kotak
-      const ports = kind === "customer" ? customerPortCount(parent) : portCount(parent);
+      const ports =
+        kind === "customer" ? customerPortCount(parent) : portCount(parent);
       if (port > ports) {
         throw new ClassifiedCentralApiError(
           "CONFLICT",
@@ -726,7 +835,12 @@ export class MapDataAdapter {
     // shortcut: cek bentrok port lalu tulis tidak atomik; dua operator di port yang sama bersamaan bisa lolos, tambah unique index bila sering terjadi
     return (await this.isLocal(kind, id))
       ? this.updateLocal(kind, id, values, label)
-      : this.saveOverride(kind, id, seatInOdc ? { ...values, parentCleared: false } : values, label);
+      : this.saveOverride(
+          kind,
+          id,
+          seatInOdc ? { ...values, parentCleared: false } : values,
+          label,
+        );
   }
 
   // Ubah jenis ODP <-> ODC. Rasio yang tidak sah untuk jenis baru dikosongkan;
@@ -736,13 +850,23 @@ export class MapDataAdapter {
     const device = data.devices.find((d) => d.id === id);
     if (!device) throw deviceNotFound();
     if (device.type !== "odp" && device.type !== "odc") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Hanya ODP dan ODC yang bisa diubah jenisnya.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Hanya ODP dan ODC yang bisa diubah jenisnya.",
+        422,
+      );
     }
     if (device.type === type) {
-      throw new ClassifiedCentralApiError("CONFLICT", `${device.name} sudah berjenis ${type.toUpperCase()}.`, 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        `${device.name} sudah berjenis ${type.toUpperCase()}.`,
+        422,
+      );
     }
     // ODP berantai (induk biasa) boleh; yang dicegah hanya ODP yang terpasang di port ODC ini
-    const seated = data.devices.filter((d) => d.parentDeviceId === id && d.odcPort != null);
+    const seated = data.devices.filter(
+      (d) => d.parentDeviceId === id && d.odcPort != null,
+    );
     if (type === "odp" && seated.length > 0) {
       throw new ClassifiedCentralApiError(
         "CONFLICT",
@@ -754,25 +878,42 @@ export class MapDataAdapter {
     const values = {
       // ODP yang menjadi ODC tidak lagi duduk di port ODC lain
       ...(type === "odc" && { odcPort: null }),
-      ...(device.splitterRatio != null && !allowed.includes(device.splitterRatio) && { splitterRatio: null }),
+      ...(device.splitterRatio != null &&
+        !allowed.includes(device.splitterRatio) && { splitterRatio: null }),
     };
     const name = renameForType(device.name, type);
     const label = `Ubah jenis ${device.name}: ${device.type.toUpperCase()} → ${type.toUpperCase()}`;
     return (await this.isLocal("device", id))
       ? this.updateLocal("device", id, { type, name, ...values }, label)
-      : this.saveOverride("device", id, { deviceType: type, name, ...values }, label);
+      : this.saveOverride(
+          "device",
+          id,
+          { deviceType: type, name, ...values },
+          label,
+        );
   }
 
   // Splitter rasio (coupler tak seimbang) di ODC/ODP: persen port tap; null = tidak ada
-  static async setSplitterTap(id: string, tapPct: number | null): Promise<string> {
+  static async setSplitterTap(
+    id: string,
+    tapPct: number | null,
+  ): Promise<string> {
     const device = (await this.getMapData()).devices.find((d) => d.id === id);
     if (!device) throw deviceNotFound();
     if (device.type !== "odc" && device.type !== "odp") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Splitter rasio hanya untuk ODC dan ODP.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Splitter rasio hanya untuk ODC dan ODP.",
+        422,
+      );
     }
     const allowed: readonly number[] = TAP_RATIOS;
     if (tapPct !== null && !allowed.includes(tapPct)) {
-      throw new ClassifiedCentralApiError("CONFLICT", "Splitter rasio tidak dikenal.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Splitter rasio tidak dikenal.",
+        422,
+      );
     }
     const label = tapPct
       ? `Splitter rasio ${device.name} ${tapPct}:${100 - tapPct}`
@@ -783,28 +924,50 @@ export class MapDataAdapter {
   }
 
   // Tautkan titik OLT di peta ke OLT operasional pusat (null = lepas tautan)
-  static async setCentralOlt(id: string, oltId: string | null): Promise<string> {
+  static async setCentralOlt(
+    id: string,
+    oltId: string | null,
+  ): Promise<string> {
     const device = (await this.getMapData()).devices.find((d) => d.id === id);
     if (!device) throw deviceNotFound();
     if (device.type !== "server") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Hanya titik Server/OLT yang bisa ditautkan ke OLT.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Hanya titik Server/OLT yang bisa ditautkan ke OLT.",
+        422,
+      );
     }
-    const olt = oltId ? (await fetchDataset<CentralOlt>("olts")).find((o) => o.id === oltId) : null;
+    const olt = oltId
+      ? (await fetchDataset<CentralOlt>("olts")).find((o) => o.id === oltId)
+      : null;
     if (oltId && !olt) {
-      throw new ClassifiedCentralApiError("NOT_FOUND", "OLT operasional tidak ditemukan di NOC.", 404);
+      throw new ClassifiedCentralApiError(
+        "NOT_FOUND",
+        "OLT operasional tidak ditemukan di NOC.",
+        404,
+      );
     }
-    const label = olt ? `Tautkan ${device.name} ke ${olt.name}` : `Lepas tautan OLT ${device.name}`;
+    const label = olt
+      ? `Tautkan ${device.name} ke ${olt.name}`
+      : `Lepas tautan OLT ${device.name}`;
     return (await this.isLocal("device", id))
       ? this.updateLocal("device", id, { centralOltId: oltId }, label)
       : this.saveOverride("device", id, { centralOltId: oltId }, label);
   }
 
   // Rasio splitter ODC/ODP (null = kosongkan). Rasio = jumlah port output.
-  static async setSplitterRatio(id: string, ratio: number | null): Promise<string> {
+  static async setSplitterRatio(
+    id: string,
+    ratio: number | null,
+  ): Promise<string> {
     const device = (await this.getMapData()).devices.find((d) => d.id === id);
     if (!device) throw deviceNotFound();
     if (device.type !== "odc" && device.type !== "odp") {
-      throw new ClassifiedCentralApiError("CONFLICT", "Rasio splitter hanya untuk ODC dan ODP.", 422);
+      throw new ClassifiedCentralApiError(
+        "CONFLICT",
+        "Rasio splitter hanya untuk ODC dan ODP.",
+        422,
+      );
     }
     const allowed: readonly number[] = SPLITTER_RATIOS[device.type];
     if (ratio !== null && !allowed.includes(ratio)) {
@@ -814,7 +977,9 @@ export class MapDataAdapter {
         422,
       );
     }
-    const label = ratio ? `Rasio splitter ${device.name} 1:${ratio}` : `Kosongkan rasio splitter ${device.name}`;
+    const label = ratio
+      ? `Rasio splitter ${device.name} 1:${ratio}`
+      : `Kosongkan rasio splitter ${device.name}`;
     return (await this.isLocal("device", id))
       ? this.updateLocal("device", id, { splitterRatio: ratio }, label)
       : this.saveOverride("device", id, { splitterRatio: ratio }, label);
@@ -833,7 +998,11 @@ export class MapDataAdapter {
     fromDeviceId?: string;
     /** Belokan yang digambar pengguna; bawaan = garis asal → perangkat baru */
     geometry?: [number, number][];
-  }): Promise<{ device: MapDevice; segment: CableSegment | null; undoId: string }> {
+  }): Promise<{
+    device: MapDevice;
+    segment: CableSegment | null;
+    undoId: string;
+  }> {
     if (
       data.latitude < -90 ||
       data.latitude > 90 ||
@@ -861,10 +1030,14 @@ export class MapDataAdapter {
         .limit(1);
       if (!route) throw routeNotFound();
       const segs = await db
-        .select({ sequence: cableSegments.sequence, toDeviceId: cableSegments.toDeviceId })
+        .select({
+          sequence: cableSegments.sequence,
+          toDeviceId: cableSegments.toDeviceId,
+        })
         .from(cableSegments)
         .where(eq(cableSegments.routeId, data.routeId));
-      const endId = data.fromDeviceId || chainEndDeviceId(route.fromDeviceId, segs);
+      const endId =
+        data.fromDeviceId || chainEndDeviceId(route.fromDeviceId, segs);
       chainEnd = (await this.getMapData()).devices.find((d) => d.id === endId);
       if (!chainEnd) throw deviceNotFound();
     }
@@ -911,7 +1084,11 @@ export class MapDataAdapter {
       if (prepared && data.routeId && chainEnd) {
         const inserted = await this.insertSegment(
           tx,
-          { routeId: data.routeId, fromDeviceId: chainEnd.id, toDeviceId: created.id },
+          {
+            routeId: data.routeId,
+            fromDeviceId: chainEnd.id,
+            toDeviceId: created.id,
+          },
           prepared,
         );
         segment = inserted.segment;
@@ -957,10 +1134,17 @@ export class MapDataAdapter {
 
     // Pindah induk: port ODC lama tidak berlaku lagi
     const moved =
-      links.find((d) => d.id === id)?.parentDeviceId !== parentDeviceId ? { odcPort: null } : {};
+      links.find((d) => d.id === id)?.parentDeviceId !== parentDeviceId
+        ? { odcPort: null }
+        : {};
     const label = "Pindah induk perangkat";
     if (await this.isLocal("device", id)) {
-      return this.updateLocal("device", id, { parentDeviceId, ...moved }, label);
+      return this.updateLocal(
+        "device",
+        id,
+        { parentDeviceId, ...moved },
+        label,
+      );
     }
     return this.saveOverride(
       "device",
@@ -985,13 +1169,20 @@ export class MapDataAdapter {
   static async deleteDevice(id: string): Promise<string> {
     if (!(await this.isLocal("device", id))) {
       await this.assertCentral("device", id);
-      return this.saveOverride("device", id, { hidden: true }, "Hapus perangkat");
+      return this.saveOverride(
+        "device",
+        id,
+        { hidden: true },
+        "Hapus perangkat",
+      );
     }
     // Tanpa FK (ID bisa milik pusat), jadi rujukan jalur diperiksa manual agar data tidak menggantung
     const [usedByRoute] = await db
       .select({ id: cableRoutes.id })
       .from(cableRoutes)
-      .where(or(eq(cableRoutes.fromDeviceId, id), eq(cableRoutes.toDeviceId, id)))
+      .where(
+        or(eq(cableRoutes.fromDeviceId, id), eq(cableRoutes.toDeviceId, id)),
+      )
       .limit(1);
     if (usedByRoute) {
       throw new ClassifiedCentralApiError(
@@ -1032,10 +1223,22 @@ export class MapDataAdapter {
         .from(customers)
         .where(eq(customers.odpId, id));
       const changes = [
-        ...(await snapshot(tx, "route", incoming.map((s) => s.routeId))),
-        ...(await snapshot(tx, "segment", incoming.map((s) => s.id))),
+        ...(await snapshot(
+          tx,
+          "route",
+          incoming.map((s) => s.routeId),
+        )),
+        ...(await snapshot(
+          tx,
+          "segment",
+          incoming.map((s) => s.id),
+        )),
         ...(await snapshot(tx, "device", [id, ...children.map((c) => c.id)])),
-        ...(await snapshot(tx, "customer", served.map((c) => c.id))),
+        ...(await snapshot(
+          tx,
+          "customer",
+          served.map((c) => c.id),
+        )),
       ];
 
       // Segmen masuk ke perangkat ini ikut dihapus (sampel ikut via cascade), panjang jalur dihitung ulang
@@ -1043,13 +1246,20 @@ export class MapDataAdapter {
       for (const routeId of new Set(incoming.map((s) => s.routeId))) {
         await recomputeRouteTotal(tx, routeId);
       }
-      await tx.update(customers).set({ odpId: null }).where(eq(customers.odpId, id));
+      await tx
+        .update(customers)
+        .set({ odpId: null })
+        .where(eq(customers.odpId, id));
       await tx
         .update(networkDevices)
         .set({ parentDeviceId: null })
         .where(eq(networkDevices.parentDeviceId, id));
       await tx.delete(networkDevices).where(eq(networkDevices.id, id));
-      return await saveUndo(tx, `Hapus ${device?.name ?? "perangkat"}`, changes);
+      return await saveUndo(
+        tx,
+        `Hapus ${device?.name ?? "perangkat"}`,
+        changes,
+      );
     });
   }
 
@@ -1068,7 +1278,9 @@ export class MapDataAdapter {
     }
 
     // Tanpa FK: pastikan perangkat asal/tujuan ada (lokal atau pusat)
-    const deviceIds = new Set((await this.getMapData()).devices.map((d) => d.id));
+    const deviceIds = new Set(
+      (await this.getMapData()).devices.map((d) => d.id),
+    );
     if (
       !deviceIds.has(data.fromDeviceId) ||
       (data.toDeviceId && !deviceIds.has(data.toDeviceId))
@@ -1109,7 +1321,9 @@ export class MapDataAdapter {
         })
         .returning();
       // Undo jalur = hapus jalur (segmennya ikut via cascade)
-      const id = await saveUndo(tx, `Buat jalur ${row.code}`, [createdRow("route", row.id)]);
+      const id = await saveUndo(tx, `Buat jalur ${row.code}`, [
+        createdRow("route", row.id),
+      ]);
       return { created: row, undoId: id };
     });
 
@@ -1143,7 +1357,11 @@ export class MapDataAdapter {
     },
   ): Promise<string> {
     if (!UUID_RE.test(id)) throw routeNotFound();
-    const [route] = await db.select().from(cableRoutes).where(eq(cableRoutes.id, id)).limit(1);
+    const [route] = await db
+      .select()
+      .from(cableRoutes)
+      .where(eq(cableRoutes.id, id))
+      .limit(1);
     if (!route) throw routeNotFound();
 
     const merged = await this.getMapData();
@@ -1160,7 +1378,10 @@ export class MapDataAdapter {
         );
       }
       const usedBy = merged.routes.find(
-        (r) => r.id !== id && r.fromDeviceId === olt.id && routePon(r.code) === data.pon,
+        (r) =>
+          r.id !== id &&
+          r.fromDeviceId === olt.id &&
+          routePon(r.code) === data.pon,
       );
       if (usedBy) {
         throw new ClassifiedCentralApiError(
@@ -1176,7 +1397,8 @@ export class MapDataAdapter {
 
     const name = data.name?.trim() || route.name;
     const newPon = data.pon ?? oldPon;
-    const suffix = (n: string, p: number | null) => ` ${n}${p ? ` PON ${p}` : ""}`;
+    const suffix = (n: string, p: number | null) =>
+      ` ${n}${p ? ` PON ${p}` : ""}`;
     const oldSuffix = suffix(route.name, oldPon);
     const newSuffix = suffix(name, newPon);
     const chainIds = new Set(
@@ -1197,7 +1419,11 @@ export class MapDataAdapter {
     return await db.transaction(async (tx) => {
       const changes = [
         ...(await snapshot(tx, "route", [id])),
-        ...(await snapshot(tx, "device", renamed.map((d) => d.id))),
+        ...(await snapshot(
+          tx,
+          "device",
+          renamed.map((d) => d.id),
+        )),
       ];
       await tx
         .update(cableRoutes)
@@ -1213,7 +1439,10 @@ export class MapDataAdapter {
       for (const d of renamed) {
         await tx
           .update(networkDevices)
-          .set({ name: d.name.slice(0, -oldSuffix.length) + newSuffix, updatedAt: new Date() })
+          .set({
+            name: d.name.slice(0, -oldSuffix.length) + newSuffix,
+            updatedAt: new Date(),
+          })
           .where(eq(networkDevices.id, d.id));
       }
       return await saveUndo(tx, `Ubah jalur ${name}`, changes);
@@ -1236,7 +1465,10 @@ export class MapDataAdapter {
     ) {
       throw deviceNotFound();
     }
-    if (data.customerId && !merged.customers.some((c) => c.id === data.customerId)) {
+    if (
+      data.customerId &&
+      !merged.customers.some((c) => c.id === data.customerId)
+    ) {
       throw customerNotFound();
     }
     return { fromDev, preview: await this.previewSegment(data.geometry) };
@@ -1245,8 +1477,16 @@ export class MapDataAdapter {
   // Sisipkan segmen + sampel + total jalur dalam transaksi pemanggil; changes = catatan undo
   private static async insertSegment(
     tx: Tx,
-    data: { routeId: string; fromDeviceId: string; toDeviceId?: string; customerId?: string },
-    { fromDev, preview }: Awaited<ReturnType<typeof MapDataAdapter.prepareSegment>>,
+    data: {
+      routeId: string;
+      fromDeviceId: string;
+      toDeviceId?: string;
+      customerId?: string;
+    },
+    {
+      fromDev,
+      preview,
+    }: Awaited<ReturnType<typeof MapDataAdapter.prepareSegment>>,
   ) {
     // Kunci baris jalur agar penentuan sequence tidak balapan antar request
     const [route] = await tx
@@ -1292,7 +1532,11 @@ export class MapDataAdapter {
       .returning();
     changes.push(createdRow("segment", savedSegment.id));
 
-    const savedSamples = await insertSamples(tx, savedSegment.id, preview.samples);
+    const savedSamples = await insertSamples(
+      tx,
+      savedSegment.id,
+      preview.samples,
+    );
     const totalRouteLength = await recomputeRouteTotal(tx, data.routeId);
 
     const segment: CableSegment = {
@@ -1327,8 +1571,15 @@ export class MapDataAdapter {
     const prepared = await this.prepareSegment(data);
     // Simpan ke local-db secara atomik: segmen + sampel + total_length_m + catatan undo
     return await db.transaction(async (tx) => {
-      const { changes, ...result } = await this.insertSegment(tx, data, prepared);
-      return { ...result, undoId: await saveUndo(tx, "Tambah segmen kabel", changes) };
+      const { changes, ...result } = await this.insertSegment(
+        tx,
+        data,
+        prepared,
+      );
+      return {
+        ...result,
+        undoId: await saveUndo(tx, "Tambah segmen kabel", changes),
+      };
     });
   }
 
@@ -1355,7 +1606,9 @@ export class MapDataAdapter {
           reason: null,
         };
       }
-      return manual(`Tidak ada jalan dalam radius ${SNAP_TOLERANCE_M} m dari titik jalur.`);
+      return manual(
+        `Tidak ada jalan dalam radius ${SNAP_TOLERANCE_M} m dari titik jalur.`,
+      );
     } catch (err) {
       return manual(
         err instanceof Error
@@ -1407,7 +1660,10 @@ export class MapDataAdapter {
           updatedAt: new Date(),
         })
         .where(
-          and(eq(cableSegments.id, segmentId), eq(cableSegments.routeId, routeId)),
+          and(
+            eq(cableSegments.id, segmentId),
+            eq(cableSegments.routeId, routeId),
+          ),
         )
         .returning({ id: cableSegments.id });
       if (!updated) {
@@ -1423,7 +1679,10 @@ export class MapDataAdapter {
         .where(eq(cableSegmentSamples.segmentId, segmentId));
       await insertSamples(tx, segmentId, preview.samples);
       const totalLengthM = await recomputeRouteTotal(tx, routeId);
-      return { totalLengthM, undoId: await saveUndo(tx, "Rapikan segmen kabel", changes) };
+      return {
+        totalLengthM,
+        undoId: await saveUndo(tx, "Rapikan segmen kabel", changes),
+      };
     });
   }
 
@@ -1496,7 +1755,11 @@ export class MapDataAdapter {
         .where(eq(mapLayers.id, id))
         .returning();
       if (!updated) throw new LayerNotFoundError();
-      const undoId = await saveUndo(tx, `Ubah lapisan ${updated.name}`, changes);
+      const undoId = await saveUndo(
+        tx,
+        `Ubah lapisan ${updated.name}`,
+        changes,
+      );
       return { ...this.toLayerItem(updated), undoId };
     });
   }

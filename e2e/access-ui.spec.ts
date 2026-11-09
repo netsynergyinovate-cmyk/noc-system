@@ -147,10 +147,9 @@ async function expectLink(
     );
   } else {
     await expect(anyLink(page), label).toHaveCount(0);
-    await expect(
-      page.getByRole("link", { name: "Admin" }),
-      label,
-    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Admin" }), label).toHaveCount(
+      0,
+    );
   }
 }
 

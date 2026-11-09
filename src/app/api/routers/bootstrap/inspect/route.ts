@@ -9,10 +9,14 @@ export const runtime = "nodejs";
 export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async () => {
     const parsed = connectionSchema.safeParse(await readJson(request));
-    if (!parsed.success) throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
+    if (!parsed.success)
+      throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     const conn = toConn(parsed.data);
     try {
-      return NextResponse.json({ success: true, data: { ok: true, ...(await inspectRouter(conn)) } });
+      return NextResponse.json({
+        success: true,
+        data: { ok: true, ...(await inspectRouter(conn)) },
+      });
     } catch (err) {
       const f = await failure(err, parsed.data, conn);
       if (f) return NextResponse.json({ success: true, data: f });

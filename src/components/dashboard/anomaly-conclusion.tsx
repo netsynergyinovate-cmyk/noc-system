@@ -14,7 +14,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { layerIcons } from "@/components/dashboard/diagnostic-layer-meta";
-import type { DiagnosticLayer, DiagnosticRunDto, VerdictScope } from "@/lib/diagnostics";
+import type {
+  DiagnosticLayer,
+  DiagnosticRunDto,
+  VerdictScope,
+} from "@/lib/diagnostics";
 import {
   aggregateConclusions,
   type AnomalyConclusionSummary,
@@ -59,7 +63,9 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
   const runs = state?.data ?? null;
   const loading = !state && !failed;
   // Data terakhir yang berhasil tetap tampil; galat hanya diberitahukan.
-  const error = failed ? "Gagal memuat diagnosa. Data terakhir tetap ditampilkan." : null;
+  const error = failed
+    ? "Gagal memuat diagnosa. Data terakhir tetap ditampilkan."
+    : null;
   const [openInfoRuns, setOpenInfoRuns] = useState<Record<string, boolean>>({});
 
   const toggleInfo = (runId: string) => {
@@ -104,7 +110,8 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
               Root Cause &amp; Inferensi Deteksi Anomali
             </h2>
             <span className="text-[11px] text-muted-foreground">
-              • Saran memakai aturan tetap berdasarkan lapisan, bukan probabilitas
+              • Saran memakai aturan tetap berdasarkan lapisan, bukan
+              probabilitas
             </span>
           </div>
         </div>
@@ -186,7 +193,8 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
             Diagnosa pelanggan dimulai secara manual melalui tombol{" "}
             <strong className="text-foreground">Diagnosa</strong> pada kartu
             pelanggan atau baris anomali, atau secara otomatis saat terdeteksi
-            anomali LOS optik, PPPoE timeout, antrean penuh, atau isolir billing.
+            anomali LOS optik, PPPoE timeout, antrean penuh, atau isolir
+            billing.
           </p>
         </div>
       )}
@@ -245,13 +253,16 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
 
             {/* Catatan cara menghitung */}
             <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/50">
-              Catatan: Dihitung dari diagnosa terakhir tiap pelanggan ({runs?.length ?? 0} run dievaluasi, maks 50 data terbaru).
+              Catatan: Dihitung dari diagnosa terakhir tiap pelanggan (
+              {runs?.length ?? 0} run dievaluasi, maks 50 data terbaru).
             </p>
           </div>
           {/* Kartu Inferensi Teratas (Maksimal 3) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {summary.topCards.map((card) => {
-              const LayerIcon = card.layer ? layerIcons[card.layer] ?? Cpu : Cpu;
+              const LayerIcon = card.layer
+                ? (layerIcons[card.layer] ?? Cpu)
+                : Cpu;
               const scopeStyle = scopeBadgeStyles[card.scope];
 
               return (
@@ -267,13 +278,15 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
                         <span className="block font-mono text-xs font-semibold text-foreground truncate">
                           {card.title}
                         </span>
-                        {card.rootName && card.customerName && card.rootName !== card.customerName && (
-                          <span className="block text-[11px] text-muted-foreground truncate">
-                            Sumber: {card.rootName}
-                            {card.affectedCount != null &&
-                              ` (${card.affectedCount} pelanggan)`}
-                          </span>
-                        )}
+                        {card.rootName &&
+                          card.customerName &&
+                          card.rootName !== card.customerName && (
+                            <span className="block text-[11px] text-muted-foreground truncate">
+                              Sumber: {card.rootName}
+                              {card.affectedCount != null &&
+                                ` (${card.affectedCount} pelanggan)`}
+                            </span>
+                          )}
                         {!card.customerName &&
                           card.affectedCount != null &&
                           card.affectedCount > 0 && (
@@ -298,7 +311,10 @@ export function AnomalyConclusion({ className }: { className?: string } = {}) {
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                       {card.layer ? (
                         <span className="inline-flex items-center gap-1 text-foreground font-medium">
-                          <LayerIcon className="size-3 text-primary" aria-hidden="true" />
+                          <LayerIcon
+                            className="size-3 text-primary"
+                            aria-hidden="true"
+                          />
                           <span>{card.layerLabel}</span>
                         </span>
                       ) : (

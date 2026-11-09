@@ -2,9 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const { sortFlows, evaluateFlowAnomaly, applyExtendedFilter } = await import(
-  "../src/lib/dashboard/netflow-filter-sort.ts"
-);
+const { sortFlows, evaluateFlowAnomaly, applyExtendedFilter } =
+  await import("../src/lib/dashboard/netflow-filter-sort.ts");
 const { mockNetflow } = await import("../src/lib/dashboard/netflow.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 
@@ -36,18 +35,32 @@ for (const field of Object.keys(key)) {
 
 test("evaluateFlowAnomaly", () => {
   const base = { ...flows[0], bytes: 1000, durationSec: 10 };
-  assert.deepEqual(evaluateFlowAnomaly(base), { isAnomaly: false, severity: "info" });
+  assert.deepEqual(evaluateFlowAnomaly(base), {
+    isAnomaly: false,
+    severity: "info",
+  });
   const big = evaluateFlowAnomaly({ ...base, bytes: 524_288_001 });
   assert.equal(big.isAnomaly, true);
   assert.equal(big.severity, "warning");
   assert.match(big.reason, /> 500 MB/);
-  const persistent = evaluateFlowAnomaly({ ...base, bytes: 200_000_000, durationSec: 301 });
+  const persistent = evaluateFlowAnomaly({
+    ...base,
+    bytes: 200_000_000,
+    durationSec: 301,
+  });
   assert.equal(persistent.reason, "Koneksi persisten bandwidth tinggi");
-  assert.equal(evaluateFlowAnomaly({ ...base, bytes: 200_000_000, durationSec: 300 }).isAnomaly, false);
+  assert.equal(
+    evaluateFlowAnomaly({ ...base, bytes: 200_000_000, durationSec: 300 })
+      .isAnomaly,
+    false,
+  );
 });
 
 test("applyExtendedFilter", () => {
-  const out = applyExtendedFilter(flows, { minBytes: 1_048_576, minDurationSec: 60 });
+  const out = applyExtendedFilter(flows, {
+    minBytes: 1_048_576,
+    minDurationSec: 60,
+  });
   assert.ok(out.every((f) => f.bytes >= 1_048_576 && f.durationSec >= 60));
   assert.equal(applyExtendedFilter(flows, {}), flows);
 });
@@ -65,7 +78,14 @@ test("NetflowDetailDialog dan integrasi board", () => {
   for (const id of ["netflow-sort-select", "view-flow-detail-btn"]) {
     assert.match(board, new RegExp(`data-testid="${id}"`));
   }
-  for (const l of ["Ukuran Data (Terbesar)", "Ukuran Data (Terkecil)", "Paket (Terbanyak)", "Laju Throughput (Tertinggi)", "Durasi (Terlama)", "Waktu Terbaru"]) {
+  for (const l of [
+    "Ukuran Data (Terbesar)",
+    "Ukuran Data (Terkecil)",
+    "Paket (Terbanyak)",
+    "Laju Throughput (Tertinggi)",
+    "Durasi (Terlama)",
+    "Waktu Terbaru",
+  ]) {
     assert.ok(board.includes(l), l);
   }
   assert.match(board, /evaluateFlowAnomaly/);

@@ -114,8 +114,5 @@ export const runsnetSyncLogs = pgTable(
       .notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
-  (table) => [
-    index("runsnet_sync_logs_started_at_idx").on(table.startedAt),
-  ],
+  (table) => [index("runsnet_sync_logs_started_at_idx").on(table.startedAt)],
 );
-

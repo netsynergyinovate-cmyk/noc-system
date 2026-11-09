@@ -16,14 +16,25 @@ test("updateRouterSchema: memvalidasi input konfigurasi router", () => {
 
   assert.equal(updateRouterSchema.safeParse(valid).success, true);
   assert.equal(updateRouterSchema.safeParse({ name: "RTR" }).success, true);
-  assert.equal(updateRouterSchema.safeParse({ status: "nonaktif" }).success, true);
-  assert.equal(updateRouterSchema.safeParse({ password: "NewSecretPassword123" }).success, true);
+  assert.equal(
+    updateRouterSchema.safeParse({ status: "nonaktif" }).success,
+    true,
+  );
+  assert.equal(
+    updateRouterSchema.safeParse({ password: "NewSecretPassword123" }).success,
+    true,
+  );
 
   // Status tidak valid
-  assert.equal(updateRouterSchema.safeParse({ status: "invalid_status" }).success, false);
+  assert.equal(
+    updateRouterSchema.safeParse({ status: "invalid_status" }).success,
+    false,
+  );
   // Port di luar batas
   assert.equal(updateRouterSchema.safeParse({ port: 70000 }).success, false);
   // Field tak dikenal
-  assert.equal(updateRouterSchema.safeParse({ unknownField: true }).success, false);
+  assert.equal(
+    updateRouterSchema.safeParse({ unknownField: true }).success,
+    false,
+  );
 });
-

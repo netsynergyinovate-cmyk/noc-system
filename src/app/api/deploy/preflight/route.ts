@@ -26,7 +26,9 @@ export function GET(request: Request) {
       return item;
     });
 
-    const allPassed = checks.every((c) => c.passed || c.severity !== "critical");
+    const allPassed = checks.every(
+      (c) => c.passed || c.severity !== "critical",
+    );
 
     return Response.json({
       data: {

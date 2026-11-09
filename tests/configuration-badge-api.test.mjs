@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { getConfigurationBadgeSummary } = await import(
-  "../src/services/configuration-badge.service.ts"
-);
+const { getConfigurationBadgeSummary } =
+  await import("../src/services/configuration-badge.service.ts");
 
 test("getConfigurationBadgeSummary menghasilkan status badge lengkap", async () => {
   const summary = await getConfigurationBadgeSummary();
@@ -23,7 +22,9 @@ test("getConfigurationBadgeSummary menghasilkan status badge lengkap", async () 
   assert.ok(typeof summary.incomplete === "boolean");
   assert.ok(["selesai", "belum-selesai"].includes(summary.status));
   assert.ok(
-    ["Konfigurasi Selesai", "Konfigurasi Belum Selesai"].includes(summary.label),
+    ["Konfigurasi Selesai", "Konfigurasi Belum Selesai"].includes(
+      summary.label,
+    ),
   );
   assert.ok(typeof summary.isGateLocked === "boolean");
   assert.equal(summary.mandatoryDevice, "router");

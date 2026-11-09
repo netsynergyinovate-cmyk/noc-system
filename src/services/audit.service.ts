@@ -74,7 +74,8 @@ export async function logOperatorAction({
   });
 }
 
-export type SyncAuditOperation = "seed" | "transfer" | "alignment" | "schema_migration";
+export type SyncAuditOperation =
+  "seed" | "transfer" | "alignment" | "schema_migration";
 
 /**
  * Mencatat operasi sinkronisasi data (seed, transfer, alignment, migrasi) ke audit_log
@@ -152,9 +153,7 @@ export async function getAuditEntries(
 ) {
   try {
     const beforeSec = options.before ?? options.nowSec;
-    const beforeDate = beforeSec
-      ? new Date(beforeSec * 1000)
-      : undefined;
+    const beforeDate = beforeSec ? new Date(beforeSec * 1000) : undefined;
     const rows = await listAuditLogs({
       limit: options.limit,
       before: beforeDate,

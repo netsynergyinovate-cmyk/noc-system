@@ -88,9 +88,7 @@ function deviceMode(
   return raw === "simulator" || raw === "real" ? raw : fallback;
 }
 
-export function loadCentralConfig(
-  source: Source = process.env,
-): CentralConfig {
+export function loadCentralConfig(source: Source = process.env): CentralConfig {
   const dataRaw = str(source, "DASHBOARD_DATA")?.toLowerCase();
   const defaultDeviceMode = deviceMode(source, "DEVICE_MODE", "simulator");
 
@@ -161,7 +159,8 @@ export function validateCentralConfig(
     errors.push(message);
   };
 
-  if (!config.database.url) missing("DATABASE_URL", "DATABASE_URL wajib diisi.");
+  if (!config.database.url)
+    missing("DATABASE_URL", "DATABASE_URL wajib diisi.");
 
   if (!config.auth.secret)
     missing("BETTER_AUTH_SECRET", "BETTER_AUTH_SECRET wajib diisi.");
@@ -173,9 +172,15 @@ export function validateCentralConfig(
   if (config.modes.dataMode === "live") {
     const mt = config.devices.mikrotik;
     if (!mt.host)
-      missing("MIKROTIK_REST_HOST", "Mode live: host router MikroTik wajib diisi.");
+      missing(
+        "MIKROTIK_REST_HOST",
+        "Mode live: host router MikroTik wajib diisi.",
+      );
     if (!mt.user)
-      missing("MIKROTIK_REST_USER", "Mode live: user router MikroTik wajib diisi.");
+      missing(
+        "MIKROTIK_REST_USER",
+        "Mode live: user router MikroTik wajib diisi.",
+      );
     if (!mt.password)
       missing(
         "MIKROTIK_REST_PASSWORD",
@@ -230,9 +235,15 @@ export function redactCentralConfig(
     },
     modes: { ...config.modes },
     devices: {
-      mikrotik: { ...devices.mikrotik, password: mask(devices.mikrotik.password) },
+      mikrotik: {
+        ...devices.mikrotik,
+        password: mask(devices.mikrotik.password),
+      },
       olt: { ...devices.olt, password: mask(devices.olt.password) },
-      genieacs: { ...devices.genieacs, password: mask(devices.genieacs.password) },
+      genieacs: {
+        ...devices.genieacs,
+        password: mask(devices.genieacs.password),
+      },
       billing: { ...devices.billing, password: mask(devices.billing.password) },
     },
     backendUrl: config.backendUrl,

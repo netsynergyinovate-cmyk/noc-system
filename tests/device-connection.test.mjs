@@ -13,37 +13,74 @@ const {
 test("sanitizeHost: port eksplisit dan spasi", () => {
   assert.equal(sanitizeHost("10.0.0.1", 8728).port, "8728");
   assert.equal(sanitizeHost("10.0.0.1:81", 8728).port, "81");
-  assert.throws(() => sanitizeHost("10.0.0.1", 70000), { name: "DeviceConnectionError" });
-  assert.throws(() => sanitizeHost("10.0 .0.1"), { name: "DeviceConnectionError" });
-  assert.throws(() => sanitizeHost("http://u:p@10.0.0.1"), { name: "DeviceConnectionError" });
+  assert.throws(() => sanitizeHost("10.0.0.1", 70000), {
+    name: "DeviceConnectionError",
+  });
+  assert.throws(() => sanitizeHost("10.0 .0.1"), {
+    name: "DeviceConnectionError",
+  });
+  assert.throws(() => sanitizeHost("http://u:p@10.0.0.1"), {
+    name: "DeviceConnectionError",
+  });
 });
 
 test("simulator: 4 perangkat sukses, .0 timeout, .255 401", () => {
   for (const type of ["mikrotik", "olt", "genieacs", "billing"]) {
-    const ok = runSimulatorDeviceTest({ type, mode: "simulator", host: "10.0.0.5" });
+    const ok = runSimulatorDeviceTest({
+      type,
+      mode: "simulator",
+      host: "10.0.0.5",
+    });
     assert.equal(ok.ok, true, type);
     assert.equal(ok.mode, "simulator");
     assert.ok(ok.data, type);
-    const to = runSimulatorDeviceTest({ type, mode: "simulator", host: "10.0.0.0" });
+    const to = runSimulatorDeviceTest({
+      type,
+      mode: "simulator",
+      host: "10.0.0.0",
+    });
     assert.equal(to.ok, false);
     assert.equal(to.code, "TIMEOUT");
-    const au = runSimulatorDeviceTest({ type, mode: "simulator", host: "10.0.0.255" });
+    const au = runSimulatorDeviceTest({
+      type,
+      mode: "simulator",
+      host: "10.0.0.255",
+    });
     assert.equal(au.ok, false);
     assert.equal(au.code, "AUTH_FAILED");
   }
-  const mk = runSimulatorDeviceTest({ type: "mikrotik", mode: "simulator", host: "1.2.3.4" });
+  const mk = runSimulatorDeviceTest({
+    type: "mikrotik",
+    mode: "simulator",
+    host: "1.2.3.4",
+  });
   assert.equal(mk.data.boardName, "RB4011iGS+");
-  const bad = runSimulatorDeviceTest({ type: "olt", mode: "simulator", host: "1.2.3.4/x" });
+  const bad = runSimulatorDeviceTest({
+    type: "olt",
+    mode: "simulator",
+    host: "1.2.3.4/x",
+  });
   assert.equal(bad.code, "INVALID_HOST");
 });
 
 test("describeNetworkError", () => {
   const abort = Object.assign(new Error("x"), { name: "AbortError" });
   assert.equal(describeNetworkError(abort, "router").code, "TIMEOUT");
-  assert.equal(describeNetworkError(new Error("connect ECONNREFUSED"), "OLT").code, "CONNECTION_REFUSED");
-  assert.equal(describeNetworkError(new Error("getaddrinfo ENOTFOUND h"), "OLT").code, "DNS_ERROR");
   assert.equal(
-    describeNetworkError(Object.assign(new Error("fetch failed"), { cause: { code: "ECONNREFUSED" } }), "r").code,
+    describeNetworkError(new Error("connect ECONNREFUSED"), "OLT").code,
+    "CONNECTION_REFUSED",
+  );
+  assert.equal(
+    describeNetworkError(new Error("getaddrinfo ENOTFOUND h"), "OLT").code,
+    "DNS_ERROR",
+  );
+  assert.equal(
+    describeNetworkError(
+      Object.assign(new Error("fetch failed"), {
+        cause: { code: "ECONNREFUSED" },
+      }),
+      "r",
+    ).code,
     "CONNECTION_REFUSED",
   );
   assert.equal(describeNetworkError("aneh", "r").code, "CONNECTION_FAILED");
@@ -57,7 +94,12 @@ test("parser resource MikroTik", () => {
       uptime: "1d2h3m",
       "board-name": "RB4011",
     }),
-    { version: "7.14 (stable)", cpuLoad: 12, uptime: "1d2h3m", boardName: "RB4011" },
+    {
+      version: "7.14 (stable)",
+      cpuLoad: 12,
+      uptime: "1d2h3m",
+      boardName: "RB4011",
+    },
   );
   assert.equal(parseMikrotikResource([{ "cpu-load": 5 }]).cpuLoad, 5);
 });
@@ -88,6 +130,10 @@ test("host berbahaya ditolak", () => {
     "10.0.0.1:70000",
     "10.0.0.1:abc",
   ]) {
-    assert.throws(() => sanitizeHost(bad), { name: "DeviceConnectionError" }, bad);
+    assert.throws(
+      () => sanitizeHost(bad),
+      { name: "DeviceConnectionError" },
+      bad,
+    );
   }
 });

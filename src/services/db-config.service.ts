@@ -17,7 +17,9 @@ export function getDatabaseConfig(): DatabaseConnectionConfig | null {
 
 export function getDatabaseSanitizedSummary(): string {
   const config = getDatabaseConfig();
-  return config ? formatDatabaseSanitizedSummary(config) : "DATABASE_URL tidak diatur";
+  return config
+    ? formatDatabaseSanitizedSummary(config)
+    : "DATABASE_URL tidak diatur";
 }
 
 export function validateDatabaseConfig(): DatabaseConfigValidation {
@@ -26,7 +28,9 @@ export function validateDatabaseConfig(): DatabaseConfigValidation {
   } catch (error) {
     return {
       valid: false,
-      errors: [error instanceof Error ? error.message : "DATABASE_URL tidak valid."],
+      errors: [
+        error instanceof Error ? error.message : "DATABASE_URL tidak valid.",
+      ],
     };
   }
 }

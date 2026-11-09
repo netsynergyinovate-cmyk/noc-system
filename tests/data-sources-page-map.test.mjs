@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { PAGE_DATA_SOURCES, getPageDataSourceSummary } = await import(
-  "../src/lib/dashboard/data-sources-page-map.ts"
-);
+const { PAGE_DATA_SOURCES, getPageDataSourceSummary } =
+  await import("../src/lib/dashboard/data-sources-page-map.ts");
 
 test("PAGE_DATA_SOURCES memetakan seluruh rute utama", () => {
   assert.ok(PAGE_DATA_SOURCES.length >= 15);

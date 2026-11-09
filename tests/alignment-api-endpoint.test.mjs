@@ -13,15 +13,12 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { GET: getStatus } = await import(
-  "../src/app/api/alignment/status/route.ts"
-);
-const { GET: getAlignment, POST: postAlignment } = await import(
-  "../src/app/api/alignment/route.ts"
-);
-const { getAlignmentStatusAndHistory } = await import(
-  "../src/services/data-alignment.service.ts"
-);
+const { GET: getStatus } =
+  await import("../src/app/api/alignment/status/route.ts");
+const { GET: getAlignment, POST: postAlignment } =
+  await import("../src/app/api/alignment/route.ts");
+const { getAlignmentStatusAndHistory } =
+  await import("../src/services/data-alignment.service.ts");
 
 test("handler GET & POST route alignment terdefinisi", () => {
   assert.equal(typeof getStatus, "function");

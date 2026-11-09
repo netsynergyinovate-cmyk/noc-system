@@ -46,12 +46,14 @@ export function POST(request: Request, context: Context) {
     }
     // Keluhan masuk = diagnosa otomatis DI GO (sesudah tiket tersimpan; gagal di
     // sini tidak membatalkan tiket, tetapi dicatat).
-    void goDiagnostics(
-      session.user.id,
-      "/api/v1/diagnostics/auto",
-      { method: "POST", body: JSON.stringify({ alertId: id, reason: "ticket" }) },
-    ).catch((err) =>
-      console.error("Pemicu diagnosa dari tiket gagal:", err instanceof Error ? err.message : err),
+    void goDiagnostics(session.user.id, "/api/v1/diagnostics/auto", {
+      method: "POST",
+      body: JSON.stringify({ alertId: id, reason: "ticket" }),
+    }).catch((err) =>
+      console.error(
+        "Pemicu diagnosa dari tiket gagal:",
+        err instanceof Error ? err.message : err,
+      ),
     );
     return NextResponse.json({ ok: true, data: result.data });
   });

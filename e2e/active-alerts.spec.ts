@@ -178,9 +178,7 @@ test("daftar alert aktif muat di layar sempit dan menu ponsel menjangkaunya", as
   // sebagai pengumuman layar (sr-only) pada lencana menu, jadi pencarian teks
   // cocok dengan tiga elemen dan gagal (strict mode) tepat saat data tiruan
   // kebetulan kosong. Jam asli menentukan data, jadi ini muncul sesekali.
-  await expect(
-    rows.first().or(page.getByTestId("alert-empty")),
-  ).toBeVisible();
+  await expect(rows.first().or(page.getByTestId("alert-empty"))).toBeVisible();
   // Namanya, bukan seluruh teksnya: di dalam tautan ada lencana jumlah alert aktif.
   await expect(bar.locator("[aria-current=page]")).toHaveAccessibleName(
     "Alert",

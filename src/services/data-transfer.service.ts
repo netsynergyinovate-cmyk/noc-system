@@ -65,7 +65,11 @@ export class TransferExecutionError extends Error {
   public readonly remediationHint: string;
   public readonly category: string;
 
-  constructor(message: string, remediation: string, category = "transfer_error") {
+  constructor(
+    message: string,
+    remediation: string,
+    category = "transfer_error",
+  ) {
     super(message);
     this.name = "TransferExecutionError";
     this.remediationHint = remediation;
@@ -78,7 +82,12 @@ export class TransferExecutionError extends Error {
  */
 export function deriveTransferRemediationHint(errorText: string): {
   remediation: string;
-  category: "connection" | "lock_contention" | "constraint_violation" | "schema_mismatch" | "unknown";
+  category:
+    | "connection"
+    | "lock_contention"
+    | "constraint_violation"
+    | "schema_mismatch"
+    | "unknown";
 } {
   const lower = (errorText || "").toLowerCase();
 
@@ -121,7 +130,11 @@ export function deriveTransferRemediationHint(errorText: string): {
     };
   }
 
-  if (lower.includes("does not exist") || lower.includes("undefined table") || lower.includes("column")) {
+  if (
+    lower.includes("does not exist") ||
+    lower.includes("undefined table") ||
+    lower.includes("column")
+  ) {
     return {
       remediation:
         "Skema tabel pada target server belum sinkron dengan sumber lokal. Pastikan migrasi skema (Drizzle) telah dijalankan terlebih dahulu pada target server.",
@@ -164,7 +177,8 @@ export async function runDataTransferTransactionally(
 
   // Jika target URL tidak tersedia dan bukan dry-run
   if (!targetUrl && !dryRun) {
-    const errorMsg = "TARGET_DATABASE_URL belum dikonfigurasi untuk eksekusi transfer nyata.";
+    const errorMsg =
+      "TARGET_DATABASE_URL belum dikonfigurasi untuk eksekusi transfer nyata.";
     const hint = deriveTransferRemediationHint(errorMsg);
     return {
       success: false,
@@ -210,7 +224,11 @@ export async function runDataTransferTransactionally(
 
     // 2. Hubungkan ke target database jika bukan dryRun
     if (!dryRun && targetUrl) {
-      targetPool = new Pool({ connectionString: targetUrl, max: 2, connectionTimeoutMillis: 10000 });
+      targetPool = new Pool({
+        connectionString: targetUrl,
+        max: 2,
+        connectionTimeoutMillis: 10000,
+      });
       targetClient = await targetPool.connect();
       await targetClient.query("BEGIN");
     }
@@ -245,7 +263,8 @@ export async function runDataTransferTransactionally(
           checksum,
         });
       } catch (tableErr) {
-        const errMsg = tableErr instanceof Error ? tableErr.message : String(tableErr);
+        const errMsg =
+          tableErr instanceof Error ? tableErr.message : String(tableErr);
         reportItems.push({
           table,
           recordsRead: 0,
@@ -389,10 +408,9 @@ export async function runDataTransferTransactionally(
   } finally {
     if (lockAcquired) {
       try {
-        await sourceClient.query(
-          `SELECT pg_advisory_unlock($1)`,
-          [TRANSFER_ADVISORY_LOCK_KEY],
-        );
+        await sourceClient.query(`SELECT pg_advisory_unlock($1)`, [
+          TRANSFER_ADVISORY_LOCK_KEY,
+        ]);
       } catch {
         // Abaikan galat unlock
       }

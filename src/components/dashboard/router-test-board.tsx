@@ -9,12 +9,33 @@ import { DeviceStatusBadge } from "@/components/dashboard/device-status-badge";
 import { RouterHardwareCards } from "@/components/dashboard/router-hardware-cards";
 import { SecretCredentialInput } from "@/components/dashboard/secret-credential-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { DeviceConfig, TestOutcome } from "@/lib/dashboard/device-config";
-import { DEFAULT_ROUTER_TEST_FORM, buildRouterTestDevice, routerResourceFromOutcome, runRouterTest, toTestEntry, type RouterTestEntry, type RouterTestForm } from "@/lib/dashboard/router-test";
+import {
+  DEFAULT_ROUTER_TEST_FORM,
+  buildRouterTestDevice,
+  routerResourceFromOutcome,
+  runRouterTest,
+  toTestEntry,
+  type RouterTestEntry,
+  type RouterTestForm,
+} from "@/lib/dashboard/router-test";
 import { useDashboardStore } from "@/lib/dashboard/store";
 
 const SELECT_CLS =
@@ -28,10 +49,14 @@ export function RouterTestBoard() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
-  const [result, setResult] = useState<{ device: DeviceConfig; outcome: TestOutcome } | null>(null);
+  const [result, setResult] = useState<{
+    device: DeviceConfig;
+    outcome: TestOutcome;
+  } | null>(null);
   const [history, setHistory] = useState<RouterTestEntry[]>([]);
 
-  const set = <K extends keyof RouterTestForm>(k: K, v: RouterTestForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const set = <K extends keyof RouterTestForm>(k: K, v: RouterTestForm[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
 
   // Perangkat tampilan untuk router tersimpan. Kredensial tetap di server;
   // objek ini hanya dipakai untuk nama/host/port di riwayat dan kartu hasil.
@@ -123,15 +148,26 @@ export function RouterTestBoard() {
           });
           return;
         }
-        const json = (await res.json().catch(() => null)) as
-          | { data?: { ok?: boolean; message?: string; latencyMs?: number | null; code?: string; status?: TestOutcome["status"]; endpointTested?: string; timestamp?: number; data?: Record<string, unknown> }; error?: { message?: string } }
-          | null;
+        const json = (await res.json().catch(() => null)) as {
+          data?: {
+            ok?: boolean;
+            message?: string;
+            latencyMs?: number | null;
+            code?: string;
+            status?: TestOutcome["status"];
+            endpointTested?: string;
+            timestamp?: number;
+            data?: Record<string, unknown>;
+          };
+          error?: { message?: string };
+        } | null;
         if (!res.ok || !json?.data) {
           setResult({
             device,
             outcome: {
               ok: false,
-              message: json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
+              message:
+                json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
               latencyMs: null,
               code: res.status === 403 ? "AUTH_FAILED" : "HTTP_ERROR",
             },
@@ -166,8 +202,12 @@ export function RouterTestBoard() {
     }
   }
 
-  const resource = result ? routerResourceFromOutcome(result.outcome, result.device) : null;
-  const status = result ? (result.outcome.status ?? (result.outcome.ok ? "connected" : "error")) : "untested";
+  const resource = result
+    ? routerResourceFromOutcome(result.outcome, result.device)
+    : null;
+  const status = result
+    ? (result.outcome.status ?? (result.outcome.ok ? "connected" : "error"))
+    : "untested";
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -179,14 +219,20 @@ export function RouterTestBoard() {
           </Link>
         </Button>
         <div>
-          <Link href="/app/router" className="text-xs text-muted-foreground hover:underline">
+          <Link
+            href="/app/router"
+            className="text-xs text-muted-foreground hover:underline"
+          >
             Kembali ke Kelola Router
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Uji Koneksi Router MikroTik</h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Uji Koneksi Router MikroTik
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Periksa jangkauan, kredensial, dan endpoint RouterOS secara langsung. Semua angka (CPU, RAM, uptime, board)
-            dibaca real-time dari router; tidak ada data contoh. Kata sandi hanya dipakai untuk pengujian ini dan tidak
-            ditampilkan di riwayat.
+            Periksa jangkauan, kredensial, dan endpoint RouterOS secara
+            langsung. Semua angka (CPU, RAM, uptime, board) dibaca real-time
+            dari router; tidak ada data contoh. Kata sandi hanya dipakai untuk
+            pengujian ini dan tidak ditampilkan di riwayat.
           </p>
         </div>
       </div>
@@ -194,7 +240,9 @@ export function RouterTestBoard() {
       <Card>
         <CardHeader>
           <CardTitle>Parameter Pengujian</CardTitle>
-          <CardDescription>Pilih router tersimpan atau isi manual.</CardDescription>
+          <CardDescription>
+            Pilih router tersimpan atau isi manual.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -208,11 +256,21 @@ export function RouterTestBoard() {
             <fieldset className="flex flex-wrap gap-4">
               <legend className="sr-only">Sumber router</legend>
               <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="source" checked={source === "saved"} onChange={() => setSource("saved")} />
+                <input
+                  type="radio"
+                  name="source"
+                  checked={source === "saved"}
+                  onChange={() => setSource("saved")}
+                />
                 Pilih router yang sudah ada
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name="source" checked={source === "manual"} onChange={() => setSource("manual")} />
+                <input
+                  type="radio"
+                  name="source"
+                  checked={source === "manual"}
+                  onChange={() => setSource("manual")}
+                />
                 Input router manual
               </label>
             </fieldset>
@@ -220,7 +278,12 @@ export function RouterTestBoard() {
             {source === "saved" && (
               <div className="space-y-1.5">
                 <Label htmlFor="rt-saved">Router tersimpan</Label>
-                <select id="rt-saved" className={SELECT_CLS} value={savedId} onChange={(e) => pickSaved(e.target.value)}>
+                <select
+                  id="rt-saved"
+                  className={SELECT_CLS}
+                  value={savedId}
+                  onChange={(e) => pickSaved(e.target.value)}
+                >
                   <option value="">Pilih router...</option>
                   {routers.map((r) => (
                     <option key={r.id} value={r.id}>
@@ -290,17 +353,26 @@ export function RouterTestBoard() {
 
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.https} onChange={(e) => set("https", e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={form.https}
+                  onChange={(e) => set("https", e.target.checked)}
+                />
                 Gunakan HTTPS / TLS
               </label>
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Pengujian selalu membaca perangkat nyata (REST atau API biner). Tidak ada mode simulator atau data contoh.
+              Pengujian selalu membaca perangkat nyata (REST atau API biner).
+              Tidak ada mode simulator atau data contoh.
             </p>
 
             <Button type="submit" aria-disabled={testing} className="gap-2">
-              {testing ? <Loader2 className="size-4 animate-spin" /> : <Activity className="size-4" />}
+              {testing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Activity className="size-4" />
+              )}
               {testing ? "Menguji..." : "Mulai Pengujian Router"}
             </Button>
           </form>
@@ -312,11 +384,20 @@ export function RouterTestBoard() {
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-3">
               Hasil Pengujian
-              <DeviceStatusBadge status={status} latencyMs={result?.outcome.latencyMs ?? null} isTesting={testing} />
+              <DeviceStatusBadge
+                status={status}
+                latencyMs={result?.outcome.latencyMs ?? null}
+                isTesting={testing}
+              />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {result && !testing && <DeviceOutcomeAlert outcome={result.outcome} device={result.device} />}
+            {result && !testing && (
+              <DeviceOutcomeAlert
+                outcome={result.outcome}
+                device={result.device}
+              />
+            )}
             {resource && !testing && (
               <div className="space-y-3" data-testid="router-resource">
                 <RouterHardwareCards
@@ -350,10 +431,17 @@ export function RouterTestBoard() {
       <Card>
         <CardHeader>
           <CardTitle>Riwayat Sesi</CardTitle>
-          <CardDescription>Pengujian pada sesi ini; hilang saat halaman dimuat ulang.</CardDescription>
+          <CardDescription>
+            Pengujian pada sesi ini; hilang saat halaman dimuat ulang.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div role="region" aria-label="Riwayat pengujian" tabIndex={0} className="overflow-x-auto">
+          <div
+            role="region"
+            aria-label="Riwayat pengujian"
+            tabIndex={0}
+            className="overflow-x-auto"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -368,21 +456,31 @@ export function RouterTestBoard() {
               <TableBody>
                 {history.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-muted-foreground"
+                    >
                       Belum ada pengujian.
                     </TableCell>
                   </TableRow>
                 ) : (
                   history.map((h) => (
                     <TableRow key={h.id} data-testid="router-test-row">
-                      <TableCell className="whitespace-nowrap">{new Date(h.at * 1000).toLocaleTimeString("id-ID")}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(h.at * 1000).toLocaleTimeString("id-ID")}
+                      </TableCell>
                       <TableCell>{h.host}</TableCell>
                       <TableCell>{h.port}</TableCell>
                       <TableCell>
-                        <DeviceStatusBadge status={h.status} showLatency={false} />
+                        <DeviceStatusBadge
+                          status={h.status}
+                          showLatency={false}
+                        />
                       </TableCell>
                       <TableCell>{h.latencyMs ?? "-"}</TableCell>
-                      <TableCell className="max-w-xs break-words whitespace-normal">{h.message}</TableCell>
+                      <TableCell className="max-w-xs break-words whitespace-normal">
+                        {h.message}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

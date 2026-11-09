@@ -3,8 +3,21 @@
 import { useMemo } from "react";
 import { Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatInteger } from "@/lib/dashboard/format";
 import { formatLastSeen } from "@/lib/dashboard/onu-status";
 import { useDashboardStore } from "@/lib/dashboard/store";
@@ -17,14 +30,22 @@ export function LiveCpeSection() {
   const cpe = useLiveCpe(true);
   const customers = useDashboardStore((s) => s.customers);
   const byPppoe = useMemo(
-    () => new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])),
+    () =>
+      new Map(customers.map((c) => [c.pppoeUsername.trim().toLowerCase(), c])),
     [customers],
   );
   const devices = useMemo(() => cpe.devices ?? [], [cpe.devices]);
   const stats = useMemo(() => {
     const online = devices.filter((d) => d.isOnline).length;
-    const mapped = devices.filter((d) => byPppoe.has(d.pppoeUsername.trim().toLowerCase())).length;
-    return { total: devices.length, online, offline: devices.length - online, unmapped: devices.length - mapped };
+    const mapped = devices.filter((d) =>
+      byPppoe.has(d.pppoeUsername.trim().toLowerCase()),
+    ).length;
+    return {
+      total: devices.length,
+      online,
+      offline: devices.length - online,
+      unmapped: devices.length - mapped,
+    };
   }, [devices, byPppoe]);
 
   return (
@@ -42,13 +63,20 @@ export function LiveCpeSection() {
       </CardHeader>
       <CardContent className="space-y-4">
         {cpe.error && (
-          <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {cpe.error}
           </p>
         )}
         {cpe.truncated && (
-          <p role="status" className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning">
-            Hanya {formatInteger(devices.length)} dari {formatInteger(cpe.total)} modem yang dimuat.
+          <p
+            role="status"
+            className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning"
+          >
+            Hanya {formatInteger(devices.length)} dari{" "}
+            {formatInteger(cpe.total)} modem yang dimuat.
           </p>
         )}
         <div className="rounded-md border">
@@ -67,7 +95,11 @@ export function LiveCpeSection() {
             <TableBody>
               {devices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-28 text-center text-muted-foreground" data-testid="live-cpe-empty">
+                  <TableCell
+                    colSpan={7}
+                    className="h-28 text-center text-muted-foreground"
+                    data-testid="live-cpe-empty"
+                  >
                     {!cpe.loaded
                       ? cpe.error
                         ? "Tidak ada data."
@@ -81,25 +113,39 @@ export function LiveCpeSection() {
                   return (
                     <TableRow key={d.deviceId}>
                       <TableCell>
-                        <div className="font-medium text-foreground">{c ? c.name : d.pppoeUsername || "—"}</div>
+                        <div className="font-medium text-foreground">
+                          {c ? c.name : d.pppoeUsername || "—"}
+                        </div>
                         <div className="font-mono text-xs text-muted-foreground">
-                          {c ? c.pppoeUsername : d.pppoeUsername ? "belum cocok ke pelanggan" : "tanpa PPPoE"}
+                          {c
+                            ? c.pppoeUsername
+                            : d.pppoeUsername
+                              ? "belum cocok ke pelanggan"
+                              : "tanpa PPPoE"}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {[d.manufacturer, d.model].filter(Boolean).join(" ") || "—"}
-                        <div className="text-xs text-muted-foreground">{d.softwareVersion || ""}</div>
+                        {[d.manufacturer, d.model].filter(Boolean).join(" ") ||
+                          "—"}
+                        <div className="text-xs text-muted-foreground">
+                          {d.softwareVersion || ""}
+                        </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{d.serialNumber || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {d.serialNumber || "—"}
+                      </TableCell>
                       <TableCell className="text-sm">
                         {d.wifi.ssid || "—"}
                         {d.wifi.ssid && (
                           <div className="text-xs text-muted-foreground">
-                            {d.wifi.radioFrequency} · {formatInteger(d.wifi.clientCount)} klien
+                            {d.wifi.radioFrequency} ·{" "}
+                            {formatInteger(d.wifi.clientCount)} klien
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{d.wanIp || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {d.wanIp || "—"}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -113,7 +159,9 @@ export function LiveCpeSection() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {d.lastInformAt > 0 ? formatLastSeen(d.lastInformAt) : "belum pernah"}
+                        {d.lastInformAt > 0
+                          ? formatLastSeen(d.lastInformAt)
+                          : "belum pernah"}
                       </TableCell>
                     </TableRow>
                   );

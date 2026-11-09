@@ -27,7 +27,9 @@ export interface QueueValidation {
 const MAX_MBPS = 100000;
 
 function validTarget(raw: string): string | null {
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\/(\d{1,2}))?$/.exec(raw);
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\/(\d{1,2}))?$/.exec(
+    raw,
+  );
   if (!m) return null;
   if ([m[1], m[2], m[3], m[4]].some((o) => Number(o) > 255)) return null;
   if (m[5] !== undefined && Number(m[5]) > 32) return null;
@@ -38,7 +40,9 @@ function validMbps(n: number): boolean {
   return Number.isFinite(n) && n > 0 && n <= MAX_MBPS;
 }
 
-export function validateQueueInput(input: SimpleQueueFormInput): QueueValidation {
+export function validateQueueInput(
+  input: SimpleQueueFormInput,
+): QueueValidation {
   const errors: QueueValidation["errors"] = {};
   const name = input.name.trim();
   const targetRaw = input.target.trim();
@@ -49,10 +53,16 @@ export function validateQueueInput(input: SimpleQueueFormInput): QueueValidation
   else if (name.length > 64) errors.name = "Nama queue maksimal 64 karakter.";
 
   const target = validTarget(targetRaw);
-  if (!target) errors.target = "Target harus IPv4 valid, mis. 10.20.1.5 atau 10.20.1.0/24.";
+  if (!target)
+    errors.target =
+      "Target harus IPv4 valid, mis. 10.20.1.5 atau 10.20.1.0/24.";
 
-  if (!validMbps(input.maxLimitUploadMbps)) errors.maxLimitUploadMbps = "Upload harus lebih dari 0 dan maksimal 100000 Mbps.";
-  if (!validMbps(input.maxLimitDownloadMbps)) errors.maxLimitDownloadMbps = "Download harus lebih dari 0 dan maksimal 100000 Mbps.";
+  if (!validMbps(input.maxLimitUploadMbps))
+    errors.maxLimitUploadMbps =
+      "Upload harus lebih dari 0 dan maksimal 100000 Mbps.";
+  if (!validMbps(input.maxLimitDownloadMbps))
+    errors.maxLimitDownloadMbps =
+      "Download harus lebih dari 0 dan maksimal 100000 Mbps.";
 
   return {
     ok: Object.keys(errors).length === 0,
@@ -61,13 +71,18 @@ export function validateQueueInput(input: SimpleQueueFormInput): QueueValidation
   };
 }
 
-export function createMockQueueFromInput(input: SimpleQueueFormInput): MockSimpleQueue {
+export function createMockQueueFromInput(
+  input: SimpleQueueFormInput,
+): MockSimpleQueue {
   return {
     id: `q-custom-${Date.now()}`,
     routerId: input.routerId,
     name: input.name,
     target: input.target,
-    maxLimit: { upload: input.maxLimitUploadMbps * 1e6, download: input.maxLimitDownloadMbps * 1e6 },
+    maxLimit: {
+      upload: input.maxLimitUploadMbps * 1e6,
+      download: input.maxLimitDownloadMbps * 1e6,
+    },
     rate: { upload: 0, download: 0 },
     bytes: { upload: 0, download: 0 },
     dropped: 0,
@@ -76,12 +91,18 @@ export function createMockQueueFromInput(input: SimpleQueueFormInput): MockSimpl
   };
 }
 
-export function applyQueueEdit(existing: MockSimpleQueue, input: SimpleQueueFormInput): MockSimpleQueue {
+export function applyQueueEdit(
+  existing: MockSimpleQueue,
+  input: SimpleQueueFormInput,
+): MockSimpleQueue {
   return {
     ...existing,
     name: input.name,
     target: input.target,
-    maxLimit: { upload: input.maxLimitUploadMbps * 1e6, download: input.maxLimitDownloadMbps * 1e6 },
+    maxLimit: {
+      upload: input.maxLimitUploadMbps * 1e6,
+      download: input.maxLimitDownloadMbps * 1e6,
+    },
     comment: input.comment,
     disabled: input.disabled,
   };
@@ -110,9 +131,15 @@ export function filterDeletedQueues(
 export type DeleteQueueResult = { ok: true } | { ok: false; reason: string };
 
 // ponytail: simulasi lokal; id memuat "fail-delete" selalu gagal. Ganti dengan DELETE /rest/queue/simple/{id} saat backend ada.
-export function simulateDeleteQueue(q: Pick<MockSimpleQueue, "id">): DeleteQueueResult {
+export function simulateDeleteQueue(
+  q: Pick<MockSimpleQueue, "id">,
+): DeleteQueueResult {
   if (q.id.includes("fail-delete")) {
-    return { ok: false, reason: "Router menolak permintaan (queue sedang dipakai atau tidak dapat dijangkau)." };
+    return {
+      ok: false,
+      reason:
+        "Router menolak permintaan (queue sedang dipakai atau tidak dapat dijangkau).",
+    };
   }
   return { ok: true };
 }

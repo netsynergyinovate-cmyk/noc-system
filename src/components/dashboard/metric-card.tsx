@@ -35,14 +35,22 @@ export function MetricCard({
   ...props
 }: MetricCardProps & { children?: ReactNode }) {
   return (
-    <Card className={cn("py-3 px-4 shadow-2xs transition-all hover:border-border/80", className)} {...props}>
+    <Card
+      className={cn(
+        "py-3 px-4 shadow-2xs transition-all hover:border-border/80",
+        className,
+      )}
+      {...props}
+    >
       <CardContent className="p-0 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
           <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-foreground">
             {value}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground/85 truncate">{hint}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground/85 truncate">
+            {hint}
+          </p>
           {children}
         </div>
         <span

@@ -27,33 +27,41 @@ export const HIERARCHY_TIER_META: Record<1 | 2 | 3 | 4, HierarchyTierMeta> = {
     tier: 1,
     label: "Tingkat 1 • Core Gateway & OLT",
     shortLabel: "T1: Core/OLT",
-    badgeClass: "text-purple-600 border-purple-500/40 bg-purple-500/10 dark:text-purple-300",
+    badgeClass:
+      "text-purple-600 border-purple-500/40 bg-purple-500/10 dark:text-purple-300",
     hexColor: "#8b5cf6",
-    description: "Simpul pusat jaringan backbone, router gateway BGP, dan master OLT GPON/EPON.",
+    description:
+      "Simpul pusat jaringan backbone, router gateway BGP, dan master OLT GPON/EPON.",
   },
   2: {
     tier: 2,
     label: "Tingkat 2 • Optical Distribution Cabinet (ODC)",
     shortLabel: "T2: ODC",
-    badgeClass: "text-blue-600 border-blue-500/40 bg-blue-500/10 dark:text-blue-300",
+    badgeClass:
+      "text-blue-600 border-blue-500/40 bg-blue-500/10 dark:text-blue-300",
     hexColor: "#3b82f6",
-    description: "Kabin distribusi optik utama penghubung kabel feeder serat optik ke berbagai klaster.",
+    description:
+      "Kabin distribusi optik utama penghubung kabel feeder serat optik ke berbagai klaster.",
   },
   3: {
     tier: 3,
     label: "Tingkat 3 • Optical Distribution Point (ODP)",
     shortLabel: "T3: ODP",
-    badgeClass: "text-amber-600 border-amber-500/40 bg-amber-500/10 dark:text-amber-300",
+    badgeClass:
+      "text-amber-600 border-amber-500/40 bg-amber-500/10 dark:text-amber-300",
     hexColor: "#f59e0b",
-    description: "Kotak terminasi optik splitter (1:8 / 1:16) tempat kabel drop pelanggan tersambung.",
+    description:
+      "Kotak terminasi optik splitter (1:8 / 1:16) tempat kabel drop pelanggan tersambung.",
   },
   4: {
     tier: 4,
     label: "Tingkat 4 • Pelanggan Akhir (CPE/ONT)",
     shortLabel: "T4: Pelanggan",
-    badgeClass: "text-emerald-600 border-emerald-500/40 bg-emerald-500/10 dark:text-emerald-300",
+    badgeClass:
+      "text-emerald-600 border-emerald-500/40 bg-emerald-500/10 dark:text-emerald-300",
     hexColor: "#10b981",
-    description: "Titik akhir koneksi rumah pelanggan dengan akun PPPoE dan router modem ONT.",
+    description:
+      "Titik akhir koneksi rumah pelanggan dengan akun PPPoE dan router modem ONT.",
   },
 };
 
@@ -188,7 +196,10 @@ export function filterLineageLinks(
  * Menjaga ketajaman dan keterbacaan visual agar kabel tidak menggumpal saat zoom out,
  * dan tetap tajam/tegas saat zoom in tinggi (zoom 17-20).
  */
-export function getZoomScaledLineWeight(baseWeight: number, zoom: number): number {
+export function getZoomScaledLineWeight(
+  baseWeight: number,
+  zoom: number,
+): number {
   if (zoom >= 18) return Math.round(baseWeight * 1.35 * 10) / 10;
   if (zoom >= 16) return Math.round(baseWeight * 1.15 * 10) / 10;
   if (zoom >= 14) return baseWeight;

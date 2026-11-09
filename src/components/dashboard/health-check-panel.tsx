@@ -21,9 +21,8 @@ import {
 } from "@/lib/dashboard/deploy-safety";
 
 export function HealthCheckPanel() {
-  const [checks, setChecks] = useState<readonly HealthCheckItem[]>(
-    MOCK_HEALTH_CHECKS,
-  );
+  const [checks, setChecks] =
+    useState<readonly HealthCheckItem[]>(MOCK_HEALTH_CHECKS);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -88,10 +87,7 @@ export function HealthCheckPanel() {
   };
 
   return (
-    <div
-      data-testid="health-check-panel"
-      className="flex flex-col gap-6"
-    >
+    <div data-testid="health-check-panel" className="flex flex-col gap-6">
       {/* Kartu Ringkasan Metrik Health Check */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 shadow-xs">
@@ -291,7 +287,8 @@ export function HealthCheckPanel() {
                     colSpan={6}
                     className="px-4 py-8 text-center text-xs text-muted-foreground"
                   >
-                    Tidak ada pemeriksaan kesehatan yang sesuai kriteria pencarian.
+                    Tidak ada pemeriksaan kesehatan yang sesuai kriteria
+                    pencarian.
                   </td>
                 </tr>
               )}

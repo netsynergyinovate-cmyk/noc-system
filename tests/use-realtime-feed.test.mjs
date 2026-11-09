@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { createRealtimeFeedEngine, FALLBACK_AFTER_MS } = await import(
-  "../src/lib/dashboard/use-realtime-feed.ts"
-);
+const { createRealtimeFeedEngine, FALLBACK_AFTER_MS } =
+  await import("../src/lib/dashboard/use-realtime-feed.ts");
 
 // Jam palsu + store palsu: engine diuji tanpa React maupun WebSocket sungguhan.
 function harness({ forceMock, connect } = {}) {
@@ -30,11 +29,13 @@ function harness({ forceMock, connect } = {}) {
       const i = timers.indexOf(t);
       if (i >= 0) timers.splice(i, 1);
     },
-    connect:
-      connect ??
-      (() => ({ close() {} })),
+    connect: connect ?? (() => ({ close() {} })),
     createFeed: () => ({
-      snapshot: (t) => ({ customers: [], routers: [], traffic: { times: [t], rx: [1], tx: [1] } }),
+      snapshot: (t) => ({
+        customers: [],
+        routers: [],
+        traffic: { times: [t], rx: [1], tx: [1] },
+      }),
       next: (t) => ({ traffic: { time: t, rx: 1, tx: 1 }, statusChanges: [] }),
     }),
     createIncidentHub: () => ({ snapshot: () => [], changes: () => null }),
@@ -61,7 +62,9 @@ function harness({ forceMock, connect } = {}) {
   const advance = (total) => {
     const end = ms + total;
     for (;;) {
-      const due = timers.filter((t) => t.next <= end).sort((a, b) => a.next - b.next)[0];
+      const due = timers
+        .filter((t) => t.next <= end)
+        .sort((a, b) => a.next - b.next)[0];
       if (!due) break;
       ms = due.next;
       if (due.repeat) due.next += due.every;
@@ -83,7 +86,6 @@ test("awal: connecting, tidak dijeda, belum ada update", () => {
     isPaused: false,
   });
 });
-
 
 test("WebSocket live: delta masuk, latency dihitung, pause menahan delta WS", () => {
   let opts;

@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-const latLng = z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]);
+const latLng = z.tuple([
+  z.number().min(-90).max(90),
+  z.number().min(-180).max(180),
+]);
 
 // Body POST /api/snap dari aplikasi peta. Urutan `points` = rute pilihan pengguna.
 export const snapRequestSchema = z

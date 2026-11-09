@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Eye, EyeOff, Info, KeyRound, Pencil, RefreshCw, Shuffle } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  Info,
+  KeyRound,
+  Pencil,
+  RefreshCw,
+  Shuffle,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,16 +24,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDbm } from "@/lib/dashboard/format";
-import type { CpeDetail, DetailWlan, DeviceSecrets } from "@/lib/genieacs/device-detail";
+import type {
+  CpeDetail,
+  DetailWlan,
+  DeviceSecrets,
+} from "@/lib/genieacs/device-detail";
 import { changeDeviceWifiSchema } from "@/validators/cpe";
 import { formatMikrotikConnReqRule } from "@/lib/genieacs/mikrotik-firewall";
 
 // Sandi disembunyikan lagi setelah ini, dan dibuang dari memori halaman.
 const SECRET_VISIBLE_MS = 60_000;
 
-type DetailState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; data: CpeDetail };
+type DetailState =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "ready"; data: CpeDetail };
 type SecretState =
   | { kind: "hidden" }
   | { kind: "loading" }
@@ -39,25 +63,45 @@ function uptimeText(seconds: number | null): string {
   return `${d}h ${two(h)}:${two(m)}:${two(Math.floor(seconds % 60))}`;
 }
 
-const timeFmt = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "medium" });
+const timeFmt = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Jakarta",
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
 function timeText(iso: string): string {
   const t = Date.parse(iso);
   return Number.isFinite(t) ? timeFmt.format(t) : "—";
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border/50 py-1 text-xs last:border-0">
       <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-all text-right font-medium">{children || "—"}</dd>
+      <dd className="min-w-0 break-all text-right font-medium">
+        {children || "—"}
+      </dd>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-lg border p-3">
-      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h4>
       {children}
     </section>
   );
@@ -66,10 +110,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SecretValue({ value, id }: { value: string; id: string }) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
-  if (value === "") return <span className="text-muted-foreground">(kosong)</span>;
+  if (value === "")
+    return <span className="text-muted-foreground">(kosong)</span>;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <code data-testid={`secret-${id}`} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+      <code
+        data-testid={`secret-${id}`}
+        className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
+      >
         {visible ? value : "•".repeat(Math.min(value.length, 12))}
       </code>
       <Button
@@ -81,7 +129,11 @@ function SecretValue({ value, id }: { value: string; id: string }) {
         aria-pressed={visible}
         onClick={() => setVisible((v) => !v)}
       >
-        {visible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+        {visible ? (
+          <EyeOff className="size-3.5" />
+        ) : (
+          <Eye className="size-3.5" />
+        )}
       </Button>
       <Button
         type="button"
@@ -96,7 +148,11 @@ function SecretValue({ value, id }: { value: string; id: string }) {
           });
         }}
       >
-        {copied ? <Check className="size-3.5 text-success" /> : <Copy className="size-3.5" />}
+        {copied ? (
+          <Check className="size-3.5 text-success" />
+        ) : (
+          <Copy className="size-3.5" />
+        )}
       </Button>
     </span>
   );
@@ -114,7 +170,12 @@ type WifiVerified = { ssid: boolean | null; password: boolean | null };
 type WifiPhase =
   | { kind: "idle" }
   | { kind: "saving" }
-  | { kind: "done"; status: "applied" | "queued"; message: string; verified: WifiVerified }
+  | {
+      kind: "done";
+      status: "applied" | "queued";
+      message: string;
+      verified: WifiVerified;
+    }
   | { kind: "failed"; message: string };
 
 // Ubah nama dan/atau sandi satu SSID. Hanya yang berubah yang dikirim; sandi kosong = tidak diubah.
@@ -149,7 +210,9 @@ function WifiEditor({
       : !parsed.success
         ? (parsed.error.issues[0]?.message ?? "Isian tidak valid.")
         : null;
-  const blocked = problem ?? (!understood ? "Centang pernyataan di atas untuk melanjutkan." : null);
+  const blocked =
+    problem ??
+    (!understood ? "Centang pernyataan di atas untuk melanjutkan." : null);
 
   async function submit() {
     if (saving || blocked !== null) return;
@@ -184,16 +247,23 @@ function WifiEditor({
         message:
           res.status === 403
             ? "Hanya admin (izin kelola CPE) yang boleh mengubah Wi-Fi."
-            : ((typeof err === "string" ? err : err?.message) ?? "Gagal mengubah Wi-Fi."),
+            : ((typeof err === "string" ? err : err?.message) ??
+              "Gagal mengubah Wi-Fi."),
       });
     } catch {
-      setPhase({ kind: "failed", message: "Server aplikasi tidak terjangkau." });
+      setPhase({
+        kind: "failed",
+        message: "Server aplikasi tidak terjangkau.",
+      });
     }
   }
 
   const inputId = `wifi-${wlan.index}`;
   return (
-    <div className="mt-3 space-y-3 rounded-md border bg-muted/30 p-3" data-testid={`wifi-editor-${wlan.index}`}>
+    <div
+      className="mt-3 space-y-3 rounded-md border bg-muted/30 p-3"
+      data-testid={`wifi-editor-${wlan.index}`}
+    >
       <h5 className="text-xs font-semibold">Ubah Wi-Fi #{wlan.index}</h5>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -208,7 +278,9 @@ function WifiEditor({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${inputId}-pass`}>Sandi baru (kosong = tidak diubah)</Label>
+          <Label htmlFor={`${inputId}-pass`}>
+            Sandi baru (kosong = tidak diubah)
+          </Label>
           <div className="flex gap-1.5">
             <Input
               id={`${inputId}-pass`}
@@ -225,11 +297,17 @@ function WifiEditor({
               variant="outline"
               size="icon"
               className="shrink-0"
-              aria-label={showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"}
+              aria-label={
+                showPassword ? "Sembunyikan sandi" : "Tampilkan sandi"
+              }
               aria-pressed={showPassword}
               onClick={() => setShowPassword((v) => !v)}
             >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              {showPassword ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
             </Button>
             <Button
               type="button"
@@ -260,16 +338,28 @@ function WifiEditor({
           onChange={(e) => setUnderstood(e.target.checked)}
         />
         <span>
-          Saya paham: semua perangkat yang terhubung ke Wi-Fi ini akan <strong>terputus</strong> dan harus memakai
-          nama/sandi yang baru. Pelanggan perlu diberi tahu.
+          Saya paham: semua perangkat yang terhubung ke Wi-Fi ini akan{" "}
+          <strong>terputus</strong> dan harus memakai nama/sandi yang baru.
+          Pelanggan perlu diberi tahu.
         </span>
       </label>
 
       {phase.kind === "done" && (
-        <p role="status" className={phase.status === "applied" ? "text-xs text-success" : "text-xs text-warning"}>
+        <p
+          role="status"
+          className={
+            phase.status === "applied"
+              ? "text-xs text-success"
+              : "text-xs text-warning"
+          }
+        >
           {phase.message}
-          {phase.status === "applied" && phase.verified.ssid === true && " Nama terverifikasi dari modem."}
-          {phase.status === "applied" && phase.verified.password === true && " Sandi terverifikasi dari modem."}
+          {phase.status === "applied" &&
+            phase.verified.ssid === true &&
+            " Nama terverifikasi dari modem."}
+          {phase.status === "applied" &&
+            phase.verified.password === true &&
+            " Sandi terverifikasi dari modem."}
         </p>
       )}
       {phase.kind === "failed" && (
@@ -277,7 +367,9 @@ function WifiEditor({
           {phase.message}
         </p>
       )}
-      {blocked !== null && phase.kind !== "done" && <p className="text-xs text-muted-foreground">{blocked}</p>}
+      {blocked !== null && phase.kind !== "done" && (
+        <p className="text-xs text-muted-foreground">{blocked}</p>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" size="sm" variant="outline" onClick={onClose}>
@@ -291,7 +383,11 @@ function WifiEditor({
           aria-disabled={saving || blocked !== null}
           onClick={() => void submit()}
         >
-          {saving ? "Menerapkan… (sampai 40 detik)" : phase.kind === "failed" ? "Coba lagi" : "Terapkan"}
+          {saving
+            ? "Menerapkan… (sampai 40 detik)"
+            : phase.kind === "failed"
+              ? "Coba lagi"
+              : "Terapkan"}
         </Button>
       </div>
     </div>
@@ -339,12 +435,17 @@ function Body({ deviceId }: { deviceId: string }) {
             kind: "error",
             message:
               (typeof err === "string" ? err : err?.message) ??
-              (res.status === 404 ? "Perangkat tidak ditemukan di GenieACS." : "Rincian modem tidak bisa dimuat."),
+              (res.status === 404
+                ? "Perangkat tidak ditemukan di GenieACS."
+                : "Rincian modem tidak bisa dimuat."),
           });
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setState({ kind: "error", message: "Server aplikasi tidak terjangkau." });
+        setState({
+          kind: "error",
+          message: "Server aplikasi tidak terjangkau.",
+        });
       } finally {
         setIsRefreshing(false);
       }
@@ -370,16 +471,25 @@ function Body({ deviceId }: { deviceId: string }) {
   }, []);
 
   // Sandi dibuang saat dialog ditutup (komponen ini dilepas).
-  useEffect(() => () => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    },
+    [],
+  );
 
   async function revealSecrets() {
     if (secrets.kind === "loading") return;
     setSecrets({ kind: "loading" });
     try {
-      const res = await fetch(`/api/cpe/${encodeURIComponent(deviceId)}/secrets`, { cache: "no-store" });
-      const json = (await res.json().catch(() => null)) as { data?: DeviceSecrets; error?: string | { message?: string } } | null;
+      const res = await fetch(
+        `/api/cpe/${encodeURIComponent(deviceId)}/secrets`,
+        { cache: "no-store" },
+      );
+      const json = (await res.json().catch(() => null)) as {
+        data?: DeviceSecrets;
+        error?: string | { message?: string };
+      } | null;
       if (res.ok && json?.data) {
         setSecrets({ kind: "shown", data: json.data });
         hideTimer.current = setTimeout(hideSecrets, SECRET_VISIBLE_MS);
@@ -391,10 +501,14 @@ function Body({ deviceId }: { deviceId: string }) {
         message:
           res.status === 403
             ? "Hanya admin (izin kelola CPE) yang boleh melihat sandi."
-            : ((typeof err === "string" ? err : err?.message) ?? "Sandi tidak bisa dimuat."),
+            : ((typeof err === "string" ? err : err?.message) ??
+              "Sandi tidak bisa dimuat."),
       });
     } catch {
-      setSecrets({ kind: "error", message: "Server aplikasi tidak terjangkau." });
+      setSecrets({
+        kind: "error",
+        message: "Server aplikasi tidak terjangkau.",
+      });
     }
   }
 
@@ -438,13 +552,18 @@ function Body({ deviceId }: { deviceId: string }) {
           : "text-destructive";
 
   const connectedHosts = d.hosts.filter((h) => h.active);
-  const wifiHostCount = connectedHosts.filter((h) => /802\.11|wifi|wlan/i.test(h.interfaceType)).length;
+  const wifiHostCount = connectedHosts.filter((h) =>
+    /802\.11|wifi|wlan/i.test(h.interfaceType),
+  ).length;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-xs">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="font-mono text-[10px] bg-background">
+          <Badge
+            variant="outline"
+            className="font-mono text-[10px] bg-background"
+          >
             Realtime TR-069
           </Badge>
           <span className="text-muted-foreground">
@@ -460,57 +579,73 @@ function Body({ deviceId }: { deviceId: string }) {
           className="h-7 gap-1.5 text-xs font-medium"
           data-testid="btn-refresh-realtime"
         >
-          <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
+          <RefreshCw
+            className={`size-3.5 ${isRefreshing ? "animate-spin text-primary" : ""}`}
+          />
           {isRefreshing ? "Membaca modem…" : "Segarkan Realtime"}
         </Button>
       </div>
-      {refreshFailed && (() => {
-        const ontIpMatch = /^https?:\/\/([^:/]+)(?::(\d+))?/i.exec(d.acs.connectionRequestUrl || "");
-        const ontHost = ontIpMatch ? ontIpMatch[1] : d.wanIp;
-        const ontPort = ontIpMatch && ontIpMatch[2] ? Number(ontIpMatch[2]) : 7547;
-        const srvMatch = /^https?:\/\/([^:/]+)/i.exec(d.acs.url || "");
-        const srvHost = srvMatch ? srvMatch[1] : "";
-        const mikrotikCmd = formatMikrotikConnReqRule({
-          serverIp: srvHost,
-          ontIp: ontHost,
-          port: ontPort,
-        });
+      {refreshFailed &&
+        (() => {
+          const ontIpMatch = /^https?:\/\/([^:/]+)(?::(\d+))?/i.exec(
+            d.acs.connectionRequestUrl || "",
+          );
+          const ontHost = ontIpMatch ? ontIpMatch[1] : d.wanIp;
+          const ontPort =
+            ontIpMatch && ontIpMatch[2] ? Number(ontIpMatch[2]) : 7547;
+          const srvMatch = /^https?:\/\/([^:/]+)/i.exec(d.acs.url || "");
+          const srvHost = srvMatch ? srvMatch[1] : "";
+          const mikrotikCmd = formatMikrotikConnReqRule({
+            serverIp: srvHost,
+            ontIp: ontHost,
+            port: ontPort,
+          });
 
-        return (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
-            <div className="flex items-center justify-between font-medium">
-              <span>ONT tidak merespons Connection Request Port {ontPort}</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-6 px-2 text-[10px] bg-background text-foreground"
-                onClick={() => {
-                  void navigator.clipboard.writeText(mikrotikCmd);
-                  setCopiedCmd(true);
-                  setTimeout(() => setCopiedCmd(false), 2000);
-                }}
-              >
-                {copiedCmd ? "Tersalin!" : "Salin Perintah MikroTik"}
-              </Button>
+          return (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+              <div className="flex items-center justify-between font-medium">
+                <span>
+                  ONT tidak merespons Connection Request Port {ontPort}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] bg-background text-foreground"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(mikrotikCmd);
+                    setCopiedCmd(true);
+                    setTimeout(() => setCopiedCmd(false), 2000);
+                  }}
+                >
+                  {copiedCmd ? "Tersalin!" : "Salin Perintah MikroTik"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Paket wake-up HTTP port {ontPort} dari server NOC tertahan di
+                router. Jalankan perintah aman ini di Terminal MikroTik (hanya
+                membuka akses dari Server NOC ke ONT):
+              </p>
+              <code className="block select-all rounded bg-background p-2 font-mono text-[10px] text-foreground border border-border">
+                {mikrotikCmd}
+              </code>
             </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Paket wake-up HTTP port {ontPort} dari server NOC tertahan di router. Jalankan perintah aman ini di Terminal MikroTik (hanya membuka akses dari Server NOC ke ONT):
-            </p>
-            <code className="block select-all rounded bg-background p-2 font-mono text-[10px] text-foreground border border-border">
-              {mikrotikCmd}
-            </code>
-          </div>
-        );
-      })()}
+          );
+        })()}
       <div className="grid gap-3 md:grid-cols-2">
         <Section title="Identitas">
           <dl>
             <Field label="ID PPPoE">{d.pppoeUsername}</Field>
             <Field label="Serial Number">{d.serialNumber}</Field>
-            <Field label="Produsen / Model">{[d.manufacturer, d.productClass].filter(Boolean).join(" ")}</Field>
+            <Field label="Produsen / Model">
+              {[d.manufacturer, d.productClass].filter(Boolean).join(" ")}
+            </Field>
             <Field label="OUI">{d.oui}</Field>
-            <Field label="Versi (HW / SW)">{[d.hardwareVersion, d.softwareVersion].filter(Boolean).join(" / ")}</Field>
+            <Field label="Versi (HW / SW)">
+              {[d.hardwareVersion, d.softwareVersion]
+                .filter(Boolean)
+                .join(" / ")}
+            </Field>
             <Field label="Jenis PON">{d.ponType}</Field>
             <Field label="MAC">{d.macAddress}</Field>
           </dl>
@@ -522,7 +657,9 @@ function Body({ deviceId }: { deviceId: string }) {
             <Field label="Uptime">{uptimeText(d.uptimeSeconds)}</Field>
             <Field label="URL ACS di modem">{d.acs.url}</Field>
             <Field label="Periodic inform">
-              {d.acs.informEnabled ? `${d.acs.informInterval ?? "?"} detik` : "mati"}
+              {d.acs.informEnabled
+                ? `${d.acs.informInterval ?? "?"} detik`
+                : "mati"}
             </Field>
             <Field label="Terdaftar">{timeText(d.registered)}</Field>
             <Field label="Komunikasi terakhir">{timeText(d.lastInform)}</Field>
@@ -531,18 +668,34 @@ function Body({ deviceId }: { deviceId: string }) {
         <Section title="Optik">
           <dl>
             <Field label="RX">
-              <span className={rxClass}>{d.optical.rxDbm !== null ? formatDbm(d.optical.rxDbm) : "—"}</span>
+              <span className={rxClass}>
+                {d.optical.rxDbm !== null ? formatDbm(d.optical.rxDbm) : "—"}
+              </span>
             </Field>
-            <Field label="TX">{d.optical.txDbm !== null ? formatDbm(d.optical.txDbm) : "—"}</Field>
-            <Field label="Redaman (TX − RX)">{d.optical.lossDb !== null ? `${d.optical.lossDb} dB` : "—"}</Field>
-            <Field label="Suhu modul">{d.optical.temperatureC !== null ? `${d.optical.temperatureC} °C` : "—"}</Field>
-            <Field label="Arus bias">{d.optical.biasMa !== null ? `${d.optical.biasMa} mA` : "—"}</Field>
-            <Field label="Tegangan">{d.optical.voltageV !== null ? `${d.optical.voltageV} V` : "—"}</Field>
+            <Field label="TX">
+              {d.optical.txDbm !== null ? formatDbm(d.optical.txDbm) : "—"}
+            </Field>
+            <Field label="Redaman (TX − RX)">
+              {d.optical.lossDb !== null ? `${d.optical.lossDb} dB` : "—"}
+            </Field>
+            <Field label="Suhu modul">
+              {d.optical.temperatureC !== null
+                ? `${d.optical.temperatureC} °C`
+                : "—"}
+            </Field>
+            <Field label="Arus bias">
+              {d.optical.biasMa !== null ? `${d.optical.biasMa} mA` : "—"}
+            </Field>
+            <Field label="Tegangan">
+              {d.optical.voltageV !== null ? `${d.optical.voltageV} V` : "—"}
+            </Field>
           </dl>
         </Section>
         <Section title="Kesehatan modem">
           <dl>
-            <Field label="CPU">{d.health.cpuPercent !== null ? `${d.health.cpuPercent}%` : "—"}</Field>
+            <Field label="CPU">
+              {d.health.cpuPercent !== null ? `${d.health.cpuPercent}%` : "—"}
+            </Field>
             <Field label="Memori bebas / total">
               {d.health.memoryTotalKb !== null
                 ? `${d.health.memoryFreeKb ?? "?"} / ${d.health.memoryTotalKb} KB`
@@ -583,7 +736,9 @@ function Body({ deviceId }: { deviceId: string }) {
                   <TableRow key={`${w.name}-${i}`} className="text-xs">
                     <TableCell className="font-mono">{w.name || "—"}</TableCell>
                     <TableCell>{w.kind}</TableCell>
-                    <TableCell className="font-mono">{w.username || "—"}</TableCell>
+                    <TableCell className="font-mono">
+                      {w.username || "—"}
+                    </TableCell>
                     <TableCell>{w.status || "—"}</TableCell>
                     <TableCell className="font-mono">{w.ip || "—"}</TableCell>
                     <TableCell className="font-mono">{w.mac || "—"}</TableCell>
@@ -615,9 +770,14 @@ function Body({ deviceId }: { deviceId: string }) {
                 {d.wlans.map((w) => (
                   <TableRow key={w.index} className="text-xs">
                     <TableCell>{w.index}</TableCell>
-                    <TableCell className="font-medium">{w.ssid || "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {w.ssid || "—"}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={w.enabled ? "default" : "secondary"} className="text-[10px]">
+                      <Badge
+                        variant={w.enabled ? "default" : "secondary"}
+                        className="text-[10px]"
+                      >
                         {w.enabled ? "Aktif" : "Mati"}
                       </Badge>
                     </TableCell>
@@ -631,7 +791,11 @@ function Body({ deviceId }: { deviceId: string }) {
                         className="h-7 gap-1 text-xs"
                         data-testid={`btn-edit-wifi-${w.index}`}
                         aria-pressed={editingWlan === w.index}
-                        onClick={() => setEditingWlan(editingWlan === w.index ? null : w.index)}
+                        onClick={() =>
+                          setEditingWlan(
+                            editingWlan === w.index ? null : w.index,
+                          )
+                        }
                       >
                         <Pencil className="size-3" />
                         Ubah
@@ -643,36 +807,49 @@ function Body({ deviceId }: { deviceId: string }) {
             </Table>
           </div>
         )}
-        {editingWlan !== null && d.wlans.some((w) => w.index === editingWlan) && (
-          <WifiEditor
-            key={editingWlan}
-            deviceId={deviceId}
-            wlan={d.wlans.find((w) => w.index === editingWlan)!}
-            onClose={() => setEditingWlan(null)}
-            onApplied={() => {
-              // Sandi yang sedang ditampilkan sudah basi, dan rincian perlu dimuat ulang.
-              hideSecrets();
-              void load();
-            }}
-          />
-        )}
+        {editingWlan !== null &&
+          d.wlans.some((w) => w.index === editingWlan) && (
+            <WifiEditor
+              key={editingWlan}
+              deviceId={deviceId}
+              wlan={d.wlans.find((w) => w.index === editingWlan)!}
+              onClose={() => setEditingWlan(null)}
+              onApplied={() => {
+                // Sandi yang sedang ditampilkan sudah basi, dan rincian perlu dimuat ulang.
+                hideSecrets();
+                void load();
+              }}
+            />
+          )}
       </Section>
 
-      <Section title={`Perangkat terhubung (${connectedHosts.length} aktif · Wi-Fi ${wifiHostCount} · Ethernet ${connectedHosts.length - wifiHostCount})`}>
+      <Section
+        title={`Perangkat terhubung (${connectedHosts.length} aktif · Wi-Fi ${wifiHostCount} · Ethernet ${connectedHosts.length - wifiHostCount})`}
+      >
         {d.ethernet.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5 text-[11px]" data-testid="ethernet-ports">
+          <div
+            className="mb-2 flex flex-wrap gap-1.5 text-[11px]"
+            data-testid="ethernet-ports"
+          >
             {d.ethernet.map((p) => (
               <span
                 key={p.index}
                 className={`rounded-full border px-2 py-0.5 ${p.linkUp ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "text-muted-foreground"}`}
               >
-                {p.name}: {p.linkUp ? `link${p.speedMbps ? ` ${p.speedMbps} Mbps` : ""}` : p.enabled ? "tidak ada kabel" : "nonaktif"}
+                {p.name}:{" "}
+                {p.linkUp
+                  ? `link${p.speedMbps ? ` ${p.speedMbps} Mbps` : ""}`
+                  : p.enabled
+                    ? "tidak ada kabel"
+                    : "nonaktif"}
               </span>
             ))}
           </div>
         )}
         {connectedHosts.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Tidak ada perangkat yang sedang terhubung ke modem saat ini.</p>
+          <p className="text-xs text-muted-foreground">
+            Tidak ada perangkat yang sedang terhubung ke modem saat ini.
+          </p>
         ) : (
           <div className="max-h-56 overflow-auto">
             <Table>
@@ -688,12 +865,20 @@ function Body({ deviceId }: { deviceId: string }) {
               <TableBody>
                 {connectedHosts.slice(0, 100).map((h, i) => (
                   <TableRow key={`${h.mac}-${i}`} className="text-xs">
-                    <TableCell className="font-medium">{h.hostname || "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      {h.hostname || "—"}
+                    </TableCell>
                     <TableCell className="font-mono">{h.ip || "—"}</TableCell>
                     <TableCell className="font-mono">{h.mac || "—"}</TableCell>
-                    <TableCell>{[h.interfaceType, h.band].filter(Boolean).join(" ") || "—"}</TableCell>
+                    <TableCell>
+                      {[h.interfaceType, h.band].filter(Boolean).join(" ") ||
+                        "—"}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                      >
                         Aktif saat ini
                       </Badge>
                     </TableCell>
@@ -707,12 +892,15 @@ function Body({ deviceId }: { deviceId: string }) {
 
       <Section title="Sandi modem">
         <div className="space-y-2.5">
-          {secrets.kind === "hidden" || secrets.kind === "loading" || secrets.kind === "error" ? (
+          {secrets.kind === "hidden" ||
+          secrets.kind === "loading" ||
+          secrets.kind === "error" ? (
             <>
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
-                Sandi admin web modem dan Wi-Fi dibaca dari modem lewat TR-069. Hanya admin yang boleh melihatnya, dan setiap
-                pembukaan dicatat di jejak aktivitas.
+                Sandi admin web modem dan Wi-Fi dibaca dari modem lewat TR-069.
+                Hanya admin yang boleh melihatnya, dan setiap pembukaan dicatat
+                di jejak aktivitas.
               </p>
               <Button
                 type="button"
@@ -736,9 +924,15 @@ function Body({ deviceId }: { deviceId: string }) {
             <>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
-                  Disembunyikan otomatis dalam {SECRET_VISIBLE_MS / 1000} detik. Klik ikon mata untuk melihat.
+                  Disembunyikan otomatis dalam {SECRET_VISIBLE_MS / 1000} detik.
+                  Klik ikon mata untuk melihat.
                 </p>
-                <Button type="button" size="sm" variant="outline" onClick={hideSecrets}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={hideSecrets}
+                >
                   Sembunyikan
                 </Button>
               </div>
@@ -761,7 +955,9 @@ function Body({ deviceId }: { deviceId: string }) {
                             {a.usedByApp ? " · dipakai aplikasi" : ""}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono">{a.username || "—"}</TableCell>
+                        <TableCell className="font-mono">
+                          {a.username || "—"}
+                        </TableCell>
                         <TableCell>
                           <SecretValue value={a.password} id={a.source} />
                         </TableCell>
@@ -771,21 +967,30 @@ function Body({ deviceId }: { deviceId: string }) {
                       <TableRow key={`wifi-${w.index}`} className="text-xs">
                         <TableCell>
                           <div className="font-medium">Wi-Fi #{w.index}</div>
-                          <div className="text-[10px] text-muted-foreground">X_CMS_KeyPassphrase</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            X_CMS_KeyPassphrase
+                          </div>
                         </TableCell>
                         <TableCell>{w.ssid || "—"}</TableCell>
                         <TableCell>
-                          <SecretValue value={w.passphrase} id={`wifi-${w.index}`} />
+                          <SecretValue
+                            value={w.passphrase}
+                            id={`wifi-${w.index}`}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
-                    {secrets.data.accounts.length === 0 && secrets.data.wifi.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-xs text-muted-foreground">
-                          Modem ini tidak melaporkan sandi lewat TR-069.
-                        </TableCell>
-                      </TableRow>
-                    )}
+                    {secrets.data.accounts.length === 0 &&
+                      secrets.data.wifi.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={3}
+                            className="text-center text-xs text-muted-foreground"
+                          >
+                            Modem ini tidak melaporkan sandi lewat TR-069.
+                          </TableCell>
+                        </TableRow>
+                      )}
                   </TableBody>
                 </Table>
               </div>
@@ -797,19 +1002,36 @@ function Body({ deviceId }: { deviceId: string }) {
   );
 }
 
-export function GenieacsDeviceDialog({ deviceId, label }: { deviceId: string; label: string }) {
+export function GenieacsDeviceDialog({
+  deviceId,
+  label,
+}: {
+  deviceId: string;
+  label: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" data-testid="btn-device-detail">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 text-xs"
+          data-testid="btn-device-detail"
+        >
           Rincian
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-4xl" data-testid="device-detail-dialog">
+      <DialogContent
+        className="max-h-[88vh] overflow-y-auto sm:max-w-4xl"
+        data-testid="device-detail-dialog"
+      >
         <DialogHeader>
           <DialogTitle>Rincian modem</DialogTitle>
-          <DialogDescription className="font-mono text-xs">{label}</DialogDescription>
+          <DialogDescription className="font-mono text-xs">
+            {label}
+          </DialogDescription>
         </DialogHeader>
         {/* Dipasang hanya saat terbuka: tutup dialog = state (termasuk sandi) dibuang. */}
         {open && <Body deviceId={deviceId} />}

@@ -25,8 +25,8 @@ export default async function WhatsappRecipientsPage() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Daftar nomor telepon operator dan ID grup WhatsApp yang menerima pemberitahuan otomatis
-          saat terjadi alert gangguan jaringan.
+          Daftar nomor telepon operator dan ID grup WhatsApp yang menerima
+          pemberitahuan otomatis saat terjadi alert gangguan jaringan.
         </p>
       </div>
       <WhatsappRecipientsManager />

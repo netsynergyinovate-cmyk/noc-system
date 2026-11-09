@@ -51,7 +51,10 @@ const PRESET_COLORS = [
 ];
 
 function generateShapeId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `shp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -71,7 +74,10 @@ export function AnnotationPanel({
   // clone: badan respons tetap bisa dibaca handler di bawahnya
   const track = async (res: Response) => {
     if (!res.ok || !onUndoable) return;
-    const json = await res.clone().json().catch(() => null);
+    const json = await res
+      .clone()
+      .json()
+      .catch(() => null);
     onUndoable(json?.data?.undoId ?? json?.undoId);
   };
   // Navigation: null = list view, string = editing a specific layer's shapes
@@ -92,11 +98,17 @@ export function AnnotationPanel({
   const [shapeColor, setShapeColor] = useState("#3b82f6");
   const [shapeText, setShapeText] = useState("");
   const [shapeRadiusM, setShapeRadiusM] = useState(250);
-  const [manualPoint1, setManualPoint1] = useState<{ lat: string; lng: string }>({
+  const [manualPoint1, setManualPoint1] = useState<{
+    lat: string;
+    lng: string;
+  }>({
     lat: "",
     lng: "",
   });
-  const [manualPoint2, setManualPoint2] = useState<{ lat: string; lng: string }>({
+  const [manualPoint2, setManualPoint2] = useState<{
+    lat: string;
+    lng: string;
+  }>({
     lat: "",
     lng: "",
   });
@@ -222,7 +234,10 @@ export function AnnotationPanel({
     const target = index + direction;
     if (target < 0 || target >= layers.length) return;
     const reordered = [...layers];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    [reordered[index], reordered[target]] = [
+      reordered[target],
+      reordered[index],
+    ];
     try {
       setLoading(true);
       for (const [order, layer] of reordered.entries()) {
@@ -235,7 +250,9 @@ export function AnnotationPanel({
         await track(res);
         if (!res.ok) {
           const json = await res.json().catch(() => null);
-          throw new Error(json?.error?.message || "Gagal mengubah urutan lapisan.");
+          throw new Error(
+            json?.error?.message || "Gagal mengubah urutan lapisan.",
+          );
         }
       }
     } catch (err) {
@@ -287,7 +304,11 @@ export function AnnotationPanel({
 
   // 5. Delete Layer
   const handleDeleteLayer = async (layerId: string) => {
-    if (!confirm("Hapus seluruh lapisan ini beserta semua bentuk anotasi di dalamnya?")) {
+    if (
+      !confirm(
+        "Hapus seluruh lapisan ini beserta semua bentuk anotasi di dalamnya?",
+      )
+    ) {
       return;
     }
 
@@ -355,7 +376,14 @@ export function AnnotationPanel({
     const p2Lat = parseFloat(currentP2Lat);
     const p2Lng = parseFloat(currentP2Lng);
 
-    if (isNaN(p1Lat) || isNaN(p1Lng) || p1Lat < -90 || p1Lat > 90 || p1Lng < -180 || p1Lng > 180) {
+    if (
+      isNaN(p1Lat) ||
+      isNaN(p1Lng) ||
+      p1Lat < -90 ||
+      p1Lat > 90 ||
+      p1Lng < -180 ||
+      p1Lng > 180
+    ) {
       showFeedback(undefined, "Titik koordinat pertama tidak valid.");
       return;
     }
@@ -367,7 +395,14 @@ export function AnnotationPanel({
         return;
       }
     } else if (activeTool === "rect" || activeTool === "arrow") {
-      if (isNaN(p2Lat) || isNaN(p2Lng) || p2Lat < -90 || p2Lat > 90 || p2Lng < -180 || p2Lng > 180) {
+      if (
+        isNaN(p2Lat) ||
+        isNaN(p2Lng) ||
+        p2Lat < -90 ||
+        p2Lat > 90 ||
+        p2Lng < -180 ||
+        p2Lng > 180
+      ) {
         showFeedback(undefined, "Titik koordinat kedua tidak valid.");
         return;
       }
@@ -384,7 +419,8 @@ export function AnnotationPanel({
       properties: {
         color: shapeColor,
         text: shapeText.trim() || undefined,
-        radiusM: activeTool === "circle" ? Math.max(10, shapeRadiusM) : undefined,
+        radiusM:
+          activeTool === "circle" ? Math.max(10, shapeRadiusM) : undefined,
         strokeWidth: activeTool === "arrow" ? 3 : 2,
       },
     };
@@ -452,7 +488,9 @@ export function AnnotationPanel({
 
   // Use current map center to quickly populate point
   const handleFillCenter = (targetPoint: 1 | 2) => {
-    const center = onGetCenterCoords ? onGetCenterCoords() : [-6.2088, 106.8456];
+    const center = onGetCenterCoords
+      ? onGetCenterCoords()
+      : [-6.2088, 106.8456];
     if (targetPoint === 1) {
       setManualPoint1({
         lat: center[0].toFixed(6),
@@ -580,7 +618,9 @@ export function AnnotationPanel({
                     max="1.0"
                     step="0.05"
                     value={newLayerOpacity}
-                    onChange={(e) => setNewLayerOpacity(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setNewLayerOpacity(parseFloat(e.target.value))
+                    }
                     className="w-full accent-primary cursor-pointer"
                   />
                 </div>
@@ -593,7 +633,10 @@ export function AnnotationPanel({
                     onChange={(e) => setNewLayerVisible(e.target.checked)}
                     className="rounded text-primary focus:ring-primary cursor-pointer"
                   />
-                  <label htmlFor="newLayerVis" className="text-[11px] cursor-pointer">
+                  <label
+                    htmlFor="newLayerVis"
+                    className="text-[11px] cursor-pointer"
+                  >
                     Tampilkan langsung di atas peta
                   </label>
                 </div>
@@ -632,97 +675,107 @@ export function AnnotationPanel({
                 [...layers].reverse().map((layer, revIndex) => {
                   const index = layers.length - 1 - revIndex;
                   return (
-                  <div
-                    key={layer.id}
-                    className="p-3 rounded-xl border border-border bg-card hover:border-primary/50 transition-colors flex flex-col gap-2.5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <button
-                          onClick={() => handleToggleVisibility(layer)}
-                          className={`p-1 rounded-md transition-colors ${
-                            layer.visible
-                              ? "text-primary hover:bg-primary/10"
-                              : "text-muted-foreground/60 hover:bg-muted"
-                          }`}
-                          title={layer.visible ? "Sembunyikan lapisan" : "Tampilkan lapisan"}
-                        >
-                          {layer.visible ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </button>
-                        <div className="truncate">
-                          <span className="font-semibold text-foreground truncate block">
-                            {layer.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {layer.shapes.length} bentuk
-                          </span>
+                    <div
+                      key={layer.id}
+                      className="p-3 rounded-xl border border-border bg-card hover:border-primary/50 transition-colors flex flex-col gap-2.5 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <button
+                            onClick={() => handleToggleVisibility(layer)}
+                            className={`p-1 rounded-md transition-colors ${
+                              layer.visible
+                                ? "text-primary hover:bg-primary/10"
+                                : "text-muted-foreground/60 hover:bg-muted"
+                            }`}
+                            title={
+                              layer.visible
+                                ? "Sembunyikan lapisan"
+                                : "Tampilkan lapisan"
+                            }
+                          >
+                            {layer.visible ? (
+                              <Eye className="w-4 h-4" />
+                            ) : (
+                              <EyeOff className="w-4 h-4" />
+                            )}
+                          </button>
+                          <div className="truncate">
+                            <span className="font-semibold text-foreground truncate block">
+                              {layer.name}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {layer.shapes.length} bentuk
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleMoveLayer(index, 1)}
+                            disabled={loading || index === layers.length - 1}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                            title="Pindah ke lapis atas"
+                            aria-label={`Pindah ${layer.name} ke lapis atas`}
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveLayer(index, -1)}
+                            disabled={loading || index === 0}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
+                            title="Pindah ke lapis bawah"
+                            aria-label={`Pindah ${layer.name} ke lapis bawah`}
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleSelectLayer(layer)}
+                            className="px-2.5 py-1 rounded-lg bg-secondary text-secondary-foreground text-[11px] font-medium hover:bg-secondary/80 transition-colors"
+                          >
+                            Kelola Bentuk
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLayer(layer.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Hapus Lapisan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleMoveLayer(index, 1)}
-                          disabled={loading || index === layers.length - 1}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
-                          title="Pindah ke lapis atas"
-                          aria-label={`Pindah ${layer.name} ke lapis atas`}
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveLayer(index, -1)}
-                          disabled={loading || index === 0}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-30"
-                          title="Pindah ke lapis bawah"
-                          aria-label={`Pindah ${layer.name} ke lapis bawah`}
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleSelectLayer(layer)}
-                          className="px-2.5 py-1 rounded-lg bg-secondary text-secondary-foreground text-[11px] font-medium hover:bg-secondary/80 transition-colors"
-                        >
-                          Kelola Bentuk
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLayer(layer.id)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Hapus Lapisan"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Quick Opacity Slider */}
+                      <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
+                        <span className="shrink-0">Transparansi:</span>
+                        {/* Simpan saat slider dilepas: satu PUT, bukan satu per pergeseran */}
+                        <input
+                          key={layer.opacity}
+                          type="range"
+                          min="0.1"
+                          max="1.0"
+                          step="0.05"
+                          defaultValue={layer.opacity}
+                          aria-label={`Transparansi ${layer.name}`}
+                          onPointerUp={(e) =>
+                            handleUpdateOpacity(
+                              layer.id,
+                              Number(e.currentTarget.value),
+                            )
+                          }
+                          onKeyUp={(e) =>
+                            handleUpdateOpacity(
+                              layer.id,
+                              Number(e.currentTarget.value),
+                            )
+                          }
+                          className="w-full accent-primary h-1.5 cursor-pointer"
+                        />
+                        <span className="w-8 text-right shrink-0">
+                          {Math.round(layer.opacity * 100)}%
+                        </span>
                       </div>
                     </div>
-
-                    {/* Quick Opacity Slider */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
-                      <span className="shrink-0">Transparansi:</span>
-                      {/* Simpan saat slider dilepas: satu PUT, bukan satu per pergeseran */}
-                      <input
-                        key={layer.opacity}
-                        type="range"
-                        min="0.1"
-                        max="1.0"
-                        step="0.05"
-                        defaultValue={layer.opacity}
-                        aria-label={`Transparansi ${layer.name}`}
-                        onPointerUp={(e) =>
-                          handleUpdateOpacity(layer.id, Number(e.currentTarget.value))
-                        }
-                        onKeyUp={(e) =>
-                          handleUpdateOpacity(layer.id, Number(e.currentTarget.value))
-                        }
-                        className="w-full accent-primary h-1.5 cursor-pointer"
-                      />
-                      <span className="w-8 text-right shrink-0">
-                        {Math.round(layer.opacity * 100)}%
-                      </span>
-                    </div>
-                  </div>
                   );
                 })
               )}
@@ -746,8 +799,14 @@ export function AnnotationPanel({
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
-                    {editingLayerVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                    <span>{editingLayerVisible ? "Tampak" : "Tersembunyi"}</span>
+                    {editingLayerVisible ? (
+                      <Eye className="w-3 h-3" />
+                    ) : (
+                      <EyeOff className="w-3 h-3" />
+                    )}
+                    <span>
+                      {editingLayerVisible ? "Tampak" : "Tersembunyi"}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -773,7 +832,9 @@ export function AnnotationPanel({
                   max="1.0"
                   step="0.05"
                   value={editingLayerOpacity}
-                  onChange={(e) => setEditingLayerOpacity(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setEditingLayerOpacity(parseFloat(e.target.value))
+                  }
                   className="w-full accent-primary h-1.5 cursor-pointer"
                 />
               </div>
@@ -781,7 +842,9 @@ export function AnnotationPanel({
               <div className="flex items-center justify-between pt-1 border-t border-border/50">
                 <button
                   type="button"
-                  onClick={() => selectedLayer && handleDeleteLayer(selectedLayer.id)}
+                  onClick={() =>
+                    selectedLayer && handleDeleteLayer(selectedLayer.id)
+                  }
                   className="text-[11px] text-destructive hover:underline flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -821,7 +884,9 @@ export function AnnotationPanel({
                   title="Kotak / Zona Wilayah"
                 >
                   <Square className="w-4 h-4" />
-                  <span className="text-[10px] font-medium leading-none">Kotak</span>
+                  <span className="text-[10px] font-medium leading-none">
+                    Kotak
+                  </span>
                 </button>
 
                 <button
@@ -838,7 +903,9 @@ export function AnnotationPanel({
                   title="Radius Sinyal / Jangkauan"
                 >
                   <Circle className="w-4 h-4" />
-                  <span className="text-[10px] font-medium leading-none">Radius</span>
+                  <span className="text-[10px] font-medium leading-none">
+                    Radius
+                  </span>
                 </button>
 
                 <button
@@ -855,7 +922,9 @@ export function AnnotationPanel({
                   title="Tanda / Label Keterangan"
                 >
                   <Tag className="w-4 h-4" />
-                  <span className="text-[10px] font-medium leading-none">Label</span>
+                  <span className="text-[10px] font-medium leading-none">
+                    Label
+                  </span>
                 </button>
 
                 <button
@@ -872,7 +941,9 @@ export function AnnotationPanel({
                   title="Panah / Garis Arah"
                 >
                   <ArrowUpRight className="w-4 h-4" />
-                  <span className="text-[10px] font-medium leading-none">Panah</span>
+                  <span className="text-[10px] font-medium leading-none">
+                    Panah
+                  </span>
                 </button>
               </div>
 
@@ -926,11 +997,15 @@ export function AnnotationPanel({
                           onClick={() => setShapeColor(c)}
                           style={{ backgroundColor: c }}
                           className={`w-5 h-5 rounded-full border border-black/20 flex items-center justify-center transition-transform ${
-                            shapeColor === c ? "scale-125 ring-2 ring-primary ring-offset-1" : ""
+                            shapeColor === c
+                              ? "scale-125 ring-2 ring-primary ring-offset-1"
+                              : ""
                           }`}
                         >
                           {shapeColor === c && (
-                            <Check className={`w-3 h-3 ${c === "#ffffff" ? "text-black" : "text-white"}`} />
+                            <Check
+                              className={`w-3 h-3 ${c === "#ffffff" ? "text-black" : "text-white"}`}
+                            />
                           )}
                         </button>
                       ))}
@@ -951,7 +1026,11 @@ export function AnnotationPanel({
                           max="10000"
                           step="10"
                           value={shapeRadiusM}
-                          onChange={(e) => setShapeRadiusM(Math.max(10, parseInt(e.target.value) || 10))}
+                          onChange={(e) =>
+                            setShapeRadiusM(
+                              Math.max(10, parseInt(e.target.value) || 10),
+                            )
+                          }
                           className="w-24 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground outline-none"
                         />
                         <div className="flex items-center gap-1">
@@ -977,7 +1056,9 @@ export function AnnotationPanel({
                   {/* Label / Note Text */}
                   <div>
                     <label className="text-[10px] font-medium text-muted-foreground block mb-1">
-                      {activeTool === "label" ? "Teks Label (Wajib)" : "Keterangan (Opsional)"}
+                      {activeTool === "label"
+                        ? "Teks Label (Wajib)"
+                        : "Keterangan (Opsional)"}
                     </label>
                     <input
                       type="text"
@@ -1017,7 +1098,10 @@ export function AnnotationPanel({
                         step="any"
                         value={currentP1Lat}
                         onChange={(e) =>
-                          setManualPoint1((p) => ({ ...p, lat: e.target.value }))
+                          setManualPoint1((p) => ({
+                            ...p,
+                            lat: e.target.value,
+                          }))
                         }
                         placeholder="Latitude"
                         className="bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground outline-none"
@@ -1027,7 +1111,10 @@ export function AnnotationPanel({
                         step="any"
                         value={currentP1Lng}
                         onChange={(e) =>
-                          setManualPoint1((p) => ({ ...p, lng: e.target.value }))
+                          setManualPoint1((p) => ({
+                            ...p,
+                            lng: e.target.value,
+                          }))
                         }
                         placeholder="Longitude"
                         className="bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground outline-none"
@@ -1059,7 +1146,10 @@ export function AnnotationPanel({
                           step="any"
                           value={currentP2Lat}
                           onChange={(e) =>
-                            setManualPoint2((p) => ({ ...p, lat: e.target.value }))
+                            setManualPoint2((p) => ({
+                              ...p,
+                              lat: e.target.value,
+                            }))
                           }
                           placeholder="Latitude 2"
                           className="bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground outline-none"
@@ -1069,7 +1159,10 @@ export function AnnotationPanel({
                           step="any"
                           value={currentP2Lng}
                           onChange={(e) =>
-                            setManualPoint2((p) => ({ ...p, lng: e.target.value }))
+                            setManualPoint2((p) => ({
+                              ...p,
+                              lng: e.target.value,
+                            }))
                           }
                           placeholder="Longitude 2"
                           className="bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground outline-none"
@@ -1091,7 +1184,9 @@ export function AnnotationPanel({
                     }
                     className="w-full py-2 rounded-xl bg-primary text-primary-foreground font-medium text-xs hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-1.5 shadow-sm"
                   >
-                    {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {loading && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    )}
                     <span>+ Simpan Bentuk ke Lapisan</span>
                   </button>
                 </div>
@@ -1106,7 +1201,8 @@ export function AnnotationPanel({
 
               {selectedLayer.shapes.length === 0 ? (
                 <div className="py-6 text-center text-muted-foreground border border-dashed border-border rounded-xl">
-                  Belum ada bentuk di lapisan ini. Pilih alat di atas untuk menggambar.
+                  Belum ada bentuk di lapisan ini. Pilih alat di atas untuk
+                  menggambar.
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -1119,7 +1215,8 @@ export function AnnotationPanel({
                         <span
                           className="w-3 h-3 rounded-full shrink-0 border border-black/20"
                           style={{
-                            backgroundColor: shape.properties?.color || "#3b82f6",
+                            backgroundColor:
+                              shape.properties?.color || "#3b82f6",
                           }}
                         />
                         <div className="truncate">

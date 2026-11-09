@@ -7,7 +7,11 @@ import {
 import { MetricCard } from "./metric-card";
 
 // Empat kartu ringkasan resource semua router (hanya router aktif untuk CPU/RAM).
-export function RouterResourceCards({ routers }: { routers: readonly MockRouterDetail[] }) {
+export function RouterResourceCards({
+  routers,
+}: {
+  routers: readonly MockRouterDetail[];
+}) {
   const s = summarizeRouterResources(routers);
   const hot = s.warningRouters > 0;
 
@@ -40,7 +44,8 @@ export function RouterResourceCards({ routers }: { routers: readonly MockRouterD
       >
         {hot && (
           <p className="mt-1 text-xs font-medium text-warning">
-            Peringatan: {s.warningRouters} router CPU &gt; {CPU_WARNING_THRESHOLD}%
+            Peringatan: {s.warningRouters} router CPU &gt;{" "}
+            {CPU_WARNING_THRESHOLD}%
           </p>
         )}
       </MetricCard>

@@ -16,31 +16,66 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const MISSING = "22222222-2222-4222-8222-222222222222";
 let rows = [];
 const thenable = (get) => {
-  const c = { from: () => c, where: () => c, orderBy: () => c, then: (a, b) => Promise.resolve(get()).then(a, b) };
+  const c = {
+    from: () => c,
+    where: () => c,
+    orderBy: () => c,
+    then: (a, b) => Promise.resolve(get()).then(a, b),
+  };
   return c;
 };
 globalThis.starterPostgresDb = {
   select: () => thenable(() => rows),
-  insert: () => ({ values: (v) => ({ returning: async () => [{ id: ID, ...v }] }) }),
-  update: () => ({ set: (v) => ({ where: () => ({ returning: async () => [{ ...rows[0], ...v }] }) }) }),
-  delete: () => ({ where: () => ({ returning: async () => rows.map((r) => ({ id: r.id })) }) }),
+  insert: () => ({
+    values: (v) => ({ returning: async () => [{ id: ID, ...v }] }),
+  }),
+  update: () => ({
+    set: (v) => ({
+      where: () => ({ returning: async () => [{ ...rows[0], ...v }] }),
+    }),
+  }),
+  delete: () => ({
+    where: () => ({ returning: async () => rows.map((r) => ({ id: r.id })) }),
+  }),
 };
 
 register();
-const { createRecipientSchema: c, updateRecipientSchema: u } = await import(
-  "../src/validators/whatsapp.ts"
-);
+const { createRecipientSchema: c, updateRecipientSchema: u } =
+  await import("../src/validators/whatsapp.ts");
 
 test("create: individual valid dan invalid", () => {
-  assert.ok(c.safeParse({ name: "Piket", target: "081234567890", type: "individual" }).success);
-  assert.ok(c.safeParse({ name: "Piket", target: "+6281234567890", type: "individual", isActive: false }).success);
-  assert.ok(!c.safeParse({ name: "Piket", target: "12345", type: "individual" }).success);
-  assert.ok(!c.safeParse({ name: "Piket", target: "abc", type: "individual" }).success);
+  assert.ok(
+    c.safeParse({ name: "Piket", target: "081234567890", type: "individual" })
+      .success,
+  );
+  assert.ok(
+    c.safeParse({
+      name: "Piket",
+      target: "+6281234567890",
+      type: "individual",
+      isActive: false,
+    }).success,
+  );
+  assert.ok(
+    !c.safeParse({ name: "Piket", target: "12345", type: "individual" })
+      .success,
+  );
+  assert.ok(
+    !c.safeParse({ name: "Piket", target: "abc", type: "individual" }).success,
+  );
 });
 
 test("create: group valid dan invalid", () => {
-  assert.ok(c.safeParse({ name: "Grup", target: "120363012345678901@g.us", type: "group" }).success);
-  assert.ok(!c.safeParse({ name: "Grup", target: "grup-abc", type: "group" }).success);
+  assert.ok(
+    c.safeParse({
+      name: "Grup",
+      target: "120363012345678901@g.us",
+      type: "group",
+    }).success,
+  );
+  assert.ok(
+    !c.safeParse({ name: "Grup", target: "grup-abc", type: "group" }).success,
+  );
 });
 
 test("create: nama, tipe, field asing", () => {
@@ -62,7 +97,6 @@ test("update: parsial", () => {
   assert.ok(!u.safeParse({ id: "x" }).success);
 });
 
-
 // --- Route Handler -----------------------------------------------------------
 
 const { auth } = await import("../src/lib/auth.ts");
@@ -71,7 +105,8 @@ const item = await import("../src/app/api/whatsapp/recipients/[id]/route.ts");
 
 // "anon" = tanpa sesi, "user" = tanpa izin threshold:manage, "admin" = penuh.
 let role = "anon";
-auth.api.getSession = async () => (role === "anon" ? null : { user: { id: "u1" }, session: {} });
+auth.api.getSession = async () =>
+  role === "anon" ? null : { user: { id: "u1" }, session: {} };
 auth.api.userHasPermission = async () => ({ success: role === "admin" });
 
 const ORIGIN = "http://localhost:3101";
@@ -86,11 +121,22 @@ const good = { name: "Piket", target: "081234567890", type: "individual" };
 
 test.beforeEach(() => {
   role = "anon";
-  rows = [{ id: ID, name: "Piket", target: "6281234567890", type: "individual", isActive: true }];
+  rows = [
+    {
+      id: ID,
+      name: "Piket",
+      target: "6281234567890",
+      type: "individual",
+      isActive: true,
+    },
+  ];
 });
 
 test("GET tanpa sesi -> 401", async () => {
-  assert.equal((await list.GET(req("GET", "/api/whatsapp/recipients"))).status, 401);
+  assert.equal(
+    (await list.GET(req("GET", "/api/whatsapp/recipients"))).status,
+    401,
+  );
 });
 
 test("GET dengan sesi -> 200 { data }", async () => {
@@ -101,14 +147,22 @@ test("GET dengan sesi -> 200 { data }", async () => {
 });
 
 test("POST tanpa sesi -> 401, tanpa izin -> 403", async () => {
-  assert.equal((await list.POST(req("POST", "/api/whatsapp/recipients", good))).status, 401);
+  assert.equal(
+    (await list.POST(req("POST", "/api/whatsapp/recipients", good))).status,
+    401,
+  );
   role = "user";
-  assert.equal((await list.POST(req("POST", "/api/whatsapp/recipients", good))).status, 403);
+  assert.equal(
+    (await list.POST(req("POST", "/api/whatsapp/recipients", good))).status,
+    403,
+  );
 });
 
 test("POST target tidak valid -> 422 VALIDATION_ERROR", async () => {
   role = "admin";
-  const res = await list.POST(req("POST", "/api/whatsapp/recipients", { ...good, target: "12345" }));
+  const res = await list.POST(
+    req("POST", "/api/whatsapp/recipients", { ...good, target: "12345" }),
+  );
   assert.equal(res.status, 422);
   assert.equal((await res.json()).error.code, "VALIDATION_ERROR");
 });
@@ -123,7 +177,8 @@ test("POST valid sebagai admin -> 201, target dinormalisasi", async () => {
 });
 
 test("PUT tanpa sesi -> 401, tanpa izin -> 403", async () => {
-  const r = () => req("PUT", `/api/whatsapp/recipients/${ID}`, { isActive: false });
+  const r = () =>
+    req("PUT", `/api/whatsapp/recipients/${ID}`, { isActive: false });
   assert.equal((await item.PUT(r(), ctx(ID))).status, 401);
   role = "user";
   assert.equal((await item.PUT(r(), ctx(ID))).status, 403);
@@ -131,7 +186,11 @@ test("PUT tanpa sesi -> 401, tanpa izin -> 403", async () => {
 
 test("PUT admin: id tidak valid -> 422, ada -> 200, tidak ada -> 404", async () => {
   role = "admin";
-  const put = (id) => item.PUT(req("PUT", `/api/whatsapp/recipients/${id}`, { isActive: false }), ctx(id));
+  const put = (id) =>
+    item.PUT(
+      req("PUT", `/api/whatsapp/recipients/${id}`, { isActive: false }),
+      ctx(id),
+    );
   assert.equal((await put("bukan-uuid")).status, 422);
   const ok = await put(ID);
   assert.equal(ok.status, 200);
@@ -149,7 +208,8 @@ test("DELETE tanpa sesi -> 401, tanpa izin -> 403", async () => {
 
 test("DELETE admin: ada -> 204, tidak ada -> 404", async () => {
   role = "admin";
-  const del = (id) => item.DELETE(req("DELETE", `/api/whatsapp/recipients/${id}`), ctx(id));
+  const del = (id) =>
+    item.DELETE(req("DELETE", `/api/whatsapp/recipients/${id}`), ctx(id));
   assert.equal((await del(ID)).status, 204);
   rows = [];
   assert.equal((await del(MISSING)).status, 404);

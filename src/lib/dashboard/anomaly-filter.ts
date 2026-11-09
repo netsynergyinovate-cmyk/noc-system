@@ -163,7 +163,8 @@ export function facetCounts(
     total: 0,
   };
   for (const anomaly of anomalies) {
-    if (matches(anomaly, filters, undefined, lookup, reviewed)) counts.total += 1;
+    if (matches(anomaly, filters, undefined, lookup, reviewed))
+      counts.total += 1;
     if (matches(anomaly, filters, "kind", lookup, reviewed))
       counts.kind[anomaly.kind] += 1;
     if (matches(anomaly, filters, "severity", lookup, reviewed)) {

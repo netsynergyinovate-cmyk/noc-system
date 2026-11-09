@@ -12,7 +12,8 @@ const folder = resolve(import.meta.dirname, "..", "drizzle");
 function statusClient({ rows = [], tableExists = true } = {}) {
   return {
     async query(sql) {
-      if (sql.includes("to_regclass")) return { rows: [{ exists: tableExists }] };
+      if (sql.includes("to_regclass"))
+        return { rows: [{ exists: tableExists }] };
       if (sql.startsWith("SELECT id, hash, created_at")) return { rows };
       return { rows: [] };
     },
@@ -20,11 +21,17 @@ function statusClient({ rows = [], tableExists = true } = {}) {
 }
 
 const appliedRows = (plan) =>
-  plan.map((m, i) => ({ id: i + 1, hash: m.hash, created_at: String(m.folderMillis) }));
+  plan.map((m, i) => ({
+    id: i + 1,
+    hash: m.hash,
+    created_at: String(m.folderMillis),
+  }));
 
 test("status: tabel pelacak belum ada", async () => {
   const plan = await loadMigrationPlan(folder);
-  const s = await getMigrationStatus(statusClient({ tableExists: false }), { migrationsFolder: folder });
+  const s = await getMigrationStatus(statusClient({ tableExists: false }), {
+    migrationsFolder: folder,
+  });
   assert.equal(s.trackerExists, false);
   assert.equal(s.appliedCount, 0);
   assert.equal(s.pendingCount, plan.length);
@@ -35,20 +42,28 @@ test("status: tabel pelacak belum ada", async () => {
 
 test("status: up-to-date", async () => {
   const plan = await loadMigrationPlan(folder);
-  const s = await getMigrationStatus(statusClient({ rows: appliedRows(plan) }), { migrationsFolder: folder });
+  const s = await getMigrationStatus(
+    statusClient({ rows: appliedRows(plan) }),
+    { migrationsFolder: folder },
+  );
   assert.equal(s.appliedCount, plan.length);
   assert.equal(s.pendingCount, 0);
   assert.equal(s.isUpToDate, true);
   assert.equal(s.hashValid, true);
   assert.deepEqual(s.hashMismatches, []);
-  assert.equal(s.lastAppliedAt, new Date(plan.at(-1).folderMillis).toISOString());
+  assert.equal(
+    s.lastAppliedAt,
+    new Date(plan.at(-1).folderMillis).toISOString(),
+  );
 });
 
 test("status: hash tidak cocok terdeteksi", async () => {
   const plan = await loadMigrationPlan(folder);
   const rows = appliedRows(plan);
   rows[3].hash = "deadbeef";
-  const s = await getMigrationStatus(statusClient({ rows }), { migrationsFolder: folder });
+  const s = await getMigrationStatus(statusClient({ rows }), {
+    migrationsFolder: folder,
+  });
   assert.equal(s.hashValid, false);
   assert.equal(s.hashMismatches.length, 1);
   assert.equal(s.hashMismatches[0].tag, plan[3].tag);
@@ -96,8 +111,12 @@ test("retry: gagal 2x lalu sukses dengan backoff 1s,2s", async () => {
   });
   assert.equal(r.applied.length, plan.length);
   assert.deepEqual(delays, [1000, 2000]);
-  assert.ok(logs.includes("[RETRY 1/3] Gagal (koneksi putus), coba lagi dalam 1000ms"));
-  assert.ok(logs.includes("[RETRY 2/3] Gagal (koneksi putus), coba lagi dalam 2000ms"));
+  assert.ok(
+    logs.includes("[RETRY 1/3] Gagal (koneksi putus), coba lagi dalam 1000ms"),
+  );
+  assert.ok(
+    logs.includes("[RETRY 2/3] Gagal (koneksi putus), coba lagi dalam 2000ms"),
+  );
 });
 
 test("retry: habis percobaan melempar error terakhir", async () => {

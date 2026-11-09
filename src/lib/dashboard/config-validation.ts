@@ -6,12 +6,7 @@ export type ValidationSeverity = "fatal" | "warning" | "info";
 
 export interface ConfigValidationItem {
   id: string;
-  category:
-    | "database"
-    | "auth"
-    | "router"
-    | "optional_devices"
-    | "data_mode";
+  category: "database" | "auth" | "router" | "optional_devices" | "data_mode";
   envKey: string;
   label: string;
   severity: ValidationSeverity;

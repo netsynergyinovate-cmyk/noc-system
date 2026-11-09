@@ -28,7 +28,11 @@ test("mikrotik: baca dari source kustom, mode real, TLS", () => {
 });
 
 test("mikrotik: mode eksplisit menang; port 80 tanpa TLS", () => {
-  const c = readMikrotikEnv({ MIKROTIK_REST_HOST: "h", MIKROTIK_REST_PORT: "80", MIKROTIK_MODE: "simulator" });
+  const c = readMikrotikEnv({
+    MIKROTIK_REST_HOST: "h",
+    MIKROTIK_REST_PORT: "80",
+    MIKROTIK_MODE: "simulator",
+  });
   assert.equal(c.mode, "simulator");
   assert.equal(c.useTls, false);
   assert.equal(readMikrotikEnv({ DEVICE_MODE: "real" }).mode, "real");
@@ -45,13 +49,21 @@ test("mikrotik: default saat source kosong", () => {
 });
 
 test("olt: baca konfigurasi dan default", () => {
-  const c = readOltEnv({ OLT_HSGQ_HOST: "10.1.1.1", OLT_HSGQ_PORT: "8080", OLT_HSGQ_USER: "u", OLT_HSGQ_PASSWORD: "p" });
+  const c = readOltEnv({
+    OLT_HSGQ_HOST: "10.1.1.1",
+    OLT_HSGQ_PORT: "8080",
+    OLT_HSGQ_USER: "u",
+    OLT_HSGQ_PASSWORD: "p",
+  });
   assert.deepEqual(
     [c.type, c.host, c.port, c.username, c.password, c.mode],
     ["olt", "10.1.1.1", 8080, "u", "p", "real"],
   );
   const d = readOltEnv({});
-  assert.deepEqual([d.host, d.port, d.username, d.mode], ["127.0.0.1", 80, "admin", "simulator"]);
+  assert.deepEqual(
+    [d.host, d.port, d.username, d.mode],
+    ["127.0.0.1", 80, "admin", "simulator"],
+  );
 });
 
 test("genieacs: url, user, pass, timeout", () => {
@@ -61,10 +73,16 @@ test("genieacs: url, user, pass, timeout", () => {
     GENIEACS_NBI_PASSWORD: "pw",
     GENIEACS_TIMEOUT_MS: "9000",
   });
-  assert.deepEqual([c.host, c.username, c.password, c.mode, c.useTls], ["https://acs.example:7557", "acs", "pw", "real", true]);
+  assert.deepEqual(
+    [c.host, c.username, c.password, c.mode, c.useTls],
+    ["https://acs.example:7557", "acs", "pw", "real", true],
+  );
   assert.equal(c.extra.timeoutMs, 9000);
   const d = readGenieacsEnv({});
-  assert.deepEqual([d.host, d.username, d.mode, d.extra.timeoutMs], ["http://localhost:7557", "", "simulator", 5000]);
+  assert.deepEqual(
+    [d.host, d.username, d.mode, d.extra.timeoutMs],
+    ["http://localhost:7557", "", "simulator", 5000],
+  );
 });
 
 test("billing: url, user, pass, portal", () => {
@@ -74,24 +92,73 @@ test("billing: url, user, pass, portal", () => {
     BILLING_PASSWORD: "pw",
     BILLING_PORTAL_URL: "http://portal.local",
   });
-  assert.deepEqual([c.host, c.username, c.password, c.mode], ["http://bill.local", "kasir", "pw", "real"]);
+  assert.deepEqual(
+    [c.host, c.username, c.password, c.mode],
+    ["http://bill.local", "kasir", "pw", "real"],
+  );
   assert.equal(c.extra.portalUrl, "http://portal.local");
   const d = readBillingEnv({});
-  assert.deepEqual([d.host, d.username, d.mode, d.extra.portalUrl], ["http://localhost:8080", "billing-admin", "simulator", undefined]);
+  assert.deepEqual(
+    [d.host, d.username, d.mode, d.extra.portalUrl],
+    ["http://localhost:8080", "billing-admin", "simulator", undefined],
+  );
 });
 
 test("readAllDeviceEnv mengembalikan keempat tipe", () => {
-  assert.deepEqual(Object.keys(readAllDeviceEnv({})).sort(), ["billing", "genieacs", "mikrotik", "olt"]);
+  assert.deepEqual(Object.keys(readAllDeviceEnv({})).sort(), [
+    "billing",
+    "genieacs",
+    "mikrotik",
+    "olt",
+  ]);
 });
 
 test("hasConfiguredEnvDevice: false saat kosong, true saat terisi", () => {
-  for (const t of ["mikrotik", "olt", "genieacs", "billing"]) assert.equal(hasConfiguredEnvDevice(t, {}), false);
-  assert.equal(hasConfiguredEnvDevice("mikrotik", { MIKROTIK_REST_HOST: "h", MIKROTIK_REST_USER: "u" }), false);
-  assert.equal(hasConfiguredEnvDevice("mikrotik", { MIKROTIK_REST_HOST: "h", MIKROTIK_REST_USER: "u", MIKROTIK_REST_PASSWORD: "p" }), true);
-  assert.equal(hasConfiguredEnvDevice("olt", { OLT_HSGQ_HOST: "h", OLT_HSGQ_USER: "u", OLT_HSGQ_PASSWORD: "  " }), false);
-  assert.equal(hasConfiguredEnvDevice("olt", { OLT_HSGQ_HOST: "h", OLT_HSGQ_USER: "u", OLT_HSGQ_PASSWORD: "p" }), true);
-  assert.equal(hasConfiguredEnvDevice("genieacs", { GENIEACS_NBI_URL: "http://x" }), true);
-  assert.equal(hasConfiguredEnvDevice("billing", { BILLING_URL: "u", BILLING_USERNAME: "a", BILLING_PASSWORD: "p" }), true);
+  for (const t of ["mikrotik", "olt", "genieacs", "billing"])
+    assert.equal(hasConfiguredEnvDevice(t, {}), false);
+  assert.equal(
+    hasConfiguredEnvDevice("mikrotik", {
+      MIKROTIK_REST_HOST: "h",
+      MIKROTIK_REST_USER: "u",
+    }),
+    false,
+  );
+  assert.equal(
+    hasConfiguredEnvDevice("mikrotik", {
+      MIKROTIK_REST_HOST: "h",
+      MIKROTIK_REST_USER: "u",
+      MIKROTIK_REST_PASSWORD: "p",
+    }),
+    true,
+  );
+  assert.equal(
+    hasConfiguredEnvDevice("olt", {
+      OLT_HSGQ_HOST: "h",
+      OLT_HSGQ_USER: "u",
+      OLT_HSGQ_PASSWORD: "  ",
+    }),
+    false,
+  );
+  assert.equal(
+    hasConfiguredEnvDevice("olt", {
+      OLT_HSGQ_HOST: "h",
+      OLT_HSGQ_USER: "u",
+      OLT_HSGQ_PASSWORD: "p",
+    }),
+    true,
+  );
+  assert.equal(
+    hasConfiguredEnvDevice("genieacs", { GENIEACS_NBI_URL: "http://x" }),
+    true,
+  );
+  assert.equal(
+    hasConfiguredEnvDevice("billing", {
+      BILLING_URL: "u",
+      BILLING_USERNAME: "a",
+      BILLING_PASSWORD: "p",
+    }),
+    true,
+  );
 });
 
 test("redactDeviceCredentials mengganti password, tidak mengubah asli", () => {
@@ -103,7 +170,10 @@ test("redactDeviceCredentials mengganti password, tidak mengubah asli", () => {
 });
 
 test("device-credentials.service mengekspor resolver & pembaca env", () => {
-  const src = readFileSync(new URL("../src/services/device-credentials.service.ts", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("../src/services/device-credentials.service.ts", import.meta.url),
+    "utf8",
+  );
   for (const name of [
     "getMikrotikEnvCredentials",
     "getOltEnvCredentials",
@@ -113,6 +183,10 @@ test("device-credentials.service mengekspor resolver & pembaca env", () => {
     "resolveOltCredentials",
     "resolveBillingCredentials",
   ]) {
-    assert.match(src, new RegExp(`export (async function|const) ${name}\\b`), name);
+    assert.match(
+      src,
+      new RegExp(`export (async function|const) ${name}\\b`),
+      name,
+    );
   }
 });

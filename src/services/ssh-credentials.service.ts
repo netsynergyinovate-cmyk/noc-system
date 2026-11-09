@@ -1,7 +1,10 @@
 import crypto from "crypto";
 import { utils } from "ssh2";
 import { db } from "@/db";
-import { sshCredentials, type SshCredential } from "@/db/schema/ssh-credentials";
+import {
+  sshCredentials,
+  type SshCredential,
+} from "@/db/schema/ssh-credentials";
 import { encryptWithKey, decryptWithKey } from "@/lib/encryption-core";
 import { eq } from "drizzle-orm";
 
@@ -38,14 +41,23 @@ function getMasterSecret(): string {
 /**
  * Menghitung fingerprint SHA256 dari kunci privat/publik untuk penandaan.
  */
-export function computeFingerprint(keyText: string, passphrase?: string | null): string {
+export function computeFingerprint(
+  keyText: string,
+  passphrase?: string | null,
+): string {
   const clean = keyText.trim();
   const parsed = utils.parseKey(clean, passphrase || undefined);
   if (parsed instanceof Error) {
-    throw new Error(`Kunci privat SSH tidak valid atau passphrase salah: ${parsed.message}`);
+    throw new Error(
+      `Kunci privat SSH tidak valid atau passphrase salah: ${parsed.message}`,
+    );
   }
   const publicBytes = parsed.getPublicSSH();
-  const hash = crypto.createHash("sha256").update(publicBytes).digest("base64").replace(/=+$/, "");
+  const hash = crypto
+    .createHash("sha256")
+    .update(publicBytes)
+    .digest("base64")
+    .replace(/=+$/, "");
   return `SHA256:${hash}`;
 }
 
@@ -74,7 +86,9 @@ export async function saveSshCredential(
           password: null,
         }
       : {
-          authType: privateKeyOrOptions.authType || (privateKeyOrOptions.password ? "password" : "key"),
+          authType:
+            privateKeyOrOptions.authType ||
+            (privateKeyOrOptions.password ? "password" : "key"),
           privateKey: privateKeyOrOptions.privateKey || null,
           passphrase: privateKeyOrOptions.passphrase || null,
           password: privateKeyOrOptions.password || null,
@@ -97,7 +111,9 @@ export async function saveSshCredential(
   } else {
     const cleanKey = (opts.privateKey || "").trim();
     if (!cleanKey.includes("PRIVATE KEY")) {
-      throw new Error("Format kunci privat tidak valid (wajib format OpenSSH atau PEM/RSA).");
+      throw new Error(
+        "Format kunci privat tidak valid (wajib format OpenSSH atau PEM/RSA).",
+      );
     }
     fingerprint = computeFingerprint(cleanKey, opts.passphrase);
     privateKeyEnc = encryptWithKey(cleanKey, masterSecret);

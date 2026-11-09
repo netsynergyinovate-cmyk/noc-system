@@ -21,7 +21,12 @@ export function PUT(
     const id = idSchema.parse((await props.params).id);
     const { port, odcId } = portSchema.parse(await readJson(request));
     try {
-      const undoId = await MapDataAdapter.setParentPort("device", id, port, odcId);
+      const undoId = await MapDataAdapter.setParentPort(
+        "device",
+        id,
+        port,
+        odcId,
+      );
       return Response.json({ success: true, undoId }, { status: 200 });
     } catch (err: unknown) {
       if (err instanceof ClassifiedCentralApiError) {

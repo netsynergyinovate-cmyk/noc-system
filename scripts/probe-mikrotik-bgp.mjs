@@ -3,7 +3,9 @@ import crypto from "node:crypto";
 const ALGORITHM = "aes-256-gcm";
 function normalizeKey(secret) {
   const raw = Buffer.from(secret, "utf-8");
-  return raw.length === 32 ? raw : crypto.createHash("sha256").update(raw).digest();
+  return raw.length === 32
+    ? raw
+    : crypto.createHash("sha256").update(raw).digest();
 }
 
 function decryptWithKey(data, key) {
@@ -11,7 +13,9 @@ function decryptWithKey(data, key) {
   const [iv, tag, enc] = parts.map((p) => Buffer.from(p, "base64"));
   const decipher = crypto.createDecipheriv(ALGORITHM, normalizeKey(key), iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+  return Buffer.concat([decipher.update(enc), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 const secretKey = "noc-device-secret-key-32chars-ok";
@@ -27,7 +31,7 @@ async function probe() {
     "/rest/routing/bgp/connection",
     "/rest/ip/route",
     "/rest/system/routerboard",
-    "/rest/system/identity"
+    "/rest/system/identity",
   ];
   for (const ep of endpoints) {
     try {
@@ -44,4 +48,3 @@ async function probe() {
 }
 
 probe();
-

@@ -75,7 +75,9 @@ export function WhatsappRecipients({
             id="waRcpPhone"
             value={phone}
             inputMode={type === "personal" ? "tel" : "text"}
-            placeholder={type === "personal" ? "081234567890" : "120363012345678901@g.us"}
+            placeholder={
+              type === "personal" ? "081234567890" : "120363012345678901@g.us"
+            }
             aria-invalid={formError ? true : undefined}
             onChange={(e) => setPhone(e.target.value)}
             onKeyDown={(e) => {
@@ -92,14 +94,22 @@ export function WhatsappRecipients({
           <select
             id="waRcpType"
             value={type}
-            onChange={(e) => setType(e.target.value as WhatsappRecipient["type"])}
+            onChange={(e) =>
+              setType(e.target.value as WhatsappRecipient["type"])
+            }
             className={selectClassName}
           >
             <option value="personal">Pribadi</option>
             <option value="group">Grup WhatsApp</option>
           </select>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={add}
+          className="gap-1.5"
+        >
           <Plus className="size-4" />
           Tambah Penerima
         </Button>
@@ -110,12 +120,19 @@ export function WhatsappRecipients({
         </p>
       )}
 
-      <p role="status" data-testid="wa-recipients-summary" className="text-xs text-muted-foreground">
+      <p
+        role="status"
+        data-testid="wa-recipients-summary"
+        className="text-xs text-muted-foreground"
+      >
         {activeCount} penerima aktif dari {recipients.length} terdaftar
       </p>
 
       {recipients.length === 0 ? (
-        <p data-testid="wa-recipients-empty" className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+        <p
+          data-testid="wa-recipients-empty"
+          className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground"
+        >
           Belum ada penerima. Tambahkan nomor pribadi atau grup di atas.
         </p>
       ) : (
@@ -136,7 +153,9 @@ export function WhatsappRecipients({
                   <TableCell className="font-medium">{r.name}</TableCell>
                   <TableCell className="font-mono text-xs">{r.phone}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{r.type === "group" ? "Grup" : "Pribadi"}</Badge>
+                    <Badge variant="outline">
+                      {r.type === "group" ? "Grup" : "Pribadi"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <label className="inline-flex items-center gap-2 text-xs">
@@ -144,12 +163,16 @@ export function WhatsappRecipients({
                         type="checkbox"
                         checked={r.active}
                         aria-label={`Aktifkan ${r.name}`}
-                        onChange={() => onChange(toggleRecipient(recipients, r.id))}
+                        onChange={() =>
+                          onChange(toggleRecipient(recipients, r.id))
+                        }
                         className="size-4"
                       />
                       <Badge
                         variant={r.active ? "default" : "secondary"}
-                        className={r.active ? "bg-success text-white" : undefined}
+                        className={
+                          r.active ? "bg-success text-white" : undefined
+                        }
                       >
                         {r.active ? "Aktif" : "Nonaktif"}
                       </Badge>
@@ -161,7 +184,9 @@ export function WhatsappRecipients({
                       variant="ghost"
                       size="icon"
                       aria-label={`Hapus ${r.name}`}
-                      onClick={() => onChange(removeRecipient(recipients, r.id))}
+                      onClick={() =>
+                        onChange(removeRecipient(recipients, r.id))
+                      }
                     >
                       <Trash2 className="size-4" />
                     </Button>

@@ -23,7 +23,10 @@ export default async function AlertsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-base font-semibold tracking-tight">Alert</h1>
         </div>
-        <nav aria-label="Tab Alert" className="flex gap-1 font-mono text-[11px]">
+        <nav
+          aria-label="Tab Alert"
+          className="flex gap-1 font-mono text-[11px]"
+        >
           {tabs.map((tab) => (
             <Link
               key={tab.href}

@@ -18,9 +18,10 @@ export interface StartupSeedResult {
  * Menentukan apakah seed startup harus dijalankan.
  * Dinonaktifkan saat build Next.js (phase-production-build) atau jika AUTO_SEED=false / SKIP_STARTUP_SEED=true.
  */
-export function shouldRunStartupSeed(
-  env: NodeJS.ProcessEnv = process.env,
-): { shouldRun: boolean; reason?: string } {
+export function shouldRunStartupSeed(env: NodeJS.ProcessEnv = process.env): {
+  shouldRun: boolean;
+  reason?: string;
+} {
   if (env.NEXT_PHASE === "phase-production-build") {
     return { shouldRun: false, reason: "Next.js phase-production-build aktif" };
   }

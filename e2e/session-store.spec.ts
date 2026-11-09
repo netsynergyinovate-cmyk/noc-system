@@ -262,7 +262,12 @@ test.describe("nama peran", () => {
   });
 
   test("previewableRoles: tepat peran yang dideklarasikan, superadmin dulu, lalu admin, lalu developer, lalu user, tidak bisa diubah", () => {
-    expect([...previewableRoles]).toEqual(["superadmin", "admin", "developer", "user"]);
+    expect([...previewableRoles]).toEqual([
+      "superadmin",
+      "admin",
+      "developer",
+      "user",
+    ]);
     expect([...previewableRoles].sort()).toEqual(Object.keys(roles).sort());
     expect(Object.isFrozen(previewableRoles)).toBe(true);
     expect(new Set(previewableRoles).size).toBe(previewableRoles.length);

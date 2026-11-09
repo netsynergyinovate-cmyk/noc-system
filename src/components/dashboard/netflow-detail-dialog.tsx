@@ -12,13 +12,23 @@ import {
 } from "@/components/ui/dialog";
 import { formatAlertTime } from "@/lib/dashboard/alerts";
 import { formatInteger } from "@/lib/dashboard/format";
-import { formatBps, formatBytes, type NetflowRecord } from "@/lib/dashboard/netflow";
+import {
+  formatBps,
+  formatBytes,
+  type NetflowRecord,
+} from "@/lib/dashboard/netflow";
 import {
   evaluateFlowAnomaly,
   flowThroughputBps,
 } from "@/lib/dashboard/netflow-filter-sort";
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid grid-cols-[9rem_1fr] gap-2 border-t py-1.5 text-sm first:border-t-0">
       <dt className="text-muted-foreground">{label}</dt>
@@ -56,8 +66,12 @@ export function NetflowDetailDialog({
               <span className="font-mono text-xs">{flow.id}</span>
             </Row>
             <Row label="Router Asal">{flow.routerName}</Row>
-            <Row label="Waktu Mulai">{formatAlertTime(flow.startedAt, now)}</Row>
-            <Row label="Waktu Selesai">{formatAlertTime(flow.endedAt, now)}</Row>
+            <Row label="Waktu Mulai">
+              {formatAlertTime(flow.startedAt, now)}
+            </Row>
+            <Row label="Waktu Selesai">
+              {formatAlertTime(flow.endedAt, now)}
+            </Row>
             <Row label="Durasi">{formatDuration(flow.durationSec)}</Row>
             <Row label="Endpoint">
               <span className="font-mono text-xs">

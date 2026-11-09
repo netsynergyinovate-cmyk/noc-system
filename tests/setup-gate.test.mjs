@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { evaluateSetupGate } = await import("../src/lib/dashboard/setup-gate.ts");
+const { evaluateSetupGate } =
+  await import("../src/lib/dashboard/setup-gate.ts");
 
 test("demo selalu lolos", () => {
   assert.deepEqual(

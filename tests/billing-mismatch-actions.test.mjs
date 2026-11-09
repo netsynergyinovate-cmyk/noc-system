@@ -42,7 +42,9 @@ test("mark + baca + hapus + kosongkan lewat localStorage", () => {
   const s = fakeStorage();
   withStorage(s, () => {
     m.clearMismatchResolutions();
-    const saved = m.markMismatchResolved(rec("k1", "ignore", { notes: " tes " }));
+    const saved = m.markMismatchResolved(
+      rec("k1", "ignore", { notes: " tes " }),
+    );
     assert.equal(saved.notes, "tes");
     assert.equal(saved.resolvedBy, "Budi");
     assert.ok(s.data.has("billing_mismatch_resolutions"));
@@ -51,7 +53,10 @@ test("mark + baca + hapus + kosongkan lewat localStorage", () => {
     assert.equal(m.getMismatchResolution("k1").action, "ignore");
     assert.equal(m.getMismatchResolution("__proto__"), null);
     m.markMismatchResolved(rec("k2"));
-    assert.deepEqual(Object.keys(m.getAllMismatchResolutions()).sort(), ["k1", "k2"]);
+    assert.deepEqual(Object.keys(m.getAllMismatchResolutions()).sort(), [
+      "k1",
+      "k2",
+    ]);
     assert.equal(m.removeMismatchResolution("k1"), true);
     assert.equal(m.removeMismatchResolution("k1"), false);
     m.clearMismatchResolutions();
@@ -61,9 +66,12 @@ test("mark + baca + hapus + kosongkan lewat localStorage", () => {
 });
 
 test("data rusak di storage diabaikan; input tak valid ditolak", () => {
-  withStorage(fakeStorage({ billing_mismatch_resolutions: "{bukan json" }), () => {
-    assert.deepEqual(m.getAllMismatchResolutions(), {});
-  });
+  withStorage(
+    fakeStorage({ billing_mismatch_resolutions: "{bukan json" }),
+    () => {
+      assert.deepEqual(m.getAllMismatchResolutions(), {});
+    },
+  );
   withStorage(
     fakeStorage({
       billing_mismatch_resolutions: JSON.stringify({
@@ -85,9 +93,15 @@ test("fallback memori bila localStorage tidak tersedia atau melempar", () => {
   assert.equal(m.removeMismatchResolution("mem"), true);
 
   const broken = {
-    getItem() { throw new Error("blocked"); },
-    setItem() { throw new Error("full"); },
-    removeItem() { throw new Error("blocked"); },
+    getItem() {
+      throw new Error("blocked");
+    },
+    setItem() {
+      throw new Error("full");
+    },
+    removeItem() {
+      throw new Error("blocked");
+    },
   };
   withStorage(broken, () => {
     m.markMismatchResolved(rec("mem2"));
@@ -108,7 +122,9 @@ test("label aksi lengkap", () => {
 });
 
 test("dialog dan integrasi di daftar ketidakcocokan", () => {
-  const dialog = read("../src/components/dashboard/billing-mismatch-action-dialog.tsx");
+  const dialog = read(
+    "../src/components/dashboard/billing-mismatch-action-dialog.tsx",
+  );
   assert.match(dialog, /export function BillingMismatchActionDialog/);
   assert.match(dialog, /Tindakan Ketidaksesuaian Billing/);
   for (const id of [
@@ -125,7 +141,11 @@ test("dialog dan integrasi di daftar ketidakcocokan", () => {
   assert.ok(list.includes('data-testid="mismatch-resolved-badge"'));
   assert.match(list, /<BillingMismatchActionDialog/);
   // selector lama tetap ada
-  for (const id of ["mismatch-copy", "billing-mismatch-row", "mismatch-invoice"]) {
+  for (const id of [
+    "mismatch-copy",
+    "billing-mismatch-row",
+    "mismatch-invoice",
+  ]) {
     assert.ok(list.includes(`"${id}"`), id);
   }
 });

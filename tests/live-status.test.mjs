@@ -4,9 +4,8 @@ import { register } from "tsx/esm/api";
 
 register();
 const { useDashboardStore } = await import("../src/lib/dashboard/store.ts");
-const { liveStatusView } = await import(
-  "../src/lib/dashboard/live-status-view.ts"
-);
+const { liveStatusView } =
+  await import("../src/lib/dashboard/live-status-view.ts");
 
 test("store: nilai awal", () => {
   const s = useDashboardStore.getState();
@@ -104,5 +103,8 @@ test("view: disconnected menampilkan Coba lagi hanya bila ada handler", () => {
   assert.match(withHandler.dot, /bg-destructive/);
   assert.equal(withHandler.showRetry, true);
   assert.equal(withHandler.latency, null);
-  assert.equal(liveStatusView({ ...input, hasReconnect: false }).showRetry, false);
+  assert.equal(
+    liveStatusView({ ...input, hasReconnect: false }).showRetry,
+    false,
+  );
 });

@@ -57,7 +57,8 @@ export async function getFlowHistory(
     sql`${netflowSamples.capturedAt} > to_timestamp(${from})`,
     sql`${netflowSamples.capturedAt} <= to_timestamp(${now})`,
   ];
-  if (params.routerId) conditions.push(eq(netflowSamples.routerId, params.routerId));
+  if (params.routerId)
+    conditions.push(eq(netflowSamples.routerId, params.routerId));
   if (params.protocol && params.protocol !== "ALL")
     conditions.push(eq(netflowSamples.protocol, params.protocol));
 
@@ -76,7 +77,10 @@ export async function getFlowHistory(
     .groupBy(bucket, netflowSamples.protocol, netflowSamples.dstPort);
 
   if (rows.length === 0) {
-    const [any] = await db.select({ id: netflowSamples.id }).from(netflowSamples).limit(1);
+    const [any] = await db
+      .select({ id: netflowSamples.id })
+      .from(netflowSamples)
+      .limit(1);
     if (!any) return mock();
   }
   return buildFlowHistory(
@@ -106,12 +110,7 @@ export async function getNetflowStatus(): Promise<NetflowStatus> {
       n: sql<number>`count(distinct ${netflowSamples.routerId})::int`,
     })
     .from(netflowSamples)
-    .where(
-      gte(
-        netflowSamples.capturedAt,
-        new Date(nowMs - NETFLOW_FRESH_MS),
-      ),
-    );
+    .where(gte(netflowSamples.capturedAt, new Date(nowMs - NETFLOW_FRESH_MS)));
   return buildNetflowStatus({
     // Demo: env demo, atau tabel kosong (data tampil dari mock seperti getTopFlows).
     isDemo: env.DASHBOARD_DATA === "demo" || total === 0,
@@ -139,7 +138,8 @@ export async function getTopFlows(
       new Date(nowMs - flowRangeSeconds[range] * 1000),
     ),
   ];
-  if (params.routerId) conditions.push(eq(netflowSamples.routerId, params.routerId));
+  if (params.routerId)
+    conditions.push(eq(netflowSamples.routerId, params.routerId));
   if (params.protocol && params.protocol !== "ALL")
     conditions.push(eq(netflowSamples.protocol, params.protocol));
   const q = params.q?.trim();
@@ -178,7 +178,10 @@ export async function getTopFlows(
 
   if (rows.length === 0) {
     // Tabel kosong untuk rentang ini: tampilkan mock hanya bila tabel benar-benar kosong.
-    const [any] = await db.select({ id: netflowSamples.id }).from(netflowSamples).limit(1);
+    const [any] = await db
+      .select({ id: netflowSamples.id })
+      .from(netflowSamples)
+      .limit(1);
     if (!any) return mock();
     return { flows: [], totalBytes: 0, totalPackets: 0 };
   }
@@ -210,4 +213,3 @@ export async function getTopFlows(
     totalPackets: flows.reduce((s, f) => s + f.packets, 0),
   };
 }
-

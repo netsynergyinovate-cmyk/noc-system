@@ -15,10 +15,16 @@ let shared: { at: number; promise: Promise<MockRouterDetail[]> } | null = null;
 
 function fetchResources(force: boolean): Promise<MockRouterDetail[]> {
   const now = Date.now();
-  if (!force && shared && now - shared.at < SHARE_WINDOW_MS) return shared.promise;
+  if (!force && shared && now - shared.at < SHARE_WINDOW_MS)
+    return shared.promise;
   const promise = fetch("/api/routers/resources")
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-    .then((json: { data?: { items?: MockRouterDetail[] } }) => json.data?.items ?? []);
+    .then((res) =>
+      res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
+    )
+    .then(
+      (json: { data?: { items?: MockRouterDetail[] } }) =>
+        json.data?.items ?? [],
+    );
   shared = { at: now, promise };
   // Gagal tidak boleh dibagikan ke pemanggil berikutnya.
   promise.catch(() => {

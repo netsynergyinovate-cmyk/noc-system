@@ -415,8 +415,11 @@ export async function getSchemaMigrationStatus(
     all.map((m) => [m.folderMillis, m]),
   );
 
-  const hashMismatches: Array<{ tag: string; expected: string; actual: string }> =
-    [];
+  const hashMismatches: Array<{
+    tag: string;
+    expected: string;
+    actual: string;
+  }> = [];
   for (const row of appliedRows) {
     const local = byMillis.get(Number(row.created_at));
     if (local && local.hash !== row.hash) {
@@ -475,9 +478,7 @@ export async function getRealSchemaMigrationsData(
     appliedRows.map((r) => [Number(r.created_at), r]),
   );
 
-  const mockMetaByTag = new Map(
-    MOCK_SCHEMA_MIGRATIONS.map((m) => [m.tag, m]),
-  );
+  const mockMetaByTag = new Map(MOCK_SCHEMA_MIGRATIONS.map((m) => [m.tag, m]));
 
   const latestFailure = await getLatestMigrationFailure(client);
 
@@ -639,8 +640,7 @@ export async function runAutomaticSchemaMigrations(
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK").catch(() => {});
-        const reason =
-          error instanceof Error ? error.message : String(error);
+        const reason = error instanceof Error ? error.message : String(error);
         log(`[ROLLBACK SUKSES] Transaksi atomik dibatalkan untuk ${m.tag}`);
         log(`[GAGAL] ${m.tag}: ${reason}`);
         if (error instanceof MigrationExecutionError) {
@@ -661,15 +661,16 @@ export async function runAutomaticSchemaMigrations(
     }
 
     if (pending.length === 0) {
-      log("[SUKSES] Seluruh skema sudah up-to-date, tidak ada migrasi tertunda");
+      log(
+        "[SUKSES] Seluruh skema sudah up-to-date, tidak ada migrasi tertunda",
+      );
     }
 
     let timescaleResult: { enabled: boolean; reason?: string } | undefined;
     if (options.timescale) {
       try {
-        const { applyTimescaleSetup } = await import(
-          "../../scripts/setup-timescale.mjs"
-        );
+        const { applyTimescaleSetup } =
+          await import("../../scripts/setup-timescale.mjs");
         timescaleResult = await applyTimescaleSetup(client as any, {
           enabled: true,
           retentionDays: options.retentionDays,

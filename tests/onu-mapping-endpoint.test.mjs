@@ -15,19 +15,12 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 const { auth } = await import("../src/lib/auth.ts");
 const { db } = await import("../src/db/index.ts");
-const { oltOnus, customers, auditLog } = await import("../src/db/schema/index.ts");
-const {
-  mapOnuSchema,
-  parseListOnusParams,
-  ONU_MAX_LIMIT,
-  ONU_DEFAULT_LIMIT,
-} = await import("../src/validators/devices.ts");
-const {
-  mapOnuToCustomer,
-  getOnu,
-  getCustomerOnu,
-  listOnus,
-} = await import("../src/services/devices.service.ts");
+const { oltOnus, customers, auditLog } =
+  await import("../src/db/schema/index.ts");
+const { mapOnuSchema, parseListOnusParams, ONU_MAX_LIMIT, ONU_DEFAULT_LIMIT } =
+  await import("../src/validators/devices.ts");
+const { mapOnuToCustomer, getOnu, getCustomerOnu, listOnus } =
+  await import("../src/services/devices.service.ts");
 const {
   POST: postMap,
   PUT: putMap,
@@ -35,14 +28,16 @@ const {
   DELETE: deleteMap,
 } = await import("../src/app/api/onus/[id]/map/route.ts");
 const { GET: getOnuRoute } = await import("../src/app/api/onus/[id]/route.ts");
-const { GET: getCustomerOnuRoute } = await import("../src/app/api/customers/[id]/onu/route.ts");
+const { GET: getCustomerOnuRoute } =
+  await import("../src/app/api/customers/[id]/onu/route.ts");
 
 const uuid = "123e4567-e89b-42d3-a456-426614174000";
 const custId = "223e4567-e89b-42d3-a456-426614174000";
 const onuId = "323e4567-e89b-42d3-a456-426614174000";
 
 let role = "admin";
-auth.api.getSession = async () => (role === "anon" ? null : { user: { id: "u1" }, session: {} });
+auth.api.getSession = async () =>
+  role === "anon" ? null : { user: { id: "u1" }, session: {} };
 auth.api.userHasPermission = async () => ({ success: role === "admin" });
 
 test("body mapping: uuid atau null diterima", () => {
@@ -60,20 +55,35 @@ test("body mapping: string acak, tipe salah, field hilang/asing ditolak", () => 
     { customerId: uuid, extra: 1 },
     null,
   ]) {
-    assert.equal(mapOnuSchema.safeParse(bad).success, false, JSON.stringify(bad));
+    assert.equal(
+      mapOnuSchema.safeParse(bad).success,
+      false,
+      JSON.stringify(bad),
+    );
   }
 });
 
 test("filter status hanya online/offline", () => {
-  assert.equal(parseListOnusParams(new URLSearchParams("status=online")).status, "online");
-  assert.equal(parseListOnusParams(new URLSearchParams("status=offline")).status, "offline");
-  assert.equal(parseListOnusParams(new URLSearchParams("status=x")).status, undefined);
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("status=online")).status,
+    "online",
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("status=offline")).status,
+    "offline",
+  );
+  assert.equal(
+    parseListOnusParams(new URLSearchParams("status=x")).status,
+    undefined,
+  );
   assert.equal(parseListOnusParams(new URLSearchParams()).status, undefined);
 });
 
 test("filter oltId, customerId, isMapped, isWeak, q", () => {
   const p = parseListOnusParams(
-    new URLSearchParams(`oltId=${uuid}&customerId=${custId}&isMapped=true&isWeak=true&q=%20budi%20`),
+    new URLSearchParams(
+      `oltId=${uuid}&customerId=${custId}&isMapped=true&isWeak=true&q=%20budi%20`,
+    ),
   );
   assert.equal(p.oltId, uuid);
   assert.equal(p.customerId, custId);
@@ -84,7 +94,11 @@ test("filter oltId, customerId, isMapped, isWeak, q", () => {
   const p2 = parseListOnusParams(new URLSearchParams("mapped=false"));
   assert.equal(p2.isMapped, false);
 
-  const b = parseListOnusParams(new URLSearchParams("oltId=bukan-uuid&customerId=bukan-uuid&isMapped=maybe&isWeak=maybe&q=%20"));
+  const b = parseListOnusParams(
+    new URLSearchParams(
+      "oltId=bukan-uuid&customerId=bukan-uuid&isMapped=maybe&isWeak=maybe&q=%20",
+    ),
+  );
   assert.equal(b.oltId, undefined);
   assert.equal(b.customerId, undefined);
   assert.equal(b.isMapped, undefined);
@@ -174,7 +188,17 @@ db.transaction = async (fn) => {
             // First select in mapOnuToCustomer is onuRow
             if (cols && "prevCustomerId" in cols) {
               const onu = dbState.onus.get(onuId);
-              return resolve(onu ? [{ id: onu.id, rxPower: onu.rxPower, prevCustomerId: onu.customerId }] : []);
+              return resolve(
+                onu
+                  ? [
+                      {
+                        id: onu.id,
+                        rxPower: onu.rxPower,
+                        prevCustomerId: onu.customerId,
+                      },
+                    ]
+                  : [],
+              );
             }
             // Second select is taken check: any other ONU mapped to customerId
             const taken = Array.from(dbState.onus.values()).find(
@@ -315,19 +339,29 @@ test("endpoint: POST /api/onus/[id]/map auth & perm check", async () => {
   role = "anon";
   const req401 = new Request(`http://localhost:3101/api/onus/${onuId}/map`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: "http://localhost:3101" },
+    headers: {
+      "Content-Type": "application/json",
+      origin: "http://localhost:3101",
+    },
     body: JSON.stringify({ customerId: custId }),
   });
-  const res401 = await postMap(req401, { params: Promise.resolve({ id: onuId }) });
+  const res401 = await postMap(req401, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(res401.status, 401);
 
   role = "user";
   const req403 = new Request(`http://localhost:3101/api/onus/${onuId}/map`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: "http://localhost:3101" },
+    headers: {
+      "Content-Type": "application/json",
+      origin: "http://localhost:3101",
+    },
     body: JSON.stringify({ customerId: custId }),
   });
-  const res403 = await postMap(req403, { params: Promise.resolve({ id: onuId }) });
+  const res403 = await postMap(req403, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(res403.status, 403);
 });
 
@@ -338,17 +372,24 @@ test("endpoint: POST / PUT / GET / DELETE /api/onus/[id]/map sukses", async () =
   // POST map
   const postReq = new Request(`http://localhost:3101/api/onus/${onuId}/map`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", origin: "http://localhost:3101" },
+    headers: {
+      "Content-Type": "application/json",
+      origin: "http://localhost:3101",
+    },
     body: JSON.stringify({ customerId: custId }),
   });
-  const postRes = await postMap(postReq, { params: Promise.resolve({ id: onuId }) });
+  const postRes = await postMap(postReq, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(postRes.status, 200);
   const postBody = await postRes.json();
   assert.equal(postBody.data.customerId, custId);
 
   // GET map status
   const getReq = new Request(`http://localhost:3101/api/onus/${onuId}/map`);
-  const getRes = await getMap(getReq, { params: Promise.resolve({ id: onuId }) });
+  const getRes = await getMap(getReq, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(getRes.status, 200);
   const getBody = await getRes.json();
   assert.equal(getBody.data.customerId, custId);
@@ -359,7 +400,9 @@ test("endpoint: POST / PUT / GET / DELETE /api/onus/[id]/map sukses", async () =
     method: "DELETE",
     headers: { origin: "http://localhost:3101" },
   });
-  const delRes = await deleteMap(delReq, { params: Promise.resolve({ id: onuId }) });
+  const delRes = await deleteMap(delReq, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(delRes.status, 200);
   const delBody = await delRes.json();
   assert.equal(delBody.data.customerId, null);
@@ -371,14 +414,20 @@ test("endpoint: GET /api/onus/[id] & GET /api/customers/[id]/onu", async () => {
 
   // GET onu
   const onuReq = new Request(`http://localhost:3101/api/onus/${onuId}`);
-  const onuRes = await getOnuRoute(onuReq, { params: Promise.resolve({ id: onuId }) });
+  const onuRes = await getOnuRoute(onuReq, {
+    params: Promise.resolve({ id: onuId }),
+  });
   assert.equal(onuRes.status, 200);
   const onuBody = await onuRes.json();
   assert.equal(onuBody.data.id, onuId);
 
   // GET customer onu
-  const custReq = new Request(`http://localhost:3101/api/customers/${custId}/onu`);
-  const custRes = await getCustomerOnuRoute(custReq, { params: Promise.resolve({ id: custId }) });
+  const custReq = new Request(
+    `http://localhost:3101/api/customers/${custId}/onu`,
+  );
+  const custRes = await getCustomerOnuRoute(custReq, {
+    params: Promise.resolve({ id: custId }),
+  });
   assert.equal(custRes.status, 200);
   const custBody = await custRes.json();
   assert.ok("data" in custBody);

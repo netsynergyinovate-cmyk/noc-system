@@ -9,7 +9,11 @@ const idSchema = z.string().min(1, "ID perangkat wajib diisi");
 
 // Satu perubahan per permintaan: keterangan, rasio splitter (null = kosongkan), atau jenis ODP/ODC
 const updateDeviceSchema = z.union([
-  z.object({ notes: z.string().trim().max(1000, "Keterangan maksimal 1000 karakter") }).strict(),
+  z
+    .object({
+      notes: z.string().trim().max(1000, "Keterangan maksimal 1000 karakter"),
+    })
+    .strict(),
   z.object({ splitterRatio: z.number().int().nullable() }).strict(),
   z.object({ type: z.enum(["odp", "odc"]) }).strict(),
   z.object({ splitterTap: z.number().int().nullable() }).strict(),
@@ -35,7 +39,10 @@ export function PATCH(
               ? await MapDataAdapter.setSplitterTap(id, parsed.splitterTap)
               : "centralOltId" in parsed
                 ? await MapDataAdapter.setCentralOlt(id, parsed.centralOltId)
-                : await MapDataAdapter.setSplitterRatio(id, parsed.splitterRatio);
+                : await MapDataAdapter.setSplitterRatio(
+                    id,
+                    parsed.splitterRatio,
+                  );
       return Response.json({ success: true, undoId }, { status: 200 });
     } catch (err: unknown) {
       if (err instanceof ClassifiedCentralApiError) {

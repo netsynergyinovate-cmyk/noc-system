@@ -1,5 +1,8 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
 import { db } from "@/db";
 import { deployWriteGuardLogs } from "@/db/schema/deploy-runs";
 import { desc } from "drizzle-orm";
@@ -22,7 +25,8 @@ export function GET(request: Request) {
 
       return Response.json({ success: true, data: logs });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Gagal memuat log penjaga tulis";
+      const message =
+        err instanceof Error ? err.message : "Gagal memuat log penjaga tulis";
       return Response.json({ success: false, error: message }, { status: 500 });
     }
   });
@@ -36,9 +40,13 @@ export function DELETE(request: Request) {
   return withApiPermission(request, { system: ["manage"] }, async () => {
     try {
       await db.delete(deployWriteGuardLogs);
-      return Response.json({ success: true, message: "Log berhasil dibersihkan" });
+      return Response.json({
+        success: true,
+        message: "Log berhasil dibersihkan",
+      });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Gagal membersihkan log";
+      const message =
+        err instanceof Error ? err.message : "Gagal membersihkan log";
       return Response.json({ success: false, error: message }, { status: 500 });
     }
   });

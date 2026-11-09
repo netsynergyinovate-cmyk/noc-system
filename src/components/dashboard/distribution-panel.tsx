@@ -57,7 +57,9 @@ export function DistributionPanel({ className }: { className?: string }) {
   return (
     <Card className={className}>
       <CardHeader className="py-3 px-4">
-        <CardTitle className="text-base font-semibold">Sebaran pelanggan</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Sebaran pelanggan
+        </CardTitle>
         <CardDescription className="text-xs">
           Hijau normal, kuning perlu dicek, merah offline
         </CardDescription>

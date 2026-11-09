@@ -23,7 +23,7 @@ export async function getRealOptionalIntegrationsOverview(): Promise<OptionalInt
     try {
       // 1. Periksa tabel olts
       if (!dynamicStatus["opt-olt-hsgq"]) {
-        const oltRes = await client.query("SELECT COUNT(*) AS c FROM \"olts\"");
+        const oltRes = await client.query('SELECT COUNT(*) AS c FROM "olts"');
         if (Number(oltRes.rows[0]?.c ?? 0) > 0) {
           dynamicStatus["opt-olt-hsgq"] = "terkonfigurasi";
         }
@@ -32,7 +32,7 @@ export async function getRealOptionalIntegrationsOverview(): Promise<OptionalInt
       // 2. Periksa tabel whatsapp_recipients
       if (!dynamicStatus["opt-whatsapp-gateway"]) {
         const waRes = await client.query(
-          "SELECT COUNT(*) AS c FROM \"whatsapp_recipients\"",
+          'SELECT COUNT(*) AS c FROM "whatsapp_recipients"',
         );
         if (Number(waRes.rows[0]?.c ?? 0) > 0) {
           dynamicStatus["opt-whatsapp-gateway"] = "terkonfigurasi";
@@ -42,7 +42,7 @@ export async function getRealOptionalIntegrationsOverview(): Promise<OptionalInt
       // 3. Periksa tabel billing_credentials
       if (!dynamicStatus["opt-billing-sync"]) {
         const billRes = await client.query(
-          "SELECT COUNT(*) AS c FROM \"billing_credentials\"",
+          'SELECT COUNT(*) AS c FROM "billing_credentials"',
         );
         if (Number(billRes.rows[0]?.c ?? 0) > 0) {
           dynamicStatus["opt-billing-sync"] = "terkonfigurasi";

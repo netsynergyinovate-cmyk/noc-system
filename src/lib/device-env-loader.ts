@@ -16,7 +16,11 @@ export type DeviceEnvStatus = {
 // ponytail: GenieACS hanya mewajibkan URL (NBI boleh tanpa auth); tambah
 // USER/PASSWORD di sini bila NBI produksi selalu memakai auth.
 export const REQUIRED_ENV: Readonly<Record<DeviceKind, readonly string[]>> = {
-  mikrotik: ["MIKROTIK_REST_HOST", "MIKROTIK_REST_USER", "MIKROTIK_REST_PASSWORD"],
+  mikrotik: [
+    "MIKROTIK_REST_HOST",
+    "MIKROTIK_REST_USER",
+    "MIKROTIK_REST_PASSWORD",
+  ],
   olt: ["OLT_HSGQ_HOST", "OLT_HSGQ_USER", "OLT_HSGQ_PASSWORD"],
   genieacs: ["GENIEACS_NBI_URL"],
   billing: ["BILLING_URL", "BILLING_USERNAME", "BILLING_PASSWORD"],

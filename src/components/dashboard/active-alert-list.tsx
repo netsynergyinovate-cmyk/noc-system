@@ -150,70 +150,70 @@ export function AlertCardList({
                   </div>
                   <AlertTime alert={alert} now={now} />
                 </div>
-              <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
-                <div className="min-w-0">
-                  <AnomalySubject anomaly={alert} lookup={lookup} />
-                </div>
-                <div className="min-w-0 rounded border bg-muted/30 p-1.5 font-mono text-[11px]">
-                  <p className="text-muted-foreground">
-                    {describeAnomaly(alert)}
-                  </p>
-                  <div className="mt-0.5">
-                    <AlertPlace location={alert.location} />
+                <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <AnomalySubject anomaly={alert} lookup={lookup} />
+                  </div>
+                  <div className="min-w-0 rounded border bg-muted/30 p-1.5 font-mono text-[11px]">
+                    <p className="text-muted-foreground">
+                      {describeAnomaly(alert)}
+                    </p>
+                    <div className="mt-0.5">
+                      <AlertPlace location={alert.location} />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t pt-1.5">
-                <div className="min-w-0">
-                  {tickets?.[alert.id] && (
-                    <div
-                      data-testid="ticket-status-chip"
-                      data-status={tickets[alert.id].status}
-                      className="inline-flex rounded border bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium"
-                    >
-                      {alertTicketStatusLabels[tickets[alert.id].status]}
-                      {tickets[alert.id].technicianName
-                        ? ` - ${tickets[alert.id].technicianName}`
-                        : ""}
-                    </div>
-                  )}
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t pt-1.5">
+                  <div className="min-w-0">
+                    {tickets?.[alert.id] && (
+                      <div
+                        data-testid="ticket-status-chip"
+                        data-status={tickets[alert.id].status}
+                        className="inline-flex rounded border bg-secondary px-2 py-0.5 font-mono text-[11px] font-medium"
+                      >
+                        {alertTicketStatusLabels[tickets[alert.id].status]}
+                        {tickets[alert.id].technicianName
+                          ? ` - ${tickets[alert.id].technicianName}`
+                          : ""}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <HighlightOnMap alert={alert} />
+                    <AlertTrafficEvidence alert={alert} />
+                    {onRespond && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="respond-alert"
+                        aria-label={`Tanggapi tiket: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
+                        onClick={() => onRespond(alert)}
+                      >
+                        <MessageSquarePlus aria-hidden="true" />
+                        Tanggapi / Tiket
+                      </Button>
+                    )}
+                    {onHandle && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="handle-alert"
+                        // Namanya memuat tulisan yang terlihat, ditambah alert yang
+                        // mana (jenis, subjek, dan waktu mulai sampai detik, supaya dua
+                        // alert sejenis pada subjek yang sama tetap bisa dibedakan):
+                        // tombol yang sama muncul di setiap kartu.
+                        aria-label={`Tandai ditangani: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
+                        onClick={() => onHandle(alert)}
+                      >
+                        <CircleCheckBig aria-hidden="true" />
+                        Tandai ditangani
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  <HighlightOnMap alert={alert} />
-                  <AlertTrafficEvidence alert={alert} />
-                  {onRespond && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid="respond-alert"
-                      aria-label={`Tanggapi tiket: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
-                      onClick={() => onRespond(alert)}
-                    >
-                      <MessageSquarePlus aria-hidden="true" />
-                      Tanggapi / Tiket
-                    </Button>
-                  )}
-                  {onHandle && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid="handle-alert"
-                      // Namanya memuat tulisan yang terlihat, ditambah alert yang
-                      // mana (jenis, subjek, dan waktu mulai sampai detik, supaya dua
-                      // alert sejenis pada subjek yang sama tetap bisa dibedakan):
-                      // tombol yang sama muncul di setiap kartu.
-                      aria-label={`Tandai ditangani: ${alertKindLabel(alert)}, ${subjectLabel(alert, lookup)}, mulai ${formatAlertTime(alert.startedAt, now)}`}
-                      onClick={() => onHandle(alert)}
-                    >
-                      <CircleCheckBig aria-hidden="true" />
-                      Tandai ditangani
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </li>
+              </li>
             );
           })}
         </ul>

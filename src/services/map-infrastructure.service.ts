@@ -102,7 +102,12 @@ export async function updateInfrastructureLocation(
   id: string,
   input: UpdateInfrastructureLocationInput,
   actorUserId?: string,
-): Promise<{ id: string; latitude: number; longitude: number; updatedAt: string }> {
+): Promise<{
+  id: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+}> {
   if (!id || typeof id !== "string") {
     throw new Error("ID perangkat infrastruktur tidak valid.");
   }
@@ -113,7 +118,9 @@ export async function updateInfrastructureLocation(
     typeof input.longitude !== "number" ||
     !Number.isFinite(input.longitude)
   ) {
-    throw new Error("Koordinat latitude dan longitude harus berupa angka valid.");
+    throw new Error(
+      "Koordinat latitude dan longitude harus berupa angka valid.",
+    );
   }
 
   const updatedAt = new Date().toISOString();
@@ -125,7 +132,12 @@ export async function updateInfrastructureLocation(
       .update(routers)
       .set({ latitude: input.latitude, longitude: input.longitude })
       .where(eq(routers.id, routerId));
-    return { id, latitude: input.latitude, longitude: input.longitude, updatedAt };
+    return {
+      id,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      updatedAt,
+    };
   }
 
   if (id.startsWith("olt-")) {
@@ -134,7 +146,12 @@ export async function updateInfrastructureLocation(
       .update(olts)
       .set({ latitude: input.latitude, longitude: input.longitude })
       .where(eq(olts.id, oltId));
-    return { id, latitude: input.latitude, longitude: input.longitude, updatedAt };
+    return {
+      id,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      updatedAt,
+    };
   }
 
   try {
@@ -229,10 +246,7 @@ export async function deleteInfrastructurePoint(
     await db
       .delete(networkCables)
       .where(
-        or(
-          eq(networkCables.sourceId, id),
-          eq(networkCables.targetId, id),
-        ),
+        or(eq(networkCables.sourceId, id), eq(networkCables.targetId, id)),
       );
   } catch {
     // Abaikan jika tabel kabel belum siap
@@ -331,7 +345,9 @@ export async function updateInfrastructureParent(
   return { id, parentId };
 }
 
-export async function getNetworkInfrastructureList(): Promise<NetworkInfrastructurePoint[]> {
+export async function getNetworkInfrastructureList(): Promise<
+  NetworkInfrastructurePoint[]
+> {
   try {
     const rows = await db
       .select({
@@ -741,7 +757,7 @@ export async function getInfrastructureDetail(
         polyline: (c.polyline as Array<[number, number]>) || [],
         status: c.status,
         direction: isOutgoing ? "outgoing" : "incoming",
-        connectedNodeId: isOutgoing ? (c.targetId || "") : c.sourceId,
+        connectedNodeId: isOutgoing ? c.targetId || "" : c.sourceId,
       });
     }
   } catch {
@@ -841,8 +857,13 @@ export async function getInfrastructureDetail(
   if (!capacity && foundDevice.type === "odp") {
     capacity = 16;
   }
-  const usedCapacity = Math.max(foundDevice.usedCapacity ?? 0, customerList.length);
-  const availableCapacity = capacity ? Math.max(0, capacity - usedCapacity) : null;
+  const usedCapacity = Math.max(
+    foundDevice.usedCapacity ?? 0,
+    customerList.length,
+  );
+  const availableCapacity = capacity
+    ? Math.max(0, capacity - usedCapacity)
+    : null;
   const utilizationPercent = capacity
     ? Math.min(100, Math.round((usedCapacity / capacity) * 100))
     : null;
@@ -873,7 +894,8 @@ export async function getInfrastructureDetail(
         hardwareStats = {
           linkedDeviceId: r.id,
           status: r.status,
-          model: (foundDevice.details?.model as string) || "MikroTik CCR Series",
+          model:
+            (foundDevice.details?.model as string) || "MikroTik CCR Series",
           lastSeenAt: r.lastSeenAt ? r.lastSeenAt.toISOString() : undefined,
         };
       }
@@ -947,5 +969,3 @@ export async function getInfrastructureDetail(
     },
   };
 }
-
-

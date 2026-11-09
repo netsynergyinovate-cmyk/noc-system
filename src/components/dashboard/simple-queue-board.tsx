@@ -2,7 +2,16 @@
 
 import { useMemo, useReducer, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CheckCircle2, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { SimpleQueueFormDialog } from "@/components/dashboard/simple-queue-form-dialog";
 import {
   applyQueueEdit,
@@ -34,7 +43,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { initialRefresh, mockRefresh, refreshReducer } from "@/lib/dashboard/refresh-state";
+import {
+  initialRefresh,
+  mockRefresh,
+  refreshReducer,
+} from "@/lib/dashboard/refresh-state";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import {
   filterSimpleQueues,
@@ -53,7 +66,8 @@ function pct(rate: number, max: number): number {
 }
 
 function Bar({ value, label }: { value: number; label: string }) {
-  const tone = value >= 90 ? "bg-destructive" : value >= 70 ? "bg-warning" : "bg-success";
+  const tone =
+    value >= 90 ? "bg-destructive" : value >= 70 ? "bg-warning" : "bg-success";
   return (
     <div
       role="progressbar"
@@ -77,13 +91,24 @@ export function SimpleQueueBoard() {
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
-  const [selectedQueue, setSelectedQueue] = useState<SimpleQueueFormInput | null>(null);
-  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string; retry?: MockSimpleQueue } | null>(null);
-  const [deletingQueue, setDeletingQueue] = useState<MockSimpleQueue | null>(null);
-  const [deletedQueueIds, setDeletedQueueIds] = useState<Set<string>>(new Set());
+  const [selectedQueue, setSelectedQueue] =
+    useState<SimpleQueueFormInput | null>(null);
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+    retry?: MockSimpleQueue;
+  } | null>(null);
+  const [deletingQueue, setDeletingQueue] = useState<MockSimpleQueue | null>(
+    null,
+  );
+  const [deletedQueueIds, setDeletedQueueIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [addedQueues, setAddedQueues] = useState<MockSimpleQueue[]>([]);
-  const [editedQueues, setEditedQueues] = useState<Record<string, MockSimpleQueue>>({});
+  const [editedQueues, setEditedQueues] = useState<
+    Record<string, MockSimpleQueue>
+  >({});
   const [refresh, dispatch] = useReducer(refreshReducer, initialRefresh);
   const isRefreshing = refresh.status === "loading";
 
@@ -94,7 +119,10 @@ export function SimpleQueueBoard() {
       await mockRefresh(navigator.onLine);
       dispatch({ type: "success" });
     } catch (e) {
-      dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan queue." });
+      dispatch({
+        type: "fail",
+        message: e instanceof Error ? e.message : "Gagal menyegarkan queue.",
+      });
     }
   }
 
@@ -102,8 +130,17 @@ export function SimpleQueueBoard() {
     const ids = routerId === "all" ? routers.map((r) => r.id) : [routerId];
     const base = ids.flatMap((id) => generateMockSimpleQueues(id, customers));
     const added = addedQueues.filter((q) => ids.includes(q.routerId));
-    return filterDeletedQueues([...base, ...added], deletedQueueIds).map((q) => editedQueues[q.id] ?? q);
-  }, [routers, customers, routerId, addedQueues, editedQueues, deletedQueueIds]);
+    return filterDeletedQueues([...base, ...added], deletedQueueIds).map(
+      (q) => editedQueues[q.id] ?? q,
+    );
+  }, [
+    routers,
+    customers,
+    routerId,
+    addedQueues,
+    editedQueues,
+    deletedQueueIds,
+  ]);
 
   function openCreate() {
     setFormMode("create");
@@ -121,7 +158,10 @@ export function SimpleQueueBoard() {
     if (formMode === "create") {
       const q = createMockQueueFromInput(input);
       setAddedQueues((a) => [...a, q]);
-      setNotice({ type: "success", message: `Queue ${q.name} berhasil ditambahkan` });
+      setNotice({
+        type: "success",
+        message: `Queue ${q.name} berhasil ditambahkan`,
+      });
     } else {
       const existing = queues.find((q) => q.id === input.id);
       if (!existing) {
@@ -129,7 +169,10 @@ export function SimpleQueueBoard() {
       } else {
         const updated = applyQueueEdit(existing, input);
         setEditedQueues((e) => ({ ...e, [updated.id]: updated }));
-        setNotice({ type: "success", message: `Queue ${updated.name} berhasil diperbarui` });
+        setNotice({
+          type: "success",
+          message: `Queue ${updated.name} berhasil diperbarui`,
+        });
       }
     }
     setFormOpen(false);
@@ -142,17 +185,30 @@ export function SimpleQueueBoard() {
     const result = simulateDeleteQueue(q);
     if (result.ok) {
       setDeletedQueueIds((ids) => new Set(ids).add(q.id));
-      setNotice({ type: "success", message: `Queue '${q.name}' berhasil dihapus.` });
+      setNotice({
+        type: "success",
+        message: `Queue '${q.name}' berhasil dihapus.`,
+      });
     } else {
-      setNotice({ type: "error", message: `Gagal menghapus queue '${q.name}': ${result.reason}`, retry: q });
+      setNotice({
+        type: "error",
+        message: `Gagal menghapus queue '${q.name}': ${result.reason}`,
+        retry: q,
+      });
     }
     setIsDeleting(false);
     setDeletingQueue(null);
   }
 
-  const routerName = useMemo(() => new Map(routers.map((r) => [r.id, r.name])), [routers]);
+  const routerName = useMemo(
+    () => new Map(routers.map((r) => [r.id, r.name])),
+    [routers],
+  );
   const summary = useMemo(() => summarizeSimpleQueues(queues), [queues]);
-  const visible = useMemo(() => filterSimpleQueues(queues, query, status), [queues, query, status]);
+  const visible = useMemo(
+    () => filterSimpleQueues(queues, query, status),
+    [queues, query, status],
+  );
 
   const pages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const current = Math.min(page, pages);
@@ -171,7 +227,12 @@ export function SimpleQueueBoard() {
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Button variant="ghost" size="sm" className="-ml-2 w-fit gap-1.5" asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 w-fit gap-1.5"
+          asChild
+        >
           <Link href="/app/router">
             <ArrowLeft className="size-4" aria-hidden="true" />
             Kembali ke Kelola Router
@@ -183,7 +244,8 @@ export function SimpleQueueBoard() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Manajemen limitasi bandwidth, prioritas paket, dan pemantauan trafik per IP target/pelanggan.
+          Manajemen limitasi bandwidth, prioritas paket, dan pemantauan trafik
+          per IP target/pelanggan.
         </p>
       </div>
 
@@ -192,7 +254,9 @@ export function SimpleQueueBoard() {
           <Card key={t.label}>
             <CardContent className="p-4">
               <div className="text-xs text-muted-foreground">{t.label}</div>
-              <div className="mt-1 font-mono text-lg font-semibold tabular-nums">{t.value}</div>
+              <div className="mt-1 font-mono text-lg font-semibold tabular-nums">
+                {t.value}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -252,10 +316,18 @@ export function SimpleQueueBoard() {
             aria-label="Segarkan simple queue"
             className="h-9 gap-1.5 text-xs"
           >
-            <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+            <RefreshCw
+              className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
             {isRefreshing ? "Menyegarkan..." : "Segarkan"}
           </Button>
-          <Button type="button" size="sm" onClick={openCreate} className="h-9 gap-1.5 text-xs">
+          <Button
+            type="button"
+            size="sm"
+            onClick={openCreate}
+            className="h-9 gap-1.5 text-xs"
+          >
             <Plus className="size-3.5" aria-hidden="true" />
             Tambah Queue
           </Button>
@@ -314,13 +386,24 @@ export function SimpleQueueBoard() {
             className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             <span>{refresh.message}</span>
-            <Button type="button" variant="outline" size="sm" onClick={handleRefresh} className="h-8 text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="h-8 text-xs"
+            >
               Coba lagi
             </Button>
           </div>
         )}
 
-        <div className="overflow-auto rounded-md border" role="region" aria-label="Tabel simple queue" tabIndex={0}>
+        <div
+          className="overflow-auto rounded-md border"
+          role="region"
+          aria-label="Tabel simple queue"
+          tabIndex={0}
+        >
           <Table>
             <TableHeader className="sticky top-0 bg-card">
               <TableRow>
@@ -345,7 +428,10 @@ export function SimpleQueueBoard() {
                 ))
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={8}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     {queues.length === 0
                       ? "Belum ada simple queue. Pilih router lain atau tambahkan pelanggan."
                       : "Tidak ada queue yang cocok. Ubah kata kunci atau filter status."}
@@ -359,14 +445,20 @@ export function SimpleQueueBoard() {
                     <TableRow key={q.id}>
                       <TableCell>
                         <div className="font-semibold">{q.name}</div>
-                        {q.comment && <div className="text-[11px] text-muted-foreground">{q.comment}</div>}
+                        {q.comment && (
+                          <div className="text-[11px] text-muted-foreground">
+                            {q.comment}
+                          </div>
+                        )}
                         {routerId === "all" && (
                           <div className="text-[11px] text-muted-foreground">
                             {routerName.get(q.routerId) ?? q.routerId}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{q.target}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {q.target}
+                      </TableCell>
                       <TableCell className="font-mono text-xs tabular-nums">
                         <div>↑ {formatBitrate(q.maxLimit.upload)}</div>
                         <div>↓ {formatBitrate(q.maxLimit.download)}</div>
@@ -380,7 +472,10 @@ export function SimpleQueueBoard() {
                           <div>
                             ↓ {formatBitrate(q.rate.download)} ({down}%)
                           </div>
-                          <Bar value={down} label={`Utilitas download ${q.name}`} />
+                          <Bar
+                            value={down}
+                            label={`Utilitas download ${q.name}`}
+                          />
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs tabular-nums">
@@ -392,11 +487,17 @@ export function SimpleQueueBoard() {
                       </TableCell>
                       <TableCell>
                         {q.disabled ? (
-                          <Badge variant="outline" className="text-muted-foreground">
+                          <Badge
+                            variant="outline"
+                            className="text-muted-foreground"
+                          >
                             Nonaktif
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="border-success/50 bg-success/10 text-success">
+                          <Badge
+                            variant="outline"
+                            className="border-success/50 bg-success/10 text-success"
+                          >
                             Aktif
                           </Badge>
                         )}
@@ -479,19 +580,25 @@ export function SimpleQueueBoard() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Simple Queue &quot;{deletingQueue?.name}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Hapus Simple Queue &quot;{deletingQueue?.name}&quot;?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {deletingQueue && (
                 <>
-                  Target {deletingQueue.target}, batas {formatBitrate(deletingQueue.maxLimit.upload)} /{" "}
+                  Target {deletingQueue.target}, batas{" "}
+                  {formatBitrate(deletingQueue.maxLimit.upload)} /{" "}
                   {formatBitrate(deletingQueue.maxLimit.download)}.{" "}
                 </>
               )}
-              Tindakan ini akan menghapus aturan limitasi bandwidth ini dari router.
+              Tindakan ini akan menghapus aturan limitasi bandwidth ini dari
+              router.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel aria-disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogCancel aria-disabled={isDeleting}>
+              Batal
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               aria-disabled={isDeleting}

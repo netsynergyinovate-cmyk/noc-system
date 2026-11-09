@@ -50,11 +50,7 @@ function windowSeconds(range: ExportTimeRange, maxSeconds: number): number {
 }
 
 export type ExportDataset =
-  | "alerts-history"
-  | "anomalies"
-  | "customers"
-  | "billing"
-  | "audit-log";
+  "alerts-history" | "anomalies" | "customers" | "billing" | "audit-log";
 
 export type ExportFormat = "csv" | "json";
 
@@ -69,33 +65,43 @@ export const EXPORT_DATASETS: readonly DatasetOption[] = [
   {
     id: "alerts-history",
     label: "Riwayat Alert Selesai",
-    description: "Daftar alert gangguan 7 hari terakhir beserta waktu mulai, selesai, dan penanganannya.",
+    description:
+      "Daftar alert gangguan 7 hari terakhir beserta waktu mulai, selesai, dan penanganannya.",
     recordCount: (nowSec, range = "7d") =>
-      mockResolvedAlerts(nowSec, windowSeconds(range, ALERTS_MAX_SECONDS)).length,
+      mockResolvedAlerts(nowSec, windowSeconds(range, ALERTS_MAX_SECONDS))
+        .length,
   },
   {
     id: "anomalies",
     label: "Laporan Anomali & Insiden",
-    description: "Insiden anomali traffic, CPU, optik, offline, dan port error dalam 7 hari terakhir.",
+    description:
+      "Insiden anomali traffic, CPU, optik, offline, dan port error dalam 7 hari terakhir.",
     recordCount: (nowSec, range = "7d") =>
-      mockIncidents(nowSec - windowSeconds(range, ANOMALIES_MAX_SECONDS), nowSec, nowSec).length,
+      mockIncidents(
+        nowSec - windowSeconds(range, ANOMALIES_MAX_SECONDS),
+        nowSec,
+        nowSec,
+      ).length,
   },
   {
     id: "customers",
     label: "Data Pelanggan & Jaringan",
-    description: "Daftar seluruh pelanggan PPPoE, router pelayan, ODP, koordinat, dan status optik.",
+    description:
+      "Daftar seluruh pelanggan PPPoE, router pelayan, ODP, koordinat, dan status optik.",
     recordCount: () => 0,
   },
   {
     id: "billing",
     label: "Status Tagihan & Billing",
-    description: "Status pembayaran pelanggan (Lunas/Isolir), rujukan invoice, dan kecocokan data.",
+    description:
+      "Status pembayaran pelanggan (Lunas/Isolir), rujukan invoice, dan kecocokan data.",
     recordCount: (nowSec) => mockBillingOverview(nowSec).rows.length,
   },
   {
     id: "audit-log",
     label: "Jejak Aktivitas Petugas",
-    description: "Catatan tindakan petugas NOC (login, ubah ambang, router, cpe) 30 hari terakhir.",
+    description:
+      "Catatan tindakan petugas NOC (login, ubah ambang, router, cpe) 30 hari terakhir.",
     recordCount: (nowSec, range = "7d") => {
       const since = nowSec - windowSeconds(range, AUDIT_MAX_SECONDS);
       return mockAuditLog(nowSec).filter((a) => a.at > since).length;
@@ -120,7 +126,10 @@ export function escapeCsvCell(value: unknown): string {
   return str;
 }
 
-export function toCsv(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
+export function toCsv(
+  headers: string[],
+  rows: (string | number | boolean | null | undefined)[][],
+): string {
   const headerLine = headers.map(escapeCsvCell).join(",");
   const dataLines = rows.map((r) => r.map(escapeCsvCell).join(","));
   return [headerLine, ...dataLines].join("\r\n");
@@ -147,7 +156,10 @@ export function generateExportData(
   const dateStr = new Date(nowSec * 1000).toISOString().slice(0, 10);
 
   if (dataset === "alerts-history") {
-    const list = mockResolvedAlerts(nowSec, windowSeconds(range, ALERTS_MAX_SECONDS));
+    const list = mockResolvedAlerts(
+      nowSec,
+      windowSeconds(range, ALERTS_MAX_SECONDS),
+    );
     if (format === "json") {
       return {
         filename: `laporan-alert-${dateStr}.json`,

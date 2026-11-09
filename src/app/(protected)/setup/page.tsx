@@ -101,7 +101,10 @@ export default async function SetupPage() {
         </div>
       </section>
 
-      <section aria-label="Uji dan Konfigurasi MikroTik" className="flex flex-col gap-3">
+      <section
+        aria-label="Uji dan Konfigurasi MikroTik"
+        className="flex flex-col gap-3"
+      >
         <div className="rounded-xl border bg-card p-6 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -109,7 +112,8 @@ export default async function SetupPage() {
               <span>Formulir Konfigurasi &amp; Uji Router MikroTik</span>
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Isi host, port REST API (80 / 443), dan akun MikroTik Anda di bawah ini untuk menguji koneksi langsung dan mengaktifkan dasbor.
+              Isi host, port REST API (80 / 443), dan akun MikroTik Anda di
+              bawah ini untuk menguji koneksi langsung dan mengaktifkan dasbor.
             </p>
           </div>
           <OnboardingMikrotikForm />

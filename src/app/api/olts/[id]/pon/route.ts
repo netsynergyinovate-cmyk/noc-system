@@ -3,7 +3,10 @@ import { getOltPonPorts } from "@/services/devices.service";
 
 export const runtime = "nodejs";
 
-export function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   return withApiSession(request, async () => {
     const { id } = await params;
     const ports = await getOltPonPorts(id);

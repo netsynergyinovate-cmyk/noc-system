@@ -24,7 +24,11 @@ export async function POST(request: Request) {
       const parsed = createRouteSchema.safeParse(body);
       if (!parsed.success) {
         return NextResponse.json(
-          { ok: false, error: "Data jalur tidak valid.", details: parsed.error.format() },
+          {
+            ok: false,
+            error: "Data jalur tidak valid.",
+            details: parsed.error.format(),
+          },
           { status: 400 },
         );
       }

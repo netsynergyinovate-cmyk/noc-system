@@ -5,20 +5,37 @@
 
 // Alamat IP koneksi PPPoE (IP yang dipakai pelanggan ke internet).
 let ip = "";
-for (const p of declare("InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.ExternalIPAddress", {value: 1})) {
+for (const p of declare(
+  "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.ExternalIPAddress",
+  { value: 1 },
+)) {
   const v = p.value && p.value[0];
-  if (v && v !== "0.0.0.0") { ip = String(v); break; }
-}
-if (!ip) {
-  for (const p of declare("Device.PPP.Interface.*.IPCP.LocalIPAddress", {value: 1})) {
-    const v = p.value && p.value[0];
-    if (v && v !== "0.0.0.0") { ip = String(v); break; }
+  if (v && v !== "0.0.0.0") {
+    ip = String(v);
+    break;
   }
 }
 if (!ip) {
-  for (const p of declare("InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress", {value: 1})) {
+  for (const p of declare("Device.PPP.Interface.*.IPCP.LocalIPAddress", {
+    value: 1,
+  })) {
     const v = p.value && p.value[0];
-    if (v && v !== "0.0.0.0") { ip = String(v); break; }
+    if (v && v !== "0.0.0.0") {
+      ip = String(v);
+      break;
+    }
   }
 }
-return {writable: false, value: [ip, "xsd:string"]};
+if (!ip) {
+  for (const p of declare(
+    "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANIPConnection.*.ExternalIPAddress",
+    { value: 1 },
+  )) {
+    const v = p.value && p.value[0];
+    if (v && v !== "0.0.0.0") {
+      ip = String(v);
+      break;
+    }
+  }
+}
+return { writable: false, value: [ip, "xsd:string"] };

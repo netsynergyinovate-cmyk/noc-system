@@ -183,11 +183,16 @@ export function formatZeroDummyReport(result) {
     }
   }
 
-  lines.push("==========================================================================");
+  lines.push(
+    "==========================================================================",
+  );
   return lines.join("\n");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     const opts = parseArgs(process.argv.slice(2));
     const result = await verifyZeroDummy(opts);

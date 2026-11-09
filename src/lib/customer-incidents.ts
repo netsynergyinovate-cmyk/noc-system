@@ -154,7 +154,9 @@ function computeAvgDown(
  * 3. Verifikasi dengan sampel trafik (maks toleransi 60 sampel di atas detik up).
  * 4. Wajib sampel sebelum dan sesudah (dalam 10 menit); gangguan belum selesai / baru selesai < 10 menit => belum final.
  */
-export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult {
+export function buildIncidents(
+  input: BuildIncidentsInput,
+): BuildIncidentsResult {
   const { nowSec, from, to, outages, buckets, scope } = input;
 
   // 1. Kluster seluruh outage berdasarkan INCIDENT_MERGE_GAP_SECONDS
@@ -209,9 +211,9 @@ export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult
     const longestOutageSeconds = Math.max(
       ...cluster.map((o) => (o.realEnd ?? o.to ?? nowSec) - o.realStart),
     );
-    const sources = Array.from(
-      new Set(cluster.map((o) => o.source)),
-    ) as ("live" | "alert")[];
+    const sources = Array.from(new Set(cluster.map((o) => o.source))) as (
+      "live" | "alert"
+    )[];
 
     // Gabungkan interval outage untuk menghitung downSeconds tanpa tumpang tindih ganda
     const rawIntervals = cluster.map((o) => ({
@@ -235,7 +237,8 @@ export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult
     // Hitung queueSecondsDuring
     const overlappingBuckets = (buckets ?? []).filter(
       (b) =>
-        Math.max(b.bucketStart, incFrom) < Math.min(b.bucketStart + 300, incEnd),
+        Math.max(b.bucketStart, incFrom) <
+        Math.min(b.bucketStart + 300, incEnd),
     );
     const queueSecondsDuring =
       overlappingBuckets.length > 0
@@ -245,15 +248,24 @@ export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult
           )
         : null;
 
-    const beforeAvgDownMbps = computeAvgDown(buckets ?? [], incFrom - 1800, incFrom);
+    const beforeAvgDownMbps = computeAvgDown(
+      buckets ?? [],
+      incFrom - 1800,
+      incFrom,
+    );
     const afterAvgDownMbps =
-      incTo !== null ? computeAvgDown(buckets ?? [], incTo, incTo + 1800) : null;
+      incTo !== null
+        ? computeAvgDown(buckets ?? [], incTo, incTo + 1800)
+        : null;
 
     // Hitung cakupan scope (sendiri vs massal vs tidak-diketahui)
     let scopeKind: "sendiri" | "massal" | "tidak-diketahui";
     let otherDown = 0;
     const routerCustomers = scope?.routerCustomers ?? 0;
-    if (scope?.routerCustomers === null || scope?.routerCustomers === undefined) {
+    if (
+      scope?.routerCustomers === null ||
+      scope?.routerCustomers === undefined
+    ) {
       scopeKind = "tidak-diketahui";
     } else {
       for (const otherIntervals of scope.others ?? []) {
@@ -310,7 +322,8 @@ export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult
         }
         if (downInBucket > 0) {
           const maxAllowed =
-            300 - downInBucket +
+            300 -
+            downInBucket +
             (sources.includes("alert")
               ? INCIDENT_BUCKET_TOLERANCE_ALERT_SAMPLES
               : INCIDENT_BUCKET_TOLERANCE_SAMPLES);
@@ -416,7 +429,8 @@ export function buildIncidents(input: BuildIncidentsInput): BuildIncidentsResult
     belumTerverifikasi: incidents.filter(
       (i) => i.verdict === "belum-terverifikasi",
     ).length,
-    tidakTerbukti: incidents.filter((i) => i.verdict === "tidak-terbukti").length,
+    tidakTerbukti: incidents.filter((i) => i.verdict === "tidak-terbukti")
+      .length,
     kedipan: incidents.filter((i) => i.verdict === "kedipan").length,
     realDownSeconds: realIncidents.reduce((sum, i) => sum + i.downSeconds, 0),
     realByWindow,

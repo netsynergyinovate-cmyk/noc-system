@@ -1,11 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const {
-  maskDatabaseUrl,
-  validatePostgresUrl,
-  getTransferConnectionConfig,
-} = await import("../src/lib/transfer-config.ts");
+const { maskDatabaseUrl, validatePostgresUrl, getTransferConnectionConfig } =
+  await import("../src/lib/transfer-config.ts");
 
 test("maskDatabaseUrl menyamarkan kata sandi dalam connection string", () => {
   const url = "postgresql://myuser:supersecret123@myhost.isp.net:5432/noc_prod";

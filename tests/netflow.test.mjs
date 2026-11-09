@@ -18,7 +18,8 @@ test("mockNetflow deterministic, within 24h, newest first", () => {
   assert.deepEqual(mockNetflow(NOW), all);
   assert.ok(all.length > 100);
   for (const f of all) assert.ok(f.endedAt > NOW - 86_400 && f.endedAt <= NOW);
-  for (let i = 1; i < all.length; i++) assert.ok(all[i - 1].endedAt >= all[i].endedAt);
+  for (let i = 1; i < all.length; i++)
+    assert.ok(all[i - 1].endedAt >= all[i].endedAt);
 });
 
 test("filterFlows by range", () => {
@@ -40,7 +41,9 @@ test("filterFlows by router, protocol, app/port", () => {
   const yt = filterFlows(all, { ...base, query: " youtube " }, NOW);
   assert.ok(yt.length > 0 && yt.every((f) => f.app === "YouTube"));
   const p53 = filterFlows(all, { ...base, query: "53" }, NOW);
-  assert.ok(p53.length > 0 && p53.every((f) => f.dstPort === 53 || f.srcPort === 53));
+  assert.ok(
+    p53.length > 0 && p53.every((f) => f.dstPort === 53 || f.srcPort === 53),
+  );
   assert.equal(filterFlows(all, { ...base, query: "nope-xyz" }, NOW).length, 0);
 });
 
@@ -48,26 +51,44 @@ test("filterFlows by clientIp and dstPort, isolated and combined", () => {
   const base = { ...defaultFlowFilter, range: "24h" };
   const ip = all[0].srcIp;
   const byIp = filterFlows(all, { ...base, clientIp: ` ${ip} ` }, NOW);
-  assert.ok(byIp.length > 0 && byIp.every((f) => f.srcIp.includes(ip) || f.dstIp.includes(ip)));
+  assert.ok(
+    byIp.length > 0 &&
+      byIp.every((f) => f.srcIp.includes(ip) || f.dstIp.includes(ip)),
+  );
   const prefix = filterFlows(all, { ...base, clientIp: "10." }, NOW);
-  assert.ok(prefix.length > 0 && prefix.every((f) => f.srcIp.includes("10.") || f.dstIp.includes("10.")));
+  assert.ok(
+    prefix.length > 0 &&
+      prefix.every((f) => f.srcIp.includes("10.") || f.dstIp.includes("10.")),
+  );
 
   const p443 = filterFlows(all, { ...base, dstPort: "443" }, NOW);
   assert.ok(p443.length > 0 && p443.every((f) => f.dstPort === 443));
   assert.equal(filterFlows(all, { ...base, dstPort: "44" }, NOW).length, 0);
   assert.equal(filterFlows(all, { ...base, dstPort: "abc" }, NOW).length, 0);
 
-  const both = filterFlows(all, { ...base, clientIp: "10.", dstPort: "53" }, NOW);
-  assert.ok(both.length > 0 && both.every((f) => f.dstPort === 53 && f.srcIp.includes("10.")));
+  const both = filterFlows(
+    all,
+    { ...base, clientIp: "10.", dstPort: "53" },
+    NOW,
+  );
+  assert.ok(
+    both.length > 0 &&
+      both.every((f) => f.dstPort === 53 && f.srcIp.includes("10.")),
+  );
   assert.ok(both.length < p443.length + prefix.length);
-  const withOld = filterFlows(all, { ...base, dstPort: "53", protocol: "UDP", query: "dns" }, NOW);
+  const withOld = filterFlows(
+    all,
+    { ...base, dstPort: "53", protocol: "UDP", query: "dns" },
+    NOW,
+  );
   assert.ok(withOld.length > 0 && withOld.every((f) => f.app === "DNS"));
 });
 
 test("topFlows sorts by bytes desc and limits", () => {
   const top = topFlows(all, 5);
   assert.equal(top.length, 5);
-  for (let i = 1; i < top.length; i++) assert.ok(top[i - 1].bytes >= top[i].bytes);
+  for (let i = 1; i < top.length; i++)
+    assert.ok(top[i - 1].bytes >= top[i].bytes);
   assert.equal(top[0].bytes, Math.max(...all.map((f) => f.bytes)));
   assert.equal(topFlows(all).length, 20);
   assert.equal(topFlows([], 5).length, 0);
@@ -114,7 +135,8 @@ test("empty data: summary, time series and topFlows are safe", () => {
 test("mockNetflow supports 7d window", () => {
   const week = mockNetflow(NOW, flowRangeSeconds["7d"]);
   assert.ok(week.length > all.length * 5);
-  for (const f of week) assert.ok(f.endedAt > NOW - 604_800 && f.endedAt <= NOW);
+  for (const f of week)
+    assert.ok(f.endedAt > NOW - 604_800 && f.endedAt <= NOW);
 });
 
 test("buildNetflowTimeSeries buckets are ordered, bounded and consistent", () => {
@@ -125,15 +147,21 @@ test("buildNetflowTimeSeries buckets are ordered, bounded and consistent", () =>
     assert.equal(s.times.length, TREND_POINTS);
     assert.equal(s.bps.length, TREND_POINTS);
     assert.equal(s.flows.length, TREND_POINTS);
-    for (let i = 1; i < s.times.length; i++) assert.ok(s.times[i] > s.times[i - 1]);
+    for (let i = 1; i < s.times.length; i++)
+      assert.ok(s.times[i] > s.times[i - 1]);
     assert.ok(s.times[0] > NOW - sec && s.times.at(-1) === NOW);
     const inRange = filterFlows(week, { ...defaultFlowFilter, range }, NOW);
-    assert.equal(s.flows.reduce((a, b) => a + b, 0), inRange.length);
+    assert.equal(
+      s.flows.reduce((a, b) => a + b, 0),
+      inRange.length,
+    );
     const step = sec / TREND_POINTS;
     const bytes = s.bps.reduce((a, b) => a + (b * step) / 8, 0);
     const expected = inRange.reduce((a, f) => a + f.bytes, 0);
     assert.ok(Math.abs(bytes - expected) <= expected * 1e-9);
   }
   const empty = buildNetflowTimeSeries([], "1h", NOW);
-  assert.ok(empty.bps.every((v) => v === 0) && empty.flows.every((v) => v === 0));
+  assert.ok(
+    empty.bps.every((v) => v === 0) && empty.flows.every((v) => v === 0),
+  );
 });

@@ -8,7 +8,8 @@ const {
   PON_ONU_DATA_MOCK_ENTRY,
   EMPTY_PON_FILTER,
 } = await import("../src/lib/dashboard/pon-port-table-data.ts");
-const { SETUP_DATA_SOURCE_REGISTRY } = await import("../src/lib/dashboard/setup-extended.ts");
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 const ports = generateMockPonPortOverview();
 
@@ -42,10 +43,23 @@ test("filterPonPorts: status, OLT, optik, query", () => {
     const r = filterPonPorts(ports, { ...EMPTY_PON_FILTER, opticalStatus: o });
     assert.ok(r.every((p) => p.opticalStatus === o));
   }
-  const q = filterPonPorts(ports, { ...EMPTY_PON_FILTER, query: "  epon   pon 1/1/3 " });
-  assert.ok(q.length > 0 && q.every((p) => /epon/i.test(p.oltName) && p.ponIndex === 3));
-  assert.equal(filterPonPorts(ports, { ...EMPTY_PON_FILTER, query: "zzz-tidak-ada" }).length, 0);
-  const combo = filterPonPorts(ports, { ...EMPTY_PON_FILTER, oltId: "olt-1", status: "up" });
+  const q = filterPonPorts(ports, {
+    ...EMPTY_PON_FILTER,
+    query: "  epon   pon 1/1/3 ",
+  });
+  assert.ok(
+    q.length > 0 && q.every((p) => /epon/i.test(p.oltName) && p.ponIndex === 3),
+  );
+  assert.equal(
+    filterPonPorts(ports, { ...EMPTY_PON_FILTER, query: "zzz-tidak-ada" })
+      .length,
+    0,
+  );
+  const combo = filterPonPorts(ports, {
+    ...EMPTY_PON_FILTER,
+    oltId: "olt-1",
+    status: "up",
+  });
   assert.ok(combo.every((p) => p.oltId === "olt-1" && p.status === "up"));
 });
 
@@ -53,12 +67,29 @@ test("computePonSummary: akumulasi akurat", () => {
   const s = computePonSummary(ports);
   assert.equal(s.totalPorts, ports.length);
   assert.equal(s.upPorts, ports.filter((p) => p.status === "up").length);
-  assert.equal(s.totalOnu, ports.reduce((a, p) => a + p.totalOnu, 0));
-  assert.equal(s.onlineOnu, ports.reduce((a, p) => a + p.onlineOnu, 0));
-  assert.equal(s.weakOnu, ports.reduce((a, p) => a + p.weakOnuCount, 0));
-  assert.equal(s.losOnu, ports.reduce((a, p) => a + p.losOnuCount, 0));
+  assert.equal(
+    s.totalOnu,
+    ports.reduce((a, p) => a + p.totalOnu, 0),
+  );
+  assert.equal(
+    s.onlineOnu,
+    ports.reduce((a, p) => a + p.onlineOnu, 0),
+  );
+  assert.equal(
+    s.weakOnu,
+    ports.reduce((a, p) => a + p.weakOnuCount, 0),
+  );
+  assert.equal(
+    s.losOnu,
+    ports.reduce((a, p) => a + p.losOnuCount, 0),
+  );
   assert.deepEqual(computePonSummary([]), {
-    totalPorts: 0, upPorts: 0, totalOnu: 0, onlineOnu: 0, weakOnu: 0, losOnu: 0,
+    totalPorts: 0,
+    upPorts: 0,
+    totalOnu: 0,
+    onlineOnu: 0,
+    weakOnu: 0,
+    losOnu: 0,
   });
 });
 

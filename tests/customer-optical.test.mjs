@@ -12,18 +12,31 @@ test("uses ONU inventory when customer matches", () => {
   });
   assert.equal(info.serialNumber, onu.serialNumber);
   assert.equal(info.rxPowerDbm, onu.rxPowerDbm);
-  assert.equal(info.attenuationDb, Math.round((onu.txPowerDbm - onu.rxPowerDbm) * 10) / 10);
+  assert.equal(
+    info.attenuationDb,
+    Math.round((onu.txPowerDbm - onu.rxPowerDbm) * 10) / 10,
+  );
 });
 
 test("offline customer has no rx or attenuation", () => {
-  const info = getCustomerOpticalInfo({ id: "zz", pppoeUsername: "zz", opticalPowerDbm: -20, isOnline: false });
+  const info = getCustomerOpticalInfo({
+    id: "zz",
+    pppoeUsername: "zz",
+    opticalPowerDbm: -20,
+    isOnline: false,
+  });
   assert.equal(info.rxPowerDbm, null);
   assert.equal(info.attenuationDb, null);
   assert.equal(info.isOnline, false);
 });
 
 test("fallback is deterministic and in range", () => {
-  const c = { id: "unknown-1", pppoeUsername: "unknown1", opticalPowerDbm: -22.4, isOnline: true };
+  const c = {
+    id: "unknown-1",
+    pppoeUsername: "unknown1",
+    opticalPowerDbm: -22.4,
+    isOnline: true,
+  };
   const a = getCustomerOpticalInfo(c);
   assert.deepEqual(a, getCustomerOpticalInfo(c));
   assert.equal(a.rxPowerDbm, -22.4);

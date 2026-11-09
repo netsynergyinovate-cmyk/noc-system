@@ -109,10 +109,13 @@ export function PlacementOverlay({
           longitude: lng,
         });
       } else {
-        const type = (extraField1 || "odp") as "server" | "odc" | "odp" | "pole";
+        const type = (extraField1 || "odp") as
+          "server" | "odc" | "odp" | "pole";
         const capacity = parseInt(extraField2, 10) || 0;
         if (type !== "server" && !routeId) {
-          setErrorMsg("Pilih jalur kabel lebih dulu. ODC/ODP/tiang harus tercatat pada rantai jalur.");
+          setErrorMsg(
+            "Pilih jalur kabel lebih dulu. ODC/ODP/tiang harus tercatat pada rantai jalur.",
+          );
           setSaving(false);
           return;
         }
@@ -144,7 +147,10 @@ export function PlacementOverlay({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
             <h3 className="font-semibold text-sm text-foreground">
-              Mode Penempatan: {mode === "customer" ? "Hubungkan Pelanggan" : "Perangkat Jaringan"}
+              Mode Penempatan:{" "}
+              {mode === "customer"
+                ? "Hubungkan Pelanggan"
+                : "Perangkat Jaringan"}
             </h3>
           </div>
           <button
@@ -157,7 +163,8 @@ export function PlacementOverlay({
         </div>
 
         <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
-          Klik pada peta satelit untuk memindahkan penanda bidik, atau ketik angka latitude & longitude di bawah.
+          Klik pada peta satelit untuk memindahkan penanda bidik, atau ketik
+          angka latitude & longitude di bawah.
         </p>
 
         {errorMsg && (
@@ -176,7 +183,9 @@ export function PlacementOverlay({
               <input
                 type="text"
                 value={latInput}
-                onChange={(e) => handleManualCoordChange(e.target.value, lngInput)}
+                onChange={(e) =>
+                  handleManualCoordChange(e.target.value, lngInput)
+                }
                 placeholder="-6.2088"
                 className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:ring-primary outline-none"
               />
@@ -188,7 +197,9 @@ export function PlacementOverlay({
               <input
                 type="text"
                 value={lngInput}
-                onChange={(e) => handleManualCoordChange(latInput, e.target.value)}
+                onChange={(e) =>
+                  handleManualCoordChange(latInput, e.target.value)
+                }
                 placeholder="106.8456"
                 className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:ring-primary outline-none"
               />
@@ -196,18 +207,18 @@ export function PlacementOverlay({
           </div>
 
           {mode === "device" && (
-          <div>
-            <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-              Nama Perangkat
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Contoh: ODP-KEMANG-04"
-              className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
-            />
-          </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                Nama Perangkat
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Contoh: ODP-KEMANG-04"
+                className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
           )}
 
           {mode === "customer" ? (
@@ -228,11 +239,17 @@ export function PlacementOverlay({
                   value={extraField1}
                   onChange={(e) => {
                     setExtraField1(e.target.value);
-                    const c = availableCustomers.find((x) => x.id === e.target.value);
+                    const c = availableCustomers.find(
+                      (x) => x.id === e.target.value,
+                    );
                     // Pelanggan yang sudah punya titik: pratinjau mulai dari posisinya, bukan tengah peta
                     if (c?.latitude != null && c.longitude != null) {
-                      onCoordinatesChange({ lat: c.latitude, lng: c.longitude });
-                    }                  }}
+                      onCoordinatesChange({
+                        lat: c.latitude,
+                        lng: c.longitude,
+                      });
+                    }
+                  }}
                   className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
                 >
                   <option value="">-- Pilih pelanggan --</option>
@@ -247,7 +264,10 @@ export function PlacementOverlay({
                             .toLowerCase()
                             .includes(customerQuery.trim().toLowerCase())),
                     )
-                    .sort((a, b) => Number(a.latitude != null) - Number(b.latitude != null))
+                    .sort(
+                      (a, b) =>
+                        Number(a.latitude != null) - Number(b.latitude != null),
+                    )
                     .map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name} ({c.customerNumber})
@@ -282,7 +302,11 @@ export function PlacementOverlay({
             </>
           ) : (
             <>
-              <div role="radiogroup" aria-label="Jenis perangkat" className="grid grid-cols-4 gap-1.5">
+              <div
+                role="radiogroup"
+                aria-label="Jenis perangkat"
+                className="grid grid-cols-4 gap-1.5"
+              >
                 {(["odp", "odc", "server", "pole"] as const).map((t) => {
                   const active = (extraField1 || "odp") === t;
                   return (
@@ -327,7 +351,8 @@ export function PlacementOverlay({
                   </label>
                   {routeOptions.length === 0 ? (
                     <p className="text-[11px] text-destructive leading-relaxed">
-                      Belum ada jalur lokal. Buat identitas jalur dulu lewat menu
+                      Belum ada jalur lokal. Buat identitas jalur dulu lewat
+                      menu
                       <strong> Tambah → Rute Jalur Kabel</strong>.
                     </p>
                   ) : (
@@ -348,7 +373,10 @@ export function PlacementOverlay({
                         <p className="text-[10px] text-muted-foreground mt-1">
                           Kabel ditarik dari ujung rantai:{" "}
                           <strong className="text-foreground">
-                            {routeOptions.find((r) => r.id === routeId)?.chainEndName}
+                            {
+                              routeOptions.find((r) => r.id === routeId)
+                                ?.chainEndName
+                            }
                           </strong>
                           . Belokan jalur dirapikan setelah disimpan.
                         </p>
@@ -357,23 +385,23 @@ export function PlacementOverlay({
                   )}
                 </div>
               ) : (
-              <div>
-                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                  Perangkat Induk (Parent)
-                </label>
-                <select
-                  value={extraField3}
-                  onChange={(e) => setExtraField3(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
-                >
-                  <option value="">-- Tidak ada (Root) --</option>
-                  {availableDevices.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      [{d.type.toUpperCase()}] {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                    Perangkat Induk (Parent)
+                  </label>
+                  <select
+                    value={extraField3}
+                    onChange={(e) => setExtraField3(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="">-- Tidak ada (Root) --</option>
+                    {availableDevices.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        [{d.type.toUpperCase()}] {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </>
           )}

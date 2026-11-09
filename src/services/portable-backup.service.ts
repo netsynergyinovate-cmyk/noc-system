@@ -56,20 +56,25 @@ function computePayloadChecksum(payload: Record<string, unknown[]>): string {
   for (const k of Object.keys(payload).sort()) {
     sorted[k] = payload[k];
   }
-  return createHash("sha256").update(JSON.stringify(sorted), "utf8").digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(sorted), "utf8")
+    .digest("hex");
 }
 
 /**
  * Membuat paket cadangan portabel (JSON terstruktur) dari tabel database.
  * Mendukung cadangan penuh (full), konfigurasi saja (config_only), atau skema saja (schema_only).
  */
-export async function createPortableBackupPackage(options: {
-  type?: BackupPackageType;
-  label?: string;
-  customPayload?: Record<string, unknown[]>;
-} = {}): Promise<PortableBackupPackage> {
+export async function createPortableBackupPackage(
+  options: {
+    type?: BackupPackageType;
+    label?: string;
+    customPayload?: Record<string, unknown[]>;
+  } = {},
+): Promise<PortableBackupPackage> {
   const type = options.type ?? "full";
-  const label = options.label ?? `Cadangan ${type} - ${new Date().toISOString()}`;
+  const label =
+    options.label ?? `Cadangan ${type} - ${new Date().toISOString()}`;
   const packageId = `pkg-${Date.now()}-${randomUUID().slice(0, 8)}`;
 
   const payload: Record<string, unknown[]> = {};
@@ -147,7 +152,10 @@ export function verifyPortableBackupPackage(
   pkg: unknown,
 ): BackupVerificationResult {
   if (!pkg || typeof pkg !== "object") {
-    return { valid: false, message: "Paket cadangan tidak valid (bukan objek)." };
+    return {
+      valid: false,
+      message: "Paket cadangan tidak valid (bukan objek).",
+    };
   }
 
   const candidate = pkg as Partial<PortableBackupPackage>;
@@ -177,7 +185,9 @@ export function verifyPortableBackupPackage(
   }
 
   // Verifikasi jumlah rekaman per tabel
-  for (const [tbl, expectedCount] of Object.entries(manifest.recordCounts || {})) {
+  for (const [tbl, expectedCount] of Object.entries(
+    manifest.recordCounts || {},
+  )) {
     const actualRows = candidate.payload[tbl];
     if (!Array.isArray(actualRows)) {
       discrepancies.push(`Tabel ${tbl} hilang dalam payload.`);
@@ -191,7 +201,8 @@ export function verifyPortableBackupPackage(
   if (discrepancies.length > 0) {
     return {
       valid: false,
-      message: "Verifikasi paket cadangan gagal: data tidak konsisten atau rusak.",
+      message:
+        "Verifikasi paket cadangan gagal: data tidak konsisten atau rusak.",
       manifest,
       discrepancies,
     };
@@ -218,7 +229,9 @@ export function exportPortableBackupJson(pkg: PortableBackupPackage): string {
 /**
  * Parsing dan deserialisasi string JSON menjadi paket cadangan terverifikasi.
  */
-export function importPortableBackupPackage(rawJson: string): PortableBackupPackage {
+export function importPortableBackupPackage(
+  rawJson: string,
+): PortableBackupPackage {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawJson);
@@ -230,7 +243,9 @@ export function importPortableBackupPackage(rawJson: string): PortableBackupPack
 
   const verification = verifyPortableBackupPackage(parsed);
   if (!verification.valid) {
-    throw new Error(`Paket cadangan tidak lulus verifikasi: ${verification.message}`);
+    throw new Error(
+      `Paket cadangan tidak lulus verifikasi: ${verification.message}`,
+    );
   }
 
   return parsed as PortableBackupPackage;

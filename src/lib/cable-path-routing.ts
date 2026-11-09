@@ -14,7 +14,10 @@ export interface RoadRoutingPoint {
 /**
  * Menghitung jarak Euclidean sederhana antara dua koordinat lat/lng.
  */
-function getCoordinateDistance(p1: [number, number], p2: [number, number]): number {
+function getCoordinateDistance(
+  p1: [number, number],
+  p2: [number, number],
+): number {
   return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
 }
 
@@ -84,7 +87,9 @@ export function generateRoadBendedPolyline(
 /**
  * Menghitung total akumulasi panjang polilin (dalam meter) menyusuri seluruh lekukan titik.
  */
-export function calculatePolylineTotalMeters(points: [number, number][]): number {
+export function calculatePolylineTotalMeters(
+  points: [number, number][],
+): number {
   if (points.length < 2) return 0;
 
   const R = 6371e3; // Radius bumi dalam meter

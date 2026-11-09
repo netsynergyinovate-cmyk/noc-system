@@ -12,9 +12,11 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { parseCustomerLive, getRunsnetCustomerLive } = await import("../src/services/runsnet-billing.service.ts");
+const { parseCustomerLive, getRunsnetCustomerLive } =
+  await import("../src/services/runsnet-billing.service.ts");
 
-const row = (label, value) => `<div class='col-4'><b>${label}</b></div> <div class='col-8'>: ${value}</div>`;
+const row = (label, value) =>
+  `<div class='col-4'><b>${label}</b></div> <div class='col-8'>: ${value}</div>`;
 
 test("parseCustomerLive: hanya kolom sesi; kata sandi, NIK, dan kontak tidak ikut", () => {
   const html = [
@@ -45,7 +47,9 @@ test("parseCustomerLive: hanya kolom sesi; kata sandi, NIK, dan kontak tidak iku
 });
 
 test("parseCustomerLive: pemakaian upload/download dibaca bila ada", () => {
-  const r = parseCustomerLive(row("Pemakaian Upload", "1.2 GB") + row("Pemakaian Download", "30 GB"));
+  const r = parseCustomerLive(
+    row("Pemakaian Upload", "1.2 GB") + row("Pemakaian Download", "30 GB"),
+  );
   assert.equal(r.uploadUsage, "1.2 GB");
   assert.equal(r.downloadUsage, "30 GB");
 });

@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { loadBilling, loadBillingSync } = await import(
-  "../src/lib/dashboard/billing.ts"
-);
+const { loadBilling, loadBillingSync } =
+  await import("../src/lib/dashboard/billing.ts");
 
 const NOW = 1_760_000_000;
 

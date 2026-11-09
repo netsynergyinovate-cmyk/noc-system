@@ -86,11 +86,16 @@ export async function recordClientTestResult(input: {
 }): Promise<DeviceConnectionResponse> {
   const { raw } = input;
   const secrets = { username: input.username, password: input.password };
-  const code = raw.ok ? "OK" : KNOWN_CODES.has(raw.code ?? "") ? (raw.code as DeviceTestCode) : "HTTP_ERROR";
+  const code = raw.ok
+    ? "OK"
+    : KNOWN_CODES.has(raw.code ?? "")
+      ? (raw.code as DeviceTestCode)
+      : "HTTP_ERROR";
   const endpoint =
     raw.endpointTested ??
     `GET http${input.tls ? "s" : ""}://${input.host}:${input.port}${TEST_PATH[input.type] ?? ""}`;
-  const data = (raw.data ?? raw.resource) as Record<string, unknown> | undefined;
+  const data = (raw.data ?? raw.resource) as
+    Record<string, unknown> | undefined;
   const response: DeviceConnectionResponse = {
     type: input.type,
     mode: input.mode,

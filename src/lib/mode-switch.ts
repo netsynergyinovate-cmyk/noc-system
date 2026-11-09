@@ -26,7 +26,12 @@ export class ModeViolationError extends Error {
   }
 }
 
-const DEVICES: readonly DeviceTarget[] = ["mikrotik", "olt", "genieacs", "billing"];
+const DEVICES: readonly DeviceTarget[] = [
+  "mikrotik",
+  "olt",
+  "genieacs",
+  "billing",
+];
 const DEVICE_ENV: Record<DeviceTarget, string> = {
   mikrotik: "MIKROTIK_MODE",
   olt: "OLT_MODE",
@@ -45,7 +50,10 @@ export function normalizeMode(
 }
 
 // ponytail: nilai env tak dikenal jatuh ke tingkat prioritas berikutnya, bukan error.
-export function resolveDeviceMode(device: DeviceTarget, source: Source = {}): RuntimeMode {
+export function resolveDeviceMode(
+  device: DeviceTarget,
+  source: Source = {},
+): RuntimeMode {
   // normalizeMode dengan dua fallback berbeda: tak dikenal = kedua hasil berbeda.
   const known = (raw: string | undefined) => {
     const a = normalizeMode(raw, "simulator");
@@ -72,8 +80,14 @@ function violationMessage(device: DeviceTarget) {
   return `Pelanggaran Go-Live: Perangkat ${device} berjalan dalam mode simulator di lingkungan produksi/live.`;
 }
 
-export function assertNoSimulatorInProduction(device: DeviceTarget, source: Source = {}): void {
-  if (isProductionEnvironment(source) && resolveDeviceMode(device, source) === "simulator") {
+export function assertNoSimulatorInProduction(
+  device: DeviceTarget,
+  source: Source = {},
+): void {
+  if (
+    isProductionEnvironment(source) &&
+    resolveDeviceMode(device, source) === "simulator"
+  ) {
     throw new ModeViolationError(violationMessage(device), device);
   }
 }
@@ -87,10 +101,16 @@ export function getModeSummary(source: Source = {}): ModeSummary {
   const violations = isProduction
     ? DEVICES.filter((d) => devices[d] === "simulator").map(violationMessage)
     : [];
-  const globalMode = normalizeMode(source.DEVICE_MODE, normalizeMode(source.DASHBOARD_DATA));
+  const globalMode = normalizeMode(
+    source.DEVICE_MODE,
+    normalizeMode(source.DASHBOARD_DATA),
+  );
   return {
     globalMode,
-    dataMode: source.DASHBOARD_DATA === "live" || source.DATA_MODE === "nyata" ? "live" : "demo",
+    dataMode:
+      source.DASHBOARD_DATA === "live" || source.DATA_MODE === "nyata"
+        ? "live"
+        : "demo",
     isProduction,
     devices,
     hasSimulatorActive,

@@ -14,9 +14,8 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 register();
 
 const routeMapMarkers = await import("../src/app/api/map/markers/route.ts");
-const { getMapMarkersData, classifyOpticalPower } = await import(
-  "../src/services/map-markers.service.ts"
-);
+const { getMapMarkersData, classifyOpticalPower } =
+  await import("../src/services/map-markers.service.ts");
 
 test("GET /api/map/markers: Proteksi Sesi dan Endpoint Penanda Pelanggan & Perangkat", async (t) => {
   await t.test("Menolak akses anonim dengan status HTTP 401", async () => {
@@ -27,57 +26,75 @@ test("GET /api/map/markers: Proteksi Sesi dan Endpoint Penanda Pelanggan & Peran
     assert.equal(body.error.code, "UNAUTHORIZED");
   });
 
-  await t.test("Mengembalikan seluruh penanda pelanggan dan perangkat dengan koordinat sah", async () => {
-    const result = await getMapMarkersData({ forceMock: true });
+  await t.test(
+    "Mengembalikan seluruh penanda pelanggan dan perangkat dengan koordinat sah",
+    async () => {
+      const result = await getMapMarkersData({ forceMock: true });
 
-    assert.ok(Array.isArray(result.markers), "result.markers harus array");
-    assert.ok(result.markers.length > 0, "Harus memuat penanda");
-    assert.ok(result.customers.length > 0, "Harus memuat penanda pelanggan");
-    assert.ok(result.devices.length > 0, "Harus memuat penanda perangkat");
+      assert.ok(Array.isArray(result.markers), "result.markers harus array");
+      assert.ok(result.markers.length > 0, "Harus memuat penanda");
+      assert.ok(result.customers.length > 0, "Harus memuat penanda pelanggan");
+      assert.ok(result.devices.length > 0, "Harus memuat penanda perangkat");
 
-    // Pastikan seluruh penanda memiliki koordinat numerik sah
-    for (const marker of result.markers) {
-      assert.equal(typeof marker.latitude, "number");
-      assert.equal(typeof marker.longitude, "number");
-      assert.ok(Number.isFinite(marker.latitude));
-      assert.ok(Number.isFinite(marker.longitude));
-      assert.ok(typeof marker.isOnline === "boolean");
-      assert.ok(marker.name.length > 0);
-    }
+      // Pastikan seluruh penanda memiliki koordinat numerik sah
+      for (const marker of result.markers) {
+        assert.equal(typeof marker.latitude, "number");
+        assert.equal(typeof marker.longitude, "number");
+        assert.ok(Number.isFinite(marker.latitude));
+        assert.ok(Number.isFinite(marker.longitude));
+        assert.ok(typeof marker.isOnline === "boolean");
+        assert.ok(marker.name.length > 0);
+      }
 
-    // Verifikasi ringkasan (summary)
-    assert.equal(result.summary.total, result.markers.length);
-    assert.equal(result.summary.totalCustomers, result.customers.length);
-    assert.equal(result.summary.totalDevices, result.devices.length);
-    assert.ok(result.summary.onlineCount >= 0);
-    assert.ok(result.summary.offlineCount >= 0);
-  });
+      // Verifikasi ringkasan (summary)
+      assert.equal(result.summary.total, result.markers.length);
+      assert.equal(result.summary.totalCustomers, result.customers.length);
+      assert.equal(result.summary.totalDevices, result.devices.length);
+      assert.ok(result.summary.onlineCount >= 0);
+      assert.ok(result.summary.offlineCount >= 0);
+    },
+  );
 
   await t.test("Filter berdasarkan tipe: hanya pelanggan", async () => {
-    const result = await getMapMarkersData({ type: "customers", forceMock: true });
+    const result = await getMapMarkersData({
+      type: "customers",
+      forceMock: true,
+    });
     assert.ok(result.markers.length > 0);
     for (const marker of result.markers) {
       assert.equal(marker.type, "customer");
     }
   });
 
-  await t.test("Filter berdasarkan tipe: hanya perangkat infrastruktur", async () => {
-    const result = await getMapMarkersData({ type: "devices", forceMock: true });
-    assert.ok(result.markers.length > 0);
-    for (const marker of result.markers) {
-      assert.ok(["router", "olt", "odp", "pole"].includes(marker.type));
-    }
-  });
+  await t.test(
+    "Filter berdasarkan tipe: hanya perangkat infrastruktur",
+    async () => {
+      const result = await getMapMarkersData({
+        type: "devices",
+        forceMock: true,
+      });
+      assert.ok(result.markers.length > 0);
+      for (const marker of result.markers) {
+        assert.ok(["router", "olt", "odp", "pole"].includes(marker.type));
+      }
+    },
+  );
 
   await t.test("Filter status online", async () => {
-    const result = await getMapMarkersData({ status: "online", forceMock: true });
+    const result = await getMapMarkersData({
+      status: "online",
+      forceMock: true,
+    });
     for (const marker of result.markers) {
       assert.equal(marker.isOnline, true);
     }
   });
 
   await t.test("Filter pencarian kata kunci", async () => {
-    const result = await getMapMarkersData({ search: "CIARA", forceMock: true });
+    const result = await getMapMarkersData({
+      search: "CIARA",
+      forceMock: true,
+    });
     assert.ok(result.markers.length > 0);
     for (const marker of result.markers) {
       const match =

@@ -9,32 +9,56 @@ import {
   readMikrotikEnv,
   readOltEnv,
 } from "@/lib/device-env-credentials";
-import { decryptDeviceCredential, encryptDeviceCredential } from "@/lib/encryption";
+import {
+  decryptDeviceCredential,
+  encryptDeviceCredential,
+} from "@/lib/encryption";
 
 // Satu-satunya pintu membaca kredensial perangkat. Hasil berisi kata sandi
 // ASLI: hanya untuk konektor di server (MikroTik/OLT/billing/GenieACS), jangan
 // pernah dikembalikan dari API route atau dikirim ke klien. Untuk tampilan
 // klien pakai query dengan kolom publik (tanpa passwordEnc).
 
-export const encryptCredential = (plain: string): string => encryptDeviceCredential(plain);
-export const decryptCredential = (encrypted: string): string => decryptDeviceCredential(encrypted);
+export const encryptCredential = (plain: string): string =>
+  encryptDeviceCredential(plain);
+export const decryptCredential = (encrypted: string): string =>
+  decryptDeviceCredential(encrypted);
 
 // ponytail: port/TLS router & OLT diturunkan dari "host[:port]" karena tabel
 // belum punya kolom port/use_tls; tambah kolom bila ada TLS di port nonstandar.
-function splitHostPort(raw: string): { host: string; port: number; useTls: boolean } {
-  const m = /^(?:https?:\/\/)?(\[[^\]]+\]|[^:/]+)(?::(\d{1,5}))?\/?$/i.exec(raw.trim());
+function splitHostPort(raw: string): {
+  host: string;
+  port: number;
+  useTls: boolean;
+} {
+  const m = /^(?:https?:\/\/)?(\[[^\]]+\]|[^:/]+)(?::(\d{1,5}))?\/?$/i.exec(
+    raw.trim(),
+  );
   const host = m?.[1] ?? raw.trim();
   const port = m?.[2] ? Number(m[2]) : /^https:/i.test(raw) ? 443 : 80;
-  return { host, port, useTls: /^https:/i.test(raw) || port === 443 || port === 8443 };
+  return {
+    host,
+    port,
+    useTls: /^https:/i.test(raw) || port === 443 || port === 8443,
+  };
 }
 
 export async function getRouterDecryptedCredentials(routerId: string) {
-  const [r] = await db.select().from(routers).where(eq(routers.id, routerId)).limit(1);
+  const [r] = await db
+    .select()
+    .from(routers)
+    .where(eq(routers.id, routerId))
+    .limit(1);
   if (!r) return null;
   const { host, port, useTls } = splitHostPort(r.host);
   return {
-    id: r.id, name: r.name, host, port, username: r.username,
-    password: decryptCredential(r.passwordEnc), useTls,
+    id: r.id,
+    name: r.name,
+    host,
+    port,
+    username: r.username,
+    password: decryptCredential(r.passwordEnc),
+    useTls,
   };
 }
 
@@ -43,7 +67,11 @@ export async function getOltDecryptedCredentials(oltId: string) {
   if (!o) return null;
   const { host, port } = splitHostPort(o.host);
   return {
-    id: o.id, name: o.name, host, port, username: o.username,
+    id: o.id,
+    name: o.name,
+    host,
+    port,
+    username: o.username,
     password: decryptCredential(o.passwordEnc),
   };
 }
@@ -64,7 +92,9 @@ export async function getBillingDecryptedCredentials() {
   }
   const port = u.port ? Number(u.port) : u.protocol === "https:" ? 443 : 80;
   return {
-    host: u.hostname, port, username: b.username,
+    host: u.hostname,
+    port,
+    username: b.username,
     password: decryptCredential(b.passwordEnc),
   };
 }

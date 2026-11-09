@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { getOnboardingStepsWithPrerequisites } = await import(
-  "../src/services/onboarding.service.ts"
-);
+const { getOnboardingStepsWithPrerequisites } =
+  await import("../src/services/onboarding.service.ts");
 
 test("getOnboardingStepsWithPrerequisites mengembalikan 8 langkah dengan prasyarat terhitung", async () => {
   const result = await getOnboardingStepsWithPrerequisites();

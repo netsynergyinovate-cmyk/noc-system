@@ -17,8 +17,7 @@ const RANGES: Record<TrafficArchiveRange, { seconds: number; step: number }> = {
   "7d": { seconds: 7 * 24 * 3600, step: 1800 },
 };
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Batas parameter PostgreSQL 65535; 4 kolom per baris.
 const INSERT_CHUNK = 5000;

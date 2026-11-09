@@ -88,16 +88,27 @@ const navCategories: NavCategory[] = [
     Icon: Settings,
     items: [
       { label: "Pengaturan", href: "/app/pengaturan", Icon: Settings },
-      { label: "Jejak Aktivitas", href: "/app/jejak-aktivitas", Icon: ScrollText },
+      {
+        label: "Jejak Aktivitas",
+        href: "/app/jejak-aktivitas",
+        Icon: ScrollText,
+      },
       { label: "API Key", href: "/app/api-key", Icon: KeyRound },
       { label: "Uji Stack", href: "/app/uji-stack", Icon: Layers },
-      { label: "Deploy Server", href: "/app/deploy", Icon: Server, capability: "manageDeploy" },
+      {
+        label: "Deploy Server",
+        href: "/app/deploy",
+        Icon: Server,
+        capability: "manageDeploy",
+      },
       {
         label: "Tandai Fitur",
         Icon: Crosshair,
         onClick: () => {
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("open-feature-marker-inspector"));
+            window.dispatchEvent(
+              new CustomEvent("open-feature-marker-inspector"),
+            );
           }
         },
       },
@@ -106,7 +117,10 @@ const navCategories: NavCategory[] = [
 ];
 
 // Daftar datar untuk bar horizontal layar sempit
-const navItems: NavItem[] = [dashboardItem, ...navCategories.flatMap((cat) => cat.items)];
+const navItems: NavItem[] = [
+  dashboardItem,
+  ...navCategories.flatMap((cat) => cat.items),
+];
 
 // "/app" hanya cocok persis; halaman lain cocok bersama anak-anaknya.
 function isCurrent(pathname: string, href: string) {
@@ -135,8 +149,8 @@ export function AppNav({
   const alertsId = useId();
 
   // Status buka/tutup per kategori di sidebar (default terbuka agar mudah diakses)
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(navCategories.map((c) => [c.title, true])),
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(navCategories.map((c) => [c.title, true])),
   );
 
   const toggleCategory = (title: string) => {
@@ -151,58 +165,62 @@ export function AppNav({
     return (
       <nav aria-label="Menu halaman" className="-mx-1 overflow-x-auto">
         <ul className="flex gap-1 px-1">
-          {navItems.filter(isItemVisible).map(({ label, href, Icon, alerts, onClick }) => {
-            if (onClick) {
-              return (
-                <li key={label}>
-                  <button
-                    type="button"
-                    onClick={onClick}
-                    className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 cursor-pointer"
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {label}
-                  </button>
-                </li>
-              );
-            }
-            const isItemLocked = locked && !isPathExemptFromGate(href);
-            return href ? (
-              isItemLocked ? (
-                <li key={label}>
-                  <span
-                    aria-disabled="true"
-                    className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground"
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {label}
-                    <span className="rounded-full border px-2 py-0.5 text-[10px] leading-4">
-                      Terkunci
+          {navItems
+            .filter(isItemVisible)
+            .map(({ label, href, Icon, alerts, onClick }) => {
+              if (onClick) {
+                return (
+                  <li key={label}>
+                    <button
+                      type="button"
+                      onClick={onClick}
+                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 cursor-pointer"
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {label}
+                    </button>
+                  </li>
+                );
+              }
+              const isItemLocked = locked && !isPathExemptFromGate(href);
+              return href ? (
+                isItemLocked ? (
+                  <li key={label}>
+                    <span
+                      aria-disabled="true"
+                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground"
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {label}
+                      <span className="rounded-full border px-2 py-0.5 text-[10px] leading-4">
+                        Terkunci
+                      </span>
                     </span>
-                  </span>
-                </li>
-              ) : (
-                <li key={label}>
-                  <Link
-                    href={href}
-                    aria-current={isCurrent(pathname, href) ? "page" : undefined}
-                    aria-describedby={alerts ? alertsId : undefined}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap",
-                      isCurrent(pathname, href)
-                        ? "bg-secondary"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {label}
-                    {alerts && <AlertCountBadge />}
-                  </Link>
-                  {alerts && <AlertCountAnnouncement id={alertsId} />}
-                </li>
-              )
-            ) : null;
-          })}
+                  </li>
+                ) : (
+                  <li key={label}>
+                    <Link
+                      href={href}
+                      aria-current={
+                        isCurrent(pathname, href) ? "page" : undefined
+                      }
+                      aria-describedby={alerts ? alertsId : undefined}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap",
+                        isCurrent(pathname, href)
+                          ? "bg-secondary"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="size-4" aria-hidden="true" />
+                      {label}
+                      {alerts && <AlertCountBadge />}
+                    </Link>
+                    {alerts && <AlertCountAnnouncement id={alertsId} />}
+                  </li>
+                )
+              ) : null;
+            })}
         </ul>
       </nav>
     );
@@ -284,72 +302,89 @@ export function AppNav({
               {isOpen && (
                 <div className="ml-4 pl-3.5 border-l border-border/50 space-y-0.5 my-1">
                   <ul className="flex flex-col gap-0.5">
-                    {visibleItems.map(({ label, href, Icon, alerts, onClick }) => {
-                      if (onClick) {
+                    {visibleItems.map(
+                      ({ label, href, Icon, alerts, onClick }) => {
+                        if (onClick) {
+                          return (
+                            <li key={label}>
+                              <button
+                                type="button"
+                                onClick={onClick}
+                                className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-500/15 cursor-pointer transition-colors"
+                              >
+                                <div className="flex items-center gap-2.5 truncate">
+                                  <Icon
+                                    className="size-3.5 shrink-0 text-purple-600 dark:text-purple-400"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate">{label}</span>
+                                </div>
+                                <kbd className="rounded border border-purple-500/30 bg-purple-500/15 px-1 py-0.5 font-mono text-[9px] font-medium text-purple-600 dark:text-purple-300">
+                                  Ctrl+~
+                                </kbd>
+                              </button>
+                            </li>
+                          );
+                        }
+                        const isItemLocked =
+                          locked && !isPathExemptFromGate(href);
+                        const isItemActive = href && isCurrent(pathname, href);
                         return (
                           <li key={label}>
-                            <button
-                              type="button"
-                              onClick={onClick}
-                              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-500/15 cursor-pointer transition-colors"
-                            >
-                              <div className="flex items-center gap-2.5 truncate">
-                                <Icon className="size-3.5 shrink-0 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-                                <span className="truncate">{label}</span>
-                              </div>
-                              <kbd className="rounded border border-purple-500/30 bg-purple-500/15 px-1 py-0.5 font-mono text-[9px] font-medium text-purple-600 dark:text-purple-300">
-                                Ctrl+~
-                              </kbd>
-                            </button>
-                          </li>
-                        );
-                      }
-                      const isItemLocked = locked && !isPathExemptFromGate(href);
-                      const isItemActive = href && isCurrent(pathname, href);
-                      return (
-                        <li key={label}>
-                          {href && !isItemLocked ? (
-                            <>
-                              <Link
-                                href={href}
-                                aria-current={isItemActive ? "page" : undefined}
-                                aria-describedby={alerts ? alertsId : undefined}
-                                className={cn(
-                                  "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-                                  isItemActive
-                                    ? "bg-primary/10 text-primary font-semibold shadow-2xs dark:bg-primary/15 dark:text-primary"
-                                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                            {href && !isItemLocked ? (
+                              <>
+                                <Link
+                                  href={href}
+                                  aria-current={
+                                    isItemActive ? "page" : undefined
+                                  }
+                                  aria-describedby={
+                                    alerts ? alertsId : undefined
+                                  }
+                                  className={cn(
+                                    "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
+                                    isItemActive
+                                      ? "bg-primary/10 text-primary font-semibold shadow-2xs dark:bg-primary/15 dark:text-primary"
+                                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                                  )}
+                                >
+                                  <Icon
+                                    className={cn(
+                                      "size-3.5 shrink-0",
+                                      isItemActive
+                                        ? "text-primary"
+                                        : "text-muted-foreground/70",
+                                    )}
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate">{label}</span>
+                                  {alerts && (
+                                    <AlertCountBadge className="ml-auto" />
+                                  )}
+                                </Link>
+                                {alerts && (
+                                  <AlertCountAnnouncement id={alertsId} />
                                 )}
+                              </>
+                            ) : (
+                              <span
+                                aria-disabled="true"
+                                className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground"
                               >
                                 <Icon
-                                  className={cn(
-                                    "size-3.5 shrink-0",
-                                    isItemActive
-                                      ? "text-primary"
-                                      : "text-muted-foreground/70",
-                                  )}
+                                  className="size-3.5 shrink-0"
                                   aria-hidden="true"
                                 />
                                 <span className="truncate">{label}</span>
-                                {alerts && <AlertCountBadge className="ml-auto" />}
-                              </Link>
-                              {alerts && <AlertCountAnnouncement id={alertsId} />}
-                            </>
-                          ) : (
-                            <span
-                              aria-disabled="true"
-                              className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground"
-                            >
-                              <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-                              <span className="truncate">{label}</span>
-                              <span className="ml-auto rounded-full border px-1.5 py-0.5 text-[10px] leading-3">
-                                {href ? "Terkunci" : "Segera"}
+                                <span className="ml-auto rounded-full border px-1.5 py-0.5 text-[10px] leading-3">
+                                  {href ? "Terkunci" : "Segera"}
+                                </span>
                               </span>
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
+                            )}
+                          </li>
+                        );
+                      },
+                    )}
                   </ul>
                 </div>
               )}

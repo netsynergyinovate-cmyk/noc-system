@@ -11,11 +11,20 @@ test("mockOlts and getOltStats structure", () => {
   assert.equal(stats.totalOnu, 342);
 });
 
-import { validateOltInput, mockTestOltConnection } from "../src/lib/dashboard/olts.ts";
+import {
+  validateOltInput,
+  mockTestOltConnection,
+} from "../src/lib/dashboard/olts.ts";
 
 const valid = {
-  name: "OLT-X", brand: "ZTE", driver: "zte-c320", host: "10.0.0.5",
-  port: 23, username: "admin", password: "secret", totalPonPorts: 8,
+  name: "OLT-X",
+  brand: "ZTE",
+  driver: "zte-c320",
+  host: "10.0.0.5",
+  port: 23,
+  username: "admin",
+  password: "secret",
+  totalPonPorts: 8,
 };
 
 test("validateOltInput accepts valid input", () => {
@@ -23,8 +32,27 @@ test("validateOltInput accepts valid input", () => {
 });
 
 test("validateOltInput reports each bad field", () => {
-  const e = validateOltInput({ ...valid, name: " ", brand: "X", driver: "", host: "300.1.1.1", port: 0, username: "", password: "", totalPonPorts: 5 });
-  assert.deepEqual(Object.keys(e).sort(), ["brand", "driver", "host", "name", "password", "port", "totalPonPorts", "username"]);
+  const e = validateOltInput({
+    ...valid,
+    name: " ",
+    brand: "X",
+    driver: "",
+    host: "300.1.1.1",
+    port: 0,
+    username: "",
+    password: "",
+    totalPonPorts: 5,
+  });
+  assert.deepEqual(Object.keys(e).sort(), [
+    "brand",
+    "driver",
+    "host",
+    "name",
+    "password",
+    "port",
+    "totalPonPorts",
+    "username",
+  ]);
   assert.ok(validateOltInput({ ...valid, port: 70000 }).port);
   assert.ok(validateOltInput({ ...valid, port: 22.5 }).port);
 });
@@ -32,7 +60,10 @@ test("validateOltInput reports each bad field", () => {
 test("mockTestOltConnection is deterministic by host", () => {
   assert.equal(mockTestOltConnection(valid).ok, true);
   assert.equal(mockTestOltConnection(valid).diagnostics.protocol, "Telnet");
-  assert.equal(mockTestOltConnection({ ...valid, port: 22 }).diagnostics.protocol, "SSH");
+  assert.equal(
+    mockTestOltConnection({ ...valid, port: 22 }).diagnostics.protocol,
+    "SSH",
+  );
   const t = mockTestOltConnection({ ...valid, host: "10.0.0.0" });
   assert.equal(t.ok, false);
   assert.match(t.reason, /timeout/i);

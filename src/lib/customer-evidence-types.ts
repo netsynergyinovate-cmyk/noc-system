@@ -22,13 +22,29 @@ export const WIB_OFFSET_SECONDS = 7 * 3600;
  */
 export const peakWindows = [
   { id: "siang", label: "Siang", startMin: 11 * 60, endMin: 12 * 60 + 30 },
-  { id: "pulang-sekolah", label: "Pulang sekolah", startMin: 12 * 60 + 30, endMin: 15 * 60 + 30 },
-  { id: "pulang-kerja", label: "Sore pulang kerja", startMin: 15 * 60 + 30, endMin: 17 * 60 + 30 },
-  { id: "magrib-malam", label: "Menjelang magrib – malam", startMin: 17 * 60 + 30, endMin: 23 * 60 },
+  {
+    id: "pulang-sekolah",
+    label: "Pulang sekolah",
+    startMin: 12 * 60 + 30,
+    endMin: 15 * 60 + 30,
+  },
+  {
+    id: "pulang-kerja",
+    label: "Sore pulang kerja",
+    startMin: 15 * 60 + 30,
+    endMin: 17 * 60 + 30,
+  },
+  {
+    id: "magrib-malam",
+    label: "Menjelang magrib – malam",
+    startMin: 17 * 60 + 30,
+    endMin: 23 * 60,
+  },
 ] as const;
 export const OFF_PEAK_ID = "luar" as const;
 export const OFF_PEAK_LABEL = "Di luar jam sibuk";
-export type PeakWindowId = (typeof peakWindows)[number]["id"] | typeof OFF_PEAK_ID;
+export type PeakWindowId =
+  (typeof peakWindows)[number]["id"] | typeof OFF_PEAK_ID;
 
 export interface ConnectionEvent {
   at: number;

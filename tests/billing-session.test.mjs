@@ -26,10 +26,7 @@ test("belum dikonfigurasi", () => {
 });
 
 test("backoff aktif menang atas sesi aktif", () => {
-  for (const s of [
-    { isBackoffActive: true },
-    { consecutiveFailures: 3 },
-  ]) {
+  for (const s of [{ isBackoffActive: true }, { consecutiveFailures: 3 }]) {
     const r = describeBillingSession({ ...base, ...s });
     assert.equal(r.tone, "danger");
     assert.equal(r.text, "Proteksi perlambatan 6 jam aktif");
@@ -60,7 +57,10 @@ test("mock: tiga gagal beruntun mengaktifkan backoff", () => {
   });
   assert.equal(s.isBackoffActive, true);
   assert.equal(describeBillingSession(s).tone, "danger");
-  assert.equal(mockBillingSession({ runs: [run("success")] }).sessionStatus, "active");
+  assert.equal(
+    mockBillingSession({ runs: [run("success")] }).sessionStatus,
+    "active",
+  );
 });
 
 test("izin manageBilling: admin ya, user tidak", () => {

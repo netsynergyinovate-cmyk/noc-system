@@ -13,10 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const {
-  getOnboardingMikrotikStatus,
-  executeOnboardingMikrotikTest,
-} = await import("../src/services/onboarding-mikrotik.service.ts");
+const { getOnboardingMikrotikStatus, executeOnboardingMikrotikTest } =
+  await import("../src/services/onboarding-mikrotik.service.ts");
 
 test("getOnboardingMikrotikStatus membaca status konfigurasi MikroTik", async () => {
   const status = await getOnboardingMikrotikStatus();
@@ -65,16 +63,34 @@ test("Route handler /api/onboarding/mikrotik mengekspor method GET dan POST", as
 });
 
 test("mode real: kegagalan dilaporkan jujur dengan kode dan saran, tanpa data karangan", async () => {
-  const base = { name: "R", username: "admin", password: "pw", useTls: false, mode: "real" };
-  const refused = await executeOnboardingMikrotikTest({ ...base, host: "127.0.0.1", port: 1 });
+  const base = {
+    name: "R",
+    username: "admin",
+    password: "pw",
+    useTls: false,
+    mode: "real",
+  };
+  const refused = await executeOnboardingMikrotikTest({
+    ...base,
+    host: "127.0.0.1",
+    port: 1,
+  });
   assert.equal(refused.ok, false);
   assert.equal(refused.details, undefined);
   assert.ok(refused.code && refused.errors?.length);
   assert.ok(!refused.message.includes("pw"));
 
-  const apiPort = await executeOnboardingMikrotikTest({ ...base, host: "10.0.0.5", port: 8728 });
+  const apiPort = await executeOnboardingMikrotikTest({
+    ...base,
+    host: "10.0.0.5",
+    port: 8728,
+  });
   assert.equal(apiPort.code, "WRONG_PORT");
 
-  const badHost = await executeOnboardingMikrotikTest({ ...base, host: "ftp://10.0.0.5", port: 80 });
+  const badHost = await executeOnboardingMikrotikTest({
+    ...base,
+    host: "ftp://10.0.0.5",
+    port: 80,
+  });
   assert.equal(badHost.ok, false);
 });

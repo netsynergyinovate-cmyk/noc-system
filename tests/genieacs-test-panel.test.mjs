@@ -3,13 +3,18 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { describeConnectionTroubleshoot: d } = await import(
-  "../src/components/dashboard/connection-error-notice.tsx"
-);
-const { runSimulatorDeviceTest } = await import("../src/lib/device-connection.ts");
+const { describeConnectionTroubleshoot: d } =
+  await import("../src/components/dashboard/connection-error-notice.tsx");
+const { runSimulatorDeviceTest } =
+  await import("../src/lib/device-connection.ts");
 
 const run = (host) =>
-  runSimulatorDeviceTest({ type: "genieacs", mode: "simulator", host, port: 7557 });
+  runSimulatorDeviceTest({
+    type: "genieacs",
+    mode: "simulator",
+    host,
+    port: 7557,
+  });
 
 test("genieacs CONNECTION_REFUSED: port 7557 + systemctl", () => {
   const r = d("CONNECTION_REFUSED", "genieacs");

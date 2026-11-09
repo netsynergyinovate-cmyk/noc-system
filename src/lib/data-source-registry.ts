@@ -46,7 +46,9 @@ export function isDataSourceRegistered(id: string): boolean {
 /**
  * Mengambil metadata sumber data berdasarkan nama tabel database PostgreSQL.
  */
-export function getDataSourceByTableName(tableName: string): MapDataSourceItem | undefined {
+export function getDataSourceByTableName(
+  tableName: string,
+): MapDataSourceItem | undefined {
   return MAP_DATA_SOURCE_REGISTRY.find(
     (source) => source.tableName.toLowerCase() === tableName.toLowerCase(),
   );

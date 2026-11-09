@@ -19,7 +19,12 @@ let logs = [];
 let audits = [];
 let seq = 0;
 const thenable = (get) => {
-  const c = { from: () => c, where: () => c, orderBy: () => c, then: (a, b) => Promise.resolve(get()).then(a, b) };
+  const c = {
+    from: () => c,
+    where: () => c,
+    orderBy: () => c,
+    then: (a, b) => Promise.resolve(get()).then(a, b),
+  };
   return c;
 };
 globalThis.starterPostgresDb = {
@@ -79,12 +84,17 @@ test.beforeEach(() => {
 });
 
 test("tanpa sesi -> 401", async () => {
-  assert.equal((await route.POST(post({ message: "x", target: "081234567890" }))).status, 401);
+  assert.equal(
+    (await route.POST(post({ message: "x", target: "081234567890" }))).status,
+    401,
+  );
 });
 
 test("pesan kosong -> 400 validation_error", async () => {
   await signedIn(async () => {
-    const res = await route.POST(post({ message: "   ", target: "081234567890" }));
+    const res = await route.POST(
+      post({ message: "   ", target: "081234567890" }),
+    );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).error, "validation_error");
     assert.equal(logs.length, 0);
@@ -104,14 +114,19 @@ test("tanpa target & recipientId saat broadcast=false -> 400", async () => {
 
 test("nomor tidak valid -> 400", async () => {
   await signedIn(async () => {
-    assert.equal((await route.POST(post({ message: "halo", target: "123" }))).status, 400);
+    assert.equal(
+      (await route.POST(post({ message: "halo", target: "123" }))).status,
+      400,
+    );
     assert.equal(logs.length, 0);
   });
 });
 
 test("kirim tunggal -> 200, log 'sent' tercatat, audit ditulis", async () => {
   await signedIn(async () => {
-    const res = await route.POST(post({ message: "Tes", target: "081234567890", alertKind: "test" }));
+    const res = await route.POST(
+      post({ message: "Tes", target: "081234567890", alertKind: "test" }),
+    );
     assert.equal(res.status, 200);
     const { ok, data } = await res.json();
     assert.equal(ok, true);
@@ -128,7 +143,15 @@ test("kirim tunggal -> 200, log 'sent' tercatat, audit ditulis", async () => {
 });
 
 test("via recipientId memakai target & nama penerima", async () => {
-  recipients = [{ id: RID, name: "Piket", target: "6281234567890", type: "individual", isActive: true }];
+  recipients = [
+    {
+      id: RID,
+      name: "Piket",
+      target: "6281234567890",
+      type: "individual",
+      isActive: true,
+    },
+  ];
   await signedIn(async () => {
     const res = await route.POST(post({ message: "Tes", recipientId: RID }));
     assert.equal(res.status, 200);
@@ -140,11 +163,25 @@ test("via recipientId memakai target & nama penerima", async () => {
 
 test("broadcast -> semua penerima aktif, satu log per penerima", async () => {
   recipients = [
-    { id: RID, name: "A", target: "6281234567890", type: "individual", isActive: true },
-    { id: "22222222-2222-4222-8222-222222222222", name: "B", target: "6289876543210", type: "individual", isActive: true },
+    {
+      id: RID,
+      name: "A",
+      target: "6281234567890",
+      type: "individual",
+      isActive: true,
+    },
+    {
+      id: "22222222-2222-4222-8222-222222222222",
+      name: "B",
+      target: "6289876543210",
+      type: "individual",
+      isActive: true,
+    },
   ];
   await signedIn(async () => {
-    const res = await route.POST(post({ message: "Semua", broadcast: true, alertKind: "offline" }));
+    const res = await route.POST(
+      post({ message: "Semua", broadcast: true, alertKind: "offline" }),
+    );
     assert.equal(res.status, 200);
     const { ok, data } = await res.json();
     assert.equal(ok, true);
@@ -153,7 +190,9 @@ test("broadcast -> semua penerima aktif, satu log per penerima", async () => {
     assert.equal(data.totalFailed, 0);
     assert.equal(data.logs.length, 2);
     assert.equal(logs.length, 2);
-    assert.ok(logs.every((l) => l.status === "sent" && l.alertKind === "offline"));
+    assert.ok(
+      logs.every((l) => l.status === "sent" && l.alertKind === "offline"),
+    );
     assert.equal(audits[0].detail.totalSent, 2);
   });
 });
@@ -164,7 +203,9 @@ test("gateway gagal -> log 'failed' dengan error tersimpan", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 500 });
   try {
     await signedIn(async () => {
-      const res = await route.POST(post({ message: "Tes", target: "081234567890" }));
+      const res = await route.POST(
+        post({ message: "Tes", target: "081234567890" }),
+      );
       assert.equal(res.status, 200);
       const { ok, data } = await res.json();
       assert.equal(ok, false);
@@ -182,7 +223,9 @@ test("gateway gagal -> log 'failed' dengan error tersimpan", async () => {
 test("POST /api/whatsapp/logs mendelegasikan ke logika kirim", async () => {
   assert.equal(typeof logsRoute.POST, "function");
   await signedIn(async () => {
-    const res = await logsRoute.POST(post({ message: "Tes", target: "081234567890" }));
+    const res = await logsRoute.POST(
+      post({ message: "Tes", target: "081234567890" }),
+    );
     assert.equal(res.status, 200);
     assert.equal(logs.length, 1);
   });

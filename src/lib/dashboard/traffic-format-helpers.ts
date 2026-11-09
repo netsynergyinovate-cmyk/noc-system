@@ -37,9 +37,7 @@ export function formatDataVolume(bytes: number): string {
     v /= 1024;
     i++;
   }
-  return i === 0
-    ? `${Math.round(v)} B`
-    : `${v.toFixed(2)} ${VOLUME_UNITS[i]}`;
+  return i === 0 ? `${Math.round(v)} B` : `${v.toFixed(2)} ${VOLUME_UNITS[i]}`;
 }
 
 export function formatPacketCount(packets: number): string {
@@ -55,9 +53,19 @@ export function formatTrafficDuration(seconds: number): string {
     b > 0 ? `${a} ${an} ${b} ${bn}` : `${a} ${an}`;
   if (s < 3600) return join(Math.floor(s / 60), "mnt", s % 60, "dtk");
   if (s < 86_400) {
-    return join(Math.floor(s / 3600), "jam", Math.floor((s % 3600) / 60), "mnt");
+    return join(
+      Math.floor(s / 3600),
+      "jam",
+      Math.floor((s % 3600) / 60),
+      "mnt",
+    );
   }
-  return join(Math.floor(s / 86_400), "hari", Math.floor((s % 86_400) / 3600), "jam");
+  return join(
+    Math.floor(s / 86_400),
+    "hari",
+    Math.floor((s % 86_400) / 3600),
+    "jam",
+  );
 }
 
 export function formatPercentage(value: number, decimals = 1): string {

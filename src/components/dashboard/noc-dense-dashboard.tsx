@@ -70,7 +70,8 @@ const wibClock = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
 });
 
-const card = "rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-xs";
+const card =
+  "rounded-lg border border-border bg-card p-2.5 text-card-foreground shadow-xs";
 const stat = "bg-muted/50 p-1 rounded border border-border text-foreground";
 const dash = (value: number | null | undefined, suffix = "") =>
   value === null || value === undefined ? "—" : `${value}${suffix}`;
@@ -112,7 +113,9 @@ export function NocDenseDashboard() {
   const incidents = isLive ? live.incidents : (history.data?.incidents ?? []);
   const now = isLive ? live.now : (history.data?.to ?? 0);
   const lastTrafficTime = useDashboardStore((s) => s.traffic.times.at(-1));
-  const [lastTrafficReceivedAt, setLastTrafficReceivedAt] = useState<number | null>(null);
+  const [lastTrafficReceivedAt, setLastTrafficReceivedAt] = useState<
+    number | null
+  >(null);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {
     if (!isLive) return;
@@ -307,19 +310,25 @@ export function NocDenseDashboard() {
           </div>
           <div className="grid grid-cols-3 gap-1 mt-1 text-center font-mono">
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">CPU</span>
+              <span className="text-[8px] text-muted-foreground block">
+                CPU
+              </span>
               <span className="text-[10px] font-bold text-foreground">
                 {dash(router?.cpuLoad, "%")}
               </span>
             </div>
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">RAM</span>
+              <span className="text-[8px] text-muted-foreground block">
+                RAM
+              </span>
               <span className="text-[10px] font-bold text-foreground">
                 {dash(router?.memoryUsage, "%")}
               </span>
             </div>
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">Status</span>
+              <span className="text-[8px] text-muted-foreground block">
+                Status
+              </span>
               <span
                 className={`text-[10px] font-bold ${router?.reachable ? "text-emerald-500" : "text-rose-500"}`}
               >
@@ -342,19 +351,25 @@ export function NocDenseDashboard() {
           </div>
           <div className="grid grid-cols-3 gap-1 mt-1 text-center font-mono">
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">PON</span>
+              <span className="text-[8px] text-muted-foreground block">
+                PON
+              </span>
               <span className="text-[10px] font-bold text-foreground">
                 {olt ? `${olt.ponPortCount} Port` : "—"}
               </span>
             </div>
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">Status</span>
+              <span className="text-[8px] text-muted-foreground block">
+                Status
+              </span>
               <span className="text-[10px] font-bold text-emerald-500 uppercase">
                 {olt?.status ?? "—"}
               </span>
             </div>
             <div className={stat}>
-              <span className="text-[8px] text-muted-foreground block">ONT</span>
+              <span className="text-[8px] text-muted-foreground block">
+                ONT
+              </span>
               <span className="text-[10px] font-bold text-foreground">
                 {olt ? `${olt.onuOnline}/${olt.onuTotal}` : "—"}
               </span>
@@ -382,7 +397,9 @@ export function NocDenseDashboard() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{describe(range)}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {describe(range)}
+                  </p>
                 </div>
               </div>
 
@@ -838,7 +855,10 @@ export function NocDenseDashboard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-foreground text-[10.5px] flex items-center gap-1.5 flex-wrap">
-                        <AlertCategoryBadge category={alert.category} size="sm" />
+                        <AlertCategoryBadge
+                          category={alert.category}
+                          size="sm"
+                        />
                         {alert.title}
                       </span>
                       <span className="text-[9px] text-muted-foreground font-mono">
@@ -883,7 +903,9 @@ export function NocDenseDashboard() {
                 offline
               </span>
               <span className="text-amber-400">
-                <b className="text-base text-foreground">{kpi(weakSignalCount)}</b>{" "}
+                <b className="text-base text-foreground">
+                  {kpi(weakSignalCount)}
+                </b>{" "}
                 lemah
               </span>
               <span className="ml-auto text-[10px] text-muted-foreground">

@@ -1,6 +1,12 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployTarget,
+  detectConnectionPath,
+} from "@/services/deploy-targets.service";
 import { getDecryptedSshCredential } from "@/services/ssh-credentials.service";
 import { executeSshCommand } from "@/services/ssh-client.service";
 import { z } from "zod";
@@ -37,7 +43,10 @@ export async function POST(request: Request) {
     const target = await getDeployTarget();
     if (!target) {
       return Response.json(
-        { error: "Target SERVER NATIVE belum dikonfigurasi. Simpan target terlebih dahulu." },
+        {
+          error:
+            "Target SERVER NATIVE belum dikonfigurasi. Simpan target terlebih dahulu.",
+        },
         { status: 400 },
       );
     }

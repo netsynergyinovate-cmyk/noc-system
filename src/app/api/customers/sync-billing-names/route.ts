@@ -26,10 +26,7 @@ export function POST(request: Request) {
     } catch (err) {
       console.error("[SYNC BILLING CUSTOMER NAMES ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
@@ -45,11 +42,7 @@ export function GET(request: Request) {
     } catch (err) {
       console.error("[GET SYNC BILLING NAMES STATS ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
-

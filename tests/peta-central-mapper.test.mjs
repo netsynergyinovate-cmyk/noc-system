@@ -69,30 +69,30 @@ test("mapCentralData: kabel jadi jalur + segmen, panjang dari geometri, polyline
       customers: [customer("a")],
       infrastructure: [infra("olt-1", "olt"), infra("odp-1", "odp")],
       cables: [
-      {
-        id: "k1",
-        name: "FEEDER-1",
-        sourceId: "olt-1",
-        targetId: "odp-1",
-        targetType: "infrastructure",
-        cableType: "feeder",
-        coreCapacity: 12,
-        polyline: [
-          [-2.52, 101.24],
-          [-2.52, 101.241],
-          ["rusak", 1],
-        ],
-      },
-      {
-        id: "k2",
-        name: "DROP-A",
-        sourceId: "odp-1",
-        targetId: "a",
-        targetType: "customer",
-        cableType: "drop",
-        coreCapacity: 1,
-        polyline: [[-2.52, 101.24]],
-      },
+        {
+          id: "k1",
+          name: "FEEDER-1",
+          sourceId: "olt-1",
+          targetId: "odp-1",
+          targetType: "infrastructure",
+          cableType: "feeder",
+          coreCapacity: 12,
+          polyline: [
+            [-2.52, 101.24],
+            [-2.52, 101.241],
+            ["rusak", 1],
+          ],
+        },
+        {
+          id: "k2",
+          name: "DROP-A",
+          sourceId: "odp-1",
+          targetId: "a",
+          targetType: "customer",
+          cableType: "drop",
+          coreCapacity: 1,
+          polyline: [[-2.52, 101.24]],
+        },
       ],
     },
     50,
@@ -118,7 +118,15 @@ test("mapCentralData: paket via awalan PPPoE, ONU per pelanggan, port PON lewat 
       ],
       cables: [],
       onus: [
-        { oltId: "o1", ponIndex: 5, onuIndex: 12, serialNumber: "HWTC01", customerId: "a", rxPower: -19.5, status: "online" },
+        {
+          oltId: "o1",
+          ponIndex: 5,
+          onuIndex: 12,
+          serialNumber: "HWTC01",
+          customerId: "a",
+          rxPower: -19.5,
+          status: "online",
+        },
       ],
       olts: [{ id: "o1", name: "HSGQ CORE", host: "10.0.0.1:2323" }],
       ponPorts: [
@@ -148,7 +156,10 @@ test("mapCentralData: titik OLT tanpa host bisa ditautkan manual", () => {
   const { devices } = mapCentralData(
     {
       customers: [],
-      infrastructure: [infra("olt-lain", "olt", { host: null }), infra("olt-x", "olt", { host: null })],
+      infrastructure: [
+        infra("olt-lain", "olt", { host: null }),
+        infra("olt-x", "olt", { host: null }),
+      ],
       cables: [],
       olts: [{ id: "o1", name: "HSGQ CORE", host: "10.0.0.1:2323" }],
       ponPorts: [{ oltId: "o1", ponIndex: 1, rxPower: -20, onuOnlineCount: 3 }],
@@ -158,22 +169,51 @@ test("mapCentralData: titik OLT tanpa host bisa ditautkan manual", () => {
   );
   assert.deepEqual(devices[0].centralOlt, { id: "o1", name: "HSGQ CORE" });
   assert.equal(devices[0].ponPorts.length, 1);
-  assert.equal(devices[1].centralOlt, undefined, "yang tidak ditautkan tetap kosong");
+  assert.equal(
+    devices[1].centralOlt,
+    undefined,
+    "yang tidak ditautkan tetap kosong",
+  );
 });
 
 test("mergeMapData: koreksi lokal diterapkan, perangkat tersembunyi hilang, data lokal ikut", async () => {
-  const { mergeMapData } = await import("../src/services/map/central-mapper.ts");
+  const { mergeMapData } =
+    await import("../src/services/map/central-mapper.ts");
   const dev = (id, extra = {}) => ({
-    id, name: id, type: "odp", latitude: 1, longitude: 1, capacity: 0,
-    status: "normal", parentDeviceId: "olt", notes: "pusat", ...extra,
+    id,
+    name: id,
+    type: "odp",
+    latitude: 1,
+    longitude: 1,
+    capacity: 0,
+    status: "normal",
+    parentDeviceId: "olt",
+    notes: "pusat",
+    ...extra,
   });
   const cust = (id, extra = {}) => ({
-    id, name: id, customerNumber: id, address: "", region: "", status: "terhubung",
-    billingStatus: "lunas", latitude: null, longitude: null, odpId: null, ...extra,
+    id,
+    name: id,
+    customerNumber: id,
+    address: "",
+    region: "",
+    status: "terhubung",
+    billingStatus: "lunas",
+    latitude: null,
+    longitude: null,
+    odpId: null,
+    ...extra,
   });
   const ov = (entityType, entityId, extra) => ({
-    entityType, entityId, latitude: null, longitude: null, parentDeviceId: null,
-    parentCleared: false, notes: null, hidden: false, ...extra,
+    entityType,
+    entityId,
+    latitude: null,
+    longitude: null,
+    parentDeviceId: null,
+    parentCleared: false,
+    notes: null,
+    hidden: false,
+    ...extra,
   });
   const merged = mergeMapData(
     {
@@ -186,10 +226,22 @@ test("mergeMapData: koreksi lokal diterapkan, perangkat tersembunyi hilang, data
       customers: [cust("lokal-1", { odpId: "odp-a", status: "isolir" })],
       devices: [dev("lokal-odp", { parentDeviceId: "odp-a", notes: null })],
       routes: [],
-      segments: [{ id: "s", routeId: "r", customerId: "lokal-1", connectionStatus: "unknown" }],
+      segments: [
+        {
+          id: "s",
+          routeId: "r",
+          customerId: "lokal-1",
+          connectionStatus: "unknown",
+        },
+      ],
     },
     [
-      ov("customer", "c1", { latitude: -2.5, longitude: 101.2, parentDeviceId: "odp-b", odpPort: 3 }),
+      ov("customer", "c1", {
+        latitude: -2.5,
+        longitude: 101.2,
+        parentDeviceId: "odp-b",
+        odpPort: 3,
+      }),
       ov("device", "odp-a", { parentCleared: true, notes: "koreksi" }),
       ov("device", "odp-b", { parentDeviceId: "odp-c", deviceType: "odc" }),
       ov("device", "odp-c", { hidden: true }),
@@ -199,7 +251,10 @@ test("mergeMapData: koreksi lokal diterapkan, perangkat tersembunyi hilang, data
   assert.equal(merged.devices.find((d) => d.id === "odp-b").type, "odc");
   assert.equal(merged.devices.find((d) => d.id === "odp-a").type, "odp");
   const c1 = merged.customers.find((c) => c.id === "c1");
-  assert.deepEqual([c1.latitude, c1.longitude, c1.odpId, c1.odpPort], [-2.5, 101.2, "odp-b", 3]);
+  assert.deepEqual(
+    [c1.latitude, c1.longitude, c1.odpId, c1.odpPort],
+    [-2.5, 101.2, "odp-b", 3],
+  );
   const c2 = merged.customers.find((c) => c.id === "c2");
   assert.deepEqual([c2.latitude, c2.odpId, c2.odpPort], [5, null, null]);
   assert.equal(merged.devices[1].connectedCustomersCount, 1);

@@ -13,10 +13,13 @@ export async function POST(req: Request) {
     const prompt = body?.prompt;
 
     if (!prompt || typeof prompt !== "string") {
-      return new Response(JSON.stringify({ error: "Parameter 'prompt' wajib diisi (string)." }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Parameter 'prompt' wajib diisi (string)." }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
     }
 
     const encoder = new TextEncoder();
@@ -28,7 +31,9 @@ export async function POST(req: Request) {
         const sendEvent = (data: unknown) => {
           if (isClosed) return;
           try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(data)}\n\n`),
+            );
           } catch {
             isClosed = true;
           }
@@ -45,9 +50,12 @@ export async function POST(req: Request) {
         }, 10000);
 
         try {
-          const result = await runNocSheetsAgentWithThinking(prompt, (trace) => {
-            sendEvent({ type: "trace", trace });
-          });
+          const result = await runNocSheetsAgentWithThinking(
+            prompt,
+            (trace) => {
+              sendEvent({ type: "trace", trace });
+            },
+          );
           sendEvent({ type: "done", answer: result.finalAnswer });
         } catch (e: unknown) {
           const err = e instanceof Error ? e : new Error(String(e));
@@ -71,13 +79,11 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Terjadi kesalahan internal server.";
-    return new Response(
-      JSON.stringify({ error: message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    const message =
+      err instanceof Error ? err.message : "Terjadi kesalahan internal server.";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

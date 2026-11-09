@@ -1,11 +1,7 @@
 import type { FlowFilter, NetflowRecord } from "./netflow.ts";
 
 export type FlowSortField =
-  | "bytes"
-  | "packets"
-  | "throughput"
-  | "duration"
-  | "startedAt";
+  "bytes" | "packets" | "throughput" | "duration" | "startedAt";
 export type SortDirection = "asc" | "desc";
 
 export interface FlowSortOption {

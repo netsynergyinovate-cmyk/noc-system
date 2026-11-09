@@ -8,7 +8,8 @@ export const infrastructureDeviceTypes = [
   "pole",
 ] as const;
 
-export type InfrastructureDeviceType = (typeof infrastructureDeviceTypes)[number];
+export type InfrastructureDeviceType =
+  (typeof infrastructureDeviceTypes)[number];
 
 export const createInfrastructurePointSchema = z.object({
   name: z
@@ -19,7 +20,8 @@ export const createInfrastructurePointSchema = z.object({
     .min(1, "Nama perangkat tidak boleh kosong.")
     .max(100, "Nama perangkat maksimal 100 karakter."),
   type: z.enum(infrastructureDeviceTypes, {
-    error: "Jenis perangkat harus salah satu dari: router, olt, odp, odc, pole.",
+    error:
+      "Jenis perangkat harus salah satu dari: router, olt, odp, odc, pole.",
   }),
   latitude: z
     .number({
@@ -136,4 +138,3 @@ export const infrastructureQuerySchema = z.object({
 export type InfrastructureQueryInput = z.infer<
   typeof infrastructureQuerySchema
 >;
-

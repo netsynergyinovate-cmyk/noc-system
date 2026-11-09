@@ -37,13 +37,17 @@ export interface RequiredEnvValidationResult {
   evaluatedAt: string;
 }
 
-const PLACEHOLDER_PATTERN = /<[^<>]+>|CHANGEME|TODO|your[_-]secret|your[_-]password/i;
+const PLACEHOLDER_PATTERN =
+  /<[^<>]+>|CHANGEME|TODO|your[_-]secret|your[_-]password/i;
 
 function isPlaceholder(value: string): boolean {
   return PLACEHOLDER_PATTERN.test(value);
 }
 
-function isValidUrl(val: string, allowedProtocols = ["http:", "https:"]): boolean {
+function isValidUrl(
+  val: string,
+  allowedProtocols = ["http:", "https:"],
+): boolean {
   try {
     const parsed = new URL(val);
     return (
@@ -75,12 +79,16 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "DATABASE_URL",
     category: "database",
-    description: "Koneksi basis data PostgreSQL untuk penyimpanan utama aplikasi",
+    description:
+      "Koneksi basis data PostgreSQL untuk penyimpanan utama aplikasi",
     requiredInDemo: true,
     requiredInLive: true,
     validator: (val) => {
       if (!isValidPostgresUrl(val)) {
-        return { valid: false, error: "Format DATABASE_URL harus URL PostgreSQL yang valid." };
+        return {
+          valid: false,
+          error: "Format DATABASE_URL harus URL PostgreSQL yang valid.",
+        };
       }
       return { valid: true };
     },
@@ -88,16 +96,23 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "BETTER_AUTH_SECRET",
     category: "auth",
-    description: "Kunci enkripsi token sesi autentikasi pengguna (minimal 32 karakter)",
+    description:
+      "Kunci enkripsi token sesi autentikasi pengguna (minimal 32 karakter)",
     requiredInDemo: true,
     requiredInLive: true,
     minLength: 32,
     validator: (val) => {
       if (val.length < 32) {
-        return { valid: false, error: "BETTER_AUTH_SECRET wajib minimal 32 karakter acak." };
+        return {
+          valid: false,
+          error: "BETTER_AUTH_SECRET wajib minimal 32 karakter acak.",
+        };
       }
       if (isPlaceholder(val)) {
-        return { valid: false, error: "BETTER_AUTH_SECRET masih berisi nilai placeholder template." };
+        return {
+          valid: false,
+          error: "BETTER_AUTH_SECRET masih berisi nilai placeholder template.",
+        };
       }
       return { valid: true };
     },
@@ -105,12 +120,16 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "BETTER_AUTH_URL",
     category: "auth",
-    description: "Origin URL web aplikasi untuk validasi domain sesi (mis. http://localhost:3000)",
+    description:
+      "Origin URL web aplikasi untuk validasi domain sesi (mis. http://localhost:3000)",
     requiredInDemo: true,
     requiredInLive: true,
     validator: (val) => {
       if (!isValidUrl(val)) {
-        return { valid: false, error: "BETTER_AUTH_URL harus berupa URL origin HTTP/HTTPS valid." };
+        return {
+          valid: false,
+          error: "BETTER_AUTH_URL harus berupa URL origin HTTP/HTTPS valid.",
+        };
       }
       return { valid: true };
     },
@@ -118,16 +137,23 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "DEVICE_SECRET",
     category: "security",
-    description: "Kunci AES-256 persis 32 karakter untuk enkripsi kredensial perangkat router/OLT",
+    description:
+      "Kunci AES-256 persis 32 karakter untuk enkripsi kredensial perangkat router/OLT",
     requiredInDemo: false,
     requiredInLive: true,
     exactLength: 32,
     validator: (val) => {
       if (val.length !== 32) {
-        return { valid: false, error: "DEVICE_SECRET harus persis 32 karakter." };
+        return {
+          valid: false,
+          error: "DEVICE_SECRET harus persis 32 karakter.",
+        };
       }
       if (isPlaceholder(val)) {
-        return { valid: false, error: "DEVICE_SECRET masih berupa placeholder template." };
+        return {
+          valid: false,
+          error: "DEVICE_SECRET masih berupa placeholder template.",
+        };
       }
       return { valid: true };
     },
@@ -135,16 +161,23 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "REALTIME_TOKEN_SECRET",
     category: "security",
-    description: "Kunci bersama backend Go untuk otentikasi tiket streaming WebSocket",
+    description:
+      "Kunci bersama backend Go untuk otentikasi tiket streaming WebSocket",
     requiredInDemo: false,
     requiredInLive: true,
     minLength: 32,
     validator: (val) => {
       if (val.length < 32) {
-        return { valid: false, error: "REALTIME_TOKEN_SECRET wajib minimal 32 karakter acak." };
+        return {
+          valid: false,
+          error: "REALTIME_TOKEN_SECRET wajib minimal 32 karakter acak.",
+        };
       }
       if (isPlaceholder(val)) {
-        return { valid: false, error: "REALTIME_TOKEN_SECRET masih berupa placeholder template." };
+        return {
+          valid: false,
+          error: "REALTIME_TOKEN_SECRET masih berupa placeholder template.",
+        };
       }
       return { valid: true };
     },
@@ -152,12 +185,16 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
   {
     key: "BACKEND_URL",
     category: "network",
-    description: "Origin backend Go daemon untuk kolektor NetFlow, traffic history, dan WS hub",
+    description:
+      "Origin backend Go daemon untuk kolektor NetFlow, traffic history, dan WS hub",
     requiredInDemo: false,
     requiredInLive: true,
     validator: (val) => {
       if (!isValidUrl(val)) {
-        return { valid: false, error: "BACKEND_URL harus berupa URL origin HTTP/HTTPS valid." };
+        return {
+          valid: false,
+          error: "BACKEND_URL harus berupa URL origin HTTP/HTTPS valid.",
+        };
       }
       return { valid: true };
     },
@@ -170,7 +207,10 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
     requiredInLive: true,
     validator: (val) => {
       if (!val.trim()) {
-        return { valid: false, error: "MIKROTIK_REST_HOST tidak boleh kosong di mode live." };
+        return {
+          valid: false,
+          error: "MIKROTIK_REST_HOST tidak boleh kosong di mode live.",
+        };
       }
       return { valid: true };
     },
@@ -183,7 +223,10 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
     requiredInLive: true,
     validator: (val) => {
       if (!val.trim()) {
-        return { valid: false, error: "MIKROTIK_REST_USER tidak boleh kosong di mode live." };
+        return {
+          valid: false,
+          error: "MIKROTIK_REST_USER tidak boleh kosong di mode live.",
+        };
       }
       return { valid: true };
     },
@@ -196,10 +239,16 @@ export const REQUIRED_ENV_DEFINITIONS: readonly EnvKeyDefinition[] = [
     requiredInLive: true,
     validator: (val) => {
       if (!val.trim()) {
-        return { valid: false, error: "MIKROTIK_REST_PASSWORD tidak boleh kosong di mode live." };
+        return {
+          valid: false,
+          error: "MIKROTIK_REST_PASSWORD tidak boleh kosong di mode live.",
+        };
       }
       if (isPlaceholder(val)) {
-        return { valid: false, error: "MIKROTIK_REST_PASSWORD masih berupa placeholder." };
+        return {
+          valid: false,
+          error: "MIKROTIK_REST_PASSWORD masih berupa placeholder.",
+        };
       }
       return { valid: true };
     },

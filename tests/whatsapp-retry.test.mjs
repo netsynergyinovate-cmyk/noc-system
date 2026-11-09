@@ -28,7 +28,11 @@ test("hitung retried/succeeded/failed dan simpan hasil tiap baris", async () => 
 
 test("tidak ada log failed = 0 retried, tanpa panggil send/save", async () => {
   let calls = 0;
-  const r = await retryRows([], async () => (calls++, { ok: true }), async () => void calls++);
+  const r = await retryRows(
+    [],
+    async () => (calls++, { ok: true }),
+    async () => void calls++,
+  );
   assert.deepEqual(r, { retried: 0, succeeded: 0, failed: 0 });
   assert.equal(calls, 0);
 });

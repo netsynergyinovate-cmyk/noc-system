@@ -59,10 +59,14 @@ function readAll(): Record<string, OnuMappingAssignment> {
     const raw = storage.getItem(ONU_MAPPING_STORAGE_KEY);
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+      return {};
     const out: Record<string, OnuMappingAssignment> = {};
-    for (const [onuId, v] of Object.entries(parsed as Record<string, unknown>)) {
-      if (onuId === "__proto__" || typeof v !== "object" || v === null) continue;
+    for (const [onuId, v] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      if (onuId === "__proto__" || typeof v !== "object" || v === null)
+        continue;
       const a = v as Partial<OnuMappingAssignment>;
       if (a.customerId !== null && typeof a.customerId !== "string") continue;
       out[onuId] = {
@@ -96,7 +100,10 @@ export function validateMappingPair(
   if (typeof onuId !== "string" || onuId.trim() === "") {
     return { valid: false, error: "ID ONU wajib diisi." };
   }
-  if (customerId !== null && (typeof customerId !== "string" || customerId.trim() === "")) {
+  if (
+    customerId !== null &&
+    (typeof customerId !== "string" || customerId.trim() === "")
+  ) {
     return { valid: false, error: "ID pelanggan tidak valid." };
   }
   return { valid: true };
@@ -116,11 +123,21 @@ export function saveOnuMapping(
   if (customerId !== null) {
     for (const [otherId, a] of Object.entries(all)) {
       if (otherId !== onuId && a.customerId === customerId) {
-        all[otherId] = { onuId: otherId, customerId: null, mappedAt: now, mappedBy };
+        all[otherId] = {
+          onuId: otherId,
+          customerId: null,
+          mappedAt: now,
+          mappedBy,
+        };
       }
     }
   }
-  const assignment: OnuMappingAssignment = { onuId, customerId, mappedAt: now, mappedBy };
+  const assignment: OnuMappingAssignment = {
+    onuId,
+    customerId,
+    mappedAt: now,
+    mappedBy,
+  };
   all[onuId] = assignment;
   writeAll(all);
   return assignment;
@@ -183,18 +200,40 @@ function scorePair(
   const mac = alnum(onu.macAddress ?? "");
   const core = usernameCore(cust.pppoeUsername);
   const full = alnum(cust.pppoeUsername);
-  if (core.length >= MIN_CORE && (serial.includes(core) || mac.includes(core))) {
-    return { confidence: "high", reason: `Username PPPoE "${cust.pppoeUsername}" cocok dengan serial/MAC ONU.` };
+  if (
+    core.length >= MIN_CORE &&
+    (serial.includes(core) || mac.includes(core))
+  ) {
+    return {
+      confidence: "high",
+      reason: `Username PPPoE "${cust.pppoeUsername}" cocok dengan serial/MAC ONU.`,
+    };
   }
-  if (full.length >= MIN_CORE && serial.length >= MIN_CORE && (full.includes(serial) || serial === core)) {
-    return { confidence: "high", reason: `Serial ONU ${onu.serialNumber} tercantum pada username PPPoE.` };
+  if (
+    full.length >= MIN_CORE &&
+    serial.length >= MIN_CORE &&
+    (full.includes(serial) || serial === core)
+  ) {
+    return {
+      confidence: "high",
+      reason: `Serial ONU ${onu.serialNumber} tercantum pada username PPPoE.`,
+    };
   }
-  if (onu.currentCustomerName && namesSimilar(onu.currentCustomerName, cust.name)) {
-    return { confidence: "medium", reason: `Nama "${onu.currentCustomerName}" mirip "${cust.name}".` };
+  if (
+    onu.currentCustomerName &&
+    namesSimilar(onu.currentCustomerName, cust.name)
+  ) {
+    return {
+      confidence: "medium",
+      reason: `Nama "${onu.currentCustomerName}" mirip "${cust.name}".`,
+    };
   }
   const port = onu.ponPort.toLowerCase().replace(/\s+/g, " ").trim();
   if (port.length >= 4 && cust.address.toLowerCase().includes(port)) {
-    return { confidence: "medium", reason: `Port ${onu.ponPort} tercantum pada alamat pelanggan.` };
+    return {
+      confidence: "medium",
+      reason: `Port ${onu.ponPort} tercantum pada alamat pelanggan.`,
+    };
   }
   return null;
 }
@@ -215,10 +254,23 @@ export function suggestAutoMapping(
   for (const onu of freeOnus) {
     for (const cust of freeCustomers) {
       const s = scorePair(onu, cust);
-      if (s) pairs.push({ onuId: onu.onuId, customerId: cust.id, reason: s.reason, confidence: s.confidence, order: order++ });
+      if (s)
+        pairs.push({
+          onuId: onu.onuId,
+          customerId: cust.id,
+          reason: s.reason,
+          confidence: s.confidence,
+          order: order++,
+        });
     }
   }
-  pairs.sort((a, b) => (a.confidence === b.confidence ? a.order - b.order : a.confidence === "high" ? -1 : 1));
+  pairs.sort((a, b) =>
+    a.confidence === b.confidence
+      ? a.order - b.order
+      : a.confidence === "high"
+        ? -1
+        : 1,
+  );
   const usedOnu = new Set<string>();
   const usedCust = new Set<string>();
   const result: MappingSuggestion[] = [];
@@ -226,7 +278,12 @@ export function suggestAutoMapping(
     if (usedOnu.has(p.onuId) || usedCust.has(p.customerId)) continue;
     usedOnu.add(p.onuId);
     usedCust.add(p.customerId);
-    result.push({ onuId: p.onuId, customerId: p.customerId, reason: p.reason, confidence: p.confidence });
+    result.push({
+      onuId: p.onuId,
+      customerId: p.customerId,
+      reason: p.reason,
+      confidence: p.confidence,
+    });
   }
   return result;
 }

@@ -3,11 +3,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const input = readFileSync(
-  new URL("../src/components/dashboard/secret-credential-input.tsx", import.meta.url),
+  new URL(
+    "../src/components/dashboard/secret-credential-input.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 const board = readFileSync(
-  new URL("../src/components/dashboard/device-config-board.tsx", import.meta.url),
+  new URL(
+    "../src/components/dashboard/device-config-board.tsx",
+    import.meta.url,
+  ),
   "utf8",
 );
 
@@ -47,7 +53,10 @@ test("indikator hasStoredSecret, placeholder dan help text", () => {
   assert.match(input, /Tersimpan via ENV \$\{envKey\}/);
   assert.match(input, /Kosongkan untuk mempertahankan kata sandi tersimpan/);
   assert.match(input, /Masukkan kata sandi baru/);
-  assert.match(input, /Kata sandi lama tetap digunakan jika isian ini dikosongkan\./);
+  assert.match(
+    input,
+    /Kata sandi lama tetap digunakan jika isian ini dikosongkan\./,
+  );
 });
 
 test("board: SecretCredentialInput terpasang di dialog edit, mulai kosong", () => {
@@ -58,12 +67,18 @@ test("board: SecretCredentialInput terpasang di dialog edit, mulai kosong", () =
   assert.match(dialog, /hasStoredSecret/);
   assert.match(dialog, /envKey=\{editingDevice\.envPassKey\}/);
   assert.match(board, /useState\(""\)/);
-  assert.match(board, /setPasswordOverride\(""\);\s*setEditingDevice\(device\)/);
+  assert.match(
+    board,
+    /setPasswordOverride\(""\);\s*setEditingDevice\(device\)/,
+  );
 });
 
 test("board: sandi baru tidak masuk state perangkat; kosong mempertahankan", () => {
   assert.match(board, /passwordOverride\.trim\(\)\.length > 0/);
-  const save = board.slice(board.indexOf("const handleSaveEdit"), board.indexOf("const getDeviceIcon"));
+  const save = board.slice(
+    board.indexOf("const handleSaveEdit"),
+    board.indexOf("const getDeviceIcon"),
+  );
   assert.doesNotMatch(save, /\.\.\.next[^;]*passwordOverride/);
   assert.doesNotMatch(save, /\$\{passwordOverride\}/);
   assert.doesNotMatch(board, /readOnly/);

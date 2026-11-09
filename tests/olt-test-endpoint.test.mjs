@@ -29,8 +29,18 @@ test("testOltSchema: batas dan strict", () => {
     { ...base, mode: "other" },
     { ...base, extra: 1 },
   ];
-  for (const b of bad) assert.equal(testOltSchema.safeParse(b).success, false, JSON.stringify(b));
-  assert.equal(testOltSchema.safeParse({ ...base, port: 65535, community: "public", brand: "HSGQ", driver: "hsgq" }).success, true);
+  for (const b of bad)
+    assert.equal(testOltSchema.safeParse(b).success, false, JSON.stringify(b));
+  assert.equal(
+    testOltSchema.safeParse({
+      ...base,
+      port: 65535,
+      community: "public",
+      brand: "HSGQ",
+      driver: "hsgq",
+    }).success,
+    true,
+  );
 });
 
 test("HsgqClient simulator: sukses", async () => {
@@ -41,8 +51,16 @@ test("HsgqClient simulator: sukses", async () => {
 });
 
 test("HsgqClient: INVALID_HOST untuk path/kredensial inline", () => {
-  for (const bad of ["http://10.0.0.5/admin", "10.0.0.5/x", "http://u:p@10.0.0.5"]) {
-    assert.throws(() => make(bad), { name: "DeviceConnectionError", code: "INVALID_HOST" }, bad);
+  for (const bad of [
+    "http://10.0.0.5/admin",
+    "10.0.0.5/x",
+    "http://u:p@10.0.0.5",
+  ]) {
+    assert.throws(
+      () => make(bad),
+      { name: "DeviceConnectionError", code: "INVALID_HOST" },
+      bad,
+    );
   }
 });
 

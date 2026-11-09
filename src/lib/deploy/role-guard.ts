@@ -75,12 +75,14 @@ export function evaluateDeployAccess(
 
   // 2. Lapisan pelengkap: Pemeriksaan Host jika request diberikan
   if (request) {
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const host =
+      request.headers.get("x-forwarded-host") || request.headers.get("host");
     if (!host || !isLoopbackHost(host)) {
       return {
         allowed: false,
         status: 403,
-        error: "Akses deploy ditolak: hanya boleh diakses melalui loopback localhost (127.0.0.1 / ::1).",
+        error:
+          "Akses deploy ditolak: hanya boleh diakses melalui loopback localhost (127.0.0.1 / ::1).",
       };
     }
   }

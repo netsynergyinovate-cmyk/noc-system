@@ -33,16 +33,27 @@ test("penurunan tagihan janggal: drop guard", () => {
 
 test("timeout dan jaringan", () => {
   assert.equal(
-    cat("Sistem billing tidak menjawab dalam batas waktu. Status lama dipertahankan."),
+    cat(
+      "Sistem billing tidak menjawab dalam batas waktu. Status lama dipertahankan.",
+    ),
     "timeout",
   );
   assert.equal(cat("Sinkron melewati batas waktu."), "timeout");
   assert.equal(
-    cat("Sistem billing tidak dapat dihubungi (jaringan terputus atau layanan mati)."),
+    cat(
+      "Sistem billing tidak dapat dihubungi (jaringan terputus atau layanan mati).",
+    ),
     "network",
   );
-  assert.equal(cat("Sertifikat TLS sistem billing tidak dapat diverifikasi."), "network");
-  assert.equal(parseBillingScrapeError("Sistem billing mengalami gangguan (HTTP 503).").category, "server_error");
+  assert.equal(
+    cat("Sertifikat TLS sistem billing tidak dapat diverifikasi."),
+    "network",
+  );
+  assert.equal(
+    parseBillingScrapeError("Sistem billing mengalami gangguan (HTTP 503).")
+      .category,
+    "server_error",
+  );
 });
 
 test("struktur halaman berubah", () => {
@@ -57,14 +68,22 @@ test("struktur halaman berubah", () => {
 });
 
 test("status tidak dikenal dan pesan asing", () => {
-  assert.equal(cat('Status tagihan tidak dikenal: "Pending". Tambahkan ke StatusMap profil bila sah.'), "unknown_status");
+  assert.equal(
+    cat(
+      'Status tagihan tidak dikenal: "Pending". Tambahkan ke StatusMap profil bila sah.',
+    ),
+    "unknown_status",
+  );
   assert.equal(cat("hmm"), "unknown");
   assert.equal(cat(undefined), "unknown");
 });
 
 test("backoff 6 jam muncul bila kredensial gagal >= 3 kali", () => {
   const msg = "Login ke sistem billing ditolak.";
-  assert.doesNotMatch(parseBillingScrapeError(msg, 2).retryBehavior, /^Gagal 2 kali/);
+  assert.doesNotMatch(
+    parseBillingScrapeError(msg, 2).retryBehavior,
+    /^Gagal 2 kali/,
+  );
   assert.match(parseBillingScrapeError(msg, 2).retryBehavior, /6 jam/); // peringatan dini
   const d = parseBillingScrapeError(msg, 3);
   assert.match(d.retryBehavior, /Gagal 3 kali berturut-turut/);
@@ -72,7 +91,14 @@ test("backoff 6 jam muncul bila kredensial gagal >= 3 kali", () => {
 });
 
 test("semua kategori memuat penjelasan data lama dipertahankan", () => {
-  for (const m of ["Login ditolak", "turun drastis", "struktur", "timeout", "jaringan", "x"]) {
+  for (const m of [
+    "Login ditolak",
+    "turun drastis",
+    "struktur",
+    "timeout",
+    "jaringan",
+    "x",
+  ]) {
     assert.match(parseBillingScrapeError(m).explanation, /tidak terhapus/);
   }
 });

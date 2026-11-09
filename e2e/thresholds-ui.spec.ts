@@ -33,7 +33,10 @@ test.beforeAll(async ({ browser }) => {
   const response = await context.request.get("/api/auth/get-session");
   const { user } = (await response.json()) as { user: { id: string } };
   // Peran diberikan di luar aplikasi, seperti npm run role:set.
-  await pool.query('UPDATE "user" SET role = $1 WHERE id = $2', ["admin", user.id]);
+  await pool.query('UPDATE "user" SET role = $1 WHERE id = $2', [
+    "admin",
+    user.id,
+  ]);
   await context.close();
 });
 test.beforeEach(async () => {
@@ -957,7 +960,12 @@ test.describe("server menolak atau tidak terjangkau", () => {
         ? route.fulfill({
             status: 500,
             contentType: "application/json",
-            body: JSON.stringify({ error: { code: "INTERNAL_ERROR", message: "Database sedang tidak bisa dipakai." } }),
+            body: JSON.stringify({
+              error: {
+                code: "INTERNAL_ERROR",
+                message: "Database sedang tidak bisa dipakai.",
+              },
+            }),
           })
         : route.continue(),
     );
@@ -1007,7 +1015,11 @@ test.describe("server menolak atau tidak terjangkau", () => {
     await page.goto("/app/pengaturan");
     await putThresholds(page, { cpu: { threshold: 70, forSeconds: 180 } });
     await page.route("**/api/thresholds", (route) =>
-      route.fulfill({ status: 503, contentType: "application/json", body: "{}" }),
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: "{}",
+      }),
     );
     await openThresholds(page);
     await expect(page.getByTestId("threshold-load-error")).toBeVisible();
@@ -1032,7 +1044,9 @@ test.describe("akun tanpa izin threshold:manage", () => {
   test("tombol tertahan dengan alasan, dan server menolak PUT", async ({
     browser,
   }) => {
-    const signup = await browser.newContext({ baseURL: "http://localhost:3101" });
+    const signup = await browser.newContext({
+      baseURL: "http://localhost:3101",
+    });
     const viewer = await signUp(signup, "Petugas Lihat Ambang");
     await signup.close();
     const { context, page, errors } = await contextFor(browser, viewer);

@@ -1,5 +1,8 @@
 import { withApiSession } from "@/lib/api";
-import { getWhatsappLogSummary, listWhatsappLogs } from "@/services/whatsapp.service";
+import {
+  getWhatsappLogSummary,
+  listWhatsappLogs,
+} from "@/services/whatsapp.service";
 import { listWhatsappLogsSchema } from "@/validators/whatsapp";
 
 export const runtime = "nodejs";

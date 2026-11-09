@@ -140,11 +140,13 @@ export function MapControls({
   const lastUpdatedTime = formatLastUpdated(lastUpdated);
 
   return (
-    <div ref={barRef} className="absolute top-3 inset-x-3 z-[990] pointer-events-none flex flex-col gap-2">
+    <div
+      ref={barRef}
+      className="absolute top-3 inset-x-3 z-[990] pointer-events-none flex flex-col gap-2"
+    >
       <div className="flex items-center justify-between gap-2 flex-wrap">
         {/* Sisi Kiri: Navigasi & Pencarian */}
         <div className="flex items-center gap-2 pointer-events-auto flex-wrap">
-
           {/* Kolom Pencarian */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -260,7 +262,9 @@ export function MapControls({
                 <Database className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               )}
               <span className="font-medium text-foreground">
-                {dataSource === "central-api" ? "Data NOC + koreksi peta" : "DB lokal peta"}
+                {dataSource === "central-api"
+                  ? "Data NOC + koreksi peta"
+                  : "DB lokal peta"}
               </span>
             </div>
 
@@ -288,7 +292,10 @@ export function MapControls({
               }
             >
               {autoRefreshStatus === "active" ? (
-                <span className="relative flex h-2 w-2" aria-label="Auto-refresh aktif">
+                <span
+                  className="relative flex h-2 w-2"
+                  aria-label="Auto-refresh aktif"
+                >
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
@@ -472,8 +479,8 @@ export function MapControls({
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-muted text-foreground transition-colors flex items-center gap-2 font-medium"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  + Hubungkan Pelanggan
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />+
+                  Hubungkan Pelanggan
                 </button>
                 <button
                   onClick={() => {
@@ -482,8 +489,8 @@ export function MapControls({
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-muted text-foreground transition-colors flex items-center gap-2 font-medium"
                 >
-                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                  + Perangkat Jaringan
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />+
+                  Perangkat Jaringan
                 </button>
                 <button
                   onClick={() => {
@@ -492,8 +499,8 @@ export function MapControls({
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl hover:bg-muted text-foreground transition-colors flex items-center gap-2 font-medium"
                 >
-                  <span className="w-2 h-2 rounded-full bg-orange-500" />
-                  + Rute Jalur Kabel
+                  <span className="w-2 h-2 rounded-full bg-orange-500" />+ Rute
+                  Jalur Kabel
                 </button>
               </div>
             )}

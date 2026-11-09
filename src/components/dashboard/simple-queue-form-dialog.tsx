@@ -46,7 +46,9 @@ function QueueForm({
   defaultRouterId,
   onCancel,
   onSubmit,
-}: Omit<SimpleQueueFormDialogProps, "open" | "onOpenChange"> & { onCancel: () => void }) {
+}: Omit<SimpleQueueFormDialogProps, "open" | "onOpenChange"> & {
+  onCancel: () => void;
+}) {
   const [draft, setDraft] = useState({
     routerId: initial?.routerId ?? defaultRouterId ?? routers[0]?.id ?? "",
     name: initial?.name ?? "",
@@ -57,7 +59,8 @@ function QueueForm({
     disabled: initial?.disabled ?? false,
   });
   const [errors, setErrors] = useState<QueueValidation["errors"]>({});
-  const set = (patch: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...patch }));
+  const set = (patch: Partial<typeof draft>) =>
+    setDraft((d) => ({ ...d, ...patch }));
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,9 +79,17 @@ function QueueForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4" data-testid="queue-form">
+    <form
+      onSubmit={submit}
+      noValidate
+      className="space-y-4"
+      data-testid="queue-form"
+    >
       <div>
-        <label htmlFor="queue-router" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="queue-router"
+          className="mb-1 block text-sm font-medium"
+        >
           Router Tujuan
         </label>
         <select
@@ -115,7 +126,10 @@ function QueueForm({
       </div>
 
       <div>
-        <label htmlFor="queue-target" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="queue-target"
+          className="mb-1 block text-sm font-medium"
+        >
           Target IP
         </label>
         <Input
@@ -131,7 +145,10 @@ function QueueForm({
       </div>
 
       <div>
-        <label htmlFor="queue-preset" className="mb-1 block text-sm font-medium">
+        <label
+          htmlFor="queue-preset"
+          className="mb-1 block text-sm font-medium"
+        >
           Kecepatan (Upload / Download)
         </label>
         <select
@@ -152,7 +169,10 @@ function QueueForm({
         </select>
         <div className="mt-2 grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="queue-up" className="mb-1 block text-xs text-muted-foreground">
+            <label
+              htmlFor="queue-up"
+              className="mb-1 block text-xs text-muted-foreground"
+            >
               Upload (Mbps)
             </label>
             <Input
@@ -161,12 +181,17 @@ function QueueForm({
               value={draft.up}
               onChange={(e) => set({ up: e.target.value })}
               aria-invalid={!!errors.maxLimitUploadMbps}
-              aria-describedby={errors.maxLimitUploadMbps ? "queue-up-err" : undefined}
+              aria-describedby={
+                errors.maxLimitUploadMbps ? "queue-up-err" : undefined
+              }
             />
             <FieldError id="queue-up-err" message={errors.maxLimitUploadMbps} />
           </div>
           <div>
-            <label htmlFor="queue-down" className="mb-1 block text-xs text-muted-foreground">
+            <label
+              htmlFor="queue-down"
+              className="mb-1 block text-xs text-muted-foreground"
+            >
               Download (Mbps)
             </label>
             <Input
@@ -175,18 +200,31 @@ function QueueForm({
               value={draft.down}
               onChange={(e) => set({ down: e.target.value })}
               aria-invalid={!!errors.maxLimitDownloadMbps}
-              aria-describedby={errors.maxLimitDownloadMbps ? "queue-down-err" : undefined}
+              aria-describedby={
+                errors.maxLimitDownloadMbps ? "queue-down-err" : undefined
+              }
             />
-            <FieldError id="queue-down-err" message={errors.maxLimitDownloadMbps} />
+            <FieldError
+              id="queue-down-err"
+              message={errors.maxLimitDownloadMbps}
+            />
           </div>
         </div>
       </div>
 
       <div>
-        <label htmlFor="queue-comment" className="mb-1 block text-sm font-medium">
-          Komentar <span className="font-normal text-muted-foreground">(opsional)</span>
+        <label
+          htmlFor="queue-comment"
+          className="mb-1 block text-sm font-medium"
+        >
+          Komentar{" "}
+          <span className="font-normal text-muted-foreground">(opsional)</span>
         </label>
-        <Input id="queue-comment" value={draft.comment} onChange={(e) => set({ comment: e.target.value })} />
+        <Input
+          id="queue-comment"
+          value={draft.comment}
+          onChange={(e) => set({ comment: e.target.value })}
+        />
       </div>
 
       <label className="flex items-center gap-2 text-sm">
@@ -209,14 +247,23 @@ function QueueForm({
   );
 }
 
-export function SimpleQueueFormDialog({ open, onOpenChange, ...rest }: SimpleQueueFormDialogProps) {
+export function SimpleQueueFormDialog({
+  open,
+  onOpenChange,
+  ...rest
+}: SimpleQueueFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{rest.mode === "create" ? "Tambah Simple Queue" : "Ubah Simple Queue"}</DialogTitle>
+          <DialogTitle>
+            {rest.mode === "create"
+              ? "Tambah Simple Queue"
+              : "Ubah Simple Queue"}
+          </DialogTitle>
           <DialogDescription>
-            Data tersimpan sementara di tampilan ini (tiruan) sampai REST API RouterOS tersambung.
+            Data tersimpan sementara di tampilan ini (tiruan) sampai REST API
+            RouterOS tersambung.
           </DialogDescription>
         </DialogHeader>
         {/* dipasang ulang tiap dibuka, jadi isian selalu segar */}

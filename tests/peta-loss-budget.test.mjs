@@ -8,11 +8,22 @@ import {
 } from "../src/services/map/loss-budget.ts";
 
 const dev = (id, type, extra = {}) => ({
-  id, name: id, type, latitude: 0, longitude: 0, capacity: 0,
-  status: "normal", parentDeviceId: null, ...extra,
+  id,
+  name: id,
+  type,
+  latitude: 0,
+  longitude: 0,
+  capacity: 0,
+  status: "normal",
+  parentDeviceId: null,
+  ...extra,
 });
 const seg = (from, to, lengthM, customerId = null) => ({
-  id: `${from}-${to ?? customerId}`, fromDeviceId: from, toDeviceId: to, customerId, lengthM,
+  id: `${from}-${to ?? customerId}`,
+  fromDeviceId: from,
+  toDeviceId: to,
+  customerId,
+  lengthM,
 });
 
 const devices = [
@@ -30,33 +41,59 @@ const segments = [
 
 test("upstreamPath: ikut induk, jarak dijumlah dari kabel lewat tiang", () => {
   const path = upstreamPath("odp", devices, segments);
-  assert.deepEqual(path.nodes.map((d) => d.id), ["olt", "odc", "odp"]);
-  assert.deepEqual(path.links.map((l) => l.lengthM), [2000, 500]);
+  assert.deepEqual(
+    path.nodes.map((d) => d.id),
+    ["olt", "odc", "odp"],
+  );
+  assert.deepEqual(
+    path.links.map((l) => l.lengthM),
+    [2000, 500],
+  );
   assert.ok(path.links.every((l) => !l.estimated));
 });
 
 test("upstreamPath: ODP dipindah ke ODC tapi kabelnya langsung dari OLT -> ODC tetap dihitung", () => {
-  const far = devices.map((d) => (d.id === "odc" ? { ...d, latitude: 0.001 } : d));
-  const path = upstreamPath("odp", far, [seg("olt", "odc", 2000), seg("olt", "odp", 900)]);
-  assert.deepEqual(path.nodes.map((d) => d.id), ["olt", "odc", "odp"]);
+  const far = devices.map((d) =>
+    d.id === "odc" ? { ...d, latitude: 0.001 } : d,
+  );
+  const path = upstreamPath("odp", far, [
+    seg("olt", "odc", 2000),
+    seg("olt", "odp", 900),
+  ]);
+  assert.deepEqual(
+    path.nodes.map((d) => d.id),
+    ["olt", "odc", "odp"],
+  );
   assert.equal(path.links[1].estimated, true); // ODC -> ODP: kabel belum digambar
   assert.ok(Math.abs(path.links[1].lengthM - 111.2) < 1);
 });
 
 test("upstreamPath: perangkat tanpa induk ikut kabel yang masuk", () => {
-  const orphan = devices.map((d) => (d.id === "odp" ? { ...d, parentDeviceId: null } : d));
+  const orphan = devices.map((d) =>
+    d.id === "odp" ? { ...d, parentDeviceId: null } : d,
+  );
   const path = upstreamPath("odp", orphan, segments);
-  assert.deepEqual(path.nodes.map((d) => d.id), ["olt", "odc", "tiang", "odp"]);
+  assert.deepEqual(
+    path.nodes.map((d) => d.id),
+    ["olt", "odc", "tiang", "odp"],
+  );
 });
 
 test("upstreamPath: tanpa kabel ikut induk dan ditandai perkiraan", () => {
   const path = upstreamPath("odp", devices, []);
-  assert.deepEqual(path.nodes.map((d) => d.id), ["olt", "odc", "odp"]);
+  assert.deepEqual(
+    path.nodes.map((d) => d.id),
+    ["olt", "odc", "odp"],
+  );
   assert.ok(path.links.every((l) => l.estimated));
 });
 
 test("lossBudget: OLT -> ODC 1:8 -> ODP 1:8 -> pelanggan", () => {
-  const drop = customerDrop({ id: "pel", odpId: "odp", latitude: 0, longitude: 0 }, devices, segments);
+  const drop = customerDrop(
+    { id: "pel", odpId: "odp", latitude: 0, longitude: 0 },
+    devices,
+    segments,
+  );
   assert.equal(drop.odp.id, "odp");
   const b = lossBudget(upstreamPath("odp", devices, segments), drop);
   // konektor OLT 0.25 + serat 2.6 km x 0.35 (0.91) + 2 x (10.5 + 0.6) + konektor ONU 0.25
@@ -70,9 +107,17 @@ test("lossBudget: OLT -> ODC 1:8 -> ODP 1:8 -> pelanggan", () => {
 });
 
 test("lossBudget: rasio kosong dan jalur tanpa OLT ditandai belum lengkap", () => {
-  const noRatio = devices.map((d) => (d.id === "odc" ? { ...d, splitterRatio: null } : d));
-  assert.equal(lossBudget(upstreamPath("odp", noRatio, segments)).complete, false);
-  assert.equal(lossBudget(upstreamPath("odp", devices.slice(1), [])).complete, false);
+  const noRatio = devices.map((d) =>
+    d.id === "odc" ? { ...d, splitterRatio: null } : d,
+  );
+  assert.equal(
+    lossBudget(upstreamPath("odp", noRatio, segments)).complete,
+    false,
+  );
+  assert.equal(
+    lossBudget(upstreamPath("odp", devices.slice(1), [])).complete,
+    false,
+  );
 });
 
 test("splitterLossDb: rasio tak lazim dibulatkan ke atas", () => {
@@ -81,7 +126,8 @@ test("splitterLossDb: rasio tak lazim dibulatkan ke atas", () => {
 });
 
 test("couplerLossDb: titik datasheet persis, rasio di antaranya naik/turun teratur", async () => {
-  const { couplerLossDb, TAP_RATIOS } = await import("../src/services/map/loss-budget.ts");
+  const { couplerLossDb, TAP_RATIOS } =
+    await import("../src/services/map/loss-budget.ts");
   assert.deepEqual(couplerLossDb(1), { tap: 21.5, pass: 0.2 });
   assert.deepEqual(couplerLossDb(10), { tap: 11, pass: 0.65 });
   assert.deepEqual(couplerLossDb(20), { tap: 7.6, pass: 1.2 });
@@ -97,7 +143,11 @@ test("couplerLossDb: titik datasheet persis, rasio di antaranya naik/turun terat
 test("lossBudget: ODP berantai dengan splitter rasio 10:90", () => {
   const chain = [
     dev("olt", "server"),
-    dev("odp1", "odp", { splitterRatio: 8, splitterTap: 10, parentDeviceId: "olt" }),
+    dev("odp1", "odp", {
+      splitterRatio: 8,
+      splitterTap: 10,
+      parentDeviceId: "olt",
+    }),
     dev("odp2", "odp", { splitterRatio: 8, parentDeviceId: "odp1" }),
   ];
   const segs = [seg("olt", "odp1", 1000), seg("odp1", "odp2", 1000)];
@@ -113,18 +163,35 @@ test("lossBudget: ODP berantai dengan splitter rasio 10:90", () => {
 test("lossBudget: ODP di port ODC keluar lewat PLC ODC walau ODC punya splitter rasio", () => {
   const tree = [
     dev("olt", "server"),
-    dev("odc", "odc", { splitterRatio: 4, splitterTap: 20, parentDeviceId: "olt" }),
+    dev("odc", "odc", {
+      splitterRatio: 4,
+      splitterTap: 20,
+      parentDeviceId: "olt",
+    }),
     dev("odp", "odp", { splitterRatio: 8, parentDeviceId: "odc", odcPort: 1 }),
   ];
-  const b = lossBudget(upstreamPath("odp", tree, [seg("olt", "odc", 1000), seg("odc", "odp", 500)]));
+  const b = lossBudget(
+    upstreamPath("odp", tree, [
+      seg("olt", "odc", 1000),
+      seg("odc", "odp", 500),
+    ]),
+  );
   assert.equal(b.steps.find((s) => s.label.startsWith("odc")).lossDb, 15.5); // 7.6 + 7.3 + 0.6
 });
 
 test("capacityUse: ODP hitung pelanggan, ODC hitung ODP di bawahnya", async () => {
   const { capacityUse } = await import("../src/services/map/loss-budget.ts");
   const odc = dev("odc", "odc", { splitterRatio: 2 });
-  const odp = dev("odp", "odp", { splitterRatio: 8, connectedCustomersCount: 8, parentDeviceId: "odc" });
-  const all = [odc, odp, dev("odp2", "odp", { parentDeviceId: "odc", capacity: 4 })];
+  const odp = dev("odp", "odp", {
+    splitterRatio: 8,
+    connectedCustomersCount: 8,
+    parentDeviceId: "odc",
+  });
+  const all = [
+    odc,
+    odp,
+    dev("odp2", "odp", { parentDeviceId: "odc", capacity: 4 }),
+  ];
   assert.deepEqual(capacityUse(odp, all), { used: 8, total: 8 });
   assert.deepEqual(capacityUse(odc, all), { used: 2, total: 2 });
   assert.equal(capacityUse(dev("x", "odp"), all), null); // port belum diketahui

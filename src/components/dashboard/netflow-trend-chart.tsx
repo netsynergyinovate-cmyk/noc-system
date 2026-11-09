@@ -113,13 +113,19 @@ export function NetflowTrendChart({
     const ticks = width < 480 ? 3 : 6;
     for (let t = 0; n > 0 && t < ticks; t++) {
       const i = Math.round((t / (ticks - 1)) * (n - 1));
-      ctx.fillText(formatTick(series.times[i], range), x(i), HEIGHT - PAD.bottom + 8);
+      ctx.fillText(
+        formatTick(series.times[i], range),
+        x(i),
+        HEIGHT - PAD.bottom + 8,
+      );
     }
 
     if (n > 0) {
       // Area + kurva.
       ctx.beginPath();
-      series.bps.forEach((v, i) => (i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v))));
+      series.bps.forEach((v, i) =>
+        i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(i), y(v)),
+      );
       ctx.strokeStyle = line;
       ctx.lineWidth = 2;
       ctx.lineJoin = "round";
@@ -158,7 +164,9 @@ export function NetflowTrendChart({
   }
 
   const hx =
-    hover === null ? 0 : PAD.left + (n <= 1 ? plotW / 2 : (hover / (n - 1)) * plotW);
+    hover === null
+      ? 0
+      : PAD.left + (n <= 1 ? plotW / 2 : (hover / (n - 1)) * plotW);
 
   return (
     <div
@@ -190,7 +198,10 @@ export function NetflowTrendChart({
           className="pointer-events-none absolute top-2 z-10 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow"
           style={{
             left: hx,
-            transform: hx > width / 2 ? "translateX(calc(-100% - 8px))" : "translateX(8px)",
+            transform:
+              hx > width / 2
+                ? "translateX(calc(-100% - 8px))"
+                : "translateX(8px)",
           }}
         >
           <div className="text-muted-foreground">

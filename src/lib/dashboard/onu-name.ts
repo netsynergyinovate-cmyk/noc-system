@@ -9,10 +9,15 @@ const GENERIC = [
   /^-+$/,
 ];
 
-export function displayNameFromOnu(raw: string | null | undefined): string | null {
+export function displayNameFromOnu(
+  raw: string | null | undefined,
+): string | null {
   let name = (raw ?? "").trim();
   if (!name) return null;
-  name = name.replace(/^\d{3,6}\s*-\s*/, "").replace(/\s+/g, " ").trim();
+  name = name
+    .replace(/^\d{3,6}\s*-\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (name.length < 2 || name.length > 100) return null;
   if (GENERIC.some((re) => re.test(name))) return null;
   // Harus memuat huruf: kode saja atau nomor bukan nama.

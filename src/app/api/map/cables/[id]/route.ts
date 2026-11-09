@@ -13,8 +13,15 @@ export async function PATCH(
       const { id } = await params;
       const body = await request.json().catch(() => null);
       const color = body?.color;
-      if (!color || typeof color !== "string" || !/^#[0-9a-fA-F]{3,8}$/.test(color)) {
-        return NextResponse.json({ ok: false, error: "Format warna tidak valid." }, { status: 400 });
+      if (
+        !color ||
+        typeof color !== "string" ||
+        !/^#[0-9a-fA-F]{3,8}$/.test(color)
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "Format warna tidak valid." },
+          { status: 400 },
+        );
       }
       const result = await updateCableColor(id, color);
       return NextResponse.json({ ok: true, data: result });

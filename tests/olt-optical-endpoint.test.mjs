@@ -13,7 +13,8 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { getOltOpticalData } = await import("../src/services/devices.service.ts");
+const { getOltOpticalData } =
+  await import("../src/services/devices.service.ts");
 const { opticalFilterSchema } = await import("../src/validators/devices.ts");
 
 const CATEGORIES = ["normal", "warning", "critical"];
@@ -26,25 +27,37 @@ test("struktur lengkap & invarian jumlah kategori", async () => {
   assert.ok(r.items.length > 0);
   const s = r.summary;
   assert.equal(s.totalOnus, r.items.length);
-  assert.equal(s.onlineOnus, r.items.filter((o) => o.status === "online").length);
+  assert.equal(
+    s.onlineOnus,
+    r.items.filter((o) => o.status === "online").length,
+  );
   assert.equal(s.normalCount + s.warningCount + s.criticalCount, s.totalOnus);
   for (const o of r.items) {
     assert.ok(CATEGORIES.includes(o.category));
     assert.equal(typeof o.isWeak, "boolean");
     if (o.txPowerDbm !== null && o.rxPowerDbm !== null)
-      assert.equal(o.lossDb, Math.round((o.txPowerDbm - o.rxPowerDbm) * 100) / 100);
+      assert.equal(
+        o.lossDb,
+        Math.round((o.txPowerDbm - o.rxPowerDbm) * 100) / 100,
+      );
     else assert.equal(o.lossDb, null);
-    if (o.status !== "online" || o.rxPowerDbm === null) assert.equal(o.category, "critical");
+    if (o.status !== "online" || o.rxPowerDbm === null)
+      assert.equal(o.category, "critical");
     else if (o.rxPowerDbm < -30) assert.equal(o.category, "critical");
-    else if (o.rxPowerDbm < -27 || o.rxPowerDbm > -8) assert.equal(o.category, "warning");
+    else if (o.rxPowerDbm < -27 || o.rxPowerDbm > -8)
+      assert.equal(o.category, "warning");
     else assert.equal(o.category, "normal");
     assert.equal(o.isWeak, o.rxPowerDbm !== null && o.rxPowerDbm < -27);
   }
-  const rxs = r.items.filter((o) => o.status === "online" && o.rxPowerDbm !== null).map((o) => o.rxPowerDbm);
+  const rxs = r.items
+    .filter((o) => o.status === "online" && o.rxPowerDbm !== null)
+    .map((o) => o.rxPowerDbm);
   if (rxs.length) {
     assert.equal(s.minRxDbm, Math.min(...rxs));
     assert.equal(s.maxRxDbm, Math.max(...rxs));
-    assert.ok(s.avgRxDbm >= s.minRxDbm - 0.05 && s.avgRxDbm <= s.maxRxDbm + 0.05);
+    assert.ok(
+      s.avgRxDbm >= s.minRxDbm - 0.05 && s.avgRxDbm <= s.maxRxDbm + 0.05,
+    );
   } else assert.equal(s.avgRxDbm, null);
 });
 
@@ -64,7 +77,13 @@ test("skema: ponIndex 1..128, kunci asing ditolak", () => {
   assert.equal(opticalFilterSchema.parse({ ponIndex: "5" }).ponIndex, 5);
   assert.equal(opticalFilterSchema.parse({}).ponIndex, undefined);
   assert.equal(opticalFilterSchema.safeParse({ ponIndex: "0" }).success, false);
-  assert.equal(opticalFilterSchema.safeParse({ ponIndex: "129" }).success, false);
-  assert.equal(opticalFilterSchema.safeParse({ ponIndex: "128" }).success, true);
+  assert.equal(
+    opticalFilterSchema.safeParse({ ponIndex: "129" }).success,
+    false,
+  );
+  assert.equal(
+    opticalFilterSchema.safeParse({ ponIndex: "128" }).success,
+    true,
+  );
   assert.equal(opticalFilterSchema.safeParse({ foo: "1" }).success, false);
 });

@@ -1,7 +1,10 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { routers as routersTable, customers as customersTable } from "@/db/schema";
+import {
+  routers as routersTable,
+  customers as customersTable,
+} from "@/db/schema";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
@@ -103,7 +106,10 @@ export async function getRouterPppoeSessions(
   return filterSessions(sessions, query);
 }
 
-function filterSessions(list: RouterPppoeSession[], q: string): RouterPppoeSession[] {
+function filterSessions(
+  list: RouterPppoeSession[],
+  q: string,
+): RouterPppoeSession[] {
   if (!q.trim()) return list;
   const lower = q.toLowerCase().trim();
   return list.filter(

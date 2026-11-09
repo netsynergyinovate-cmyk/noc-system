@@ -5,7 +5,9 @@
 // lebih dari satu kandidat berarti tidak ditemukan.
 
 /** Hanya model yang sudah terukur aman (14/14 CDTC dan 22/22 HWTC H113 cocok dengan pencarian nama PPPoE). HSGQ pernah salah. */
-export function callerIdLookupAllowed(model: string | null | undefined): boolean {
+export function callerIdLookupAllowed(
+  model: string | null | undefined,
+): boolean {
   const m = (model ?? "").trim().toUpperCase();
   return m.startsWith("CDTC") || m.startsWith("HWTC H113");
 }
@@ -28,7 +30,12 @@ export function sessionNameForOnu(
     const got = macValue(s.callerId);
     if (got === null || !s.name || !s.address) continue; // Go: sesi tanpa alamat dilewati
     const delta = got - want;
-    if (Math.floor(got / 256) === Math.floor(want / 256) && delta >= 1 && delta <= MAC_MAX_DELTA) found.add(s.name);
+    if (
+      Math.floor(got / 256) === Math.floor(want / 256) &&
+      delta >= 1 &&
+      delta <= MAC_MAX_DELTA
+    )
+      found.add(s.name);
   }
   return found.size === 1 ? [...found][0] : null;
 }

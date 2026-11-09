@@ -45,7 +45,9 @@ export function routeChainDeviceIds(
 // shortcut: PON jalur hanya tersimpan di kode (…-PON<n> atau …-PON<n>-<urut>); tambah kolom bila perlu disaring per PON
 /** Nama ikut jenis baru: awalan "ODP"/"ODC" ditukar (ODP 1 Mekar Jaya -> ODC 1 Mekar Jaya); nama lain tetap */
 export function renameForType(name: string, type: "odp" | "odc"): string {
-  return name.replace(/^od[pc](?![a-z])/i, (m) => (m === m.toLowerCase() ? type : type.toUpperCase()));
+  return name.replace(/^od[pc](?![a-z])/i, (m) =>
+    m === m.toLowerCase() ? type : type.toUpperCase(),
+  );
 }
 
 export function routePon(code: string): number | null {

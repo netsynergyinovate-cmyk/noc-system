@@ -13,12 +13,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const compareRoute = await import(
-  "../src/app/api/anomalies/diagnostics/compare/route.ts"
-);
-const attachRoute = await import(
-  "../src/app/api/anomalies/diagnostics/[runId]/attach/route.ts"
-);
+const compareRoute =
+  await import("../src/app/api/anomalies/diagnostics/compare/route.ts");
+const attachRoute =
+  await import("../src/app/api/anomalies/diagnostics/[runId]/attach/route.ts");
 
 test("Fase 9 routes: export handler dan runtime nodejs", () => {
   assert.equal(typeof compareRoute.GET, "function");

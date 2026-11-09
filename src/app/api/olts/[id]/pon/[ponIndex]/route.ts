@@ -11,7 +11,8 @@ export function GET(request: Request, context: Context) {
     const id = oltIdSchema.parse(params.id);
     const ponIndex = ponIndexSchema.parse(params.ponIndex);
     const result = await getOltPonPort(id, ponIndex);
-    if (!result) throw new ApiError(404, "NOT_FOUND", "Port PON tidak ditemukan.");
+    if (!result)
+      throw new ApiError(404, "NOT_FOUND", "Port PON tidak ditemukan.");
     return Response.json({ data: result });
   });
 }

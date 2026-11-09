@@ -13,7 +13,8 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { getRouterPppoeSessions } = await import("../src/services/router-pppoe.service.ts");
+const { getRouterPppoeSessions } =
+  await import("../src/services/router-pppoe.service.ts");
 
 test("PPPoE Service: mode demo mengembalikan sesi tiruan berstruktur valid", async () => {
   const sessions = await getRouterPppoeSessions("router-1");
@@ -36,7 +37,9 @@ test("PPPoE Service: pencarian menyaring username dan IP", async () => {
   const byIp = await getRouterPppoeSessions("router-1", first.address);
   assert.ok(byIp.some((s) => s.id === first.id));
 
-  const none = await getRouterPppoeSessions("router-1", "non-existent-user-xyz");
+  const none = await getRouterPppoeSessions(
+    "router-1",
+    "non-existent-user-xyz",
+  );
   assert.equal(none.length, 0);
 });
-

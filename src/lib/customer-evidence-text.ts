@@ -24,13 +24,21 @@ export function getWindowTimeSpan(id: PeakWindowId | string): string {
   return "";
 }
 
-export function getWindowLabelWithSpan(stat: { id: PeakWindowId | string; label: string }): string {
+export function getWindowLabelWithSpan(stat: {
+  id: PeakWindowId | string;
+  label: string;
+}): string {
   const span = getWindowTimeSpan(stat.id);
   return span ? `${stat.label} (${span})` : stat.label;
 }
 
 export function formatWibDateTime(epochSec: number | null | undefined): string {
-  if (epochSec === null || epochSec === undefined || Number.isNaN(epochSec) || epochSec <= 0) {
+  if (
+    epochSec === null ||
+    epochSec === undefined ||
+    Number.isNaN(epochSec) ||
+    epochSec <= 0
+  ) {
     return "–";
   }
   const d = new Date(epochSec * 1000);
@@ -65,10 +73,15 @@ export function formatEvidenceSummary(
 
   lines.push(`=== BUKTI KELUHAN PELANGGAN (${rangeLabel.toUpperCase()}) ===`);
   if (meta?.name || meta?.pppoeUsername) {
-    const parts = [meta.name, meta.pppoeUsername ? `(${meta.pppoeUsername})` : null].filter(Boolean);
+    const parts = [
+      meta.name,
+      meta.pppoeUsername ? `(${meta.pppoeUsername})` : null,
+    ].filter(Boolean);
     lines.push(`Pelanggan: ${parts.join(" ")}`);
   }
-  lines.push(`Periode bukti: ${formatWibDateTime(evidence.from)} s.d. ${formatWibDateTime(evidence.to)}`);
+  lines.push(
+    `Periode bukti: ${formatWibDateTime(evidence.from)} s.d. ${formatWibDateTime(evidence.to)}`,
+  );
 
   // Status & ringkasan
   const stateLabel =
@@ -86,7 +99,13 @@ export function formatEvidenceSummary(
     tidakTerbukti: 0,
     kedipan: 0,
     realDownSeconds: 0,
-    realByWindow: { siang: 0, "pulang-sekolah": 0, "pulang-kerja": 0, "magrib-malam": 0, luar: 0 },
+    realByWindow: {
+      siang: 0,
+      "pulang-sekolah": 0,
+      "pulang-kerja": 0,
+      "magrib-malam": 0,
+      luar: 0,
+    },
     realMassal: 0,
     lastRealAt: null,
   };
@@ -95,15 +114,23 @@ export function formatEvidenceSummary(
   lines.push("");
   lines.push("Ringkasan Gangguan:");
   lines.push(`- Gangguan nyata: ${summary.real} kali`);
-  lines.push(`- Total durasi down nyata: ${formatDurationCompact(summary.realDownSeconds)}`);
-  lines.push(`- Status verifikasi lain: ${summary.belumTerverifikasi} belum terverifikasi, ${summary.tidakTerbukti} tidak terbukti, ${summary.kedipan} kedipan`);
+  lines.push(
+    `- Total durasi down nyata: ${formatDurationCompact(summary.realDownSeconds)}`,
+  );
+  lines.push(
+    `- Status verifikasi lain: ${summary.belumTerverifikasi} belum terverifikasi, ${summary.tidakTerbukti} tidak terbukti, ${summary.kedipan} kedipan`,
+  );
   lines.push(`- Kejadian putus tercatat: ${connSummary.outageCount} kali`);
-  lines.push(`- Uptime: ${connSummary.uptimePct !== null ? `${connSummary.uptimePct.toFixed(1)}%` : "–"}`);
+  lines.push(
+    `- Uptime: ${connSummary.uptimePct !== null ? `${connSummary.uptimePct.toFixed(1)}%` : "–"}`,
+  );
 
   // Daftar gangguan nyata
   lines.push("");
   lines.push("Daftar Gangguan Nyata:");
-  const realIncidents = (evidence.incidents ?? []).filter((inc) => inc.verdict === "terbukti");
+  const realIncidents = (evidence.incidents ?? []).filter(
+    (inc) => inc.verdict === "terbukti",
+  );
   if (realIncidents.length === 0) {
     lines.push("- Tidak ada gangguan nyata tercatat pada rentang ini.");
   } else {
@@ -115,18 +142,30 @@ export function formatEvidenceSummary(
         const pw = peakWindows.find((p) => p.id === wId);
         return pw ? pw.label : wId === OFF_PEAK_ID ? OFF_PEAK_LABEL : wId;
       });
-      const winStr = winLabels.length > 0 ? ` [Jam sibuk: ${winLabels.join(", ")}]` : "";
+      const winStr =
+        winLabels.length > 0 ? ` [Jam sibuk: ${winLabels.join(", ")}]` : "";
       const scopeStr =
         inc.scope.kind === "massal"
           ? ` [Cakupan: Massal (${inc.scope.otherDown} pelanggan lain)]`
           : inc.scope.kind === "sendiri"
             ? " [Cakupan: Sendiri]"
             : " [Cakupan: Tidak diketahui]";
-      const beforeStr = inc.beforeAvgDownMbps !== null ? `${inc.beforeAvgDownMbps.toFixed(1)} Mbps` : "–";
-      const afterStr = inc.afterAvgDownMbps !== null ? `${inc.afterAvgDownMbps.toFixed(1)} Mbps` : "–";
+      const beforeStr =
+        inc.beforeAvgDownMbps !== null
+          ? `${inc.beforeAvgDownMbps.toFixed(1)} Mbps`
+          : "–";
+      const afterStr =
+        inc.afterAvgDownMbps !== null
+          ? `${inc.afterAvgDownMbps.toFixed(1)} Mbps`
+          : "–";
       const trafStr = ` [Trafik: ${beforeStr} -> ${afterStr}]`;
-      const alertTag = inc.sources.includes("alert") && !inc.sources.includes("live") ? " (dari alert)" : "";
-      lines.push(`- Mulai: ${fromStr} | Selesai: ${toStr} (${dur})${winStr}${scopeStr}${trafStr}${alertTag}`);
+      const alertTag =
+        inc.sources.includes("alert") && !inc.sources.includes("live")
+          ? " (dari alert)"
+          : "";
+      lines.push(
+        `- Mulai: ${fromStr} | Selesai: ${toStr} (${dur})${winStr}${scopeStr}${trafStr}${alertTag}`,
+      );
     }
   }
   // Analisis jam sibuk
@@ -141,10 +180,14 @@ export function formatEvidenceSummary(
   for (const win of sortedWindows) {
     const timeSpan = getWindowTimeSpan(win.id);
     const spanText = timeSpan ? ` (${timeSpan})` : "";
-    const avgDown = win.avgDownMbps !== null ? `${win.avgDownMbps.toFixed(1)} Mbps` : "–";
-    const avgUp = win.avgUpMbps !== null ? `${win.avgUpMbps.toFixed(1)} Mbps` : "–";
-    const p95Down = win.p95DownMbps !== null ? `${win.p95DownMbps.toFixed(1)} Mbps` : "–";
-    const maxDown = win.maxDownMbps !== null ? `${win.maxDownMbps.toFixed(1)} Mbps` : "–";
+    const avgDown =
+      win.avgDownMbps !== null ? `${win.avgDownMbps.toFixed(1)} Mbps` : "–";
+    const avgUp =
+      win.avgUpMbps !== null ? `${win.avgUpMbps.toFixed(1)} Mbps` : "–";
+    const p95Down =
+      win.p95DownMbps !== null ? `${win.p95DownMbps.toFixed(1)} Mbps` : "–";
+    const maxDown =
+      win.maxDownMbps !== null ? `${win.maxDownMbps.toFixed(1)} Mbps` : "–";
     const downTime = formatDurationCompact(win.downSeconds);
     lines.push(
       `- ${win.label}${spanText}: Rata-rata ${avgDown} unduh / ${avgUp} unggah | P95 unduh: ${p95Down} | Puncak unduh: ${maxDown} | Down: ${downTime} | Mulai gangguan: ${win.outageStarts}x`,

@@ -30,8 +30,20 @@ export const defaultWhatsappConfig: WhatsappConfig = Object.freeze({
   gatewayUrl: "https://api.fonnte.com/send",
   apiKey: "",
   recipients: Object.freeze([
-    Object.freeze({ id: "rcp-1", name: "Piket NOC Utama", phone: "6281234567890", type: "personal", active: true }),
-    Object.freeze({ id: "rcp-2", name: "Grup Eskalasi Insiden", phone: "6289876543210", type: "group", active: true }),
+    Object.freeze({
+      id: "rcp-1",
+      name: "Piket NOC Utama",
+      phone: "6281234567890",
+      type: "personal",
+      active: true,
+    }),
+    Object.freeze({
+      id: "rcp-2",
+      name: "Grup Eskalasi Insiden",
+      phone: "6289876543210",
+      type: "group",
+      active: true,
+    }),
   ]) as unknown as WhatsappRecipient[],
   minSeverity: "critical",
   template:
@@ -71,7 +83,10 @@ export function normalizePhone(phone: string): string {
 const GROUP_ID = /^\d{10,25}(-\d{5,})?(@g\.us)?$/;
 
 // Bentuk baku, atau "" bila tidak valid untuk tipenya.
-export function normalizeRecipientPhone(phone: string, type: WhatsappRecipient["type"]): string {
+export function normalizeRecipientPhone(
+  phone: string,
+  type: WhatsappRecipient["type"],
+): string {
   if (type === "personal") return normalizePhone(phone);
   const g = String(phone ?? "").trim();
   return GROUP_ID.test(g) ? g : "";
@@ -96,23 +111,38 @@ export function addRecipient(
           ? "ID grup tidak valid. Contoh: 120363012345678901@g.us"
           : "Nomor tidak valid. Contoh: 081234567890 atau +6281234567890.",
     };
-  if (list.some((r) => r.phone === phone)) return { ok: false, error: "Nomor sudah ada di daftar." };
+  if (list.some((r) => r.phone === phone))
+    return { ok: false, error: "Nomor sudah ada di daftar." };
   const used = new Set(list.map((r) => r.id));
   let n = list.length + 1;
   while (used.has(`rcp-${n}`)) n++;
-  const recipient: WhatsappRecipient = { id: `rcp-${n}`, name, phone, type: input.type, active: true };
+  const recipient: WhatsappRecipient = {
+    id: `rcp-${n}`,
+    name,
+    phone,
+    type: input.type,
+    active: true,
+  };
   return { ok: true, list: [...list, recipient], recipient };
 }
 
-export function toggleRecipient(list: readonly WhatsappRecipient[], id: string): WhatsappRecipient[] {
+export function toggleRecipient(
+  list: readonly WhatsappRecipient[],
+  id: string,
+): WhatsappRecipient[] {
   return list.map((r) => (r.id === id ? { ...r, active: !r.active } : r));
 }
 
-export function removeRecipient(list: readonly WhatsappRecipient[], id: string): WhatsappRecipient[] {
+export function removeRecipient(
+  list: readonly WhatsappRecipient[],
+  id: string,
+): WhatsappRecipient[] {
   return list.filter((r) => r.id !== id);
 }
 
-export function getActiveRecipientPhones(list: readonly WhatsappRecipient[]): string[] {
+export function getActiveRecipientPhones(
+  list: readonly WhatsappRecipient[],
+): string[] {
   return list.filter((r) => r.active).map((r) => r.phone);
 }
 
@@ -141,11 +171,16 @@ export function validateWhatsappConfig(cfg: Partial<WhatsappConfig>): {
   if (cfg.enabled && !recipients.some((r) => r.active))
     errors.recipients = "Aktifkan minimal satu penerima.";
   else if (
-    recipients.some((r) => !r.name.trim() || normalizeRecipientPhone(r.phone, r.type) !== r.phone)
+    recipients.some(
+      (r) =>
+        !r.name.trim() || normalizeRecipientPhone(r.phone, r.type) !== r.phone,
+    )
   )
-    errors.recipients = "Setiap penerima harus punya nama dan nomor/ID grup yang valid.";
+    errors.recipients =
+      "Setiap penerima harus punya nama dan nomor/ID grup yang valid.";
 
-  if (!(cfg.template ?? "").trim()) errors.template = "Template pesan wajib diisi.";
+  if (!(cfg.template ?? "").trim())
+    errors.template = "Template pesan wajib diisi.";
 
   return { valid: Object.keys(errors).length === 0, errors };
 }
@@ -173,7 +208,10 @@ export type SendMockResult =
 
 // Simulasi pengiriman: tidak ada permintaan jaringan. Mencatat satu log per nomor aktif.
 export async function sendMockWhatsappAlert(
-  config: Pick<WhatsappConfig, "gatewayUrl" | "apiKey" | "recipients" | "template">,
+  config: Pick<
+    WhatsappConfig,
+    "gatewayUrl" | "apiKey" | "recipients" | "template"
+  >,
   alert: MockWhatsappAlert,
   options: SendMockOptions = {},
 ): Promise<SendMockResult> {
@@ -188,9 +226,11 @@ export async function sendMockWhatsappAlert(
     urlOk = false;
   }
   if (!urlOk) return { ok: false, error: "Gateway URL tidak valid." };
-  if (!(config.apiKey ?? "").trim()) return { ok: false, error: "API token wajib diisi." };
+  if (!(config.apiKey ?? "").trim())
+    return { ok: false, error: "API token wajib diisi." };
   const targets = config.recipients.filter((r) => r.active);
-  if (targets.length === 0) return { ok: false, error: "Tidak ada nomor penerima aktif." };
+  if (targets.length === 0)
+    return { ok: false, error: "Tidak ada nomor penerima aktif." };
 
   const started = Date.now();
   await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
@@ -209,7 +249,12 @@ export async function sendMockWhatsappAlert(
       latencyMs,
     });
   }
-  return { ok: true, sentCount: targets.length, phones: targets.map((r) => r.phone), latencyMs };
+  return {
+    ok: true,
+    sentCount: targets.length,
+    phones: targets.map((r) => r.phone),
+    latencyMs,
+  };
 }
 
 export type AlertSeverity = "critical" | "warning" | "info";

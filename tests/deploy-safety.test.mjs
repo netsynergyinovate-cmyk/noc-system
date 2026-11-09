@@ -10,9 +10,8 @@ const {
   DEPLOY_SAFETY_MOCK_ENTRY,
 } = await import("../src/lib/dashboard/deploy-safety.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 test("DEPLOY_SAFETY_MOCK_ENTRY terdaftar di SETUP_DATA_SOURCE_REGISTRY", () => {
   const found = SETUP_DATA_SOURCE_REGISTRY.find(

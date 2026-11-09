@@ -280,7 +280,13 @@ test("NOC core tables enforce keys, checks, and delete rules", async () => {
     );
     await db.query('DELETE FROM "user" WHERE id = $1', ["noc-user"]);
     assert.equal(await count("cpe_tasks", "created_by IS NULL"), 1);
-    assert.equal(await count("audit_log", "user_id IS NULL AND action = 'router.create' AND target = 'routers/1'"), 1);
+    assert.equal(
+      await count(
+        "audit_log",
+        "user_id IS NULL AND action = 'router.create' AND target = 'routers/1'",
+      ),
+      1,
+    );
 
     // Hapus pelanggan: data turunan ikut hilang, ONU dan log tetap tanpa pelanggan.
     await db.query("DELETE FROM customers WHERE id = $1", [customer.id]);

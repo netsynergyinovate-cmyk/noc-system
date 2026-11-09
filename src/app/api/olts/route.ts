@@ -19,16 +19,20 @@ export function POST(request: Request) {
     action: "olt-added",
     getTarget: (_req, res) => res.headers.get("Location") ?? "/api/olts",
   });
-  return withApiPermission(request, { router: ["manage"] }, audit(request, async () => {
-    const input = createOltSchema.parse(await readJson(request));
-    // `?skipTest=1` melewati tes login (setup offline).
-    if (new URL(request.url).searchParams.get("skipTest") !== "1") {
-      await testOltConnection(input);
-    }
-    const olt = await createOlt(input);
-    return Response.json(
-      { data: olt },
-      { status: 201, headers: { Location: `/api/olts/${olt.id}` } },
-    );
-  }));
+  return withApiPermission(
+    request,
+    { router: ["manage"] },
+    audit(request, async () => {
+      const input = createOltSchema.parse(await readJson(request));
+      // `?skipTest=1` melewati tes login (setup offline).
+      if (new URL(request.url).searchParams.get("skipTest") !== "1") {
+        await testOltConnection(input);
+      }
+      const olt = await createOlt(input);
+      return Response.json(
+        { data: olt },
+        { status: 201, headers: { Location: `/api/olts/${olt.id}` } },
+      );
+    }),
+  );
 }

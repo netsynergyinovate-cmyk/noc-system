@@ -23,7 +23,8 @@ test("mockWhatsappLogs deterministik, 24 entri dalam 7 hari", () => {
       assert.ok(l.latencyMs >= 200 && l.latencyMs <= 850);
     }
   }
-  for (const s of ["delivered", "sent", "failed"]) assert.ok(a.some((l) => l.status === s));
+  for (const s of ["delivered", "sent", "failed"])
+    assert.ok(a.some((l) => l.status === s));
 });
 
 test("filterWhatsappLogs", () => {
@@ -34,17 +35,43 @@ test("filterWhatsappLogs", () => {
   const crit = filterWhatsappLogs(logs, { ...all, severity: "critical" });
   assert.ok(crit.length > 0 && crit.every((l) => l.severity === "critical"));
   const byName = filterWhatsappLogs(logs, { ...all, query: "  dewi " });
-  assert.ok(byName.length > 0 && byName.every((l) => l.recipientName === "Dewi Lestari"));
-  assert.equal(filterWhatsappLogs(logs, { ...all, query: "6281234567890" })[0].recipientName, "Budi Santoso");
-  assert.ok(filterWhatsappLogs(logs, { ...all, query: "router offline" }).length > 0);
-  assert.equal(filterWhatsappLogs(logs, { ...all, query: "tidak-ada-ini" }).length, 0);
-  assert.equal(filterWhatsappLogs(logs, { status: "failed", severity: "critical", query: "" }).length,
-    logs.filter((l) => l.status === "failed" && l.severity === "critical").length);
+  assert.ok(
+    byName.length > 0 &&
+      byName.every((l) => l.recipientName === "Dewi Lestari"),
+  );
+  assert.equal(
+    filterWhatsappLogs(logs, { ...all, query: "6281234567890" })[0]
+      .recipientName,
+    "Budi Santoso",
+  );
+  assert.ok(
+    filterWhatsappLogs(logs, { ...all, query: "router offline" }).length > 0,
+  );
+  assert.equal(
+    filterWhatsappLogs(logs, { ...all, query: "tidak-ada-ini" }).length,
+    0,
+  );
+  assert.equal(
+    filterWhatsappLogs(logs, {
+      status: "failed",
+      severity: "critical",
+      query: "",
+    }).length,
+    logs.filter((l) => l.status === "failed" && l.severity === "critical")
+      .length,
+  );
 });
 
 test("summarizeWhatsappLogs", () => {
   const empty = summarizeWhatsappLogs([]);
-  assert.deepEqual(empty, { total: 0, delivered: 0, sent: 0, failed: 0, successRate: 0, avgLatencyMs: null });
+  assert.deepEqual(empty, {
+    total: 0,
+    delivered: 0,
+    sent: 0,
+    failed: 0,
+    successRate: 0,
+    avgLatencyMs: null,
+  });
   const logs = mockWhatsappLogs(NOW);
   const s = summarizeWhatsappLogs(logs);
   assert.equal(s.total, 24);

@@ -73,7 +73,11 @@ export function SegmentDrawingBar({
 }: SegmentDrawingBarProps) {
   const [newCapacity, setNewCapacity] = useState("");
   // Mode titik: tiap klik peta = satu perangkat baru, dinamai berurutan pada jalur ini
-  const newType = editingSegment ? null : target.startsWith("new:") ? target.slice(4) : null;
+  const newType = editingSegment
+    ? null
+    : target.startsWith("new:")
+      ? target.slice(4)
+      : null;
   const pon = routePon(route.code);
   const firstIndex = newType
     ? chain.filter((d) => d.type === newType).length + 1
@@ -132,8 +136,10 @@ export function SegmentDrawingBar({
                     {" → "}
                     <span className="font-semibold text-primary">
                       {target.startsWith("customer:")
-                        ? customers.find((c) => `customer:${c.id}` === target)?.name
-                        : devices.find((d) => `device:${d.id}` === target)?.name}
+                        ? customers.find((c) => `customer:${c.id}` === target)
+                            ?.name
+                        : devices.find((d) => `device:${d.id}` === target)
+                            ?.name}
                     </span>
                   </>
                 )}
@@ -152,57 +158,57 @@ export function SegmentDrawingBar({
           <summary className="cursor-pointer text-[10px] text-muted-foreground">
             Opsi: ganti asal, tarik ke pelanggan/perangkat yang ada, ODC/tiang
           </summary>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <label className="space-y-0.5">
-            <span className="text-[10px] text-muted-foreground">
-              Asal (ujung rantai terakhir)
-            </span>
-            <select
-              value={fromDeviceId}
-              onChange={(e) => onFromChange(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-2 py-1.5 outline-none"
-            >
-              {devices.map((d) => (
-                <option key={d.id} value={d.id}>
-                  [{d.type.toUpperCase()}] {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-0.5">
-            <span className="text-[10px] text-muted-foreground">Tujuan</span>
-            <select
-              value={target}
-              onChange={(e) => onTargetChange(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-2 py-1.5 outline-none"
-            >
-              <option value="">-- Pilih tujuan --</option>
-              <optgroup label="Perangkat baru di titik terakhir">
-                {Object.entries(NEW_DEVICE_LABEL).map(([type, label]) => (
-                  <option key={type} value={`new:${type}`}>
-                    + {label} baru
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-muted-foreground">
+                Asal (ujung rantai terakhir)
+              </span>
+              <select
+                value={fromDeviceId}
+                onChange={(e) => onFromChange(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-2 py-1.5 outline-none"
+              >
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    [{d.type.toUpperCase()}] {d.name}
                   </option>
                 ))}
-              </optgroup>
-              <optgroup label="Perangkat (ODC/ODP/Tiang)">
-                {devices
-                  .filter((d) => d.id !== fromDeviceId && d.type !== "server")
-                  .map((d) => (
-                    <option key={d.id} value={`device:${d.id}`}>
-                      [{d.type.toUpperCase()}] {d.name}
+              </select>
+            </label>
+            <label className="space-y-0.5">
+              <span className="text-[10px] text-muted-foreground">Tujuan</span>
+              <select
+                value={target}
+                onChange={(e) => onTargetChange(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-2 py-1.5 outline-none"
+              >
+                <option value="">-- Pilih tujuan --</option>
+                <optgroup label="Perangkat baru di titik terakhir">
+                  {Object.entries(NEW_DEVICE_LABEL).map(([type, label]) => (
+                    <option key={type} value={`new:${type}`}>
+                      + {label} baru
                     </option>
                   ))}
-              </optgroup>
-              <optgroup label="Pelanggan (drop)">
-                {customers.map((c) => (
-                  <option key={c.id} value={`customer:${c.id}`}>
-                    {c.name} ({c.customerNumber})
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </label>
-        </div>
+                </optgroup>
+                <optgroup label="Perangkat (ODC/ODP/Tiang)">
+                  {devices
+                    .filter((d) => d.id !== fromDeviceId && d.type !== "server")
+                    .map((d) => (
+                      <option key={d.id} value={`device:${d.id}`}>
+                        [{d.type.toUpperCase()}] {d.name}
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Pelanggan (drop)">
+                  {customers.map((c) => (
+                    <option key={c.id} value={`customer:${c.id}`}>
+                      {c.name} ({c.customerNumber})
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+          </div>
         </details>
       )}
 

@@ -164,7 +164,8 @@ export class MikrotikRestClient {
     if (options.useSsl ?? impliesTls(url)) {
       // Port 80 pada HTTP tidak tercatat di URL (port bawaan), jadi ambil dari opsi:
       // mengganti skema tanpa ini mengubah "80 + TLS" diam-diam menjadi 443.
-      const port = url.port || (options.port !== undefined ? String(options.port) : "");
+      const port =
+        url.port || (options.port !== undefined ? String(options.port) : "");
       url.protocol = "https:";
       if (port) url.port = port;
     }
@@ -228,7 +229,10 @@ export class MikrotikRestClient {
   }
 
   private async proxyFetch(url: URL, init: RequestInit): Promise<unknown> {
-    const headers = { ...this.proxyHeaders(), ...(init.headers as Record<string, string> | undefined) };
+    const headers = {
+      ...this.proxyHeaders(),
+      ...(init.headers as Record<string, string> | undefined),
+    };
     let res: Response;
     try {
       res = await fetch(url, {
@@ -241,12 +245,17 @@ export class MikrotikRestClient {
       throw new MikrotikError(mapMikrotikError(e, this.ctx), e);
     }
     if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+      const json = (await res.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+      } | null;
       throw new MikrotikError(
         mapMikrotikError(
           new DeviceConnectionError(
             "CONNECTION_FAILED",
-            json?.message ?? json?.error ?? `Backend Go menjawab HTTP ${res.status} untuk router.`,
+            json?.message ??
+              json?.error ??
+              `Backend Go menjawab HTTP ${res.status} untuk router.`,
           ),
           this.ctx,
         ),
@@ -255,19 +264,32 @@ export class MikrotikRestClient {
     return res.json();
   }
 
-  private async proxyGet(path: string, filter: Record<string, string> = {}): Promise<unknown> {
+  private async proxyGet(
+    path: string,
+    filter: Record<string, string> = {},
+  ): Promise<unknown> {
     const base = this.proxyBase;
-    const url = new URL(`/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/read`, base || "http://127.0.0.1");
+    const url = new URL(
+      `/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/read`,
+      base || "http://127.0.0.1",
+    );
     url.searchParams.set("path", path);
     for (const [k, v] of Object.entries(filter)) url.searchParams.set(k, v);
     return this.proxyFetch(url, { method: "GET" });
   }
 
-  private async proxyMeasure(path: string, body: Record<string, unknown>): Promise<unknown> {
+  private async proxyMeasure(
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<unknown> {
     const base = this.proxyBase;
-    const url = new URL(`/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/measure`, base || "http://127.0.0.1");
+    const url = new URL(
+      `/api/v1/routers/${encodeURIComponent(this.opts.routerId ?? "")}/measure`,
+      base || "http://127.0.0.1",
+    );
     const normalized: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(body)) if (v !== undefined && v !== null) normalized[k] = v;
+    for (const [k, v] of Object.entries(body))
+      if (v !== undefined && v !== null) normalized[k] = v;
     return this.proxyFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -283,10 +305,16 @@ export class MikrotikRestClient {
       host: this.opts.host,
       port: this.opts.port,
     });
-    return r.ok ? null : new DeviceConnectionError(r.code ?? "CONNECTION_FAILED", r.message);
+    return r.ok
+      ? null
+      : new DeviceConnectionError(r.code ?? "CONNECTION_FAILED", r.message);
   }
 
-  private async request(path: string, method = "GET", body?: unknown): Promise<unknown> {
+  private async request(
+    path: string,
+    method = "GET",
+    body?: unknown,
+  ): Promise<unknown> {
     // Satu gateway: bila router sudah tersimpan, semua pembacaan lewat backend Go.
     if (this.opts.routerId) {
       if (method === "GET") return this.proxyGet(path);
@@ -307,7 +335,9 @@ export class MikrotikRestClient {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     try {
-      const auth = Buffer.from(`${this.opts.username}:${this.opts.password}`).toString("base64");
+      const auth = Buffer.from(
+        `${this.opts.username}:${this.opts.password}`,
+      ).toString("base64");
       const headers: Record<string, string> = {
         Authorization: `Basic ${auth}`,
         Accept: "application/json",
@@ -322,7 +352,8 @@ export class MikrotikRestClient {
         signal: ctrl.signal,
         redirect: "manual", // anti-SSRF: jangan ikuti redirect
       });
-      if (res.status >= 300) throw new MikrotikError(mapMikrotikError(res.status, this.ctx));
+      if (res.status >= 300)
+        throw new MikrotikError(mapMikrotikError(res.status, this.ctx));
       return await res.json();
     } catch (e) {
       if (e instanceof MikrotikError) throw e;
@@ -381,8 +412,12 @@ export class MikrotikRestClient {
     if (this.simulated) return 41;
     const data = await this.request("/rest/system/health");
     const rows = Array.isArray(data) ? (data as Raw[]) : [];
-    const fromRows = rows.find((r) => /^(cpu-)?temperature$/.test(str(r["name"])));
-    const raw = fromRows ? fromRows["value"] : (data as Raw | null)?.["temperature"];
+    const fromRows = rows.find((r) =>
+      /^(cpu-)?temperature$/.test(str(r["name"])),
+    );
+    const raw = fromRows
+      ? fromRows["value"]
+      : (data as Raw | null)?.["temperature"];
     const n = Number(raw);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
   }
@@ -458,9 +493,14 @@ export class MikrotikRestClient {
    * dikirim sebagai query field=nilai (RouterOS mencocokkan persis), supaya
    * router tidak mengirim seluruh tabel.
    */
-  async read(path: string, filter: Record<string, string> = {}): Promise<unknown> {
-    if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
-    if (!path.startsWith("/rest/")) throw new Error(`Path REST tidak sah: ${path}`);
+  async read(
+    path: string,
+    filter: Record<string, string> = {},
+  ): Promise<unknown> {
+    if (this.simulated)
+      throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
+    if (!path.startsWith("/rest/"))
+      throw new Error(`Path REST tidak sah: ${path}`);
     if (this.opts.routerId) return this.proxyGet(path, filter);
     const query = new URLSearchParams(filter).toString();
     return this.request(query ? `${path}?${query}` : path);
@@ -477,7 +517,8 @@ export class MikrotikRestClient {
       | "/rest/tool/traceroute",
     body: Record<string, string>,
   ): Promise<unknown> {
-    if (this.simulated) throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
+    if (this.simulated)
+      throw new Error("Mode simulator tidak punya data router untuk diagnosa.");
     if (this.opts.routerId) return this.proxyMeasure(path, body);
     return this.request(path, "POST", body);
   }
@@ -496,7 +537,10 @@ export class MikrotikRestClient {
         avgRtt: "1.35ms",
       }));
     }
-    const data = await this.request("/rest/tool/ping", "POST", { address: target, count });
+    const data = await this.request("/rest/tool/ping", "POST", {
+      address: target,
+      count,
+    });
     if (!Array.isArray(data)) return [];
     return (data as Raw[]).map((d) => ({
       seq: num(d["seq"]),

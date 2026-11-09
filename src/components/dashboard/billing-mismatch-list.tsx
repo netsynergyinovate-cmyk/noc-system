@@ -317,7 +317,11 @@ export function BillingMismatchList({
                                   data-testid="mismatch-resolved-badge"
                                   data-action={resolutions[item.id].action}
                                 >
-                                  {mismatchActionLabels[resolutions[item.id].action]}
+                                  {
+                                    mismatchActionLabels[
+                                      resolutions[item.id].action
+                                    ]
+                                  }
                                   {" oleh "}
                                   {resolutions[item.id].resolvedBy}
                                 </Badge>

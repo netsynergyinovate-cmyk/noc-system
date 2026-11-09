@@ -1,4 +1,9 @@
-﻿import { ApiError, readJson, withApiPermission, withApiSession } from "@/lib/api";
+﻿import {
+  ApiError,
+  readJson,
+  withApiPermission,
+  withApiSession,
+} from "@/lib/api";
 import {
   createRecipient,
   listRecipients,
@@ -18,7 +23,10 @@ export function POST(request: Request) {
   return withApiPermission(request, { threshold: ["manage"] }, async () => {
     const input = createRecipientSchema.parse(await readJson(request));
     try {
-      return Response.json({ data: await createRecipient(input) }, { status: 201 });
+      return Response.json(
+        { data: await createRecipient(input) },
+        { status: 201 },
+      );
     } catch (error) {
       if (error instanceof RecipientError)
         throw new ApiError(error.status, "VALIDATION_ERROR", error.message);

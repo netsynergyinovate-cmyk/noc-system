@@ -7,17 +7,16 @@ const require = createRequire(import.meta.url);
 const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
-process.env.DATABASE_URL ??= "postgresql://postgres:postgres@localhost:5432/noc_dev";
+process.env.DATABASE_URL ??=
+  "postgresql://postgres:postgres@localhost:5432/noc_dev";
 process.env.BETTER_AUTH_SECRET ??= "s".repeat(32);
 process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 process.env.DEVICE_SECRET_KEY ??= "k".repeat(64);
 
 register();
 
-const {
-  shouldRunStartupSeed,
-  runStartupSeed,
-} = await import("../src/services/startup-seed.service.ts");
+const { shouldRunStartupSeed, runStartupSeed } =
+  await import("../src/services/startup-seed.service.ts");
 
 test("shouldRunStartupSeed mendeteksi kondisi build Next.js", () => {
   const res = shouldRunStartupSeed({
@@ -49,7 +48,9 @@ test("shouldRunStartupSeed memvalidasi DATABASE_URL", () => {
   assert.equal(resEmpty.shouldRun, false);
   assert.match(resEmpty.reason, /DATABASE_URL kosong/);
 
-  const resInvalid = shouldRunStartupSeed({ DATABASE_URL: "mysql://localhost/noc" });
+  const resInvalid = shouldRunStartupSeed({
+    DATABASE_URL: "mysql://localhost/noc",
+  });
   assert.equal(resInvalid.shouldRun, false);
   assert.match(resInvalid.reason, /bukan PostgreSQL/);
 

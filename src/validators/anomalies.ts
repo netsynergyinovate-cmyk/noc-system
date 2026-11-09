@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { networkLogTypes, networkLogSeverities } from "@/db/schema/network-logs";
+import {
+  networkLogTypes,
+  networkLogSeverities,
+} from "@/db/schema/network-logs";
 
 export const anomalyStatusSchema = z.enum(["active", "resolved", "all"]);
 export type AnomalyStatusQuery = z.infer<typeof anomalyStatusSchema>;
@@ -66,5 +69,6 @@ export const updateAnomalyStatusSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 
-export type UpdateAnomalyStatusInput = z.infer<typeof updateAnomalyStatusSchema>;
-
+export type UpdateAnomalyStatusInput = z.infer<
+  typeof updateAnomalyStatusSchema
+>;

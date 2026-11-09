@@ -39,7 +39,12 @@ export function POST(
     };
     if (body.duration !== 15 && body.duration !== 30 && body.duration !== 60) {
       return Response.json(
-        { error: { code: "VALIDATION_ERROR", message: "Durasi rekam harus 15, 30, atau 60 detik." } },
+        {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Durasi rekam harus 15, 30, atau 60 detik.",
+          },
+        },
         { status: 400 },
       );
     }
@@ -64,8 +69,14 @@ export function POST(
       });
       return Response.json({ data: result });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Perekaman Torch gagal dijalankan.";
-      return Response.json({ error: { code: "CAPTURE_ERROR", message: msg } }, { status: 409 });
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Perekaman Torch gagal dijalankan.";
+      return Response.json(
+        { error: { code: "CAPTURE_ERROR", message: msg } },
+        { status: 409 },
+      );
     }
   });
 }

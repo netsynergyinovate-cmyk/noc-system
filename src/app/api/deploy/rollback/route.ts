@@ -1,6 +1,12 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
-import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
+import {
+  getDeployTarget,
+  detectConnectionPath,
+} from "@/services/deploy-targets.service";
 import { getDecryptedSshCredential } from "@/services/ssh-credentials.service";
 import { executeManualRollback } from "@/services/deploy-runner.service";
 import { z } from "zod";
@@ -32,7 +38,10 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return Response.json(
-        { error: "Permintaan rollback tidak valid atau belum dikonfirmasi.", details: parsed.error.format() },
+        {
+          error: "Permintaan rollback tidak valid atau belum dikonfirmasi.",
+          details: parsed.error.format(),
+        },
         { status: 400 },
       );
     }

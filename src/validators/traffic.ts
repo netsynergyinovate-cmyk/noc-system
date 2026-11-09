@@ -11,9 +11,12 @@ export const trafficTrendQuerySchema = z.object({
 
 export type TrafficTrendQuery = z.infer<typeof trafficTrendQuerySchema>;
 
-export function parseTrafficTrendQuery(searchParams: URLSearchParams): TrafficTrendQuery {
+export function parseTrafficTrendQuery(
+  searchParams: URLSearchParams,
+): TrafficTrendQuery {
   const rawRange = searchParams.get("range");
-  const rawRouterId = searchParams.get("routerId") || searchParams.get("router_id");
+  const rawRouterId =
+    searchParams.get("routerId") || searchParams.get("router_id");
   const rawNow = searchParams.get("now") || searchParams.get("t");
 
   return trafficTrendQuerySchema.parse({

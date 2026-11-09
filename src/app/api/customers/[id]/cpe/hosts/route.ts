@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   return withApiPermission(request, { cpe: ["manage"] }, async () => {
     const { id } = await params;
@@ -20,8 +20,8 @@ export function GET(
         and(
           eq(cpeTasks.customerId, id),
           eq(cpeTasks.action, "list_hosts"),
-          eq(cpeTasks.status, "success")
-        )
+          eq(cpeTasks.status, "success"),
+        ),
       )
       .orderBy(desc(cpeTasks.createdAt))
       .limit(1);

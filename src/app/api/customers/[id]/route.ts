@@ -50,10 +50,7 @@ export function GET(
     } catch (err) {
       console.error("[GET CUSTOMER BY ID ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }
@@ -67,12 +64,10 @@ export async function PATCH(
       const { id } = await params;
       const body = await request.json().catch(() => null);
 
-      const { updateCustomerLocationSchema } = await import(
-        "@/validators/customer-location"
-      );
-      const { updateCustomerLocation } = await import(
-        "@/services/customer-location.service"
-      );
+      const { updateCustomerLocationSchema } =
+        await import("@/validators/customer-location");
+      const { updateCustomerLocation } =
+        await import("@/services/customer-location.service");
 
       const parsed = updateCustomerLocationSchema.safeParse(body);
       if (!parsed.success) {
@@ -102,11 +97,7 @@ export async function PATCH(
       console.error("[PATCH CUSTOMER BY ID ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
       const status = msg.includes("tidak ditemukan") ? 404 : 500;
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status });
     }
   });
 }
-

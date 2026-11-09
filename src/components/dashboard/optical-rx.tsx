@@ -14,7 +14,11 @@ export function OpticalLoss({
 }) {
   const loss = calculateOpticalLoss(txDbm, rxDbm);
   return (
-    <span className="tabular-nums font-mono text-xs" data-testid="optical-loss" title="Redaman = TX ONU - RX OLT">
+    <span
+      className="tabular-nums font-mono text-xs"
+      data-testid="optical-loss"
+      title="Redaman = TX ONU - RX OLT"
+    >
       {loss == null ? "-" : `${loss} dB`}
     </span>
   );

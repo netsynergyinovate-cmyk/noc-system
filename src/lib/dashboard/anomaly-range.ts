@@ -15,10 +15,34 @@ export interface AnomalyRangeInfo {
 }
 
 export const anomalyRanges: readonly AnomalyRangeInfo[] = [
-  { value: "today", tab: "Hari ini", label: "Hari ini", phrase: "hari ini", short: "Hari ini" },
-  { value: "7d", tab: "7 hari", label: "7 hari terakhir", phrase: "dalam 7 hari terakhir", short: "7 hari" },
-  { value: "30d", tab: "1 bulan", label: "30 hari terakhir", phrase: "dalam 30 hari terakhir", short: "30 hari" },
-  { value: "all", tab: "Semua", label: "Seluruh riwayat", phrase: "di seluruh riwayat", short: "Semua" },
+  {
+    value: "today",
+    tab: "Hari ini",
+    label: "Hari ini",
+    phrase: "hari ini",
+    short: "Hari ini",
+  },
+  {
+    value: "7d",
+    tab: "7 hari",
+    label: "7 hari terakhir",
+    phrase: "dalam 7 hari terakhir",
+    short: "7 hari",
+  },
+  {
+    value: "30d",
+    tab: "1 bulan",
+    label: "30 hari terakhir",
+    phrase: "dalam 30 hari terakhir",
+    short: "30 hari",
+  },
+  {
+    value: "all",
+    tab: "Semua",
+    label: "Seluruh riwayat",
+    phrase: "di seluruh riwayat",
+    short: "Semua",
+  },
 ];
 
 export const defaultAnomalyRange: AnomalyRange = "7d";
@@ -29,7 +53,10 @@ export function anomalyRangeInfo(range: AnomalyRange): AnomalyRangeInfo {
 
 // Detik epoch awal periode, atau null untuk "semua". "Hari ini" dimulai tengah
 // malam menurut zona waktu peramban, supaya cocok dengan jam yang dilihat petugas.
-export function anomalyRangeStart(range: AnomalyRange, nowSec: number): number | null {
+export function anomalyRangeStart(
+  range: AnomalyRange,
+  nowSec: number,
+): number | null {
   switch (range) {
     case "today": {
       const midnight = new Date(nowSec * 1000);

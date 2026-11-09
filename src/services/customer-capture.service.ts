@@ -43,7 +43,10 @@ export async function classifyDomain(
   const clean = domain.toLowerCase().trim();
   try {
     const [row] = await db
-      .select({ category: domainCatalog.category, confidence: domainCatalog.confidence })
+      .select({
+        category: domainCatalog.category,
+        confidence: domainCatalog.confidence,
+      })
       .from(domainCatalog)
       .where(eq(domainCatalog.domain, clean))
       .limit(1);
@@ -129,8 +132,8 @@ export async function recordCustomerLiveCapture(
       typeof json.error === "object" && json.error?.message
         ? json.error.message
         : typeof json.error === "string"
-        ? json.error
-        : `Backend menjawab HTTP ${res.status}`;
+          ? json.error
+          : `Backend menjawab HTTP ${res.status}`;
     throw new Error(msg);
   }
 

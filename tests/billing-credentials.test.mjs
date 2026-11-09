@@ -37,7 +37,10 @@ test("ciphertext rusak/termanipulasi atau kunci salah ditolak", () => {
   assert.throws(() => decryptSecret([iv, tag, flip(ct)].join(":"), key));
   assert.throws(() => decryptSecret([iv, flip(tag), ct].join(":"), key));
   assert.throws(() => decryptSecret([flip(iv), tag, ct].join(":"), key));
-  assert.throws(() => decryptSecret([iv, tag].join(":"), key), /Invalid encrypted format/);
+  assert.throws(
+    () => decryptSecret([iv, tag].join(":"), key),
+    /Invalid encrypted format/,
+  );
   assert.throws(() => decryptSecret("bukan-ciphertext", key));
   assert.throws(() => decryptSecret([iv, tag, ct].join(":"), "z".repeat(32)));
 });
@@ -56,9 +59,17 @@ test("tanpa kunci dan tanpa DEVICE_SECRET: error", () => {
 });
 
 test("serializeCookies/deserializeCookies: objek dan array", () => {
-  assert.deepEqual(deserializeCookies(serializeCookies({ a: "1", b: "2" })), { a: "1", b: "2" });
+  assert.deepEqual(deserializeCookies(serializeCookies({ a: "1", b: "2" })), {
+    a: "1",
+    b: "2",
+  });
   assert.deepEqual(
-    deserializeCookies(serializeCookies([{ name: "a", value: "1" }, { name: "a", value: "2" }])),
+    deserializeCookies(
+      serializeCookies([
+        { name: "a", value: "1" },
+        { name: "a", value: "2" },
+      ]),
+    ),
     { a: "2" },
   );
   assert.deepEqual(deserializeCookies("{}"), {});
@@ -75,14 +86,20 @@ test("backoff 6 jam hanya saat gagal >= 3", () => {
   assert.equal(calculateNextBackoff(0, now), null);
   assert.equal(calculateNextBackoff(2, now), null);
   for (const n of [3, 4, 50]) {
-    assert.equal(calculateNextBackoff(n, now).toISOString(), "2026-01-01T06:00:00.000Z");
+    assert.equal(
+      calculateNextBackoff(n, now).toISOString(),
+      "2026-01-01T06:00:00.000Z",
+    );
   }
 });
 
 test("isBackoffActive: tepat di batas sudah tidak aktif", () => {
   const until = new Date("2026-01-01T06:00:00Z");
   assert.equal(isBackoffActive(null), false);
-  assert.equal(isBackoffActive(until, new Date("2026-01-01T05:59:59.999Z")), true);
+  assert.equal(
+    isBackoffActive(until, new Date("2026-01-01T05:59:59.999Z")),
+    true,
+  );
   assert.equal(isBackoffActive(until, until), false);
   assert.equal(isBackoffActive(until, new Date("2026-01-01T06:00:01Z")), false);
 });

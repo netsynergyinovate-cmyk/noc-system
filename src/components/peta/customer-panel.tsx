@@ -26,7 +26,11 @@ import {
   MapCustomer,
   MapDevice,
 } from "@/services/map/types";
-import { customerDrop, lossBudget, upstreamPath } from "@/services/map/loss-budget";
+import {
+  customerDrop,
+  lossBudget,
+  upstreamPath,
+} from "@/services/map/loss-budget";
 import { LossBudgetView } from "./loss-budget-view";
 import { DeviceBadge } from "./device-badge";
 import { COORD_ERROR, parseCoordinates } from "./coords";
@@ -57,27 +61,49 @@ const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 const dateTime = (v: string | number | null | undefined) =>
   v == null || v === ""
     ? "-"
-    : new Date(v).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+    : new Date(v).toLocaleString("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
 const date = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleDateString("id-ID", { dateStyle: "medium" }) : "-";
-const dbm = (v: number | null | undefined) => (v == null ? "-" : `${v.toFixed(2)} dBm`);
+const dbm = (v: number | null | undefined) =>
+  v == null ? "-" : `${v.toFixed(2)} dBm`;
 const meters = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
 
 const CHART_POINTS = 300; // 5 menit pada 1 sampel/detik
 
-function Row({ label, children, mono }: { label: string; children: ReactNode; mono?: boolean }) {
+function Row({
+  label,
+  children,
+  mono,
+}: {
+  label: string;
+  children: ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className="flex justify-between items-start gap-3 py-1 border-b border-border/50 last:border-0">
       <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className={`font-medium text-foreground text-right break-all ${mono ? "font-mono" : ""}`}>
+      <span
+        className={`font-medium text-foreground text-right break-all ${mono ? "font-mono" : ""}`}
+      >
         {children ?? "-"}
       </span>
     </div>
   );
 }
 
-function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+function Section({
+  icon,
+  title,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="p-3 rounded-xl bg-muted/30 border border-border space-y-1">
       <h4 className="font-medium text-foreground flex items-center gap-1.5 pb-1">
@@ -127,7 +153,9 @@ export function CustomerPanel({
 
   // Rincian dari aplikasi pusat; panel di-key per pelanggan jadi cukup dimuat sekali
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
-  const [detailState, setDetailState] = useState<"loading" | "ready" | "error">("loading");
+  const [detailState, setDetailState] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   useEffect(() => {
     let alive = true;
     fetch(`/api/peta/customers/${encodeURIComponent(customer.id)}/detail`)
@@ -147,7 +175,9 @@ export function CustomerPanel({
 
   // Trafik live tiap 1 detik. Permintaan berikutnya baru jalan setelah yang sebelumnya selesai,
   // jadi tidak menumpuk/terbalik urutan saat router lambat. Dilewati saat tab tidak terlihat.
-  const [traffic, setTraffic] = useState<CustomerTraffic | null | undefined>(undefined);
+  const [traffic, setTraffic] = useState<CustomerTraffic | null | undefined>(
+    undefined,
+  );
   const [trafficError, setTrafficError] = useState(false);
   const [history, setHistory] = useState<TrafficPoint[]>([]);
   useEffect(() => {
@@ -158,7 +188,9 @@ export function CustomerPanel({
       const started = Date.now();
       if (!document.hidden) {
         try {
-          const res = await fetch(`/api/peta/customers/${encodeURIComponent(customer.id)}/traffic`);
+          const res = await fetch(
+            `/api/peta/customers/${encodeURIComponent(customer.id)}/traffic`,
+          );
           if (!res.ok) throw new Error();
           const body: { data: CustomerTraffic | null } = await res.json();
           if (!alive) return;
@@ -167,12 +199,14 @@ export function CustomerPanel({
           // Field rate MikroTik baru berganti tiap beberapa detik; selisih byte berubah tiap detik
           const point = body.data && toPoint(prev, body.data);
           prev = body.data;
-          if (point) setHistory((h) => [...h.slice(-(CHART_POINTS - 1)), point]);
+          if (point)
+            setHistory((h) => [...h.slice(-(CHART_POINTS - 1)), point]);
         } catch {
           if (alive) setTrafficError(true);
         }
       }
-      if (alive) timer = setTimeout(load, Math.max(0, 1000 - (Date.now() - started)));
+      if (alive)
+        timer = setTimeout(load, Math.max(0, 1000 - (Date.now() - started)));
     };
     load();
     return () => {
@@ -183,7 +217,8 @@ export function CustomerPanel({
 
   const cpe = detail?.cpe ?? null;
   const onu = detail?.onu ?? null;
-  const activeAlerts = detail?.alerts.filter((a) => a.status !== "resolved") ?? [];
+  const activeAlerts =
+    detail?.alerts.filter((a) => a.status !== "resolved") ?? [];
   const debt =
     detail?.invoices
       .filter((i) => i.status !== "paid")
@@ -200,7 +235,8 @@ export function CustomerPanel({
       ? {
           dropM: drop.lengthM,
           dropEstimated: drop.estimated,
-          totalM: drop.lengthM + path.links.reduce((sum, l) => sum + l.lengthM, 0),
+          totalM:
+            drop.lengthM + path.links.reduce((sum, l) => sum + l.lengthM, 0),
           totalEstimated: drop.estimated || path.links.some((l) => l.estimated),
           hops: path.nodes.map((d) => d.name),
         }
@@ -247,7 +283,12 @@ export function CustomerPanel({
 
     try {
       setSavingCoord(true);
-      await onUpdateCoordinates(customer.id, coords.lat, coords.lng, odpId || undefined);
+      await onUpdateCoordinates(
+        customer.id,
+        coords.lat,
+        coords.lng,
+        odpId || undefined,
+      );
       setIsEditingCoord(false);
     } catch (err: unknown) {
       setCoordError(
@@ -297,7 +338,9 @@ export function CustomerPanel({
                   <span className="font-medium text-foreground">{a.title}</span>
                   <span
                     className={`text-[10px] uppercase ${
-                      active ? "text-rose-500 font-semibold" : "text-muted-foreground"
+                      active
+                        ? "text-rose-500 font-semibold"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {active ? "aktif" : "selesai"} • {a.severity}
@@ -319,15 +362,24 @@ export function CustomerPanel({
   );
 
   const connectionSection = (
-    <Section icon={<Activity className="w-3.5 h-3.5 text-emerald-500" />} title="Status Koneksi">
+    <Section
+      icon={<Activity className="w-3.5 h-3.5 text-emerald-500" />}
+      title="Status Koneksi"
+    >
       <Row label="Status">{renderStatusBadge(customer.status)}</Row>
-      <Row label="Modem (CPE)">{cpe ? (cpe.isOnline ? "Online" : "Offline") : "-"}</Row>
+      <Row label="Modem (CPE)">
+        {cpe ? (cpe.isOnline ? "Online" : "Offline") : "-"}
+      </Row>
       <Row label="Uptime modem">{cpe?.uptimeText || "-"}</Row>
       <Row label="Terakhir lapor ACS">
         {cpe?.lastInformAt ? dateTime(cpe.lastInformAt * 1000) : "-"}
       </Row>
       <Row label="ONU">
-        {customer.onuStatus ? (customer.onuStatus === "online" ? "Online" : "Offline") : "-"}
+        {customer.onuStatus
+          ? customer.onuStatus === "online"
+            ? "Online"
+            : "Offline"
+          : "-"}
       </Row>
       <Row label="Data diperbarui">{dateTime(detail?.lastUpdatedAt)}</Row>
     </Section>
@@ -339,7 +391,12 @@ export function CustomerPanel({
         <span className="text-muted-foreground">{label}</span>
         <span className="font-mono font-semibold text-foreground">
           {bitRate(bps)}
-          {max > 0 && <span className="text-muted-foreground font-normal"> / {bitRate(max)}</span>}
+          {max > 0 && (
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              / {bitRate(max)}
+            </span>
+          )}
         </span>
       </div>
       {max > 0 && (
@@ -354,18 +411,33 @@ export function CustomerPanel({
   );
 
   const trafficSection = (
-    <Section icon={<Gauge className="w-3.5 h-3.5 text-cyan-500" />} title="Trafik Live">
+    <Section
+      icon={<Gauge className="w-3.5 h-3.5 text-cyan-500" />}
+      title="Trafik Live"
+    >
       {traffic ? (
         <>
           <TrafficChart points={history} />
-          {rateBar("Download", history.at(-1)?.down ?? traffic.downloadBps, traffic.maxDownloadBps, "bg-blue-400")}
-          {rateBar("Upload", history.at(-1)?.up ?? traffic.uploadBps, traffic.maxUploadBps, "bg-orange-400")}
+          {rateBar(
+            "Download",
+            history.at(-1)?.down ?? traffic.downloadBps,
+            traffic.maxDownloadBps,
+            "bg-blue-400",
+          )}
+          {rateBar(
+            "Upload",
+            history.at(-1)?.up ?? traffic.uploadBps,
+            traffic.maxUploadBps,
+            "bg-orange-400",
+          )}
           <Row label="Pemakaian sesi ini">
-            ↓ {byteSize(traffic.downloadBytes)} • ↑ {byteSize(traffic.uploadBytes)}
+            ↓ {byteSize(traffic.downloadBytes)} • ↑{" "}
+            {byteSize(traffic.uploadBytes)}
           </Row>
           <Muted>
-            Dihitung dari penghitung byte simple queue MikroTik tiap 1 detik (5 menit terakhir). Pemakaian dihitung sejak
-            sesi PPPoE terakhir tersambung.
+            Dihitung dari penghitung byte simple queue MikroTik tiap 1 detik (5
+            menit terakhir). Pemakaian dihitung sejak sesi PPPoE terakhir
+            tersambung.
           </Muted>
         </>
       ) : (
@@ -381,12 +453,19 @@ export function CustomerPanel({
   );
 
   const wifiSection = (
-    <Section icon={<Wifi className="w-3.5 h-3.5 text-blue-500" />} title="Wi-Fi & Perangkat Terhubung">
+    <Section
+      icon={<Wifi className="w-3.5 h-3.5 text-blue-500" />}
+      title="Wi-Fi & Perangkat Terhubung"
+    >
       <Row label="Nama Wi-Fi (SSID)">{ssid || "-"}</Row>
-      <Row label="Wi-Fi aktif">{cpe?.wifi ? (cpe.wifi.enabled ? "Ya" : "Tidak") : "-"}</Row>
+      <Row label="Wi-Fi aktif">
+        {cpe?.wifi ? (cpe.wifi.enabled ? "Ya" : "Tidak") : "-"}
+      </Row>
       <Row label="Keamanan">{cpe?.wifi?.security || "-"}</Row>
       <Row label="Frekuensi">{cpe?.wifi?.radioFrequency || "-"}</Row>
-      <Row label="Klien Wi-Fi">{clientCount != null ? `${clientCount} perangkat` : "-"}</Row>
+      <Row label="Klien Wi-Fi">
+        {clientCount != null ? `${clientCount} perangkat` : "-"}
+      </Row>
       {cpe && cpe.hosts.length > 0 ? (
         <ul className="pt-1 space-y-1">
           {cpe.hosts.map((h, i) => (
@@ -399,7 +478,9 @@ export function CustomerPanel({
                   className={`w-2 h-2 shrink-0 rounded-full ${h.active ? "bg-emerald-500" : "bg-zinc-400"}`}
                   title={h.active ? "Aktif" : "Tidak aktif"}
                 />
-                <span className="truncate text-foreground">{h.hostname || "(tanpa nama)"}</span>
+                <span className="truncate text-foreground">
+                  {h.hostname || "(tanpa nama)"}
+                </span>
               </span>
               <span className="font-mono text-[10px] text-muted-foreground shrink-0">
                 {h.ip} • {h.interfaceType.replace(/_/g, " ")}
@@ -414,29 +495,49 @@ export function CustomerPanel({
   );
 
   const modemSection = (
-    <Section icon={<Router className="w-3.5 h-3.5 text-sky-500" />} title="Modem (CPE)">
+    <Section
+      icon={<Router className="w-3.5 h-3.5 text-sky-500" />}
+      title="Modem (CPE)"
+    >
       {cpe ? (
         <>
-          <Row label="Model">{`${cpe.manufacturer} ${cpe.model}`.trim() || "-"}</Row>
-          <Row label="Nomor seri" mono>{cpe.serialNumber || "-"}</Row>
+          <Row label="Model">
+            {`${cpe.manufacturer} ${cpe.model}`.trim() || "-"}
+          </Row>
+          <Row label="Nomor seri" mono>
+            {cpe.serialNumber || "-"}
+          </Row>
           <Row label="Firmware">{cpe.softwareVersion || "-"}</Row>
-          <Row label="IP WAN" mono>{cpe.wanIp || "-"}</Row>
-          <Row label="IP LAN" mono>{cpe.lanIp || customer.cpeIp || "-"}</Row>
-          <Row label="MAC" mono>{cpe.macAddress || "-"}</Row>
+          <Row label="IP WAN" mono>
+            {cpe.wanIp || "-"}
+          </Row>
+          <Row label="IP LAN" mono>
+            {cpe.lanIp || customer.cpeIp || "-"}
+          </Row>
+          <Row label="MAC" mono>
+            {cpe.macAddress || "-"}
+          </Row>
           <Row label="Suhu modul optik">
-            {cpe.temperatureC != null ? `${cpe.temperatureC.toFixed(1)} °C` : "-"}
+            {cpe.temperatureC != null
+              ? `${cpe.temperatureC.toFixed(1)} °C`
+              : "-"}
           </Row>
         </>
       ) : (
         <Muted>
-          {detailState === "loading" ? "-" : "Modem pelanggan tidak ditemukan di GenieACS."}
+          {detailState === "loading"
+            ? "-"
+            : "Modem pelanggan tidak ditemukan di GenieACS."}
         </Muted>
       )}
     </Section>
   );
 
   const onuSection = (
-    <Section icon={<Radio className="w-3.5 h-3.5 text-purple-500" />} title="Optik ONU">
+    <Section
+      icon={<Radio className="w-3.5 h-3.5 text-purple-500" />}
+      title="Optik ONU"
+    >
       <div className="flex items-center justify-between py-1 border-b border-border/50">
         <span className="text-muted-foreground">Redaman (Rx)</span>
         <span className="flex items-center gap-2">
@@ -454,8 +555,12 @@ export function CustomerPanel({
         </span>
       </div>
       <Row label="Tx">{dbm(onu?.txPower ?? cpe?.txDbm)}</Row>
-      <Row label="Atenuasi">{onu?.attenuation != null ? `${onu.attenuation.toFixed(2)} dB` : "-"}</Row>
-      <Row label="Nomor seri ONU" mono>{onu?.serialNumber || customer.onuSerial || "-"}</Row>
+      <Row label="Atenuasi">
+        {onu?.attenuation != null ? `${onu.attenuation.toFixed(2)} dB` : "-"}
+      </Row>
+      <Row label="Nomor seri ONU" mono>
+        {onu?.serialNumber || customer.onuSerial || "-"}
+      </Row>
       <Row label="Model ONU">{onu?.model || "-"}</Row>
       <Row label="Keterangan OLT">{onu?.description || "-"}</Row>
       <Row label="Port OLT">{customer.onuLocation || "-"}</Row>
@@ -464,7 +569,10 @@ export function CustomerPanel({
   );
 
   const billingSection = (
-    <Section icon={<Receipt className="w-3.5 h-3.5 text-emerald-500" />} title="Tagihan">
+    <Section
+      icon={<Receipt className="w-3.5 h-3.5 text-emerald-500" />}
+      title="Tagihan"
+    >
       <Row label="Status pembayaran">
         <span className="capitalize">{customer.billingStatus || "-"}</span>
       </Row>
@@ -476,7 +584,9 @@ export function CustomerPanel({
         <span className={debt > 0 ? "text-rose-500" : ""}>{rupiah(debt)}</span>
       </Row>
 
-      <p className="pt-2 text-[11px] font-medium text-foreground">Invoice terakhir</p>
+      <p className="pt-2 text-[11px] font-medium text-foreground">
+        Invoice terakhir
+      </p>
       {detail && detail.invoices.length > 0 ? (
         <ul className="space-y-1">
           {detail.invoices.map((inv) => (
@@ -486,18 +596,25 @@ export function CustomerPanel({
             >
               <span className="min-w-0">
                 <span className="block text-foreground">
-                  {new Date(inv.periode).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+                  {new Date(inv.periode).toLocaleDateString("id-ID", {
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </span>
                 <span className="block font-mono text-[10px] text-muted-foreground">
                   {inv.invoiceCode} • tempo {date(inv.dueDate)}
                 </span>
               </span>
               <span className="text-right shrink-0">
-                <span className="block font-medium text-foreground">{rupiah(inv.amount)}</span>
+                <span className="block font-medium text-foreground">
+                  {rupiah(inv.amount)}
+                </span>
                 <span
                   className={`block text-[10px] ${inv.status === "paid" ? "text-emerald-500" : "text-rose-500"}`}
                 >
-                  {inv.status === "paid" ? "Lunas" : `Sisa ${rupiah(inv.remainingAmount)}`}
+                  {inv.status === "paid"
+                    ? "Lunas"
+                    : `Sisa ${rupiah(inv.remainingAmount)}`}
                 </span>
               </span>
             </li>
@@ -507,15 +624,22 @@ export function CustomerPanel({
         <Muted>Belum ada invoice.</Muted>
       )}
 
-      <p className="pt-2 text-[11px] font-medium text-foreground">Pembayaran terakhir</p>
+      <p className="pt-2 text-[11px] font-medium text-foreground">
+        Pembayaran terakhir
+      </p>
       {detail && detail.payments.length > 0 ? (
         <ul className="space-y-1">
           {detail.payments.map((p) => (
-            <li key={p.paymentCode} className="flex justify-between gap-2 text-[11px]">
+            <li
+              key={p.paymentCode}
+              className="flex justify-between gap-2 text-[11px]"
+            >
               <span className="text-muted-foreground">
                 {date(p.payDate)} • {p.method || "-"}
               </span>
-              <span className="font-medium text-foreground">{rupiah(p.amount)}</span>
+              <span className="font-medium text-foreground">
+                {rupiah(p.amount)}
+              </span>
             </li>
           ))}
         </ul>
@@ -526,8 +650,13 @@ export function CustomerPanel({
   );
 
   const serviceSection = (
-    <Section icon={<Receipt className="w-3.5 h-3.5 text-primary" />} title="Layanan & Alamat">
-      <Row label="Paket layanan">{customer.packagePlan || detail?.billing?.serviceProfile || "-"}</Row>
+    <Section
+      icon={<Receipt className="w-3.5 h-3.5 text-primary" />}
+      title="Layanan & Alamat"
+    >
+      <Row label="Paket layanan">
+        {customer.packagePlan || detail?.billing?.serviceProfile || "-"}
+      </Row>
       <Row label="Tarif bulanan">
         {customer.monthlyFee != null
           ? rupiah(customer.monthlyFee)
@@ -535,30 +664,43 @@ export function CustomerPanel({
             ? `${rupiah(detail.invoices[0].amount)} (invoice terakhir)`
             : "-"}
       </Row>
-      <Row label="Username PPPoE" mono>{customer.customerNumber}</Row>
+      <Row label="Username PPPoE" mono>
+        {customer.customerNumber}
+      </Row>
       <Row label="Wilayah">{customer.region || "-"}</Row>
       <div className="py-1">
         <span className="text-muted-foreground block mb-0.5">Alamat</span>
-        <span className="text-foreground leading-relaxed">{customer.address || "-"}</span>
+        <span className="text-foreground leading-relaxed">
+          {customer.address || "-"}
+        </span>
       </div>
     </Section>
   );
 
   const cableSection = (
-    <Section icon={<Cable className="w-3.5 h-3.5 text-orange-500" />} title="Jarak Kabel">
+    <Section
+      icon={<Cable className="w-3.5 h-3.5 text-orange-500" />}
+      title="Jarak Kabel"
+    >
       {cable ? (
         <>
           <Row label={`Kabel drop (${drop?.odp.type.toUpperCase()} ke rumah)`}>
-            {cable.dropEstimated ? `± ${meters(cable.dropM)} (garis lurus)` : meters(cable.dropM)}
+            {cable.dropEstimated
+              ? `± ${meters(cable.dropM)} (garis lurus)`
+              : meters(cable.dropM)}
           </Row>
           {cable.hops.length > 1 && (
             <Row label={`Total dari ${cable.hops[0]}`}>
-              {cable.totalEstimated ? `± ${meters(cable.totalM)}` : meters(cable.totalM)}
+              {cable.totalEstimated
+                ? `± ${meters(cable.totalM)}`
+                : meters(cable.totalM)}
             </Row>
           )}
           <Muted>{[...cable.hops, customer.name].join(" → ")}</Muted>
           {cable.totalEstimated && (
-            <Muted>Sebagian kabel belum digambar; jarak asli biasanya lebih panjang.</Muted>
+            <Muted>
+              Sebagian kabel belum digambar; jarak asli biasanya lebih panjang.
+            </Muted>
           )}
         </>
       ) : (
@@ -568,9 +710,16 @@ export function CustomerPanel({
   );
 
   const lossSection = (
-    <Section icon={<Zap className="w-3.5 h-3.5 text-amber-500" />} title="Hitungan Redaman">
+    <Section
+      icon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
+      title="Hitungan Redaman"
+    >
       {budget ? (
-        <LossBudgetView budget={budget} resultLabel="Perkiraan Rx ONU" measuredRx={rx} />
+        <LossBudgetView
+          budget={budget}
+          resultLabel="Perkiraan Rx ONU"
+          measuredRx={rx}
+        />
       ) : (
         <Muted>Hubungkan pelanggan ke ODP dulu untuk menghitung redaman.</Muted>
       )}
@@ -629,7 +778,9 @@ export function CustomerPanel({
               className="flex flex-col items-center justify-center p-2 rounded-xl border border-border bg-muted/30 hover:bg-muted text-foreground transition-colors gap-1 text-center"
             >
               <Wifi className="w-4 h-4 text-blue-500" />
-              <span className="font-medium text-[11px] line-clamp-1">{ssid || "CPE Wi-Fi"}</span>
+              <span className="font-medium text-[11px] line-clamp-1">
+                {ssid || "CPE Wi-Fi"}
+              </span>
               <span className="text-[9px] text-muted-foreground">
                 {clientCount != null ? `${clientCount} Terhubung` : "-"}
               </span>
@@ -641,7 +792,9 @@ export function CustomerPanel({
             >
               <Radio className="w-4 h-4 text-purple-500" />
               <span className="font-medium text-[11px]">Optik ONU</span>
-              <span className="text-[9px] text-muted-foreground">{dbm(rx)}</span>
+              <span className="text-[9px] text-muted-foreground">
+                {dbm(rx)}
+              </span>
             </button>
 
             <button
@@ -650,8 +803,12 @@ export function CustomerPanel({
             >
               <Receipt className="w-4 h-4 text-emerald-500" />
               <span className="font-medium text-[11px]">Tagihan</span>
-              <span className={`text-[9px] capitalize ${debt > 0 ? "text-rose-500" : "text-muted-foreground"}`}>
-                {debt > 0 ? `Tunggak ${rupiah(debt)}` : customer.billingStatus || "-"}
+              <span
+                className={`text-[9px] capitalize ${debt > 0 ? "text-rose-500" : "text-muted-foreground"}`}
+              >
+                {debt > 0
+                  ? `Tunggak ${rupiah(debt)}`
+                  : customer.billingStatus || "-"}
               </span>
             </button>
           </div>
@@ -776,8 +933,14 @@ export function CustomerPanel({
                     <>
                       <DeviceBadge type={server.type} />
                       {server.type.toUpperCase()}:
-                      <span className="text-foreground font-medium">{server.name}</span>
-                      {customer.odpPort != null && <span className="font-mono">• Port {customer.odpPort}</span>}
+                      <span className="text-foreground font-medium">
+                        {server.name}
+                      </span>
+                      {customer.odpPort != null && (
+                        <span className="font-mono">
+                          • Port {customer.odpPort}
+                        </span>
+                      )}
                     </>
                   ) : (
                     "ODP/ODC: belum terhubung"

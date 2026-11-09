@@ -617,7 +617,9 @@ export function buildCustomerEvidence(
     // Sedang down
     if (currentKind === "down") {
       const sinceText =
-        currentStateStart !== null ? ` sejak ${formatWib(currentStateStart)}` : "";
+        currentStateStart !== null
+          ? ` sejak ${formatWib(currentStateStart)}`
+          : "";
       findings.push({
         severity: "warn",
         text: `Koneksi pelanggan saat ini sedang terputus (down${sinceText}).`,
@@ -661,7 +663,9 @@ export function buildCustomerEvidence(
     if (peakOutages.length > 0) {
       const touchedPeakIds = Array.from(
         new Set(
-          peakOutages.flatMap((o) => o.windows).filter((w) => w !== OFF_PEAK_ID),
+          peakOutages
+            .flatMap((o) => o.windows)
+            .filter((w) => w !== OFF_PEAK_ID),
         ),
       );
       const labels = touchedPeakIds
@@ -705,7 +709,10 @@ export function buildCustomerEvidence(
     .reverse();
 
   // Events (terbaru dulu, maksimal 200)
-  const events: ConnectionEvent[] = dedupedEvents.slice().reverse().slice(0, 200);
+  const events: ConnectionEvent[] = dedupedEvents
+    .slice()
+    .reverse()
+    .slice(0, 200);
 
   return {
     range: input.range,

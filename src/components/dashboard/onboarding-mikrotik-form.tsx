@@ -29,7 +29,9 @@ interface OnboardingMikrotikFormProps {
   onSuccess?: () => void;
 }
 
-export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProps) {
+export function OnboardingMikrotikForm({
+  onSuccess,
+}: OnboardingMikrotikFormProps) {
   const [form, setForm] = useState<OnboardingMikrotikInput>({
     ...DEFAULT_ONBOARDING_MIKROTIK,
     name: "",
@@ -40,10 +42,14 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [testResult, setTestResult] = useState<OnboardingMikrotikTestResult | null>(null);
+  const [testResult, setTestResult] =
+    useState<OnboardingMikrotikTestResult | null>(null);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
-  const handleFieldChange = (field: keyof OnboardingMikrotikInput, value: unknown) => {
+  const handleFieldChange = (
+    field: keyof OnboardingMikrotikInput,
+    value: unknown,
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       const next = { ...prev };
@@ -57,7 +63,12 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
   // (bukan saat mengetik, supaya "…:2" tidak langsung memotong "2024").
   const normalizeHostField = () => {
     const parsed = splitHostInput(form.host);
-    if (parsed.host === form.host.trim() && parsed.port === undefined && parsed.useTls === undefined) return;
+    if (
+      parsed.host === form.host.trim() &&
+      parsed.port === undefined &&
+      parsed.useTls === undefined
+    )
+      return;
     setForm((prev) => ({
       ...prev,
       host: parsed.host,
@@ -74,7 +85,8 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
     return {
       host: parsed.host,
       useTls,
-      port: parsed.port ?? (form.port > 0 ? form.port : defaultRestPort(useTls)),
+      port:
+        parsed.port ?? (form.port > 0 ? form.port : defaultRestPort(useTls)),
     };
   };
 
@@ -120,7 +132,8 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
         ok: false,
         latencyMs: 0,
         testedAt: new Date().toISOString(),
-        message: "Server aplikasi tidak menjawab permintaan uji. Periksa koneksi lalu coba lagi.",
+        message:
+          "Server aplikasi tidak menjawab permintaan uji. Periksa koneksi lalu coba lagi.",
       });
     } finally {
       setTesting(false);
@@ -156,13 +169,16 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
         const errJson = await res.json().catch(() => null);
         setErrors((prev) => ({
           ...prev,
-          save: errJson?.error?.message || "Gagal menyimpan router ke database.",
+          save:
+            errJson?.error?.message || "Gagal menyimpan router ke database.",
         }));
         setSaving(false);
         return;
       }
 
-      setSavedNotice("Konfigurasi Router tersimpan di database! Mengalihkan ke dasbor...");
+      setSavedNotice(
+        "Konfigurasi Router tersimpan di database! Mengalihkan ke dasbor...",
+      );
       if (onSuccess) {
         onSuccess();
       }
@@ -194,11 +210,11 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
               Form Konfigurasi & Uji Koneksi Router MikroTik
             </h3>
             <p className="text-xs text-muted-foreground">
-              Langkah gerbang wajib (Fase 1 / 6): Daftarkan REST API RouterOS v7 sebelum membuka modul lain.
+              Langkah gerbang wajib (Fase 1 / 6): Daftarkan REST API RouterOS v7
+              sebelum membuka modul lain.
             </p>
           </div>
         </div>
-
       </div>
 
       {savedNotice && (
@@ -283,7 +299,10 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
             autoComplete="off"
             value={form.port > 0 ? String(form.port) : ""}
             onChange={(e) =>
-              handleFieldChange("port", Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0)
+              handleFieldChange(
+                "port",
+                Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0,
+              )
             }
             placeholder={String(defaultRestPort(form.useTls))}
             className="rounded-lg border bg-background px-3 py-2 text-xs text-foreground shadow-xs transition-colors focus:border-primary focus:outline-hidden"
@@ -338,7 +357,9 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
             onChange={(e) => handleFieldChange("useTls", e.target.checked)}
             className="rounded border-muted text-primary focus:ring-primary"
           />
-          <span>Gunakan Enkripsi TLS / HTTPS (Disarankan untuk RouterOS v7)</span>
+          <span>
+            Gunakan Enkripsi TLS / HTTPS (Disarankan untuk RouterOS v7)
+          </span>
         </label>
 
         <div className="flex items-center gap-2">
@@ -452,7 +473,6 @@ export function OnboardingMikrotikForm({ onSuccess }: OnboardingMikrotikFormProp
               ))}
             </div>
           )}
-
 
           {testResult.ok && (
             <div className="mt-2 flex items-center justify-end border-t pt-3">

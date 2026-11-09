@@ -74,13 +74,22 @@ function bodyCode(body: unknown): string {
 
 function fromCode(code: string): CpeWifiErrorCode | null {
   if (code === "TASK_CONFLICT") return "TASK_CONFLICT";
-  if (code === "PARAMETER_FAULT" || code === "FAULT_9003" || code === "FAULT_9005") return "PARAMETER_FAULT";
-  if (code === "CPE_OFFLINE" || code === "DEVICE_UNREACHABLE") return "CPE_OFFLINE";
+  if (
+    code === "PARAMETER_FAULT" ||
+    code === "FAULT_9003" ||
+    code === "FAULT_9005"
+  )
+    return "PARAMETER_FAULT";
+  if (code === "CPE_OFFLINE" || code === "DEVICE_UNREACHABLE")
+    return "CPE_OFFLINE";
   return null;
 }
 
 /** status 0 = fetch gagal sebelum ada respons. Kode di body menang atas status HTTP. */
-export function parseCpeWifiError(status: number, responseBody?: unknown): CpeWifiErrorView {
+export function parseCpeWifiError(
+  status: number,
+  responseBody?: unknown,
+): CpeWifiErrorView {
   const code = fromCode(bodyCode(responseBody));
   if (code) return VIEWS[code];
   if (status === 0) return VIEWS.NETWORK_ERROR;

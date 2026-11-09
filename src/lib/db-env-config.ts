@@ -44,7 +44,9 @@ export function parseDatabaseUrl(urlString: string): ParsedDatabaseUrl {
     throw new Error("DATABASE_URL bukan URL yang valid.");
   }
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
-    throw new Error("DATABASE_URL harus memakai protokol postgres:// atau postgresql://.");
+    throw new Error(
+      "DATABASE_URL harus memakai protokol postgres:// atau postgresql://.",
+    );
   }
   return {
     host: url.hostname,
@@ -108,17 +110,24 @@ export function validateDatabaseEnvConfig(
   config: DatabaseConnectionConfig | null,
 ): DatabaseConfigValidation {
   if (config === null) {
-    return { valid: false, errors: ["DATABASE_URL tidak ditemukan di environment."] };
+    return {
+      valid: false,
+      errors: ["DATABASE_URL tidak ditemukan di environment."],
+    };
   }
   const errors: string[] = [];
   if (!config.host) errors.push("Host database kosong.");
   if (!config.database) errors.push("Nama database kosong.");
-  const auth = config.user ? `${config.user}${config.password ? ":***" : ""}@` : "";
+  const auth = config.user
+    ? `${config.user}${config.password ? ":***" : ""}@`
+    : "";
   const sanitizedUrl = `postgresql://${auth}${config.host}:${config.port}/${config.database}`;
   return { valid: errors.length === 0, errors, sanitizedUrl };
 }
 
-export function formatDatabaseSanitizedSummary(config: DatabaseConnectionConfig): string {
+export function formatDatabaseSanitizedSummary(
+  config: DatabaseConnectionConfig,
+): string {
   const auth = config.user ? `${config.user}@` : "";
   return `postgresql://${auth}${config.host}:${config.port}/${config.database} (max: ${config.maxConnections}, timeout: ${config.connectionTimeoutMs}ms)`;
 }

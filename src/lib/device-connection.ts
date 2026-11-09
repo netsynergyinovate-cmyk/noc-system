@@ -57,9 +57,13 @@ export const deviceLabel = (type: DeviceType) => DEVICE_LABEL[type];
 // `port` (opsional) dipakai bila host tidak memuat port sendiri.
 export function sanitizeHost(raw: string, port?: number): URL {
   const input = raw.trim();
-  if (!input) throw new DeviceConnectionError("INVALID_HOST", "Host wajib diisi.");
+  if (!input)
+    throw new DeviceConnectionError("INVALID_HOST", "Host wajib diisi.");
   if (/\s/.test(input)) {
-    throw new DeviceConnectionError("INVALID_HOST", "Host tidak boleh memuat spasi.");
+    throw new DeviceConnectionError(
+      "INVALID_HOST",
+      "Host tidak boleh memuat spasi.",
+    );
   }
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(input) && !/^https?:\/\//i.test(input)) {
     throw new DeviceConnectionError(
@@ -81,7 +85,10 @@ export function sanitizeHost(raw: string, port?: number): URL {
     );
   }
   if ((url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) {
-    throw new DeviceConnectionError("INVALID_HOST", "Host tidak boleh memuat path.");
+    throw new DeviceConnectionError(
+      "INVALID_HOST",
+      "Host tidak boleh memuat path.",
+    );
   }
   // Port di luar rentang membuat URL() melempar; port 0 lolos sebagai "0".
   if (url.port === "0") {
@@ -99,7 +106,9 @@ export function sanitizeHost(raw: string, port?: number): URL {
 // Port yang oleh konvensi berarti HTTPS (www-ssl bawaan RouterOS = 443).
 export const TLS_PORTS: ReadonlySet<number> = new Set([443, 8443]);
 // Port bawaan yang bukan REST: API biner RouterOS (8728/8729) dan Winbox (8291). REST tidak menjawab di sini.
-export const API_PROTOCOL_PORTS: ReadonlySet<number> = new Set([8728, 8729, 8291]);
+export const API_PROTOCOL_PORTS: ReadonlySet<number> = new Set([
+  8728, 8729, 8291,
+]);
 
 // Kolom `routers.host` tidak punya kolom TLS, jadi HTTPS dibaca dari skema
 // ("https://...") atau dari port 443/8443. Satu aturan untuk semua pembaca.
@@ -160,7 +169,12 @@ export function runSimulatorDeviceTest(
     };
   }
   const specific: Record<DeviceType, DeviceConnectionTestResult["data"]> = {
-    mikrotik: { version: "7.14 (stable)", cpuLoad: 8, uptime: "3d4h12m", boardName: "RB4011iGS+" },
+    mikrotik: {
+      version: "7.14 (stable)",
+      cpuLoad: 8,
+      uptime: "3d4h12m",
+      boardName: "RB4011iGS+",
+    },
     olt: { info: "OLT simulator terhubung" },
     genieacs: { deviceCount: 42 },
     billing: { info: "Sistem billing simulator terhubung" },
@@ -175,7 +189,10 @@ export function runSimulatorDeviceTest(
 }
 
 export function parseMikrotikResource(data: unknown): MikrotikResource {
-  const d = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  const d = (Array.isArray(data) ? data[0] : data) as Record<
+    string,
+    unknown
+  > | null;
   if (!d || typeof d !== "object") return {};
   const res: MikrotikResource = {};
   if (typeof d["version"] === "string") res.version = d["version"];
@@ -190,23 +207,50 @@ export function parseMikrotikResource(data: unknown): MikrotikResource {
   return res;
 }
 
-export function describeNetworkError(error: unknown, label: string): DeviceConnectionError {
+export function describeNetworkError(
+  error: unknown,
+  label: string,
+): DeviceConnectionError {
   const err = error as Error;
   const msg = `${err?.message ?? ""} ${(err as { cause?: { code?: string } })?.cause?.code ?? ""}`;
   // Pesan dari backend Go (olt.ErrDriverNotFound / olt.ErrNotSupported).
   if (msg.includes("driver OLT tidak terdaftar"))
-    return new DeviceConnectionError("DRIVER_NOT_FOUND", "Driver OLT ini belum tersedia. Pilih driver lain atau hubungi administrator.");
+    return new DeviceConnectionError(
+      "DRIVER_NOT_FOUND",
+      "Driver OLT ini belum tersedia. Pilih driver lain atau hubungi administrator.",
+    );
   if (msg.includes("tidak didukung oleh driver OLT"))
-    return new DeviceConnectionError("NOT_SUPPORTED", "Fitur ini belum didukung oleh driver OLT yang dipilih.");
+    return new DeviceConnectionError(
+      "NOT_SUPPORTED",
+      "Fitur ini belum didukung oleh driver OLT yang dipilih.",
+    );
   if (err?.name === "AbortError")
-    return new DeviceConnectionError("TIMEOUT", `Koneksi ke ${label} lambat atau terputus (timeout).`);
+    return new DeviceConnectionError(
+      "TIMEOUT",
+      `Koneksi ke ${label} lambat atau terputus (timeout).`,
+    );
   if (msg.includes("ECONNREFUSED"))
-    return new DeviceConnectionError("CONNECTION_REFUSED", `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`);
+    return new DeviceConnectionError(
+      "CONNECTION_REFUSED",
+      `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`,
+    );
   if (msg.includes("ENOTFOUND") || msg.includes("EAI_AGAIN"))
-    return new DeviceConnectionError("DNS_ERROR", "Host tidak ditemukan. Pastikan alamat IP atau domain benar.");
+    return new DeviceConnectionError(
+      "DNS_ERROR",
+      "Host tidak ditemukan. Pastikan alamat IP atau domain benar.",
+    );
   if (msg.includes("EHOSTUNREACH"))
-    return new DeviceConnectionError("UNREACHABLE", `${label} tidak dapat dijangkau. Pastikan perangkat menyala dan terhubung ke jaringan.`);
+    return new DeviceConnectionError(
+      "UNREACHABLE",
+      `${label} tidak dapat dijangkau. Pastikan perangkat menyala dan terhubung ke jaringan.`,
+    );
   if (msg.includes("fetch failed") || msg.includes("NetworkError"))
-    return new DeviceConnectionError("NETWORK_ERROR", `Gagal menghubungi ${label}. Pastikan alamat benar dan perangkat menyala.`);
-  return new DeviceConnectionError("CONNECTION_FAILED", `Gagal menghubungi ${label}: ${err?.message ?? "kesalahan tidak dikenal"}`);
+    return new DeviceConnectionError(
+      "NETWORK_ERROR",
+      `Gagal menghubungi ${label}. Pastikan alamat benar dan perangkat menyala.`,
+    );
+  return new DeviceConnectionError(
+    "CONNECTION_FAILED",
+    `Gagal menghubungi ${label}: ${err?.message ?? "kesalahan tidak dikenal"}`,
+  );
 }

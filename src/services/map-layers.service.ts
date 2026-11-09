@@ -145,7 +145,8 @@ export async function getMapLayersData(options?: {
     }
 
     for (const cust of geocodedCustomers) {
-      if (!cust.odpName || cust.latitude === null || cust.longitude === null) continue;
+      if (!cust.odpName || cust.latitude === null || cust.longitude === null)
+        continue;
       const odp = odpNodes.find((i) => i.name === cust.odpName);
       if (odp) {
         cables.push({

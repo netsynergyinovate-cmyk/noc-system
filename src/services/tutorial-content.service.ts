@@ -27,7 +27,9 @@ export async function ensureTutorialContentTable(): Promise<void> {
       `);
 
       // Seed awal jika kosong
-      const countRes = await client.query("SELECT COUNT(*) AS c FROM \"tutorial_content\"");
+      const countRes = await client.query(
+        'SELECT COUNT(*) AS c FROM "tutorial_content"',
+      );
       if (Number(countRes.rows[0]?.c ?? 0) === 0) {
         for (const [path, item] of Object.entries(PAGE_TIPS_REGISTRY)) {
           await client.query(
@@ -55,7 +57,9 @@ export async function ensureTutorialContentTable(): Promise<void> {
 /**
  * Mengambil konten tips untuk satu rute halaman tertentu.
  */
-export async function getPageTipContent(pagePath: string): Promise<PageTipItem | null> {
+export async function getPageTipContent(
+  pagePath: string,
+): Promise<PageTipItem | null> {
   // 1. Cek in-memory override
   if (inMemoryCustomTips[pagePath]) {
     return inMemoryCustomTips[pagePath];
@@ -68,7 +72,7 @@ export async function getPageTipContent(pagePath: string): Promise<PageTipItem |
     try {
       await ensureTutorialContentTable();
       const res = await client.query(
-        "SELECT id, page_title, summary, metrics, troubleshooting FROM \"tutorial_content\" WHERE id = $1",
+        'SELECT id, page_title, summary, metrics, troubleshooting FROM "tutorial_content" WHERE id = $1',
         [pagePath],
       );
       if (res.rows.length > 0) {
@@ -77,7 +81,10 @@ export async function getPageTipContent(pagePath: string): Promise<PageTipItem |
           pagePath: row.id,
           pageTitle: row.page_title,
           summary: row.summary,
-          metrics: typeof row.metrics === "string" ? JSON.parse(row.metrics) : row.metrics,
+          metrics:
+            typeof row.metrics === "string"
+              ? JSON.parse(row.metrics)
+              : row.metrics,
           troubleshooting:
             typeof row.troubleshooting === "string"
               ? JSON.parse(row.troubleshooting)
@@ -98,7 +105,9 @@ export async function getPageTipContent(pagePath: string): Promise<PageTipItem |
 /**
  * Mengambil seluruh konten tips halaman yang terdaftar.
  */
-export async function getAllPageTipsContent(): Promise<Record<string, PageTipItem>> {
+export async function getAllPageTipsContent(): Promise<
+  Record<string, PageTipItem>
+> {
   const result: Record<string, PageTipItem> = {
     ...PAGE_TIPS_REGISTRY,
     ...inMemoryCustomTips,
@@ -110,14 +119,17 @@ export async function getAllPageTipsContent(): Promise<Record<string, PageTipIte
     try {
       await ensureTutorialContentTable();
       const res = await client.query(
-        "SELECT id, page_title, summary, metrics, troubleshooting FROM \"tutorial_content\"",
+        'SELECT id, page_title, summary, metrics, troubleshooting FROM "tutorial_content"',
       );
       for (const row of res.rows) {
         result[row.id] = {
           pagePath: row.id,
           pageTitle: row.page_title,
           summary: row.summary,
-          metrics: typeof row.metrics === "string" ? JSON.parse(row.metrics) : row.metrics,
+          metrics:
+            typeof row.metrics === "string"
+              ? JSON.parse(row.metrics)
+              : row.metrics,
           troubleshooting:
             typeof row.troubleshooting === "string"
               ? JSON.parse(row.troubleshooting)
@@ -137,7 +149,9 @@ export async function getAllPageTipsContent(): Promise<Record<string, PageTipIte
 /**
  * Menyimpan atau memperbarui konten tips untuk sebuah halaman.
  */
-export async function savePageTipContent(tip: PageTipItem): Promise<PageTipItem> {
+export async function savePageTipContent(
+  tip: PageTipItem,
+): Promise<PageTipItem> {
   inMemoryCustomTips[tip.pagePath] = tip;
 
   try {

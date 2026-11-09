@@ -10,12 +10,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,14 +83,17 @@ export function CustomerIncidentList() {
   const loading = !error && !data;
   // Bergangguan = ada gangguan nyata atau yang masih menunggu verifikasi; sisanya hanya kedipan/tidak terbukti.
   const troubledCount = data
-    ? data.filter((r) => r.summary.real > 0 || r.summary.belumTerverifikasi > 0).length
+    ? data.filter((r) => r.summary.real > 0 || r.summary.belumTerverifikasi > 0)
+        .length
     : 0;
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase();
     return data.filter(
       (row) =>
-        (!onlyTroubled || row.summary.real > 0 || row.summary.belumTerverifikasi > 0) &&
+        (!onlyTroubled ||
+          row.summary.real > 0 ||
+          row.summary.belumTerverifikasi > 0) &&
         (!q ||
           row.name.toLowerCase().includes(q) ||
           row.pppoeUsername.toLowerCase().includes(q) ||
@@ -138,7 +136,11 @@ export function CustomerIncidentList() {
         >
           <TabsList className="h-7 p-0.5">
             {evidenceRanges.map((r) => (
-              <TabsTrigger key={r.id} value={r.id} className="px-2 py-0.5 text-xs">
+              <TabsTrigger
+                key={r.id}
+                value={r.id}
+                className="px-2 py-0.5 text-xs"
+              >
                 {r.label}
               </TabsTrigger>
             ))}
@@ -150,16 +152,20 @@ export function CustomerIncidentList() {
         {showExplanation && (
           <div className="space-y-1.5 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
             <p>
-              <strong className="text-foreground">Gangguan nyata</strong> = putus-nyambung berjarak
-              &le; 15 menit digabung jadi satu; dihitung bila total down &ge; 5 menit atau &ge; 3 kali
-              putus, dan trafik pelanggan membuktikannya (antrean berhenti saat down).
+              <strong className="text-foreground">Gangguan nyata</strong> =
+              putus-nyambung berjarak &le; 15 menit digabung jadi satu; dihitung
+              bila total down &ge; 5 menit atau &ge; 3 kali putus, dan trafik
+              pelanggan membuktikannya (antrean berhenti saat down).
             </p>
             <p>
-              <strong className="text-foreground">Belum terverifikasi</strong>: data trafik di sekitar
-              kejadian belum ada/belum final. <strong className="text-foreground">Kedipan</strong>:
-              terlalu singkat, tidak dihitung. <strong className="text-foreground">Tidak terbukti</strong>:
-              trafik tetap mengalir saat tercatat down. <strong className="text-foreground">Massal</strong>:
-              &ge; 3 pelanggan lain dan &ge; 20% pelanggan router yang sama ikut down.
+              <strong className="text-foreground">Belum terverifikasi</strong>:
+              data trafik di sekitar kejadian belum ada/belum final.{" "}
+              <strong className="text-foreground">Kedipan</strong>: terlalu
+              singkat, tidak dihitung.{" "}
+              <strong className="text-foreground">Tidak terbukti</strong>:
+              trafik tetap mengalir saat tercatat down.{" "}
+              <strong className="text-foreground">Massal</strong>: &ge; 3
+              pelanggan lain dan &ge; 20% pelanggan router yang sama ikut down.
             </p>
             <p className="font-mono text-[10px]">
               Sumber: {incidentSources.map((s) => formatSource(s)).join(" | ")}
@@ -274,11 +280,17 @@ export function CustomerIncidentList() {
                       row.billingStatus?.toLowerCase().includes("terminate")
                         ? "billing: Terminate (cek Core)"
                         : "",
-                      s.belumTerverifikasi > 0 ? `${s.belumTerverifikasi} belum terverifikasi` : "",
+                      s.belumTerverifikasi > 0
+                        ? `${s.belumTerverifikasi} belum terverifikasi`
+                        : "",
                       s.kedipan > 0 ? `${s.kedipan} kedipan` : "",
-                      s.tidakTerbukti > 0 ? `${s.tidakTerbukti} tidak terbukti` : "",
+                      s.tidakTerbukti > 0
+                        ? `${s.tidakTerbukti} tidak terbukti`
+                        : "",
                     ].filter(Boolean);
-                    const peaks = peakWindows.filter((pw) => (s.realByWindow?.[pw.id] ?? 0) > 0);
+                    const peaks = peakWindows.filter(
+                      (pw) => (s.realByWindow?.[pw.id] ?? 0) > 0,
+                    );
                     return (
                       <TableRow
                         key={row.customerId}
@@ -318,7 +330,9 @@ export function CustomerIncidentList() {
                               {s.real}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground/30 font-mono text-xs">–</span>
+                            <span className="text-muted-foreground/30 font-mono text-xs">
+                              –
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="py-2.5 text-right font-mono text-xs tabular-nums">
@@ -338,11 +352,17 @@ export function CustomerIncidentList() {
                           )}
                         </TableCell>
                         <TableCell className="py-2.5 font-mono text-[11px] text-muted-foreground tabular-nums">
-                          {s.lastRealAt ? formatWibDateTime(s.lastRealAt) : <span className="text-muted-foreground/30">–</span>}
+                          {s.lastRealAt ? (
+                            formatWibDateTime(s.lastRealAt)
+                          ) : (
+                            <span className="text-muted-foreground/30">–</span>
+                          )}
                         </TableCell>
                         <TableCell className="py-2.5 whitespace-nowrap">
                           {peaks.length === 0 && s.realMassal === 0 ? (
-                            <span className="text-muted-foreground/30 font-mono text-xs">–</span>
+                            <span className="text-muted-foreground/30 font-mono text-xs">
+                              –
+                            </span>
                           ) : (
                             <div className="flex flex-nowrap items-center gap-1">
                               {peaks.map((pw) => (
@@ -352,7 +372,9 @@ export function CustomerIncidentList() {
                                   className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground whitespace-nowrap"
                                 >
                                   <span>{peakShort[pw.id] ?? pw.label}</span>
-                                  <span className="font-bold tabular-nums text-foreground">{s.realByWindow[pw.id]}</span>
+                                  <span className="font-bold tabular-nums text-foreground">
+                                    {s.realByWindow[pw.id]}
+                                  </span>
                                 </span>
                               ))}
                               {s.realMassal > 0 && (
@@ -361,7 +383,9 @@ export function CustomerIncidentList() {
                                   className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-500 dark:text-rose-400 whitespace-nowrap"
                                 >
                                   <span>Massal</span>
-                                  <span className="tabular-nums">{s.realMassal}</span>
+                                  <span className="tabular-nums">
+                                    {s.realMassal}
+                                  </span>
                                 </span>
                               )}
                             </div>
@@ -380,7 +404,9 @@ export function CustomerIncidentList() {
                               ))}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground/30 font-mono">–</span>
+                            <span className="text-muted-foreground/30 font-mono">
+                              –
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -389,7 +415,6 @@ export function CustomerIncidentList() {
                 </TableBody>
               </Table>
             </div>
-
           </>
         )}
       </CardContent>

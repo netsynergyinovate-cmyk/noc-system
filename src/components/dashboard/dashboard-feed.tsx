@@ -55,7 +55,14 @@ export function DashboardFeed() {
         const res = await fetch("/api/routers", { cache: "no-store" });
         const json = await res.json().catch(() => null);
         if (!alive || !res.ok || !Array.isArray(json?.data)) return;
-        const live = (json.data as Array<{ id: string; name: string; host: string; status: string }>)
+        const live = (
+          json.data as Array<{
+            id: string;
+            name: string;
+            host: string;
+            status: string;
+          }>
+        )
           .filter((r) => r.status === "aktif")
           .map((r) => ({ id: r.id, name: r.name, host: r.host, active: true }));
         useDashboardStore.getState().setLiveRouters(live);

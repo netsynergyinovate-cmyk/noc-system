@@ -94,7 +94,7 @@ type PanelUrlParams = {
 // Mulai zoom ini pelanggan tampil sebagai ikon rumah; di bawahnya titik kanvas ringan
 const DETAIL_ZOOM = 15;
 
-const CUSTOMER_SUB_PANELS =["detail", "cpe", "onu", "billing"] as const;
+const CUSTOMER_SUB_PANELS = ["detail", "cpe", "onu", "billing"] as const;
 
 // 0 = tanpa panel, 1 = panel utama, 2 = panel bertumpuk (sub-panel pelanggan)
 function panelDepth(p: PanelUrlParams): number {
@@ -216,7 +216,9 @@ export function MapContainer() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
-  const [baseLayer, setBaseLayer] = useState<"satellite" | "streets">("satellite");
+  const [baseLayer, setBaseLayer] = useState<"satellite" | "streets">(
+    "satellite",
+  );
   const [visibleLayers, setVisibleLayers] = useState({
     customers: true,
     devices: true,
@@ -226,7 +228,9 @@ export function MapContainer() {
   });
 
   // Panel state (Max 1 primary panel)
-  const [selectedCustomer, setSelectedCustomer] = useState<MapCustomer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<MapCustomer | null>(
+    null,
+  );
   const [customerSubPanel, setCustomerSubPanel] = useState<
     "detail" | "cpe" | "onu" | "billing" | null
   >(null);
@@ -237,8 +241,11 @@ export function MapContainer() {
   const [showAnnotationPanel, setShowAnnotationPanel] = useState(false);
 
   // Annotation Drawing mode state
-  const [annotationTool, setAnnotationTool] = useState<AnnotationToolType>(null);
-  const [annotationPoints, setAnnotationPoints] = useState<[number, number][]>([]);
+  const [annotationTool, setAnnotationTool] =
+    useState<AnnotationToolType>(null);
+  const [annotationPoints, setAnnotationPoints] = useState<[number, number][]>(
+    [],
+  );
   const annotationToolRef = useRef<AnnotationToolType>(null);
   useEffect(() => {
     annotationToolRef.current = annotationTool;
@@ -255,7 +262,9 @@ export function MapContainer() {
   const [isCreatingRouteModal, setIsCreatingRouteModal] = useState(false);
   const [drawingRoute, setDrawingRoute] = useState<CableRoute | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<[number, number][]>([]);
-  const [editingSegment, setEditingSegment] = useState<CableSegment | null>(null);
+  const [editingSegment, setEditingSegment] = useState<CableSegment | null>(
+    null,
+  );
   const [drawingFrom, setDrawingFrom] = useState("");
   const [placementRouteId, setPlacementRouteId] = useState("");
   const [placementOdpId, setPlacementOdpId] = useState("");
@@ -628,9 +637,8 @@ export function MapContainer() {
         setSelectedRoute((prev) => {
           if (!prev) return null;
           return (
-            dataJson.data?.routes?.find(
-              (r: CableRoute) => r.id === prev.id,
-            ) ?? prev
+            dataJson.data?.routes?.find((r: CableRoute) => r.id === prev.id) ??
+            prev
           );
         });
       }
@@ -669,7 +677,8 @@ export function MapContainer() {
     try {
       const res = await fetch(`/api/peta/undo/${id}`, { method: "POST" });
       const json = await readApiJson(res);
-      if (!res.ok) throw new Error(json?.error?.message || "Gagal membatalkan aksi.");
+      if (!res.ok)
+        throw new Error(json?.error?.message || "Gagal membatalkan aksi.");
       // Panel/mode gambar bisa menunjuk entitas yang baru saja dihapus/dipulihkan, jadi ditutup
       setDrawingRoute(null);
       setSelectedCustomer(null);
@@ -680,16 +689,29 @@ export function MapContainer() {
       await handleRefreshData();
       setUndoNotice(`Dibatalkan: ${json.data.label}`);
     } catch (err: unknown) {
-      setUndoNotice(err instanceof Error ? err.message : "Gagal membatalkan aksi.");
+      setUndoNotice(
+        err instanceof Error ? err.message : "Gagal membatalkan aksi.",
+      );
     } finally {
       setUndoing(false);
     }
-  }, [drawingRoute, drawingPoints.length, undoing, syncUrlState, handleRefreshData]);
+  }, [
+    drawingRoute,
+    drawingPoints.length,
+    undoing,
+    syncUrlState,
+    handleRefreshData,
+  ]);
 
   // Ctrl+Z / Cmd+Z; di dalam kolom isian dibiarkan untuk undo teks bawaan
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== "z") return;
+      if (
+        !(e.ctrlKey || e.metaKey) ||
+        e.shiftKey ||
+        e.key.toLowerCase() !== "z"
+      )
+        return;
       const t = e.target as HTMLElement | null;
       if (t?.closest("input, textarea, select, [contenteditable=true]")) return;
       e.preventDefault();
@@ -706,7 +728,8 @@ export function MapContainer() {
   }, [undoNotice]);
 
   // Kunci ditolak / belum dikonfigurasi: hentikan auto-refresh, hanya "Coba lagi" manual
-  const isAuthError = errorCode === "AUTH_FAILED" || errorCode === "CONFIG_ERROR";
+  const isAuthError =
+    errorCode === "AUTH_FAILED" || errorCode === "CONFIG_ERROR";
   const hierarchyTreeData = useMemo<HierarchyTreeNode[]>(
     () =>
       mapData ? buildHierarchyTree(mapData.devices, mapData.customers) : [],
@@ -715,9 +738,9 @@ export function MapContainer() {
   // Tangguhkan auto-refresh saat interaksi penempatan / gambar rute / edit koordinat / gambar anotasi
   const isAutoRefreshPaused = Boolean(
     placementMode !== null ||
-      drawingRoute !== null ||
-      activeDraftLat !== null ||
-      annotationTool !== null,
+    drawingRoute !== null ||
+    activeDraftLat !== null ||
+    annotationTool !== null,
   );
   const autoRefreshStatus: "active" | "paused" | "disabled" = isAuthError
     ? "disabled"
@@ -739,10 +762,10 @@ export function MapContainer() {
   // Evaluasi status data jaringan kosong dari backend
   const isEmptyData = Boolean(
     !loading &&
-      !errorNotice &&
-      mapData &&
-      mapData.customers.length === 0 &&
-      mapData.devices.length === 0,
+    !errorNotice &&
+    mapData &&
+    mapData.customers.length === 0 &&
+    mapData.devices.length === 0,
   );
 
   // Daftar hasil cari: satu-satunya jalan membuka pelanggan yang belum punya koordinat
@@ -786,15 +809,15 @@ export function MapContainer() {
   const hasActiveFilter = Boolean(searchQuery || statusFilter || regionFilter);
   const noFilterResults = Boolean(
     mapData &&
-      hasActiveFilter &&
-      !mapData.customers.some((c) =>
-        customerMatches(c, searchQuery, statusFilter, regionFilter),
-      ) &&
-      !mapData.devices.some(
-        (d) =>
-          !searchQuery ||
-          d.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
+    hasActiveFilter &&
+    !mapData.customers.some((c) =>
+      customerMatches(c, searchQuery, statusFilter, regionFilter),
+    ) &&
+    !mapData.devices.some(
+      (d) =>
+        !searchQuery ||
+        d.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    ),
   );
 
   // 3. Inisialisasi Peta Leaflet
@@ -1151,7 +1174,8 @@ export function MapContainer() {
             ? { key, ...json.data }
             : {
                 key,
-                error: json?.error?.message || "Pratinjau penyesuaian jalan gagal.",
+                error:
+                  json?.error?.message || "Pratinjau penyesuaian jalan gagal.",
               },
         );
       } catch {
@@ -1321,7 +1345,12 @@ export function MapContainer() {
         const full = use && use.used >= use.total ? use : null;
         const icon = L.divIcon({
           className: "custom-device-icon",
-          html: markerIconHtml(type, DEVICE_TYPE_STYLE[type].color, size, full ? MARKER_ALERT.full : undefined),
+          html: markerIconHtml(
+            type,
+            DEVICE_TYPE_STYLE[type].color,
+            size,
+            full ? MARKER_ALERT.full : undefined,
+          ),
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });
@@ -1356,7 +1385,9 @@ export function MapContainer() {
         const tier = capacityStyle(parentRoute?.fiberCapacity || 24);
         const weight = tier.weight;
         // Segmen drop ke pelanggan: warna mengikuti status layanan (abu bila belum diketahui)
-        const conn = seg.customerId ? connectionStyle(seg.connectionStatus) : null;
+        const conn = seg.customerId
+          ? connectionStyle(seg.connectionStatus)
+          : null;
 
         const poly = L.polyline(seg.geometry, {
           bubblingMouseEvents: false,
@@ -1413,7 +1444,10 @@ export function MapContainer() {
       mapData.devices.forEach((d) => {
         const parent = d.parentDeviceId ? devMap.get(d.parentDeviceId) : null;
         if (parent && hasCoords(d) && hasCoords(parent)) {
-          addLink([d.latitude, d.longitude], [parent.latitude, parent.longitude]);
+          addLink(
+            [d.latitude, d.longitude],
+            [parent.latitude, parent.longitude],
+          );
         }
       });
       if (visibleLayers.customers) {
@@ -1683,14 +1717,23 @@ export function MapContainer() {
     if (selectedCustomer && selectedCustomer.id === id) {
       setSelectedCustomer((prev) =>
         prev
-          ? { ...prev, latitude: lat, longitude: lng, odpId: odpId ?? prev.odpId }
+          ? {
+              ...prev,
+              latitude: lat,
+              longitude: lng,
+              odpId: odpId ?? prev.odpId,
+            }
           : null,
       );
     }
   };
 
   // Simpan port (pelanggan di ODP, ODP di ODC) atau rasio splitter, lalu muat ulang peta
-  const saveMapChange = async (url: string, method: "PUT" | "PATCH", body: unknown) => {
+  const saveMapChange = async (
+    url: string,
+    method: "PUT" | "PATCH",
+    body: unknown,
+  ) => {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -1812,13 +1855,17 @@ export function MapContainer() {
       body: JSON.stringify(data),
     });
     const json = await readApiJson(res);
-    if (!res.ok) throw new Error(json?.error?.message || "Gagal mengubah jalur.");
+    if (!res.ok)
+      throw new Error(json?.error?.message || "Gagal mengubah jalur.");
     pushUndo(json.undoId);
     await handleRefreshData();
   };
 
   // Aksi Simpan Segmen Jalur yang Digambar
-  const startDrawing = (route: CableRoute, segment: CableSegment | null = null) => {
+  const startDrawing = (
+    route: CableRoute,
+    segment: CableSegment | null = null,
+  ) => {
     setSelectedRoute(null);
     syncUrlState({});
     setDrawingRoute(route);
@@ -1873,7 +1920,9 @@ export function MapContainer() {
             setDrawingPoints(drawingPoints.slice(i));
             setDrawingFrom(from);
             await handleRefreshData();
-            throw new Error(json?.error?.message || "Gagal menyimpan perangkat.");
+            throw new Error(
+              json?.error?.message || "Gagal menyimpan perangkat.",
+            );
           }
           pushUndo(json.data.undoId);
           from = json.data.device.id;
@@ -2093,7 +2142,9 @@ export function MapContainer() {
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Belum ada data pelanggan atau perangkat yang terdaftar di sumber{" "}
                 <span className="font-medium text-foreground">
-                  {mapData?.source === "central-api" ? "database NOC" : "database lokal peta"}
+                  {mapData?.source === "central-api"
+                    ? "database NOC"
+                    : "database lokal peta"}
                 </span>
                 . Gunakan menu <strong>+ Tambah</strong> untuk mulai memetakan.
               </p>
@@ -2200,7 +2251,10 @@ export function MapContainer() {
       {!drawingRoute && (undoCount > 0 || undoNotice) && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[990] flex items-center gap-2 pointer-events-auto">
           {undoNotice && (
-            <span role="status" className="px-3 py-1.5 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-lg text-[11px] text-foreground">
+            <span
+              role="status"
+              className="px-3 py-1.5 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-lg text-[11px] text-foreground"
+            >
               {undoNotice}
             </span>
           )}
@@ -2212,7 +2266,11 @@ export function MapContainer() {
               title="Urungkan aksi terakhir (Ctrl+Z)"
               className="px-3 py-1.5 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-lg text-[11px] font-medium text-foreground hover:bg-muted disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              {undoing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+              {undoing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Undo2 className="w-3.5 h-3.5" />
+              )}
               Urungkan ({undoCount})
             </button>
           )}
@@ -2233,21 +2291,21 @@ export function MapContainer() {
 
       {/* Mode Penempatan Eksplisit (Banner & Form Floating) */}
       {placementMode && (
-      <PlacementOverlay
-        mode={placementMode}
-        coordinates={placementCoords}
-        onCoordinatesChange={(coords) => setPlacementCoords(coords)}
-        availableDevices={mapData?.devices || []}
-        availableCustomers={mapData?.customers || []}
-        routeOptions={placementRouteOptions}
-        initialRouteId={placementRouteId}
-        initialOdpId={placementMode === "customer" ? placementOdpId : ""}
-        onSave={handleSavePlacement}
-        onCancel={() => {
-          setPlacementMode(null);
-          setPlacementCoords(null);
-        }}
-      />
+        <PlacementOverlay
+          mode={placementMode}
+          coordinates={placementCoords}
+          onCoordinatesChange={(coords) => setPlacementCoords(coords)}
+          availableDevices={mapData?.devices || []}
+          availableCustomers={mapData?.customers || []}
+          routeOptions={placementRouteOptions}
+          initialRouteId={placementRouteId}
+          initialOdpId={placementMode === "customer" ? placementOdpId : ""}
+          onSave={handleSavePlacement}
+          onCancel={() => {
+            setPlacementMode(null);
+            setPlacementCoords(null);
+          }}
+        />
       )}
 
       {/* Bar Bantuan Mode Gambar Jalur Kabel */}
@@ -2256,7 +2314,9 @@ export function MapContainer() {
           route={drawingRoute}
           chain={routeChainDeviceIds(
             drawingRoute.fromDeviceId,
-            (mapData?.segments || []).filter((s) => s.routeId === drawingRoute.id),
+            (mapData?.segments || []).filter(
+              (s) => s.routeId === drawingRoute.id,
+            ),
           ).flatMap((id) => mapData?.devices.find((d) => d.id === id) ?? [])}
           editingSegment={editingSegment}
           pointCount={drawingPoints.length}
@@ -2319,7 +2379,11 @@ export function MapContainer() {
           connectedCustomers={(mapData?.customers || []).filter(
             (c) => c.odpId === selectedDevice.id,
           )}
-          cablesIn={routesTouchingDevice(mapData, selectedDevice.id, "toDeviceId")}
+          cablesIn={routesTouchingDevice(
+            mapData,
+            selectedDevice.id,
+            "toDeviceId",
+          )}
           cablesOut={routesTouchingDevice(
             mapData,
             selectedDevice.id,
@@ -2352,7 +2416,10 @@ export function MapContainer() {
             saveMapChange(`/api/peta/customers/${id}/port`, "PUT", { port })
           }
           onSetDevicePort={(id, port, odcId) =>
-            saveMapChange(`/api/peta/devices/${id}/port`, "PUT", { port, odcId })
+            saveMapChange(`/api/peta/devices/${id}/port`, "PUT", {
+              port,
+              odcId,
+            })
           }
           onSetSplitterRatio={(id, splitterRatio) =>
             saveMapChange(`/api/peta/devices/${id}`, "PATCH", { splitterRatio })
@@ -2370,7 +2437,9 @@ export function MapContainer() {
             setSelectedDevice(d);
             syncUrlState({ device: d.id });
           }}
-          onUpdateRoutePon={(routeId, pon) => handleUpdateRoute(routeId, { pon })}
+          onUpdateRoutePon={(routeId, pon) =>
+            handleUpdateRoute(routeId, { pon })
+          }
           onSelectRoute={(r) => {
             setSelectedDevice(null);
             setSelectedRoute(r);
@@ -2407,7 +2476,8 @@ export function MapContainer() {
             setPlacementRouteId(route.id);
             setPlacementMode("device");
             const center = mapInstanceRef.current?.getCenter();
-            if (center) setPlacementCoords({ lat: center.lat, lng: center.lng });
+            if (center)
+              setPlacementCoords({ lat: center.lat, lng: center.lng });
           }}
           onEditSegment={(route, segment) => startDrawing(route, segment)}
           routes={mapData?.routes || []}
@@ -2437,10 +2507,7 @@ export function MapContainer() {
       )}
 
       {/* Modal Panduan Singkat */}
-      <QuickGuideModal
-        isOpen={showGuide}
-        onClose={() => setShowGuide(false)}
-      />
+      <QuickGuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
 
       {/* Bar Bantuan Mode Gambar Anotasi */}
       {annotationTool && (

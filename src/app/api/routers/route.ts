@@ -20,13 +20,16 @@ export function POST(request: Request) {
     action: "router-added",
     getTarget: (_req, res) => res.headers.get("Location") ?? "/api/routers",
   });
-  return withApiPermission(request, { router: ["manage"] }, audit(request, async () => {
-    const input = createRouterSchema.parse(await readJson(request));
-    const router = await createRouter(input);
-    return Response.json(
-      { data: router },
-      { status: 201, headers: { Location: `/api/routers/${router.id}` } },
-    );
-  }));
+  return withApiPermission(
+    request,
+    { router: ["manage"] },
+    audit(request, async () => {
+      const input = createRouterSchema.parse(await readJson(request));
+      const router = await createRouter(input);
+      return Response.json(
+        { data: router },
+        { status: 201, headers: { Location: `/api/routers/${router.id}` } },
+      );
+    }),
+  );
 }
-

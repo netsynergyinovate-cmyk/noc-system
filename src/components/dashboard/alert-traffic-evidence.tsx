@@ -15,8 +15,13 @@ export function AlertTrafficEvidence({ alert }: AlertTrafficEvidenceProps) {
   if (!alert.startedAt) return null;
 
   const fromSec = Math.max(0, alert.startedAt - 1800); // 30 menit sebelum kejadian
-  const toSec = "endedAt" in alert && alert.endedAt ? alert.endedAt + 1800 : alert.startedAt + 3600;
-  const routerParam = alert.routerId ? `&routerId=${encodeURIComponent(alert.routerId)}` : "";
+  const toSec =
+    "endedAt" in alert && alert.endedAt
+      ? alert.endedAt + 1800
+      : alert.startedAt + 3600;
+  const routerParam = alert.routerId
+    ? `&routerId=${encodeURIComponent(alert.routerId)}`
+    : "";
   const alertIdParam = `&alertId=${encodeURIComponent(alert.id)}`;
   const href = `/app/netflow?from=${fromSec}&to=${toSec}${routerParam}${alertIdParam}`;
 

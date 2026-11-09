@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const networkMapPath = path.resolve(__dirname, "../src/components/map/network-map.tsx");
+const networkMapPath = path.resolve(
+  __dirname,
+  "../src/components/map/network-map.tsx",
+);
 
 test("Tile Error Indicator verification", async (t) => {
   const content = fs.readFileSync(networkMapPath, "utf8");
@@ -24,23 +27,26 @@ test("Tile Error Indicator verification", async (t) => {
     );
   });
 
-  await t.test("verifies tile error banner indicator element and accessibility", () => {
-    assert.match(
-      content,
-      /data-testid="tile-error-banner"/,
-      "Map should render a visible banner with data-testid='tile-error-banner' when tiles fail",
-    );
-    assert.match(
-      content,
-      /role="alert"/,
-      "Tile error banner should have role='alert' for screen-reader accessibility",
-    );
-    assert.match(
-      content,
-      /data-testid="dismiss-tile-error"/,
-      "Tile error banner must provide a dismiss button",
-    );
-  });
+  await t.test(
+    "verifies tile error banner indicator element and accessibility",
+    () => {
+      assert.match(
+        content,
+        /data-testid="tile-error-banner"/,
+        "Map should render a visible banner with data-testid='tile-error-banner' when tiles fail",
+      );
+      assert.match(
+        content,
+        /role="alert"/,
+        "Tile error banner should have role='alert' for screen-reader accessibility",
+      );
+      assert.match(
+        content,
+        /data-testid="dismiss-tile-error"/,
+        "Tile error banner must provide a dismiss button",
+      );
+    },
+  );
 
   await t.test("verifies fallback layer switches and retry action", () => {
     assert.match(

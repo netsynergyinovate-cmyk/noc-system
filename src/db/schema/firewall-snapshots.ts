@@ -24,8 +24,12 @@ export const firewallSnapshots = pgTable(
     runId: uuid("run_id")
       .notNull()
       .references(() => diagnosticRuns.id, { onDelete: "cascade" }),
-    routerId: uuid("router_id").references(() => routers.id, { onDelete: "set null" }),
-    customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
+    routerId: uuid("router_id").references(() => routers.id, {
+      onDelete: "set null",
+    }),
+    customerId: uuid("customer_id").references(() => customers.id, {
+      onDelete: "set null",
+    }),
     takenAt: timestamp("taken_at", { withTimezone: true }).notNull(),
     customerIp: text("customer_ip").notNull(),
     // Terpisah karena fasttrack membatalkan simple queue.
@@ -69,7 +73,13 @@ export const firewallRuleHits = pgTable(
   },
   (table) => [
     index("firewall_rule_hits_snapshot_idx").on(table.snapshotId),
-    check("firewall_rule_hits_table_check", sql`${table.table} in ('filter', 'raw', 'nat', 'mangle')`),
-    check("firewall_rule_hits_scope_check", sql`${table.scope} in ('khusus', 'umum', 'mungkin')`),
+    check(
+      "firewall_rule_hits_table_check",
+      sql`${table.table} in ('filter', 'raw', 'nat', 'mangle')`,
+    ),
+    check(
+      "firewall_rule_hits_scope_check",
+      sql`${table.scope} in ('khusus', 'umum', 'mungkin')`,
+    ),
   ],
 );

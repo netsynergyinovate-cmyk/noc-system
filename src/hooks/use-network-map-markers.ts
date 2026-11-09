@@ -15,12 +15,7 @@ export interface UseNetworkMapMarkersOptions {
 }
 
 export type PointStatusFilter =
-  | "all"
-  | "online"
-  | "offline"
-  | "weak"
-  | "isolir"
-  | "geocoded";
+  "all" | "online" | "offline" | "weak" | "isolir" | "geocoded";
 
 export interface UseNetworkMapMarkersResult {
   data: NetworkMapData | null;
@@ -53,14 +48,18 @@ export function useNetworkMapMarkers(
   const [data, setData] = useState<NetworkMapData | null>(
     initialData ?? (useMockFallback ? LOCAL_MOCK_NETWORK_MAP_DATA : null),
   );
-  const [isLoading, setIsLoading] = useState<boolean>(!initialData && !useMockFallback);
+  const [isLoading, setIsLoading] = useState<boolean>(
+    !initialData && !useMockFallback,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const url = useMockFallback ? "/api/map/network?mode=mock" : "/api/map/network";
+      const url = useMockFallback
+        ? "/api/map/network?mode=mock"
+        : "/api/map/network";
       const res = await fetch(url, { credentials: "same-origin" });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: Gagal memuat penanda peta`);
@@ -73,7 +72,8 @@ export function useNetworkMapMarkers(
         throw new Error(json.error || "Format data peta tidak valid");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal memuat penanda peta";
+      const msg =
+        err instanceof Error ? err.message : "Gagal memuat penanda peta";
       setError(msg);
 
       // Jika mock fallback diaktifkan dan terjadi kegagalan muat, gunakan mock lokal transparan
@@ -88,10 +88,13 @@ export function useNetworkMapMarkers(
   useEffect(() => {
     let active = true;
     if (!initialData) {
-      const url = useMockFallback ? "/api/map/network?mode=mock" : "/api/map/network";
+      const url = useMockFallback
+        ? "/api/map/network?mode=mock"
+        : "/api/map/network";
       fetch(url, { credentials: "same-origin" })
         .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}: Gagal memuat penanda peta`);
+          if (!res.ok)
+            throw new Error(`HTTP ${res.status}: Gagal memuat penanda peta`);
           return res.json();
         })
         .then((json) => {
@@ -102,7 +105,9 @@ export function useNetworkMapMarkers(
         })
         .catch((err) => {
           if (active) {
-            setError(err instanceof Error ? err.message : "Gagal memuat penanda peta");
+            setError(
+              err instanceof Error ? err.message : "Gagal memuat penanda peta",
+            );
             if (useMockFallback) {
               setData(LOCAL_MOCK_NETWORK_MAP_DATA);
             }
@@ -142,7 +147,8 @@ export function useNetworkMapMarkers(
         if (statusFilter === "weak") {
           if (!c.opticalPower || c.opticalPower > -24.5) return false;
         }
-        if (statusFilter === "isolir" && c.billingStatus !== "isolir") return false;
+        if (statusFilter === "isolir" && c.billingStatus !== "isolir")
+          return false;
         if (statusFilter === "geocoded") {
           if (
             c.latitude === null ||
@@ -162,10 +168,18 @@ export function useNetworkMapMarkers(
           const matchName = c.name.toLowerCase().includes(q);
           const matchUser = c.pppoeUsername.toLowerCase().includes(q);
           const matchId = c.id.toLowerCase().includes(q);
-          const matchSerial = c.onuDetails?.serialNumber?.toLowerCase().includes(q) ?? false;
+          const matchSerial =
+            c.onuDetails?.serialNumber?.toLowerCase().includes(q) ?? false;
           const matchOdp = c.odpName?.toLowerCase().includes(q) ?? false;
           const matchAddress = c.address?.toLowerCase().includes(q) ?? false;
-          if (!matchName && !matchUser && !matchId && !matchSerial && !matchOdp && !matchAddress) {
+          if (
+            !matchName &&
+            !matchUser &&
+            !matchId &&
+            !matchSerial &&
+            !matchOdp &&
+            !matchAddress
+          ) {
             return false;
           }
         }

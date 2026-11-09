@@ -13,10 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const {
-  shouldRunStartupMigration,
-  runStartupMigrations,
-} = await import("../src/services/startup-migration.service.ts");
+const { shouldRunStartupMigration, runStartupMigrations } =
+  await import("../src/services/startup-migration.service.ts");
 
 test("startup-migration: shouldRunStartupMigration menolak fase build Next.js", () => {
   const res = shouldRunStartupMigration({

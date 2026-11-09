@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Loader2, Server } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeviceOutcomeAlert } from "@/components/dashboard/device-outcome-alert";
 import { DeviceStatusBadge } from "@/components/dashboard/device-status-badge";
@@ -61,7 +67,12 @@ export function DeviceQuickCards() {
             port: 443,
             protocol: "REST API v7",
             username: r.username,
-            status: r.status === "online" ? ("connected" as const) : r.status === "offline" ? ("error" as const) : ("untested" as const),
+            status:
+              r.status === "online"
+                ? ("connected" as const)
+                : r.status === "offline"
+                  ? ("error" as const)
+                  : ("untested" as const),
             mode: "real" as const,
             description: `MikroTik RouterOS REST API • Operator: ${r.username}`,
             envHostKey: "MIKROTIK_REST_HOST",
@@ -79,7 +90,12 @@ export function DeviceQuickCards() {
             port: 161,
             protocol: "SNMP / Telnet",
             username: o.username,
-            status: o.status === "online" ? ("connected" as const) : o.status === "offline" ? ("error" as const) : ("untested" as const),
+            status:
+              o.status === "online"
+                ? ("connected" as const)
+                : o.status === "offline"
+                  ? ("error" as const)
+                  : ("untested" as const),
             mode: "real" as const,
             description: `OLT ${o.brand} (${o.driver}) • Akun: ${o.username}`,
             envHostKey: "OLT_HOST",
@@ -97,22 +113,37 @@ export function DeviceQuickCards() {
   }, []);
 
   function onOutcome(d: DeviceConfig, r: TestOutcome) {
-    setDevices((prev) => prev.map((x) => (x.id === d.id ? applyTestOutcome(x, r) : x)));
+    setDevices((prev) =>
+      prev.map((x) => (x.id === d.id ? applyTestOutcome(x, r) : x)),
+    );
     setMessages((prev) => ({ ...prev, [d.id]: r }));
   }
 
   function setTesting(id: string, busy: boolean) {
-    setTestingIds((prev) => (busy ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((x) => x !== id)));
+    setTestingIds((prev) =>
+      busy
+        ? prev.includes(id)
+          ? prev
+          : [...prev, id]
+        : prev.filter((x) => x !== id),
+    );
   }
 
   async function runRealDeviceTest(d: DeviceConfig): Promise<TestOutcome> {
-    const endpoint = d.type === "mikrotik" ? `/api/routers/${d.id}/test` : `/api/olts/${d.id}/test`;
+    const endpoint =
+      d.type === "mikrotik"
+        ? `/api/routers/${d.id}/test`
+        : `/api/olts/${d.id}/test`;
     const res = await fetch(endpoint, { method: "POST" });
     const json = await res.json();
     if (json?.data) {
       return {
         ok: Boolean(json.data.ok),
-        message: json.data.message || (json.data.ok ? "Koneksi perangkat berhasil" : "Koneksi perangkat gagal"),
+        message:
+          json.data.message ||
+          (json.data.ok
+            ? "Koneksi perangkat berhasil"
+            : "Koneksi perangkat gagal"),
         latencyMs: json.data.latencyMs ?? null,
         statusCode: json.data.statusCode,
         code: json.data.code,
@@ -122,7 +153,9 @@ export function DeviceQuickCards() {
     }
     return {
       ok: res.ok,
-      message: json?.message || (res.ok ? "Uji koneksi berhasil" : "Uji koneksi gagal"),
+      message:
+        json?.message ||
+        (res.ok ? "Uji koneksi berhasil" : "Uji koneksi gagal"),
       latencyMs: null,
       status: res.ok ? "connected" : "error",
     };
@@ -172,9 +205,12 @@ export function DeviceQuickCards() {
             <Server className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-semibold text-sm">Belum Ada Perangkat Terdaftar</h3>
+            <h3 className="font-semibold text-sm">
+              Belum Ada Perangkat Terdaftar
+            </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Daftarkan router MikroTik atau OLT GPON pertama Anda untuk mulai memantau dan menguji konektivitas jaringan secara langsung.
+              Daftarkan router MikroTik atau OLT GPON pertama Anda untuk mulai
+              memantau dan menguji konektivitas jaringan secara langsung.
             </p>
           </div>
           <div className="flex items-center justify-center gap-2 pt-1">
@@ -200,17 +236,33 @@ export function DeviceQuickCards() {
             <span className="font-medium">
               {sum.connected} dari {sum.total} perangkat terhubung
             </span>
-            {sum.testing > 0 && <span data-testid="summary-testing">{sum.testing} sedang diuji</span>}
-            {sum.error > 0 && <span data-testid="summary-error">{sum.error} gagal</span>}
-            {sum.timeout > 0 && <span data-testid="summary-timeout">{sum.timeout} timeout</span>}
-            {sum.untested > 0 && <span data-testid="summary-untested">{sum.untested} belum diuji</span>}
+            {sum.testing > 0 && (
+              <span data-testid="summary-testing">
+                {sum.testing} sedang diuji
+              </span>
+            )}
+            {sum.error > 0 && (
+              <span data-testid="summary-error">{sum.error} gagal</span>
+            )}
+            {sum.timeout > 0 && (
+              <span data-testid="summary-timeout">{sum.timeout} timeout</span>
+            )}
+            {sum.untested > 0 && (
+              <span data-testid="summary-untested">
+                {sum.untested} belum diuji
+              </span>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             {devices.map((d) => {
               const msg = messages[d.id];
               return (
-                <Card key={d.id} data-testid="device-quick-card" data-device-type={d.type}>
+                <Card
+                  key={d.id}
+                  data-testid="device-quick-card"
+                  data-device-type={d.type}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -219,14 +271,22 @@ export function DeviceQuickCards() {
                           {getDeviceTypeLabel(d.type)} &bull; {d.host}
                         </CardDescription>
                       </div>
-                      <DeviceStatusBadge status={d.status} isTesting={testingIds.includes(d.id)} latencyMs={d.latencyMs} />
+                      <DeviceStatusBadge
+                        status={d.status}
+                        isTesting={testingIds.includes(d.id)}
+                        latencyMs={d.latencyMs}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-xs text-muted-foreground">{d.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {d.description}
+                    </p>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">Latensi</span>
-                      <span className="tabular-nums">{d.latencyMs ? `${d.latencyMs} ms` : "-"}</span>
+                      <span className="tabular-nums">
+                        {d.latencyMs ? `${d.latencyMs} ms` : "-"}
+                      </span>
                     </div>
                     <div aria-live="polite">
                       {msg && <DeviceOutcomeAlert outcome={msg} device={d} />}

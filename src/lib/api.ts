@@ -36,8 +36,16 @@ async function apiKeySession(
   if (!header?.startsWith("Bearer ")) return null;
   const found = await findApiKeyOwner(header.slice(7).trim());
   if (!found)
-    throw new ApiError(401, "INVALID_API_KEY", "API key is invalid or revoked.");
-  if (found.access === "read" && !readsOnly && !SAFE_METHODS.includes(request.method))
+    throw new ApiError(
+      401,
+      "INVALID_API_KEY",
+      "API key is invalid or revoked.",
+    );
+  if (
+    found.access === "read" &&
+    !readsOnly &&
+    !SAFE_METHODS.includes(request.method)
+  )
     throw new ApiError(403, "READ_ONLY_API_KEY", "This API key is read-only.");
   const now = new Date();
   return {

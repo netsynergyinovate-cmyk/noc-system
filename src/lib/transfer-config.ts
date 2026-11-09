@@ -31,7 +31,10 @@ export function maskDatabaseUrl(urlStr: string | null | undefined): string {
   }
 }
 
-export function validatePostgresUrl(value: string | undefined | null, fieldName: string): {
+export function validatePostgresUrl(
+  value: string | undefined | null,
+  fieldName: string,
+): {
   valid: boolean;
   error?: string;
 } {
@@ -42,13 +45,22 @@ export function validatePostgresUrl(value: string | undefined | null, fieldName:
   try {
     const url = new URL(value);
     if (!["postgres:", "postgresql:"].includes(url.protocol)) {
-      return { valid: false, error: `${fieldName} harus memiliki protokol postgres: atau postgresql:` };
+      return {
+        valid: false,
+        error: `${fieldName} harus memiliki protokol postgres: atau postgresql:`,
+      };
     }
     if (!url.hostname) {
-      return { valid: false, error: `${fieldName} harus memiliki hostname yang valid` };
+      return {
+        valid: false,
+        error: `${fieldName} harus memiliki hostname yang valid`,
+      };
     }
     if (url.pathname.length <= 1) {
-      return { valid: false, error: `${fieldName} harus menyertakan nama database` };
+      return {
+        valid: false,
+        error: `${fieldName} harus menyertakan nama database`,
+      };
     }
     return { valid: true };
   } catch {
@@ -63,10 +75,21 @@ const transferEnvSchema = z.object({
   TRANSFER_CONFLICT_STRATEGY: z
     .enum(["upsert", "skip_existing", "overwrite"])
     .default("upsert"),
-  TRANSFER_DRY_RUN: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
-  TRANSFER_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(30000),
-  AUTO_ALIGNMENT_ENABLED: z.preprocess((v) => v !== "false" && v !== false, z.boolean()).default(true),
-  AUTO_SEED: z.preprocess((v) => v !== "false" && v !== false, z.boolean()).default(true),
+  TRANSFER_DRY_RUN: z
+    .preprocess((v) => v === "true" || v === true, z.boolean())
+    .default(false),
+  TRANSFER_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(300000)
+    .default(30000),
+  AUTO_ALIGNMENT_ENABLED: z
+    .preprocess((v) => v !== "false" && v !== false, z.boolean())
+    .default(true),
+  AUTO_SEED: z
+    .preprocess((v) => v !== "false" && v !== false, z.boolean())
+    .default(true),
 });
 
 /**
@@ -76,10 +99,13 @@ export function getTransferConnectionConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): TransferConnectionConfig {
   const parsed = transferEnvSchema.parse(env);
-  const sourceRaw = env.SOURCE_DATABASE_URL?.trim() || env.DATABASE_URL?.trim() || "";
+  const sourceRaw =
+    env.SOURCE_DATABASE_URL?.trim() || env.DATABASE_URL?.trim() || "";
   const targetRaw = env.TARGET_DATABASE_URL?.trim() || "";
 
-  const isTargetValid = targetRaw.length > 0 && validatePostgresUrl(targetRaw, "TARGET_DATABASE_URL").valid;
+  const isTargetValid =
+    targetRaw.length > 0 &&
+    validatePostgresUrl(targetRaw, "TARGET_DATABASE_URL").valid;
 
   return {
     sourceDatabaseUrl: sourceRaw,

@@ -41,12 +41,14 @@ import type { FeatureMarkerStatus } from "@/validators/feature-markers";
 const CATEGORY_MAP = {
   used_frequently: {
     label: "Sering Digunakan",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    color:
+      "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     icon: Sparkles,
   },
   rarely_used: {
     label: "Jarang / Bingung",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    color:
+      "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
     icon: HelpCircle,
   },
   bug_issue: {
@@ -64,7 +66,8 @@ const CATEGORY_MAP = {
 const STATUS_MAP = {
   baru: {
     label: "Baru",
-    color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    color:
+      "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
   },
   ditinjau: {
     label: "Ditinjau",
@@ -72,11 +75,13 @@ const STATUS_MAP = {
   },
   dikerjakan: {
     label: "Dikerjakan",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    color:
+      "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
   },
   selesai: {
     label: "Selesai",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    color:
+      "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
   },
 };
 
@@ -127,7 +132,9 @@ export function DeployMarkerDetailView({
 
       if (!res.ok) {
         const errorJson = await res.json().catch(() => null);
-        throw new Error(errorJson?.error || `Gagal menyimpan (HTTP ${res.status})`);
+        throw new Error(
+          errorJson?.error || `Gagal menyimpan (HTTP ${res.status})`,
+        );
       }
 
       const json = await res.json();
@@ -264,9 +271,7 @@ export function DeployMarkerDetailView({
               {marker.pagePath}
               <ExternalLink className="h-2.5 w-2.5" />
             </Link>
-            {marker.pageTitle && (
-              <span>• {marker.pageTitle}</span>
-            )}
+            {marker.pageTitle && <span>• {marker.pageTitle}</span>}
           </div>
         </div>
       </div>
@@ -287,7 +292,10 @@ export function DeployMarkerDetailView({
 
           <div className="rounded-xl border-l-4 border-purple-500 bg-purple-500/10 p-4">
             <p className="text-sm font-medium text-foreground italic leading-relaxed whitespace-pre-wrap">
-              "{marker.notes || "(Pengguna tidak menyertakan catatan teks tambahan)"}"
+              "
+              {marker.notes ||
+                "(Pengguna tidak menyertakan catatan teks tambahan)"}
+              "
             </p>
           </div>
 
@@ -326,7 +334,9 @@ export function DeployMarkerDetailView({
                 </code>
                 <button
                   type="button"
-                  onClick={() => handleCopy(marker.elementSelector || "", "sel")}
+                  onClick={() =>
+                    handleCopy(marker.elementSelector || "", "sel")
+                  }
                   className="p-1 text-muted-foreground hover:text-foreground"
                 >
                   {copiedKey === "sel" ? (
@@ -370,7 +380,8 @@ export function DeployMarkerDetailView({
               Peta Lokasi Berkas Kode (Source Map)
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Daftar file spesifik di repositori yang bertanggung jawab atas halaman, komponen, API, dan basis data fitur ini.
+              Daftar file spesifik di repositori yang bertanggung jawab atas
+              halaman, komponen, API, dan basis data fitur ini.
             </p>
           </div>
         </div>
@@ -410,15 +421,13 @@ export function DeployMarkerDetailView({
             </span>
             <div className="flex items-center justify-between rounded-lg bg-background p-2.5 border">
               <code className="text-xs font-mono font-semibold text-foreground truncate">
-                {report.sourceMap.componentFiles[0] || "src/components/dashboard/..."}
+                {report.sourceMap.componentFiles[0] ||
+                  "src/components/dashboard/..."}
               </code>
               <button
                 type="button"
                 onClick={() =>
-                  handleCopy(
-                    report.sourceMap.componentFiles[0] || "",
-                    "comp",
-                  )
+                  handleCopy(report.sourceMap.componentFiles[0] || "", "comp")
                 }
                 className="p-1 text-muted-foreground hover:text-foreground"
                 title="Salin path file"
@@ -447,10 +456,7 @@ export function DeployMarkerDetailView({
               <button
                 type="button"
                 onClick={() =>
-                  handleCopy(
-                    report.sourceMap.apiEndpoints[0] || "",
-                    "api",
-                  )
+                  handleCopy(report.sourceMap.apiEndpoints[0] || "", "api")
                 }
                 className="p-1 text-muted-foreground hover:text-foreground"
                 title="Salin endpoint API"
@@ -479,10 +485,7 @@ export function DeployMarkerDetailView({
               <button
                 type="button"
                 onClick={() =>
-                  handleCopy(
-                    report.sourceMap.serviceFiles[0] || "",
-                    "srv",
-                  )
+                  handleCopy(report.sourceMap.serviceFiles[0] || "", "srv")
                 }
                 className="p-1 text-muted-foreground hover:text-foreground"
                 title="Salin path service"
@@ -530,7 +533,8 @@ export function DeployMarkerDetailView({
             Langkah-Langkah Investigasi & Cara Perbaikan Developer
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Checklist sistematis yang memandu developer memperbaiki bug atau mengoptimasi fitur ini.
+            Checklist sistematis yang memandu developer memperbaiki bug atau
+            mengoptimasi fitur ini.
           </p>
         </div>
 
@@ -585,7 +589,9 @@ export function DeployMarkerDetailView({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleCopy(report.cliVerificationCommand || "", "cli")}
+              onClick={() =>
+                handleCopy(report.cliVerificationCommand || "", "cli")
+              }
               className="text-xs h-7 gap-1"
             >
               {copiedKey === "cli" ? (
@@ -613,7 +619,10 @@ export function DeployMarkerDetailView({
               Prompt AI Siap Salin untuk Perbaikan Otomatis
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Salin prompt lengkap ini dan tempelkan ke <strong>Claude Code</strong>, <strong>ChatGPT</strong>, atau <strong>Cursor</strong> untuk langsung memperbaiki kendala atau mengembangkan fitur ini.
+              Salin prompt lengkap ini dan tempelkan ke{" "}
+              <strong>Claude Code</strong>, <strong>ChatGPT</strong>, atau{" "}
+              <strong>Cursor</strong> untuk langsung memperbaiki kendala atau
+              mengembangkan fitur ini.
             </p>
           </div>
 
@@ -657,14 +666,17 @@ export function DeployMarkerDetailView({
             Tindak Lanjut & Pembaruan Status Developer
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Perbarui status pengerjaan atau tambahkan respon catatan teknis developer untuk laporan ini.
+            Perbarui status pengerjaan atau tambahkan respon catatan teknis
+            developer untuk laporan ini.
           </p>
         </div>
 
         {saveSuccess && (
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>✓ Perubahan status dan catatan developer berhasil disimpan!</span>
+            <span>
+              ✓ Perubahan status dan catatan developer berhasil disimpan!
+            </span>
           </div>
         )}
 
@@ -676,7 +688,9 @@ export function DeployMarkerDetailView({
               </Label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as FeatureMarkerStatus)}
+                onChange={(e) =>
+                  setStatus(e.target.value as FeatureMarkerStatus)
+                }
                 className="w-full text-xs h-9 rounded-md border border-input bg-background px-3 font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-purple-500"
               >
                 <option value="baru">Baru</option>
@@ -702,7 +716,10 @@ export function DeployMarkerDetailView({
           </div>
 
           <div>
-            <Label htmlFor="devNotesFull" className="text-xs font-semibold block mb-1.5">
+            <Label
+              htmlFor="devNotesFull"
+              className="text-xs font-semibold block mb-1.5"
+            >
               Catatan Developer / Solusi yang Diterapkan
             </Label>
             <textarea

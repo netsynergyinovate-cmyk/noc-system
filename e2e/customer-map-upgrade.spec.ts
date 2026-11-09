@@ -36,14 +36,12 @@ test.describe("Upgrade CustomerMap: Satelit, GPS, ODP & Rute Kabel", () => {
     const attribution = map.locator(".leaflet-control-attribution");
     await expect(attribution).toBeVisible();
     await expect(attribution).toContainText("Google Maps");
-    await expect(
-      attribution.locator('a[href*="google.com/maps"]'),
-    ).toHaveCount(1);
+    await expect(attribution.locator('a[href*="google.com/maps"]')).toHaveCount(
+      1,
+    );
 
     // Memverifikasi tile satelit google.com (mt0-mt3) dimuat
-    const tileImages = map.locator(
-      '.leaflet-tile-pane img[src*="google.com"]',
-    );
+    const tileImages = map.locator('.leaflet-tile-pane img[src*="google.com"]');
     await expect.poll(async () => await tileImages.count()).toBeGreaterThan(0);
 
     expect(errors).toEqual([]);

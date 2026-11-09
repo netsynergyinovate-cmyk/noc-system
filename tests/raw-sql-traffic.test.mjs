@@ -30,7 +30,12 @@ function mock(impl = async () => ({ rows: [] })) {
 }
 
 test("history: routerId tidak valid / injeksi ditolak sebelum query", async () => {
-  for (const bad of ["x", "", `${R1}'; DROP TABLE traffic_samples;--`, R1 + "0"]) {
+  for (const bad of [
+    "x",
+    "",
+    `${R1}'; DROP TABLE traffic_samples;--`,
+    R1 + "0",
+  ]) {
     const c = mock();
     await assert.rejects(
       svc.queryTrafficHistoryRaw({ routerId: bad, nowSec: NOW }, c),
@@ -47,7 +52,10 @@ test("history: SQL berparameter, nilai tidak disisipkan ke teks", async () => {
       { bucket: 1791400000, rx: 11, tx: 3 },
     ],
   }));
-  const r = await svc.queryTrafficHistoryRaw({ routerId: R1, range: "1h", nowSec: NOW }, c);
+  const r = await svc.queryTrafficHistoryRaw(
+    { routerId: R1, range: "1h", nowSec: NOW },
+    c,
+  );
   assert.equal(c.calls.length, 1);
   const { sql, params } = c.calls[0];
   for (const p of ["$1", "$2", "$3", "$4"]) assert.ok(sql.includes(p), p);
@@ -78,7 +86,9 @@ test("history: fallback null saat kosong, error, atau nilai non-finite", async (
   assert.equal(await svc.queryTrafficHistoryRaw({ nowSec: NOW }, boom), null);
   const nan = mock(async () => ({ rows: [{ bucket: 1, rx: "abc", tx: 1 }] }));
   assert.equal(await svc.queryTrafficHistoryRaw({ nowSec: NOW }, nan), null);
-  const inf = mock(async () => ({ rows: [{ bucket: 1, rx: Infinity, tx: 1 }] }));
+  const inf = mock(async () => ({
+    rows: [{ bucket: 1, rx: Infinity, tx: 1 }],
+  }));
   assert.equal(await svc.queryTrafficHistoryRaw({ nowSec: NOW }, inf), null);
 });
 
@@ -88,16 +98,29 @@ test("insert: UNNEST dengan 4 array, dedup last-write-wins per (router, detik)",
   const n = await svc.insertTrafficSamplesRaw(
     [
       { routerId: R1, sampledAt: t, rxMbps: 1, txMbps: 1 },
-      { routerId: R1.toUpperCase(), sampledAt: new Date(t.getTime() + 800), rxMbps: 9, txMbps: 8 },
+      {
+        routerId: R1.toUpperCase(),
+        sampledAt: new Date(t.getTime() + 800),
+        rxMbps: 9,
+        txMbps: 8,
+      },
       { routerId: R2, sampledAt: t, rxMbps: 2, txMbps: 3 },
-      { routerId: R1, sampledAt: new Date(t.getTime() + 1000), rxMbps: 4, txMbps: 5 },
+      {
+        routerId: R1,
+        sampledAt: new Date(t.getTime() + 1000),
+        rxMbps: 4,
+        txMbps: 5,
+      },
     ],
     c,
   );
   assert.equal(n, 3);
   assert.equal(c.calls.length, 1);
   const { sql, params } = c.calls[0];
-  assert.match(sql, /UNNEST\(\$1::uuid\[\], \$2::timestamptz\[\], \$3::float8\[\], \$4::float8\[\]\)/);
+  assert.match(
+    sql,
+    /UNNEST\(\$1::uuid\[\], \$2::timestamptz\[\], \$3::float8\[\], \$4::float8\[\]\)/,
+  );
   assert.match(sql, /ON CONFLICT \(router_id, sampled_at\)\s+DO UPDATE/);
   assert.equal(params.length, 4);
   assert.deepEqual(params[0], [R1, R2, R1]);
@@ -128,7 +151,14 @@ test("insert: kosong tanpa query; input buruk ditolak tanpa query", async () => 
 
 test("metrics: bigint string diubah ke angka, routerId divalidasi", async () => {
   const c = mock(async () => ({
-    rows: [{ router_id: R1, total_customers: "5", online_customers: "3", isolir_customers: "1" }],
+    rows: [
+      {
+        router_id: R1,
+        total_customers: "5",
+        online_customers: "3",
+        isolir_customers: "1",
+      },
+    ],
   }));
   const r = await svc.queryCustomerMetricsPerRouterRaw(R1, c);
   assert.deepEqual(r, [
@@ -138,6 +168,9 @@ test("metrics: bigint string diubah ke angka, routerId divalidasi", async () => 
   assert.deepEqual(c.calls[0].params, [R1]);
   await svc.queryCustomerMetricsPerRouterRaw(undefined, c);
   assert.deepEqual(c.calls[1].params, [null]);
-  await assert.rejects(svc.queryCustomerMetricsPerRouterRaw("1; DROP", c), RangeError);
+  await assert.rejects(
+    svc.queryCustomerMetricsPerRouterRaw("1; DROP", c),
+    RangeError,
+  );
   assert.equal(c.calls.length, 2);
 });

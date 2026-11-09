@@ -91,8 +91,7 @@ type AlertRow = typeof alerts.$inferSelect;
 const sec = (d: Date | null) => (d ? Math.floor(d.getTime() / 1000) : null);
 const num = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 200;
@@ -167,46 +166,42 @@ function mockItems(nowSec: number): AlertItem[] {
       technicianName: null,
     },
   };
-  const active = mockActiveAlerts(nowSec).map(
-    (a): AlertItem => ({
-      ...base,
-      id: a.id,
-      type: a.kind,
-      severity: a.severity,
-      status: "active",
-      routerId: a.routerId,
-      customerId: a.customerId,
-      startedAt: a.startedAt,
-      detectedAt: a.detectedAt,
-      endedAt: null,
-      timeSource: a.timeSource,
-      timeUncertaintySeconds: a.timeUncertaintySeconds,
-      endTimeSource: null,
-      endTimeUncertaintySeconds: null,
-      handledBy: null,
-      location: a.location,
-    }),
-  );
-  const resolved = mockResolvedAlerts(nowSec).map(
-    (a): AlertItem => ({
-      ...base,
-      id: a.id,
-      type: a.kind,
-      severity: a.severity,
-      status: a.handledBy ? "handled" : "resolved",
-      routerId: a.routerId,
-      customerId: a.customerId,
-      startedAt: a.startedAt,
-      detectedAt: a.detectedAt,
-      endedAt: a.endedAt,
-      timeSource: a.timeSource,
-      timeUncertaintySeconds: a.timeUncertaintySeconds,
-      endTimeSource: a.endTimeSource,
-      endTimeUncertaintySeconds: a.endTimeUncertaintySeconds,
-      handledBy: a.handledBy,
-      location: a.location,
-    }),
-  );
+  const active = mockActiveAlerts(nowSec).map((a): AlertItem => ({
+    ...base,
+    id: a.id,
+    type: a.kind,
+    severity: a.severity,
+    status: "active",
+    routerId: a.routerId,
+    customerId: a.customerId,
+    startedAt: a.startedAt,
+    detectedAt: a.detectedAt,
+    endedAt: null,
+    timeSource: a.timeSource,
+    timeUncertaintySeconds: a.timeUncertaintySeconds,
+    endTimeSource: null,
+    endTimeUncertaintySeconds: null,
+    handledBy: null,
+    location: a.location,
+  }));
+  const resolved = mockResolvedAlerts(nowSec).map((a): AlertItem => ({
+    ...base,
+    id: a.id,
+    type: a.kind,
+    severity: a.severity,
+    status: a.handledBy ? "handled" : "resolved",
+    routerId: a.routerId,
+    customerId: a.customerId,
+    startedAt: a.startedAt,
+    detectedAt: a.detectedAt,
+    endedAt: a.endedAt,
+    timeSource: a.timeSource,
+    timeUncertaintySeconds: a.timeUncertaintySeconds,
+    endTimeSource: a.endTimeSource,
+    endTimeUncertaintySeconds: a.endTimeUncertaintySeconds,
+    handledBy: a.handledBy,
+    location: a.location,
+  }));
   return [...active, ...resolved];
 }
 
@@ -236,7 +231,10 @@ export async function getAlertsList(
   options: AlertListOptions = {},
 ): Promise<{ items: AlertItem[]; total: number }> {
   const status = options.status ?? "all";
-  const limit = Math.min(Math.max(options.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const limit = Math.min(
+    Math.max(options.limit ?? DEFAULT_LIMIT, 1),
+    MAX_LIMIT,
+  );
   const offset = Math.max(options.offset ?? 0, 0);
   const demo = env.DASHBOARD_DATA === "demo";
 
@@ -277,7 +275,10 @@ export async function getAlertsList(
 }
 
 // Alert terbaru satu pelanggan (halaman detail pelanggan), terbaru dulu.
-export async function listCustomerAlerts(customerId: string, limit = 10): Promise<AlertItem[]> {
+export async function listCustomerAlerts(
+  customerId: string,
+  limit = 10,
+): Promise<AlertItem[]> {
   if (!UUID.test(customerId)) return [];
   const rows = await db
     .select()
@@ -406,7 +407,11 @@ export async function updateAlertTicket(
   userId?: string | null,
 ): Promise<TicketResult> {
   const body = input ?? {};
-  const full = { ...body, alertId, operator: operatorName } as AlertTicketActionInput;
+  const full = {
+    ...body,
+    alertId,
+    operator: operatorName,
+  } as AlertTicketActionInput;
   const { errors } = validateTicketActionInput({
     ...full,
     notes: typeof body.notes === "string" ? body.notes : "",
@@ -415,7 +420,8 @@ export async function updateAlertTicket(
     errors.push("Status tiket tidak valid.");
   if (!alertTicketPriorities.includes(body.priority as never))
     errors.push("Prioritas tiket tidak valid.");
-  if (errors.length) return { ok: false, error: "validation_error", details: errors };
+  if (errors.length)
+    return { ok: false, error: "validation_error", details: errors };
   if (!UUID.test(alertId)) return { ok: false, error: "not_found" };
 
   const dispatch = body.dispatchTechnician === true;
@@ -543,9 +549,15 @@ async function notifyAlertViaWhatsapp(row: AlertRow): Promise<WhatsappCount> {
     severity: row.severity,
     kind: row.type,
     subject:
-      row.locationName ?? row.title ?? row.locationOdp ?? row.locationAddress ?? "-",
+      row.locationName ??
+      row.title ??
+      row.locationOdp ??
+      row.locationAddress ??
+      "-",
     router,
-    time: row.startedAt.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) + " WIB",
+    time:
+      row.startedAt.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }) +
+      " WIB",
     message: row.message ?? row.title ?? "-",
   });
   return broadcastWhatsappMessage(message, row.type);
@@ -560,14 +572,16 @@ export async function createAlert(
   if (!(alertSeverities as readonly string[]).includes(input?.severity))
     errors.push("severity tidak valid.");
   const title = typeof input?.title === "string" ? input.title.trim() : "";
-  const message = typeof input?.message === "string" ? input.message.trim() : "";
+  const message =
+    typeof input?.message === "string" ? input.message.trim() : "";
   if (!title) errors.push("title wajib diisi.");
   if (!message) errors.push("message wajib diisi.");
   if (input?.routerId && !UUID.test(input.routerId))
     errors.push("routerId bukan UUID.");
   if (input?.customerId && !UUID.test(input.customerId))
     errors.push("customerId bukan UUID.");
-  if (errors.length) return { ok: false, error: "validation_error", details: errors };
+  if (errors.length)
+    return { ok: false, error: "validation_error", details: errors };
 
   const [row] = await db
     .insert(alerts)
@@ -606,7 +620,9 @@ export type NotifyResult =
   | { ok: false; error: "not_found" };
 
 // Kirim ulang/manual notifikasi untuk alert nyata, apa pun keparahannya.
-export async function notifyAlertWhatsapp(alertId: string): Promise<NotifyResult> {
+export async function notifyAlertWhatsapp(
+  alertId: string,
+): Promise<NotifyResult> {
   if (!UUID.test(alertId)) return { ok: false, error: "not_found" };
   const [row] = await db
     .select()

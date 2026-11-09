@@ -14,7 +14,10 @@ type Context = { params: Promise<{ id: string }> };
 
 const TIMEOUT_MS = 25_000;
 
-function formatOnuName(custName: string, pppoeUsername?: string | null): string {
+function formatOnuName(
+  custName: string,
+  pppoeUsername?: string | null,
+): string {
   const cleanName = custName.replace(/[^a-zA-Z0-9_\-\. ]/g, "").trim();
   let prefix = "";
   if (pppoeUsername) {
@@ -42,7 +45,12 @@ export function POST(request: Request, context: Context) {
 
       if (!env.BACKEND_INTERNAL_URL || !env.REALTIME_TOKEN_SECRET) {
         return Response.json(
-          { error: { code: "BACKEND_UNAVAILABLE", message: "Backend belum dikonfigurasi." } },
+          {
+            error: {
+              code: "BACKEND_UNAVAILABLE",
+              message: "Backend belum dikonfigurasi.",
+            },
+          },
           { status: 503 },
         );
       }
@@ -102,7 +110,9 @@ export function POST(request: Request, context: Context) {
           );
 
           if (res.ok) {
-            const resBody = (await res.json().catch(() => null)) as { description?: string } | null;
+            const resBody = (await res.json().catch(() => null)) as {
+              description?: string;
+            } | null;
             const savedDesc = resBody?.description ?? targetDesc;
             await db
               .update(oltOnus)

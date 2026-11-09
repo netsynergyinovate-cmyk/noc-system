@@ -7,4 +7,6 @@ import { customers } from "@/db/schema";
 // ada di src/lib/effective-billing.ts; ubah keduanya bersama.
 export const isolirSql = sql<boolean>`coalesce(${customers.isolirRouter}, ${customers.billingStatus} = 'isolir')`;
 
-export const effectiveBillingStatusSql = sql<"lunas" | "isolir">`case when ${isolirSql} then 'isolir' else 'lunas' end`;
+export const effectiveBillingStatusSql = sql<
+  "lunas" | "isolir"
+>`case when ${isolirSql} then 'isolir' else 'lunas' end`;

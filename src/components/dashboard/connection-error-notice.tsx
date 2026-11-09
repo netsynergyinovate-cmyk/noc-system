@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, Loader2, RefreshCw, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  XCircle,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,15 +30,24 @@ type Props = {
   className?: string;
 };
 
-export type ConnectionTroubleshoot = { title: string; hint: string; command?: string };
+export type ConnectionTroubleshoot = {
+  title: string;
+  hint: string;
+  command?: string;
+};
 
-const RESTORE_REST = "/ip service set www-ssl disabled=no\n/ip service set www disabled=no";
+const RESTORE_REST =
+  "/ip service set www-ssl disabled=no\n/ip service set www disabled=no";
 
 /** Pure: kode galat -> judul + saran. Kode tak dikenal jatuh ke fallback aman. */
 export function describeConnectionTroubleshoot(
   code?: string,
   deviceType?: string,
-  opts: { sourceIp?: string; localSourceIp?: string; protocol?: "rest" | "api" } = {},
+  opts: {
+    sourceIp?: string;
+    localSourceIp?: string;
+    protocol?: "rest" | "api";
+  } = {},
 ): ConnectionTroubleshoot {
   const mikrotik = deviceType === "mikrotik";
   const olt = deviceType === "olt";
@@ -40,7 +55,9 @@ export function describeConnectionTroubleshoot(
   const service: "www" | "api" = opts.protocol === "api" ? "api" : "www";
   const sourceIp = opts.sourceIp?.trim();
   const localSourceIp = opts.localSourceIp?.trim();
-  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(" / ");
+  const ipLabel = [...new Set([sourceIp, localSourceIp].filter(Boolean))].join(
+    " / ",
+  );
   switch (code) {
     case "TIMEOUT":
       return {
@@ -88,7 +105,11 @@ export function describeConnectionTroubleshoot(
           : mikrotik
             ? `Port yang diuji tertutup: layanan ${service} mati, atau router memakai port lain (mis. 8081) sedangkan kolom Port kosong. Cek port yang berlaku di router, lalu isi di kolom Port atau tulis IP:port di Host:`
             : "Port tertutup atau layanan tidak berjalan. Periksa port dan firewall.",
-        command: genieacs ? "systemctl status genieacs-nbi" : mikrotik ? `/ip service print where name~"${service}"` : undefined,
+        command: genieacs
+          ? "systemctl status genieacs-nbi"
+          : mikrotik
+            ? `/ip service print where name~"${service}"`
+            : undefined,
       };
     case "NETWORK_ERROR":
       return {
@@ -124,7 +145,12 @@ export function describeConnectionTroubleshoot(
 
 function iconFor(code?: string) {
   if (code === "TIMEOUT") return AlertTriangle;
-  if (code === "AUTH_FAILED" || code === "CONNECTION_REFUSED" || code === "CONNECTION_CLOSED") return XCircle;
+  if (
+    code === "AUTH_FAILED" ||
+    code === "CONNECTION_REFUSED" ||
+    code === "CONNECTION_CLOSED"
+  )
+    return XCircle;
   return AlertCircle;
 }
 
@@ -141,7 +167,11 @@ export function ConnectionErrorNotice({
   compact = false,
   className,
 }: Props) {
-  const help = describeConnectionTroubleshoot(code, deviceType, { sourceIp, localSourceIp, protocol });
+  const help = describeConnectionTroubleshoot(code, deviceType, {
+    sourceIp,
+    localSourceIp,
+    protocol,
+  });
   const Icon = iconFor(code);
 
   return (
@@ -155,7 +185,9 @@ export function ConnectionErrorNotice({
         <Icon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
         <span className="font-medium text-destructive">{help.title}</span>
         {code && <Badge variant="secondary">{code}</Badge>}
-        {target && <span className="text-xs text-muted-foreground">{target}</span>}
+        {target && (
+          <span className="text-xs text-muted-foreground">{target}</span>
+        )}
       </div>
 
       {message && <p className="text-destructive">{message}</p>}
@@ -170,13 +202,16 @@ export function ConnectionErrorNotice({
           )}
           {sourceIp && (
             <p className="text-muted-foreground">
-              IP server NOC yang dipakai ke router ini: <code className="font-mono">{sourceIp}</code>
+              IP server NOC yang dipakai ke router ini:{" "}
+              <code className="font-mono">{sourceIp}</code>
               {localSourceIp && localSourceIp !== sourceIp ? (
                 <>
-                  {" "}(LAN: <code className="font-mono">{localSourceIp}</code>)
+                  {" "}
+                  (LAN: <code className="font-mono">{localSourceIp}</code>)
                 </>
               ) : null}
-              . Perintah di atas sudah memakai alamat itu. Jika router melihat alamat lain karena NAT, cek{" "}
+              . Perintah di atas sudah memakai alamat itu. Jika router melihat
+              alamat lain karena NAT, cek{" "}
               <code className="font-mono">/ip firewall connection print</code>.
             </p>
           )}

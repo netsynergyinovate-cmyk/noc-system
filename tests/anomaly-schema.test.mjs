@@ -68,8 +68,18 @@ test("network_logs: index dan check constraints", () => {
 });
 
 test("network_logs: enum types dan severities", () => {
-  assert.deepEqual(direct.networkLogTypes, ["queue", "cpu", "optical", "offline", "port"]);
-  assert.deepEqual(direct.networkLogSeverities, ["info", "warning", "critical"]);
+  assert.deepEqual(direct.networkLogTypes, [
+    "queue",
+    "cpu",
+    "optical",
+    "offline",
+    "port",
+  ]);
+  assert.deepEqual(direct.networkLogSeverities, [
+    "info",
+    "warning",
+    "critical",
+  ]);
   assert.equal(barrel.networkLogTypes, direct.networkLogTypes);
   assert.equal(barrel.networkLogSeverities, direct.networkLogSeverities);
 });

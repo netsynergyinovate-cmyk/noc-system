@@ -9,11 +9,17 @@ export function GET(request: Request) {
     const url = new URL(request.url);
     const alertId = url.searchParams.get("alertId");
     if (!alertId) {
-      return NextResponse.json({ error: "missing_alert_id", message: "Parameter alertId diperlukan." }, { status: 400 });
+      return NextResponse.json(
+        { error: "missing_alert_id", message: "Parameter alertId diperlukan." },
+        { status: 400 },
+      );
     }
     const data = await getAlertTicket(alertId);
     if (!data) {
-      return NextResponse.json({ error: "not_found", message: "Tiket tidak ditemukan." }, { status: 404 });
+      return NextResponse.json(
+        { error: "not_found", message: "Tiket tidak ditemukan." },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ data });
   });
@@ -22,10 +28,16 @@ export function GET(request: Request) {
 export function POST(request: Request) {
   return withApiSession(request, async (session) => {
     const raw = await readJson(request);
-    const body = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+    const body =
+      raw && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : {};
     const alertId = typeof body.alertId === "string" ? body.alertId : "";
     if (!alertId) {
-      return NextResponse.json({ error: "validation_error", details: ["ID alert wajib diisi."] }, { status: 400 });
+      return NextResponse.json(
+        { error: "validation_error", details: ["ID alert wajib diisi."] },
+        { status: 400 },
+      );
     }
 
     const result = await updateAlertTicket(
@@ -37,9 +49,15 @@ export function POST(request: Request) {
 
     if (!result.ok) {
       if (result.error === "not_found") {
-        return NextResponse.json({ error: "not_found", message: "Alert tidak ditemukan." }, { status: 404 });
+        return NextResponse.json(
+          { error: "not_found", message: "Alert tidak ditemukan." },
+          { status: 404 },
+        );
       }
-      return NextResponse.json({ error: "validation_error", details: result.details }, { status: 400 });
+      return NextResponse.json(
+        { error: "validation_error", details: result.details },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ ok: true, data: result.data });

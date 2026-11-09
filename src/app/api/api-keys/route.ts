@@ -8,7 +8,11 @@ export const runtime = "nodejs";
 // Kunci hanya dikelola dari sesi login: API key tidak boleh membuat kunci baru.
 function requireCookieSession(session: { apiKeyId?: string }) {
   if (session.apiKeyId)
-    throw new ApiError(403, "SESSION_REQUIRED", "Manage API keys from a signed-in session.");
+    throw new ApiError(
+      403,
+      "SESSION_REQUIRED",
+      "Manage API keys from a signed-in session.",
+    );
 }
 
 export function GET(request: Request) {
@@ -19,14 +23,21 @@ export function GET(request: Request) {
 }
 
 export function POST(request: Request) {
-  const audit = withAudit({ action: "api-key-created", getTarget: () => "/api/api-keys" });
-  return withApiPermission(request, { apiKey: ["manage"] }, audit(request, async (session) => {
-    requireCookieSession(session);
-    const input = createApiKeySchema.parse(await readJson(request));
-    const { key, apiKey } = await createApiKey(session.user.id, input);
-    return Response.json(
-      { data: { ...apiKey, key } },
-      { status: 201, headers: { Location: `/api/api-keys/${apiKey.id}` } },
-    );
-  }));
+  const audit = withAudit({
+    action: "api-key-created",
+    getTarget: () => "/api/api-keys",
+  });
+  return withApiPermission(
+    request,
+    { apiKey: ["manage"] },
+    audit(request, async (session) => {
+      requireCookieSession(session);
+      const input = createApiKeySchema.parse(await readJson(request));
+      const { key, apiKey } = await createApiKey(session.user.id, input);
+      return Response.json(
+        { data: { ...apiKey, key } },
+        { status: 201, headers: { Location: `/api/api-keys/${apiKey.id}` } },
+      );
+    }),
+  );
 }

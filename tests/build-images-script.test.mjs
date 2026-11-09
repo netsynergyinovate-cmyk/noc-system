@@ -50,10 +50,22 @@ test("getBuildSpecs and getBuildCommands", () => {
 
   const cmds = getBuildCommands({ tag: "t1", target: "all" });
   assert.deepEqual(cmds[0].args, [
-    "build", "-f", "Dockerfile", "--target", "runner", "-t", "noc-web:t1", ".",
+    "build",
+    "-f",
+    "Dockerfile",
+    "--target",
+    "runner",
+    "-t",
+    "noc-web:t1",
+    ".",
   ]);
   assert.deepEqual(cmds[1].args, [
-    "build", "-f", "backend/Dockerfile", "-t", "noc-backend:t1", "backend",
+    "build",
+    "-f",
+    "backend/Dockerfile",
+    "-t",
+    "noc-backend:t1",
+    "backend",
   ]);
 });
 
@@ -82,7 +94,10 @@ test("missing Docker daemon gives a clear error and builds nothing", async () =>
 
   calls.length = 0;
   const logs = [];
-  const r = await runBuild(parseArgs([]), { spawnFn, logFn: (l) => logs.push(l) });
+  const r = await runBuild(parseArgs([]), {
+    spawnFn,
+    logFn: (l) => logs.push(l),
+  });
   assert.equal(r.ok, false);
   assert.deepEqual(calls, ["info"]);
   assert.match(logs[0], /Docker daemon tidak tersedia/);
@@ -106,11 +121,17 @@ test("verifyImage checks user and ports", async () => {
   assert.equal(noPort.problems.length, 2);
 
   assert.equal(
-    (await verifyImage("noc-backend:latest", async () => inspect(backendConfig))).ok,
+    (
+      await verifyImage("noc-backend:latest", async () =>
+        inspect(backendConfig),
+      )
+    ).ok,
     true,
   );
   const missing = await verifyImage("noc-web:latest", async () => ({
-    code: 1, stdout: "", stderr: "No such image",
+    code: 1,
+    stdout: "",
+    stderr: "No such image",
   }));
   assert.equal(missing.ok, false);
   const garbage = await verifyImage("noc-web:latest", async () => ok("nope"));

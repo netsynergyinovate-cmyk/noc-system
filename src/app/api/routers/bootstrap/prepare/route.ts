@@ -13,7 +13,9 @@ const bodySchema = z.object({
 
 async function publicIp(): Promise<string | null> {
   try {
-    const res = await fetch("https://api.ipify.org", { signal: AbortSignal.timeout(3000) });
+    const res = await fetch("https://api.ipify.org", {
+      signal: AbortSignal.timeout(3000),
+    });
     const text = (await res.text()).trim();
     return /^\d{1,3}(\.\d{1,3}){3}$/.test(text) ? text : null;
   } catch {
@@ -26,21 +28,43 @@ async function publicIp(): Promise<string | null> {
 export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async () => {
     const parsed = bodySchema.safeParse(await readJson(request));
-    if (!parsed.success) throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
+    if (!parsed.success)
+      throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     let url: URL;
     try {
       url = sanitizeHost(parsed.data.host, parsed.data.port);
     } catch (err) {
-      if (err instanceof DeviceConnectionError) throw new ApiError(422, err.code, err.message);
+      if (err instanceof DeviceConnectionError)
+        throw new ApiError(422, err.code, err.message);
       throw err;
     }
-    const candidates = [...new Set([parsed.data.port ?? (Number(url.port) || undefined), 8728, 8729].filter((p): p is number => !!p))];
+    const candidates = [
+      ...new Set(
+        [
+          parsed.data.port ?? (Number(url.port) || undefined),
+          8728,
+          8729,
+        ].filter((p): p is number => !!p),
+      ),
+    ];
     const [probes, pub] = await Promise.all([
-      Promise.all(candidates.map(async (port) => ({ port, localIp: await outboundSourceIp(url.hostname, port, 2500) }))),
+      Promise.all(
+        candidates.map(async (port) => ({
+          port,
+          localIp: await outboundSourceIp(url.hostname, port, 2500),
+        })),
+      ),
       publicIp(),
     ]);
     return NextResponse.json({
       success: true,
-      data: { ports: probes.map((p) => ({ port: p.port, open: p.localIp !== null, localIp: p.localIp })), publicIp: pub },
+      data: {
+        ports: probes.map((p) => ({
+          port: p.port,
+          open: p.localIp !== null,
+          localIp: p.localIp,
+        })),
+        publicIp: pub,
+      },
     });
   });

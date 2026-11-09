@@ -1,7 +1,8 @@
 import "server-only";
 import { getNetworkMapData } from "./network-map.service";
 
-export type MarkerType = "customer" | "router" | "olt" | "odp" | "odc" | "pole" | "server";
+export type MarkerType =
+  "customer" | "router" | "olt" | "odp" | "odc" | "pole" | "server";
 
 export type OpticalCategory = "normal" | "warning" | "critical" | "unknown";
 
@@ -157,11 +158,23 @@ export async function getMapMarkersData(
       const matchOdp = m.odpName?.toLowerCase().includes(query) ?? false;
       const matchHost = m.host?.toLowerCase().includes(query) ?? false;
       const matchAddr = m.address?.toLowerCase().includes(query) ?? false;
-      const pppoe = (m.details?.pppoeUsername as string | undefined)?.toLowerCase();
+      const pppoe = (
+        m.details?.pppoeUsername as string | undefined
+      )?.toLowerCase();
       const matchPppoe = pppoe ? pppoe.includes(query) : false;
-      const onuDetails = m.details?.onuDetails as { serialNumber?: string | null } | undefined;
-      const matchSerial = onuDetails?.serialNumber?.toLowerCase().includes(query) ?? false;
-      return matchName || matchId || matchOdp || matchHost || matchAddr || matchPppoe || matchSerial;
+      const onuDetails = m.details?.onuDetails as
+        { serialNumber?: string | null } | undefined;
+      const matchSerial =
+        onuDetails?.serialNumber?.toLowerCase().includes(query) ?? false;
+      return (
+        matchName ||
+        matchId ||
+        matchOdp ||
+        matchHost ||
+        matchAddr ||
+        matchPppoe ||
+        matchSerial
+      );
     });
   }
 

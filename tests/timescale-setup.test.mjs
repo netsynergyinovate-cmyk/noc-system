@@ -8,7 +8,15 @@ const mock = (extAvailable) => {
     calls,
     async query(sql) {
       calls.push(sql);
-      return { rows: [{ exists: sql.includes("pg_available_extensions") ? extAvailable : true }] };
+      return {
+        rows: [
+          {
+            exists: sql.includes("pg_available_extensions")
+              ? extAvailable
+              : true,
+          },
+        ],
+      };
     },
   };
 };
@@ -17,8 +25,16 @@ test("ekstensi ada: create extension, hypertable, retensi", async () => {
   const c = mock(true);
   const r = await applyTimescaleSetup(c, { retentionDays: 14 });
   assert.deepEqual(r, { enabled: true, isHypertable: true });
-  assert.ok(c.calls.some((s) => s.startsWith("CREATE EXTENSION IF NOT EXISTS timescaledb")));
-  assert.ok(c.calls.some((s) => s.includes("create_hypertable('traffic_samples', 'sampled_at'")));
+  assert.ok(
+    c.calls.some((s) =>
+      s.startsWith("CREATE EXTENSION IF NOT EXISTS timescaledb"),
+    ),
+  );
+  assert.ok(
+    c.calls.some((s) =>
+      s.includes("create_hypertable('traffic_samples', 'sampled_at'"),
+    ),
+  );
   assert.ok(c.calls.some((s) => s.includes("INTERVAL '14 days'")));
 });
 
@@ -32,7 +48,10 @@ test("ekstensi tidak ada: fallback aman tanpa error", async () => {
 
 test("dimatikan lewat opsi: tidak menyentuh database", async () => {
   const c = mock(true);
-  assert.equal((await applyTimescaleSetup(c, { enabled: false })).enabled, false);
+  assert.equal(
+    (await applyTimescaleSetup(c, { enabled: false })).enabled,
+    false,
+  );
   assert.equal(c.calls.length, 0);
 });
 
@@ -50,7 +69,9 @@ test("retensi: default 30, minimum 1, desimal dibulatkan turun", async () => {
   const days = async (retentionDays) => {
     const c = mock(true);
     await applyTimescaleSetup(c, { retentionDays });
-    return c.calls.find((s) => s.includes("add_retention_policy")).match(/INTERVAL '(\d+) days'/)[1];
+    return c.calls
+      .find((s) => s.includes("add_retention_policy"))
+      .match(/INTERVAL '(\d+) days'/)[1];
   };
   assert.equal(await days(undefined), "30");
   assert.equal(await days("abc"), "30");

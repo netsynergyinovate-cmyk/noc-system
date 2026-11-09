@@ -13,7 +13,12 @@ const TARGETS = ["web", "backend", "all"];
 const TAG_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
 
 export function parseArgs(argv = []) {
-  const options = { tag: "latest", target: "all", dryRun: false, verify: false };
+  const options = {
+    tag: "latest",
+    target: "all",
+    dryRun: false,
+    verify: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--dry-run") options.dryRun = true;
@@ -90,7 +95,9 @@ export function defaultSpawn(command, args, { inherit = false } = {}) {
     });
     child.stdout?.on("data", (c) => (stdout += c));
     child.stderr?.on("data", (c) => (stderr += c));
-    child.once("error", (e) => accept({ code: null, stdout, stderr: e.message }));
+    child.once("error", (e) =>
+      accept({ code: null, stdout, stderr: e.message }),
+    );
     child.once("close", (code) => accept({ code, stdout, stderr }));
   });
 }
@@ -124,7 +131,10 @@ export async function verifyImage(imageName, spawnFn = defaultSpawn) {
   try {
     config = JSON.parse(r.stdout)[0].Config ?? {};
   } catch {
-    return { ok: false, problems: [`Output inspect ${imageName} tidak valid.`] };
+    return {
+      ok: false,
+      problems: [`Output inspect ${imageName} tidak valid.`],
+    };
   }
   if (!spec) return { ok: true, problems };
   if (spec.expectUser) {
@@ -190,7 +200,10 @@ export async function runBuild(
     : { ok: true };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     const result = await runBuild(parseArgs(process.argv.slice(2)));
     if (!result.ok) process.exitCode = 1;

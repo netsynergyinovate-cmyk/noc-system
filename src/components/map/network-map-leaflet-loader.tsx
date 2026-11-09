@@ -6,7 +6,11 @@ import type { NetworkMapProps } from "./network-map";
 
 export type NetworkMapLoaderProps = NetworkMapProps;
 
-export function MapLoadingSkeleton({ message = "Memuat Pustaka Peta Satelit & Topologi..." }: { message?: string }) {
+export function MapLoadingSkeleton({
+  message = "Memuat Pustaka Peta Satelit & Topologi...",
+}: {
+  message?: string;
+}) {
   return (
     <div
       role="status"

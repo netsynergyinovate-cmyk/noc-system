@@ -35,7 +35,11 @@ export function mergeThresholds(
   const merged = cloneThresholds(current);
   for (const kind of ruleKinds) {
     const entry = Object.hasOwn(patch, kind) ? patch[kind] : undefined;
-    if (entry) merged[kind] = { threshold: entry.threshold, forSeconds: entry.forSeconds };
+    if (entry)
+      merged[kind] = {
+        threshold: entry.threshold,
+        forSeconds: entry.forSeconds,
+      };
   }
   return merged;
 }

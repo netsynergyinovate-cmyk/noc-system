@@ -26,7 +26,9 @@ test("route hanya mengekspor GET (jalur tulis TS dihapus)", () => {
 });
 
 test("getTopFlows: mengembalikan daftar flow dan agregat total", async () => {
-  const parsed = parseNetflowQuery(new URLSearchParams({ range: "1h", limit: "10" }));
+  const parsed = parseNetflowQuery(
+    new URLSearchParams({ range: "1h", limit: "10" }),
+  );
   const res = await getTopFlows(parsed);
   assert.ok(res);
   assert.ok(Array.isArray(res.flows));

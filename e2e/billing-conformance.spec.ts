@@ -113,7 +113,9 @@ function expectedOf(input: CaseInput): FixtureExpected {
   }));
   const { rows, unmatched } = matchBilling(customers, records, () => "r");
 
-  const position = new Map(input.invoices.map((inv, index) => [inv.ref, index]));
+  const position = new Map(
+    input.invoices.map((inv, index) => [inv.ref, index]),
+  );
   if (position.size !== input.invoices.length) {
     throw new Error(`${input.name}: kode tagihan kembar`);
   }
@@ -254,14 +256,7 @@ function handCases(): CaseInput[] {
       [inv(1, written, "isolir")],
     );
   }
-  for (const written of [
-    "us er1",
-    "user 1",
-    "user",
-    "user11",
-    "user-1",
-    "",
-  ]) {
+  for (const written of ["us er1", "user 1", "user", "user11", "user-1", ""]) {
     add(
       `tidak dimaafkan ${JSON.stringify(written)}`,
       [cust(1, "user1")],
@@ -275,14 +270,16 @@ function handCases(): CaseInput[] {
   );
   const loose = inv(1, "USER1");
   const exact = inv(2, "user1", "isolir");
-  add("persis menang atas dirapikan (dirapikan dulu)", [cust(1, "user1")], [
-    loose,
-    exact,
-  ]);
-  add("persis menang atas dirapikan (persis dulu)", [cust(1, "user1")], [
-    exact,
-    loose,
-  ]);
+  add(
+    "persis menang atas dirapikan (dirapikan dulu)",
+    [cust(1, "user1")],
+    [loose, exact],
+  );
+  add(
+    "persis menang atas dirapikan (persis dulu)",
+    [cust(1, "user1")],
+    [exact, loose],
+  );
   const first = inv(1, "user1");
   const second = inv(2, "user1", "isolir");
   add("dua persis (urutan asli)", [cust(1, "user1")], [first, second]);
@@ -491,7 +488,8 @@ function randomCase(seed: number): CaseInput {
     let text = "";
     const length = 3 + Math.floor(random() * 6);
     for (let i = 0; i < length; i += 1) text += pick([...POOL]);
-    if (random() < 0.3) text += pick([".", "_", "-"]) + Math.floor(random() * 99);
+    if (random() < 0.3)
+      text += pick([".", "_", "-"]) + Math.floor(random() * 99);
     return text;
   };
   const style = (text: string) =>

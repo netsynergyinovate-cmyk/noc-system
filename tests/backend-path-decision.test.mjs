@@ -13,13 +13,28 @@ test("dokumen ada dan substansial", () => {
 });
 
 test("Opsi A tercakup", () => {
-  for (const k of ["Opsi A", "Go", "goroutine", "NetFlow", "Syslog", "WebSocket hub", "ring buffer"]) {
+  for (const k of [
+    "Opsi A",
+    "Go",
+    "goroutine",
+    "NetFlow",
+    "Syslog",
+    "WebSocket hub",
+    "ring buffer",
+  ]) {
     assert.ok(doc.includes(k), `hilang: ${k}`);
   }
 });
 
 test("Opsi B tercakup", () => {
-  for (const k of ["Opsi B", "Next.js", "Better Auth", "Drizzle ORM", "CRUD", "/api/realtime/ticket"]) {
+  for (const k of [
+    "Opsi B",
+    "Next.js",
+    "Better Auth",
+    "Drizzle ORM",
+    "CRUD",
+    "/api/realtime/ticket",
+  ]) {
     assert.ok(doc.includes(k), `hilang: ${k}`);
   }
 });
@@ -35,7 +50,14 @@ test("keputusan hibrida dan pembagian plane", () => {
 
 test("matriks komparasi lengkap", () => {
   assert.match(doc, /## Matriks Komparasi/);
-  for (const k of ["Throughput", "Latensi", "RAM", "CPU", "Operasional", "Protokol UDP"]) {
+  for (const k of [
+    "Throughput",
+    "Latensi",
+    "RAM",
+    "CPU",
+    "Operasional",
+    "Protokol UDP",
+  ]) {
     assert.ok(doc.includes(`| ${k}`), `baris hilang: ${k}`);
   }
 });

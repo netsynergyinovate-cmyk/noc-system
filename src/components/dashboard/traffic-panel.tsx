@@ -92,7 +92,9 @@ export function SeriesStat({
           <span className="flex items-center gap-1 text-[10px]">
             <span
               className={
-                isInspecting ? "text-emerald-400 font-semibold" : "text-muted-foreground"
+                isInspecting
+                  ? "text-emerald-400 font-semibold"
+                  : "text-muted-foreground"
               }
             >
               {latestLabel}
@@ -106,7 +108,11 @@ export function SeriesStat({
         </h3>
         <p
           data-testid={testId}
-          id={testId === "download-now" ? "traffic-download-val" : "traffic-upload-val"}
+          id={
+            testId === "download-now"
+              ? "traffic-download-val"
+              : "traffic-upload-val"
+          }
           className="mt-0.5 text-lg font-bold text-foreground tracking-tight tabular-nums font-mono"
         >
           {show(displayVal)}
@@ -219,7 +225,11 @@ export type HistoryState =
 // Memuat histori untuk rentang yang dipilih. Hasil untuk rentang yang sudah
 // ditinggalkan dibuang, jadi berpindah rentang dengan cepat tidak menampilkan
 // grafik yang salah.
-export function useTrafficHistory(range: TrafficRangeId, demo: boolean, poll = true) {
+export function useTrafficHistory(
+  range: TrafficRangeId,
+  demo: boolean,
+  poll = true,
+) {
   const [state, setState] = useState<HistoryState | null>(null);
   const [attempt, setAttempt] = useState(0);
 
@@ -259,7 +269,11 @@ export function useTrafficHistory(range: TrafficRangeId, demo: boolean, poll = t
             : 60_000;
 
     const timer = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      )
+        return;
       (demo ? loadTrafficHistory(range) : loadLiveTrafficHistory(range))
         .then((data) => {
           if (!cancelled) setState({ range, status: "ready", data });
@@ -372,12 +386,16 @@ export function TrafficPanel({ className }: { className?: string }) {
   const now = isLive ? live.now : (history.data?.to ?? 0);
   const ready = isLive || history.data !== null;
 
-  const [inspected, setInspected] = useState<InspectedTrafficPoint | null>(null);
+  const [inspected, setInspected] = useState<InspectedTrafficPoint | null>(
+    null,
+  );
 
   return (
     <Card className={className}>
       <CardHeader className="py-3 px-4">
-        <CardTitle className="text-base font-semibold">Traffic jaringan</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Traffic jaringan
+        </CardTitle>
         <CardDescription className="text-xs">{describe(range)}</CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0 flex flex-1 flex-col gap-4">
@@ -413,16 +431,20 @@ export function TrafficPanel({ className }: { className?: string }) {
             aria-label="Memuat histori traffic"
             className="min-h-64 flex-1 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
           />
-        ) : !isLive && history.data && history.data.series.times.length === 0 ? (
+        ) : !isLive &&
+          history.data &&
+          history.data.series.times.length === 0 ? (
           <div
             role="status"
             data-testid="traffic-history-empty"
             className="flex min-h-64 flex-1 flex-col items-center justify-center gap-1 rounded-lg border border-dashed p-6 text-center"
           >
-            <p className="text-sm font-medium">Belum ada histori untuk rentang ini</p>
+            <p className="text-sm font-medium">
+              Belum ada histori untuk rentang ini
+            </p>
             <p className="text-sm text-muted-foreground">
-              Backend merekam traffic setiap detik sejak router terhubung. Grafik
-              terisi bertahap; coba rentang yang lebih pendek.
+              Backend merekam traffic setiap detik sejak router terhubung.
+              Grafik terisi bertahap; coba rentang yang lebih pendek.
             </p>
           </div>
         ) : (

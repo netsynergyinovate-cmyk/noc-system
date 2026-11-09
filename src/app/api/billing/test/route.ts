@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { withApiPermission, readJson, ApiError } from "@/lib/api";
 import { env } from "@/lib/env";
-import { defaultPortFor, parseTarget, testDeviceConnection } from "@/services/device-connection-tester";
+import {
+  defaultPortFor,
+  parseTarget,
+  testDeviceConnection,
+} from "@/services/device-connection-tester";
 import { testBillingConnectionSchema } from "@/validators/devices";
 
 export const runtime = "nodejs";
@@ -12,7 +16,9 @@ export const runtime = "nodejs";
 export const POST = (request: Request) =>
   withApiPermission(request, { billing: ["manage"] }, async () => {
     const empty = (await request.clone().text()).trim() === "";
-    const parsed = testBillingConnectionSchema.safeParse(empty ? {} : await readJson(request));
+    const parsed = testBillingConnectionSchema.safeParse(
+      empty ? {} : await readJson(request),
+    );
     if (!parsed.success) {
       throw new ApiError(422, "VALIDATION_ERROR", "Check the supplied fields.");
     }
@@ -29,7 +35,11 @@ export const POST = (request: Request) =>
       useTls ??= u.protocol === "https:";
     }
     if (!host) {
-      throw new ApiError(422, "VALIDATION_ERROR", "Isi host billing atau set BILLING_URL.");
+      throw new ApiError(
+        422,
+        "VALIDATION_ERROR",
+        "Isi host billing atau set BILLING_URL.",
+      );
     }
 
     const target = parseTarget(host);

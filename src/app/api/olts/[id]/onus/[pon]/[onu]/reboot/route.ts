@@ -32,7 +32,13 @@ export function POST(request: Request, context: Context) {
 
       if (!env.BACKEND_INTERNAL_URL || !env.REALTIME_TOKEN_SECRET) {
         return Response.json(
-          { error: { code: "BACKEND_UNAVAILABLE", message: "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong)." } },
+          {
+            error: {
+              code: "BACKEND_UNAVAILABLE",
+              message:
+                "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong).",
+            },
+          },
           { status: 503 },
         );
       }
@@ -56,34 +62,69 @@ export function POST(request: Request, context: Context) {
         );
       } catch {
         return Response.json(
-          { error: { code: "BACKEND_UNREACHABLE", message: "Backend tidak dapat dihubungi." } },
+          {
+            error: {
+              code: "BACKEND_UNREACHABLE",
+              message: "Backend tidak dapat dihubungi.",
+            },
+          },
           { status: 502 },
         );
       }
 
-      const body: { message?: string } | null = await res.json().catch(() => null);
+      const body: { message?: string } | null = await res
+        .json()
+        .catch(() => null);
 
       if (res.status === 200) {
-        return Response.json({ ok: true, message: body?.message ?? "Perintah reboot diterima OLT." });
+        return Response.json({
+          ok: true,
+          message: body?.message ?? "Perintah reboot diterima OLT.",
+        });
       }
       if (res.status === 404) {
-        return Response.json({ error: { code: "OLT_NOT_FOUND", message: "OLT tidak ditemukan atau nonaktif." } }, { status: 404 });
+        return Response.json(
+          {
+            error: {
+              code: "OLT_NOT_FOUND",
+              message: "OLT tidak ditemukan atau nonaktif.",
+            },
+          },
+          { status: 404 },
+        );
       }
       if (res.status === 429) {
         return Response.json(
-          { error: { code: "REBOOT_COOLDOWN", message: body?.message ?? "ONU ini baru saja di-reboot; tunggu sekitar 1 menit." } },
+          {
+            error: {
+              code: "REBOOT_COOLDOWN",
+              message:
+                body?.message ??
+                "ONU ini baru saja di-reboot; tunggu sekitar 1 menit.",
+            },
+          },
           { status: 429 },
         );
       }
       if (res.status === 400) {
         return Response.json(
-          { error: { code: "BAD_REQUEST", message: body?.message ?? "Permintaan tidak sah." } },
+          {
+            error: {
+              code: "BAD_REQUEST",
+              message: body?.message ?? "Permintaan tidak sah.",
+            },
+          },
           { status: 400 },
         );
       }
       // 502 (ditolak OLT/gagal) dan selainnya: pesan umum, rincian hanya di log backend.
       return Response.json(
-        { error: { code: "REBOOT_FAILED", message: "OLT menolak atau gagal me-reboot ONU ini." } },
+        {
+          error: {
+            code: "REBOOT_FAILED",
+            message: "OLT menolak atau gagal me-reboot ONU ini.",
+          },
+        },
         { status: 502 },
       );
     }),

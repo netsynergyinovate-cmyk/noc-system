@@ -35,12 +35,20 @@ export function buildPonRows(
   onus: readonly DashboardOnu[],
 ): PonPortOverviewRow[] {
   return ports.map((p) => {
-    const mine = onus.filter((o) => o.oltId === oltId && ponOf(o.ponPort) === p.ponIndex);
+    const mine = onus.filter(
+      (o) => o.oltId === oltId && ponOf(o.ponPort) === p.ponIndex,
+    );
     const { rx, tx } = reading(p.avgRxPowerDbm, p.txPowerDbm);
     const totalOnu = Math.max(mine.length, p.onuCount);
-    const onlineOnu = mine.length > 0 ? mine.filter((o) => o.status === "online").length : p.onlineOnuCount;
+    const onlineOnu =
+      mine.length > 0
+        ? mine.filter((o) => o.status === "online").length
+        : p.onlineOnuCount;
     const weakOnuCount = mine.filter(
-      (o) => o.status === "online" && o.rxPowerDbm !== null && o.rxPowerDbm < WEAK_RX_DBM,
+      (o) =>
+        o.status === "online" &&
+        o.rxPowerDbm !== null &&
+        o.rxPowerDbm < WEAK_RX_DBM,
     ).length;
     // Aturan yang sama dengan tabel demo: port mati atau RX < -27 kritis; RX < -24
     // atau 4 ONU lemah atau lebih peringatan. Tanpa pembacaan tidak dinilai buruk.
@@ -61,7 +69,10 @@ export function buildPonRows(
       onlineOnu,
       weakOnuCount,
       losOnuCount: mine.filter((o) => o.status === "los").length,
-      capacityPercent: p.capacity > 0 ? Math.min(100, Math.round((totalOnu / p.capacity) * 100)) : 0,
+      capacityPercent:
+        p.capacity > 0
+          ? Math.min(100, Math.round((totalOnu / p.capacity) * 100))
+          : 0,
       rxPowerDbm: rx,
       txPowerDbm: tx,
       opticalStatus,
@@ -69,7 +80,9 @@ export function buildPonRows(
   });
 }
 
-export async function fetchLivePonOverview(onus: readonly DashboardOnu[]): Promise<LivePonOverview> {
+export async function fetchLivePonOverview(
+  onus: readonly DashboardOnu[],
+): Promise<LivePonOverview> {
   const olts = await fetchLiveOlts();
   const rows: PonPortOverviewRow[] = [];
   const failedOlts: string[] = [];
@@ -85,6 +98,8 @@ export async function fetchLivePonOverview(onus: readonly DashboardOnu[]): Promi
       }
     }),
   );
-  rows.sort((a, b) => a.oltName.localeCompare(b.oltName) || a.ponIndex - b.ponIndex);
+  rows.sort(
+    (a, b) => a.oltName.localeCompare(b.oltName) || a.ponIndex - b.ponIndex,
+  );
   return { rows, failedOlts };
 }

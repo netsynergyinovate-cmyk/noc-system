@@ -13,14 +13,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { updateAnomalyStatusSchema } = await import(
-  "../src/validators/anomalies.ts"
-);
-const {
-  createAnomaly,
-  getAnomalyById,
-  updateAnomalyStatus,
-} = await import("../src/services/anomalies.service.ts");
+const { updateAnomalyStatusSchema } =
+  await import("../src/validators/anomalies.ts");
+const { createAnomaly, getAnomalyById, updateAnomalyStatus } =
+  await import("../src/services/anomalies.service.ts");
 const routeDetail = await import("../src/app/api/anomalies/[id]/route.ts");
 
 test("validator: updateAnomalyStatusSchema memvalidasi status dan note", () => {

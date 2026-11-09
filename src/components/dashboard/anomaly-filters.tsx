@@ -35,7 +35,10 @@ function Field({
 }) {
   return (
     <div className={className ?? "flex flex-col gap-1"}>
-      <Label htmlFor={id} className="text-[11px] font-medium text-muted-foreground">
+      <Label
+        htmlFor={id}
+        className="text-[11px] font-medium text-muted-foreground"
+      >
         {label}
       </Label>
       {children}
@@ -66,10 +69,18 @@ export function AnomalyFilterBar({
     0,
   );
   const statusTotal = counts.status.active + counts.status.resolved;
-  const statusTabs: { value: AnomalyStatusFilter; label: string; count: number }[] = [
+  const statusTabs: {
+    value: AnomalyStatusFilter;
+    label: string;
+    count: number;
+  }[] = [
     { value: "all", label: "Semua", count: statusTotal },
     { value: "active", label: "Aktif", count: counts.status.active },
-    { value: "unreviewed", label: "Belum selesai", count: counts.status.unreviewed },
+    {
+      value: "unreviewed",
+      label: "Belum selesai",
+      count: counts.status.unreviewed,
+    },
     { value: "resolved", label: "Selesai", count: counts.status.resolved },
   ];
 
@@ -100,7 +111,9 @@ export function AnomalyFilterBar({
               }`}
             >
               {tab.label}
-              <span className="font-mono tabular-nums opacity-80">{n(tab.count)}</span>
+              <span className="font-mono tabular-nums opacity-80">
+                {n(tab.count)}
+              </span>
             </button>
           ))}
         </div>
@@ -116,77 +129,93 @@ export function AnomalyFilterBar({
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-1.5 items-end">
-      <Field id="anomaly-search" label="Cari" className="lg:col-span-5 flex flex-col gap-1">
-        <Input
+        <Field
           id="anomaly-search"
-          type="search"
-          data-testid="anomaly-search-input"
-          placeholder="Pelanggan, router, ODP, keterangan"
-          className="h-8 text-[11px] bg-background"
-          value={filters.query ?? ""}
-          onChange={(event) =>
-            onChange({ ...filters, query: event.target.value })
-          }
-        />
-      </Field>
-      <Field id="anomaly-router" label="Router" className="lg:col-span-3 flex flex-col gap-1">
-        <select
+          label="Cari"
+          className="lg:col-span-5 flex flex-col gap-1"
+        >
+          <Input
+            id="anomaly-search"
+            type="search"
+            data-testid="anomaly-search-input"
+            placeholder="Pelanggan, router, ODP, keterangan"
+            className="h-8 text-[11px] bg-background"
+            value={filters.query ?? ""}
+            onChange={(event) =>
+              onChange({ ...filters, query: event.target.value })
+            }
+          />
+        </Field>
+        <Field
           id="anomaly-router"
-          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
-          value={filters.routerId ?? "all"}
-          onChange={(event) =>
-            onChange({ ...filters, routerId: event.target.value })
-          }
+          label="Router"
+          className="lg:col-span-3 flex flex-col gap-1"
         >
-          <option value="all">Semua router</option>
-          {routers.map((router) => (
-            <option key={router.id} value={router.id}>
-              {router.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field id="anomaly-kind" label="Jenis" className="lg:col-span-2 flex flex-col gap-1">
-        <select
+          <select
+            id="anomaly-router"
+            className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
+            value={filters.routerId ?? "all"}
+            onChange={(event) =>
+              onChange({ ...filters, routerId: event.target.value })
+            }
+          >
+            <option value="all">Semua router</option>
+            {routers.map((router) => (
+              <option key={router.id} value={router.id}>
+                {router.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
           id="anomaly-kind"
-          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
-          value={filters.kind}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              kind: event.target.value as IncidentKind | "all",
-            })
-          }
+          label="Jenis"
+          className="lg:col-span-2 flex flex-col gap-1"
         >
-          <option value="all">Semua jenis ({n(kindTotal)})</option>
-          {anomalyRules.map((rule) => (
-            <option key={rule.kind} value={rule.kind}>
-              {incidentLabels[rule.kind]} ({n(counts.kind[rule.kind])})
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field id="anomaly-severity" label="Tingkat" className="lg:col-span-2 flex flex-col gap-1">
-        <select
+          <select
+            id="anomaly-kind"
+            className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
+            value={filters.kind}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                kind: event.target.value as IncidentKind | "all",
+              })
+            }
+          >
+            <option value="all">Semua jenis ({n(kindTotal)})</option>
+            {anomalyRules.map((rule) => (
+              <option key={rule.kind} value={rule.kind}>
+                {incidentLabels[rule.kind]} ({n(counts.kind[rule.kind])})
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
           id="anomaly-severity"
-          className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
-          value={filters.severity}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              severity: event.target.value as IncidentSeverity | "all",
-            })
-          }
+          label="Tingkat"
+          className="lg:col-span-2 flex flex-col gap-1"
         >
-          <option value="all">Semua tingkat ({n(severityTotal)})</option>
-          {severities.map((severity) => (
-            <option key={severity} value={severity}>
-              {incidentSeverityLabels[severity]} ({n(counts.severity[severity])}
-              )
-            </option>
-          ))}
-        </select>
-      </Field>
+          <select
+            id="anomaly-severity"
+            className={`${selectClassName} h-8 py-1 px-2 text-[11px] bg-background`}
+            value={filters.severity}
+            onChange={(event) =>
+              onChange({
+                ...filters,
+                severity: event.target.value as IncidentSeverity | "all",
+              })
+            }
+          >
+            <option value="all">Semua tingkat ({n(severityTotal)})</option>
+            {severities.map((severity) => (
+              <option key={severity} value={severity}>
+                {incidentSeverityLabels[severity]} (
+                {n(counts.severity[severity])})
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
     </div>
   );

@@ -49,7 +49,10 @@ export type SaveResult =
   // menolak atau tidak terjangkau (pesan ada di `message`).
   | { ok: false; errors: ThresholdErrors; message: string };
 
-async function request(method: "GET" | "PUT" | "DELETE", body?: ThresholdValues) {
+async function request(
+  method: "GET" | "PUT" | "DELETE",
+  body?: ThresholdValues,
+) {
   let res: Response;
   try {
     res = await fetch("/api/thresholds", {
@@ -59,7 +62,9 @@ async function request(method: "GET" | "PUT" | "DELETE", body?: ThresholdValues)
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error("Server tidak terjangkau. Ambang belum berubah; coba lagi.");
+    throw new Error(
+      "Server tidak terjangkau. Ambang belum berubah; coba lagi.",
+    );
   }
   const json = (await res.json().catch(() => null)) as {
     data?: unknown;
@@ -69,7 +74,8 @@ async function request(method: "GET" | "PUT" | "DELETE", body?: ThresholdValues)
     throw new Error("Akun Anda tidak punya izin mengubah ambang batas.");
   if (!res.ok)
     throw new Error(
-      json?.error?.message ?? `Server gagal memproses ambang (HTTP ${res.status}).`,
+      json?.error?.message ??
+        `Server gagal memproses ambang (HTTP ${res.status}).`,
     );
   return json?.data;
 }
@@ -92,7 +98,8 @@ function freeze(snapshot: ThresholdSnapshot): ThresholdSnapshot {
   return Object.freeze(snapshot);
 }
 
-const fromServer = (data: unknown) => parseThresholds(JSON.stringify(data ?? null));
+const fromServer = (data: unknown) =>
+  parseThresholds(JSON.stringify(data ?? null));
 
 export function createThresholdRegistry({
   remote = apiThresholdRemote,
@@ -125,7 +132,8 @@ export function createThresholdRegistry({
       .load()
       .then(
         (data) => set(fromServer(data), "ready"),
-        () => set(snapshot.values, snapshot.status === "ready" ? "ready" : "error"),
+        () =>
+          set(snapshot.values, snapshot.status === "ready" ? "ready" : "error"),
       )
       .finally(() => {
         loading = null;
@@ -141,7 +149,8 @@ export function createThresholdRegistry({
       return {
         ok: false,
         errors: {},
-        message: error instanceof Error ? error.message : "Gagal menyimpan ambang.",
+        message:
+          error instanceof Error ? error.message : "Gagal menyimpan ambang.",
       };
     }
   }
@@ -150,7 +159,11 @@ export function createThresholdRegistry({
   function save(values: ThresholdValues): Promise<SaveResult> {
     const errors = validateThresholds(values);
     if (Object.keys(errors).length > 0)
-      return Promise.resolve({ ok: false, errors, message: "Perbaiki isian yang salah." });
+      return Promise.resolve({
+        ok: false,
+        errors,
+        message: "Perbaiki isian yang salah.",
+      });
     return write(() => remote.save(cloneThresholds(values)));
   }
 
@@ -174,7 +187,10 @@ export function createThresholdRegistry({
     };
   }
 
-  const serverSnapshot = freeze({ values: defaultThresholds(), status: "loading" });
+  const serverSnapshot = freeze({
+    values: defaultThresholds(),
+    status: "loading",
+  });
 
   return {
     save,

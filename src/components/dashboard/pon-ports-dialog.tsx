@@ -11,7 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { DashboardOlt } from "@/lib/dashboard/olts";
-import { getMockPonPorts, type PonPortSummary } from "@/lib/dashboard/pon-ports";
+import {
+  getMockPonPorts,
+  type PonPortSummary,
+} from "@/lib/dashboard/pon-ports";
 
 interface Props {
   olt: DashboardOlt | null;
@@ -21,7 +24,10 @@ interface Props {
 
 export function PonPortsDialog({ olt, open, onOpenChange }: Props) {
   // Hasil API disimpan bersama id OLT-nya: hasil OLT lain diabaikan tanpa efek reset.
-  const [fetched, setFetched] = useState<{ oltId: string; ports: PonPortSummary[] } | null>(null);
+  const [fetched, setFetched] = useState<{
+    oltId: string;
+    ports: PonPortSummary[];
+  } | null>(null);
   const oltId = olt?.id;
 
   useEffect(() => {
@@ -48,10 +54,15 @@ export function PonPortsDialog({ olt, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl" data-testid="pon-ports-dialog">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-4xl"
+        data-testid="pon-ports-dialog"
+      >
         <DialogHeader>
           <DialogTitle>Port PON {olt?.name}</DialogTitle>
-          <DialogDescription>Daftar port PON beserta utilisasi dan redaman optik.</DialogDescription>
+          <DialogDescription>
+            Daftar port PON beserta utilisasi dan redaman optik.
+          </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
           {isMock ? "Data tiruan (mode demo)." : "Data terhubung ke OLT nyata."}
@@ -68,7 +79,11 @@ export function PonPortsDialog({ olt, open, onOpenChange }: Props) {
           {ports.map((p) => {
             const pct = Math.round((p.onuCount / p.capacity) * 100);
             return (
-              <li key={p.id} className="space-y-2 rounded-md border p-3 text-sm" data-testid="pon-port-card">
+              <li
+                key={p.id}
+                className="space-y-2 rounded-md border p-3 text-sm"
+                data-testid="pon-port-card"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{p.name}</span>
                   {p.status === "up" ? (
@@ -88,7 +103,10 @@ export function PonPortsDialog({ olt, open, onOpenChange }: Props) {
                   aria-valuemax={100}
                   className="h-1.5 overflow-hidden rounded-full bg-muted"
                 >
-                  <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
                 <div className="text-xs tabular-nums text-muted-foreground">
                   <div>TX Power {p.txPowerDbm} dBm</div>

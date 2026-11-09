@@ -1,14 +1,12 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
-import type { DivIcon, LatLngBoundsExpression, Map as LeafletMap } from "leaflet";
+import type {
+  DivIcon,
+  LatLngBoundsExpression,
+  Map as LeafletMap,
+} from "leaflet";
 
 interface LeafletTileLayerInternal {
   options: {
@@ -129,7 +127,8 @@ export {
 };
 export type { MapLayerId };
 export type TileProvider = TileProviderConfig;
-export const TILE_PROVIDERS: Record<MapLayerId, TileProvider> = getTileProviders();
+export const TILE_PROVIDERS: Record<MapLayerId, TileProvider> =
+  getTileProviders();
 export const DEFAULT_CENTER: [number, number] = DEFAULT_MAP_CENTER;
 export const DEFAULT_ZOOM = DEFAULT_MAP_ZOOM;
 
@@ -146,7 +145,11 @@ export interface NetworkMapProps {
   className?: string;
 }
 
-function MapZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+function MapZoomTracker({
+  onZoomChange,
+}: {
+  onZoomChange: (zoom: number) => void;
+}) {
   useMapEvents({
     zoomend(e) {
       onZoomChange(e.target.getZoom());
@@ -252,7 +255,9 @@ export function NetworkMap({
   onMapReady,
   className,
 }: NetworkMapProps) {
-  const [fetchedData, setFetchedData] = useState<NetworkMapData | null>(initialData ?? null);
+  const [fetchedData, setFetchedData] = useState<NetworkMapData | null>(
+    initialData ?? null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(
     !propData && !initialData && !propCustomers && !propInfra,
@@ -282,22 +287,30 @@ export function NetworkMap({
   }, []);
 
   // Selected item detail panel
-  const [selectedCustomer, setSelectedCustomer] = useState<NetworkCustomerPoint | null>(null);
-  const [selectedInfra, setSelectedInfra] = useState<NetworkInfrastructurePoint | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<NetworkCustomerPoint | null>(null);
+  const [selectedInfra, setSelectedInfra] =
+    useState<NetworkInfrastructurePoint | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(DEFAULT_ZOOM);
 
-  const [availableRoutes, setAvailableRoutes] = useState<Array<{
-    id: string;
-    name: string;
-    oltName: string | null;
-    odcName: string | null;
-  }>>([]);
+  const [availableRoutes, setAvailableRoutes] = useState<
+    Array<{
+      id: string;
+      name: string;
+      oltName: string | null;
+      odcName: string | null;
+    }>
+  >([]);
   const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
 
   // Pelacak area viewport peta Leaflet & optimasi spatial culling (sembunyikan titik di luar layar)
-  const [viewportBounds, setViewportBounds] = useState<L.LatLngBounds | null>(null);
-  const [enableViewportCulling, setEnableViewportCulling] = useState<boolean>(true);
-  const [enableCableOptimization, setEnableCableOptimization] = useState<boolean>(true);
+  const [viewportBounds, setViewportBounds] = useState<L.LatLngBounds | null>(
+    null,
+  );
+  const [enableViewportCulling, setEnableViewportCulling] =
+    useState<boolean>(true);
+  const [enableCableOptimization, setEnableCableOptimization] =
+    useState<boolean>(true);
 
   const handleViewportChange = useCallback(
     (bounds: L.LatLngBounds, zoom: number) => {
@@ -309,7 +322,12 @@ export function NetworkMap({
 
   const isPointInViewport = useCallback(
     (lat: number | null, lng: number | null, isHighlighted?: boolean) => {
-      if (lat === null || lng === null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      if (
+        lat === null ||
+        lng === null ||
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
         return false;
       }
       if (!enableViewportCulling || !viewportBounds) {
@@ -319,7 +337,9 @@ export function NetworkMap({
         return true;
       }
       // Margin buffer 15% agar titik di tepi batas pandang tidak muncul mendadak (pop-in) saat peta digeser
-      const paddedBounds = viewportBounds.pad ? viewportBounds.pad(0.15) : viewportBounds;
+      const paddedBounds = viewportBounds.pad
+        ? viewportBounds.pad(0.15)
+        : viewportBounds;
       return paddedBounds.contains(L.latLng(lat, lng));
     },
     [enableViewportCulling, viewportBounds],
@@ -380,17 +400,26 @@ export function NetworkMap({
 
   // Mode Geser & Simpan Posisi Titik Pelanggan
   const [isEditingLocation, setIsEditingLocation] = useState(false);
-  const [draftCoords, setDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [draftCoords, setDraftCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
-  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(
+    null,
+  );
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [dragPinIcon, setDragPinIcon] = useState<DivIcon | null>(null);
   const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
 
   // Mode Penentuan / Plotting Titik Pelanggan Baru & Inspeksi Koordinat
   const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
-  const [plottingCustomer, setPlottingCustomer] = useState<NetworkCustomerPoint | null>(null);
-  const [inspectedMapCoord, setInspectedMapCoord] = useState<{ lat: number; lng: number } | null>(null);
+  const [plottingCustomer, setPlottingCustomer] =
+    useState<NetworkCustomerPoint | null>(null);
+  const [inspectedMapCoord, setInspectedMapCoord] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isUnmappedDismissed, setIsUnmappedDismissed] = useState(false);
   const [isCopiedCoord, setIsCopiedCoord] = useState(false);
 
@@ -401,37 +430,57 @@ export function NetworkMap({
   const [isManualCoordModalOpen, setIsManualCoordModalOpen] = useState(false);
   const [manualCoordInput, setManualCoordInput] = useState("");
   const [manualCoordError, setManualCoordError] = useState<string | null>(null);
-  const [manualCoordSuccess, setManualCoordSuccess] = useState<string | null>(null);
+  const [manualCoordSuccess, setManualCoordSuccess] = useState<string | null>(
+    null,
+  );
 
   // Mode Penempatan Perangkat Infrastruktur
   const [isPlacementPickerOpen, setIsPlacementPickerOpen] = useState(false);
-  const [placementType, setPlacementType] = useState<InfrastructureDeviceType | null>(null);
-  const [placementDraftCoords, setPlacementDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [placementType, setPlacementType] =
+    useState<InfrastructureDeviceType | null>(null);
+  const [placementDraftCoords, setPlacementDraftCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSavingPlacement, setIsSavingPlacement] = useState(false);
-  const [placementSuccessMessage, setPlacementSuccessMessage] = useState<string | null>(null);
-  const [placementErrorMessage, setPlacementErrorMessage] = useState<string | null>(null);
+  const [placementSuccessMessage, setPlacementSuccessMessage] = useState<
+    string | null
+  >(null);
+  const [placementErrorMessage, setPlacementErrorMessage] = useState<
+    string | null
+  >(null);
   const [infraIcons, setInfraIcons] = useState<Record<string, DivIcon>>({});
 
   // Mode Pindah & Hapus Titik Perangkat Infrastruktur
   const [isMovingInfra, setIsMovingInfra] = useState(false);
-  const [infraMoveDraftCoords, setInfraMoveDraftCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [infraMoveDraftCoords, setInfraMoveDraftCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSavingInfraMove, setIsSavingInfraMove] = useState(false);
   const [isDeletingInfra, setIsDeletingInfra] = useState(false);
   const [isSettingParent, setIsSettingParent] = useState(false);
-  const [infraActionSuccessMessage, setInfraActionSuccessMessage] = useState<string | null>(null);
-  const [infraActionErrorMessage, setInfraActionErrorMessage] = useState<string | null>(null);
+  const [infraActionSuccessMessage, setInfraActionSuccessMessage] = useState<
+    string | null
+  >(null);
+  const [infraActionErrorMessage, setInfraActionErrorMessage] = useState<
+    string | null
+  >(null);
 
   // Mode Koneksi ODP
   const [isConnectCableMode, setIsConnectCableMode] = useState(false);
   const [connectRouteName, setConnectRouteName] = useState("");
   const [connectSavedSegments, setConnectSavedSegments] = useState(0);
-  const [connectSource, setConnectSource] = useState<NetworkInfrastructurePoint | null>(null);
+  const [connectSource, setConnectSource] =
+    useState<NetworkInfrastructurePoint | null>(null);
   const [isSavingCable, setIsSavingCable] = useState(false);
 
   // Mode Gambar Kabel (free draw)
   const [isDrawCableMode, setIsDrawCableMode] = useState(false);
   const [drawWaypoints, setDrawWaypoints] = useState<[number, number][]>([]);
-  const [drawMousePos, setDrawMousePos] = useState<[number, number] | null>(null);
+  const [drawMousePos, setDrawMousePos] = useState<[number, number] | null>(
+    null,
+  );
   const [drawFirstNodeId, setDrawFirstNodeId] = useState<string | null>(null);
   const [drawLastNodeId, setDrawLastNodeId] = useState<string | null>(null);
   const [showDrawDialog, setShowDrawDialog] = useState(false);
@@ -448,21 +497,38 @@ export function NetworkMap({
   const placementTypeRef = useRef<typeof placementType>(null);
   const connectSourceRef = useRef<typeof connectSource>(null);
   const connectRouteNameRef = useRef("");
-  useEffect(() => { isConnectCableModeRef.current = isConnectCableMode; }, [isConnectCableMode]);
-  useEffect(() => { isDrawCableModeRef.current = isDrawCableMode; }, [isDrawCableMode]);
-  useEffect(() => { placementTypeRef.current = placementType; }, [placementType]);
-  useEffect(() => { connectSourceRef.current = connectSource; }, [connectSource]);
-  useEffect(() => { connectRouteNameRef.current = connectRouteName; }, [connectRouteName]);
-  const [connectWaypoints, setConnectWaypoints] = useState<[number, number][]>([]);
+  useEffect(() => {
+    isConnectCableModeRef.current = isConnectCableMode;
+  }, [isConnectCableMode]);
+  useEffect(() => {
+    isDrawCableModeRef.current = isDrawCableMode;
+  }, [isDrawCableMode]);
+  useEffect(() => {
+    placementTypeRef.current = placementType;
+  }, [placementType]);
+  useEffect(() => {
+    connectSourceRef.current = connectSource;
+  }, [connectSource]);
+  useEffect(() => {
+    connectRouteNameRef.current = connectRouteName;
+  }, [connectRouteName]);
+  const [connectWaypoints, setConnectWaypoints] = useState<[number, number][]>(
+    [],
+  );
   const connectWaypointsRef = useRef<[number, number][]>([]);
-  useEffect(() => { connectWaypointsRef.current = connectWaypoints; }, [connectWaypoints]);
+  useEffect(() => {
+    connectWaypointsRef.current = connectWaypoints;
+  }, [connectWaypoints]);
 
   // Ctrl+Z — undo titik waypoint terakhir di mode aktif
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.key !== "z") return;
       e.preventDefault();
-      if (isConnectCableModeRef.current && connectWaypointsRef.current.length > 0) {
+      if (
+        isConnectCableModeRef.current &&
+        connectWaypointsRef.current.length > 0
+      ) {
         setConnectWaypoints((prev) => prev.slice(0, -1));
       } else if (isDrawCableModeRef.current) {
         setDrawWaypoints((prev) => prev.slice(0, -1));
@@ -572,9 +638,13 @@ export function NetworkMap({
     setIsLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch("/api/map/network", { credentials: "same-origin" });
+      const res = await fetch("/api/map/network", {
+        credentials: "same-origin",
+      });
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: Gagal memuat data peta dari server`);
+        throw new Error(
+          `HTTP ${res.status}: Gagal memuat data peta dari server`,
+        );
       }
       const json = await res.json();
       if (json.success && json.data) {
@@ -584,7 +654,9 @@ export function NetworkMap({
         throw new Error(json.error || "Format data peta tidak valid");
       }
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Koneksi ke server gagal");
+      setLoadError(
+        err instanceof Error ? err.message : "Koneksi ke server gagal",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -606,7 +678,9 @@ export function NetworkMap({
       })
       .catch((err) => {
         if (active) {
-          setLoadError(err instanceof Error ? err.message : "Koneksi ke server gagal");
+          setLoadError(
+            err instanceof Error ? err.message : "Koneksi ke server gagal",
+          );
         }
       });
     return () => {
@@ -681,13 +755,21 @@ export function NetworkMap({
           Number.isFinite(targetCust.latitude) &&
           Number.isFinite(targetCust.longitude)
         ) {
-          flyToWithoutOcclusion(map, targetCust.latitude, targetCust.longitude, 17, { duration: 1 });
+          flyToWithoutOcclusion(
+            map,
+            targetCust.latitude,
+            targetCust.longitude,
+            17,
+            { duration: 1 },
+          );
         }
       }, 0);
       return () => clearTimeout(timer);
     }
 
-    const targetInfra = data.infrastructure?.find((inf) => inf.id === initialFocusId);
+    const targetInfra = data.infrastructure?.find(
+      (inf) => inf.id === initialFocusId,
+    );
     if (targetInfra) {
       initialFocusAppliedRef.current = true;
       const timer = setTimeout(() => {
@@ -697,7 +779,13 @@ export function NetworkMap({
           Number.isFinite(targetInfra.latitude) &&
           Number.isFinite(targetInfra.longitude)
         ) {
-          flyToWithoutOcclusion(map, targetInfra.latitude, targetInfra.longitude, 17, { duration: 1 });
+          flyToWithoutOcclusion(
+            map,
+            targetInfra.latitude,
+            targetInfra.longitude,
+            17,
+            { duration: 1 },
+          );
         }
       }, 0);
       return () => clearTimeout(timer);
@@ -715,13 +803,17 @@ export function NetworkMap({
     initialInfraFlyDoneRef.current = true;
     const timer = setTimeout(() => {
       if (infra.length === 1) {
-        map.flyTo([infra[0].latitude, infra[0].longitude], 16, { duration: 0.8 });
+        map.flyTo([infra[0].latitude, infra[0].longitude], 16, {
+          duration: 0.8,
+        });
       } else {
         const lats = infra.map((i) => i.latitude);
         const lngs = infra.map((i) => i.longitude);
         map.fitBounds(
-          [[Math.min(...lats) - 0.002, Math.min(...lngs) - 0.002],
-           [Math.max(...lats) + 0.002, Math.max(...lngs) + 0.002]],
+          [
+            [Math.min(...lats) - 0.002, Math.min(...lngs) - 0.002],
+            [Math.max(...lats) + 0.002, Math.max(...lngs) + 0.002],
+          ],
           { padding: [60, 60], animate: true },
         );
       }
@@ -734,7 +826,9 @@ export function NetworkMap({
     if (!focusedNodeId || !data) return;
 
     // 1. Cek pada simpul infrastruktur (Server, ODC, ODP)
-    const targetInfra = data.infrastructure?.find((inf) => inf.id === focusedNodeId);
+    const targetInfra = data.infrastructure?.find(
+      (inf) => inf.id === focusedNodeId,
+    );
     if (targetInfra) {
       const timer = setTimeout(() => {
         setSelectedInfra(targetInfra);
@@ -845,20 +939,25 @@ export function NetworkMap({
     setSaveSuccessMessage(null);
 
     try {
-      const res = await fetch(`/api/customers/${selectedCustomer.id}/location`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `/api/customers/${selectedCustomer.id}/location`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            latitude: draftCoords.lat,
+            longitude: draftCoords.lng,
+          }),
         },
-        body: JSON.stringify({
-          latitude: draftCoords.lat,
-          longitude: draftCoords.lng,
-        }),
-      });
+      );
 
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Gagal menyimpan koordinat titik pelanggan.");
+        throw new Error(
+          json.error || "Gagal menyimpan koordinat titik pelanggan.",
+        );
       }
 
       const updatedCustomer: NetworkCustomerPoint = {
@@ -884,12 +983,15 @@ export function NetworkMap({
           summary: {
             ...prev.summary,
             geocodedCustomers: geocodedCustomers.length,
-            unmappedCustomers: updatedCustomers.length - geocodedCustomers.length,
+            unmappedCustomers:
+              updatedCustomers.length - geocodedCustomers.length,
           },
         };
       });
 
-      setSaveSuccessMessage("Posisi titik pelanggan berhasil disimpan ke database.");
+      setSaveSuccessMessage(
+        "Posisi titik pelanggan berhasil disimpan ke database.",
+      );
       setIsEditingLocation(false);
       setTimeout(() => setSaveSuccessMessage(null), 4000);
     } catch (err) {
@@ -940,20 +1042,26 @@ export function NetworkMap({
     setSaveSuccessMessage(null);
 
     try {
-      const res = await fetch(`/api/customers/${plottingCustomer.id}/location`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `/api/customers/${plottingCustomer.id}/location`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            latitude: draftCoords.lat,
+            longitude: draftCoords.lng,
+          }),
         },
-        body: JSON.stringify({
-          latitude: draftCoords.lat,
-          longitude: draftCoords.lng,
-        }),
-      });
+      );
 
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Gagal menyimpan koordinat titik pelanggan ke database.");
+        throw new Error(
+          json.error ||
+            "Gagal menyimpan koordinat titik pelanggan ke database.",
+        );
       }
 
       const updatedCustomer: NetworkCustomerPoint = {
@@ -979,7 +1087,8 @@ export function NetworkMap({
           summary: {
             ...prev.summary,
             geocodedCustomers: geocodedCustomers.length,
-            unmappedCustomers: updatedCustomers.length - geocodedCustomers.length,
+            unmappedCustomers:
+              updatedCustomers.length - geocodedCustomers.length,
           },
         };
       });
@@ -1132,7 +1241,9 @@ export function NetworkMap({
 
         const json = await res.json();
         if (!res.ok || !json.ok) {
-          throw new Error(json.error || "Gagal menempatkan titik perangkat infrastruktur.");
+          throw new Error(
+            json.error || "Gagal menempatkan titik perangkat infrastruktur.",
+          );
         }
 
         const newPoint: NetworkInfrastructurePoint = json.data;
@@ -1146,15 +1257,26 @@ export function NetworkMap({
             infrastructure: updatedInfra,
             summary: {
               ...prev.summary,
-              totalRouters: newPoint.type === "router" ? prev.summary.totalRouters + 1 : prev.summary.totalRouters,
-              totalOlts: newPoint.type === "olt" ? prev.summary.totalOlts + 1 : prev.summary.totalOlts,
-              totalOdps: newPoint.type === "odp" ? prev.summary.totalOdps + 1 : prev.summary.totalOdps,
+              totalRouters:
+                newPoint.type === "router"
+                  ? prev.summary.totalRouters + 1
+                  : prev.summary.totalRouters,
+              totalOlts:
+                newPoint.type === "olt"
+                  ? prev.summary.totalOlts + 1
+                  : prev.summary.totalOlts,
+              totalOdps:
+                newPoint.type === "odp"
+                  ? prev.summary.totalOdps + 1
+                  : prev.summary.totalOdps,
             },
           };
         });
 
         setSelectedInfra(newPoint);
-        setPlacementSuccessMessage(`Perangkat ${newPoint.name} (${newPoint.type.toUpperCase()}) berhasil ditempatkan!`);
+        setPlacementSuccessMessage(
+          `Perangkat ${newPoint.name} (${newPoint.type.toUpperCase()}) berhasil ditempatkan!`,
+        );
         setPlacementDraftCoords(null);
         setPlacementType(null);
         setIsPlacementPickerOpen(false);
@@ -1163,13 +1285,16 @@ export function NetworkMap({
           fetch("/api/map/routes")
             .then((r) => r.json())
             .then((rJson) => {
-              if (rJson.ok && Array.isArray(rJson.data)) setAvailableRoutes(rJson.data);
+              if (rJson.ok && Array.isArray(rJson.data))
+                setAvailableRoutes(rJson.data);
             })
             .catch(() => {});
         }
 
         if (map) {
-          map.flyTo([newPoint.latitude, newPoint.longitude], 17, { duration: 0.8 });
+          map.flyTo([newPoint.latitude, newPoint.longitude], 17, {
+            duration: 0.8,
+          });
         }
 
         setTimeout(() => setPlacementSuccessMessage(null), 4000);
@@ -1183,66 +1308,79 @@ export function NetworkMap({
     [map],
   );
 
-  const handleDeleteCable = useCallback(async (id: string) => {
-    setIsDeletingCable(true);
-    try {
-      const res = await fetch(`/api/map/cables/${id}`, { method: "DELETE", credentials: "same-origin" });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menghapus kabel.");
-      setSelectedCableId(null);
-      fetchData();
-    } catch (err) {
-      console.error("[DELETE_CABLE]", err);
-    } finally {
-      setIsDeletingCable(false);
-    }
-  }, [fetchData]);
+  const handleDeleteCable = useCallback(
+    async (id: string) => {
+      setIsDeletingCable(true);
+      try {
+        const res = await fetch(`/api/map/cables/${id}`, {
+          method: "DELETE",
+          credentials: "same-origin",
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok)
+          throw new Error(json.error || "Gagal menghapus kabel.");
+        setSelectedCableId(null);
+        fetchData();
+      } catch (err) {
+        console.error("[DELETE_CABLE]", err);
+      } finally {
+        setIsDeletingCable(false);
+      }
+    },
+    [fetchData],
+  );
 
   const handleConnectCableAddPoint = useCallback((lat: number, lng: number) => {
     setConnectWaypoints((prev) => [...prev, [lat, lng] as [number, number]]);
   }, []);
 
-  const handleAutoSaveConnectCable = useCallback(async (
-    src: NetworkInfrastructurePoint,
-    tgt: NetworkInfrastructurePoint,
-  ) => {
-    const prefix = connectRouteNameRef.current.trim();
-    const cableName = prefix ? `${prefix} ➔ ${tgt.name}` : `${src.name} → ${tgt.name}`;
-    setIsSavingCable(true);
-    try {
-      const waypoints = connectWaypointsRef.current;
-      const polyline: [number, number][] = [
-        [src.latitude, src.longitude],
-        ...waypoints,
-        [tgt.latitude, tgt.longitude],
-      ];
-      const res = await fetch("/api/map/cables", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: cableName,
-          sourceId: src.id,
-          targetId: tgt.id,
-          cableType: "feeder",
-          coreCapacity: 12,
-          color: "#f59e0b",
-          polyline,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal menyimpan kabel.");
-      setConnectSavedSegments((n) => n + 1);
-      connectWaypointsRef.current = [];
-      setConnectWaypoints([]);
-      connectSourceRef.current = tgt;  // update ref langsung — jangan tunggu useEffect
-      setConnectSource(tgt);
-      fetchData();
-    } catch (err) {
-      console.error("[AUTO_SAVE_CONNECT]", err);
-    } finally {
-      setIsSavingCable(false);
-    }
-  }, [fetchData]);
+  const handleAutoSaveConnectCable = useCallback(
+    async (
+      src: NetworkInfrastructurePoint,
+      tgt: NetworkInfrastructurePoint,
+    ) => {
+      const prefix = connectRouteNameRef.current.trim();
+      const cableName = prefix
+        ? `${prefix} ➔ ${tgt.name}`
+        : `${src.name} → ${tgt.name}`;
+      setIsSavingCable(true);
+      try {
+        const waypoints = connectWaypointsRef.current;
+        const polyline: [number, number][] = [
+          [src.latitude, src.longitude],
+          ...waypoints,
+          [tgt.latitude, tgt.longitude],
+        ];
+        const res = await fetch("/api/map/cables", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: cableName,
+            sourceId: src.id,
+            targetId: tgt.id,
+            cableType: "feeder",
+            coreCapacity: 12,
+            color: "#f59e0b",
+            polyline,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok)
+          throw new Error(json.error || "Gagal menyimpan kabel.");
+        setConnectSavedSegments((n) => n + 1);
+        connectWaypointsRef.current = [];
+        setConnectWaypoints([]);
+        connectSourceRef.current = tgt; // update ref langsung — jangan tunggu useEffect
+        setConnectSource(tgt);
+        fetchData();
+      } catch (err) {
+        console.error("[AUTO_SAVE_CONNECT]", err);
+      } finally {
+        setIsSavingCable(false);
+      }
+    },
+    [fetchData],
+  );
 
   const handleSelectInfra = useCallback(
     (infra: NetworkInfrastructurePoint | null) => {
@@ -1256,7 +1394,10 @@ export function NetworkMap({
         setDrawWaypoints((prev) => {
           if (prev.length === 0) setDrawFirstNodeId(infra.id);
           setDrawLastNodeId(infra.id);
-          return [...prev, [infra.latitude, infra.longitude] as [number, number]];
+          return [
+            ...prev,
+            [infra.latitude, infra.longitude] as [number, number],
+          ];
         });
         return;
       }
@@ -1276,8 +1417,18 @@ export function NetworkMap({
       setSelectedInfra(infra);
       if (infra) {
         setSelectedCustomer(null);
-        if (map && Number.isFinite(infra.latitude) && Number.isFinite(infra.longitude)) {
-          flyToWithoutOcclusion(map, infra.latitude, infra.longitude, Math.max(map.getZoom(), 17), { duration: 0.8 });
+        if (
+          map &&
+          Number.isFinite(infra.latitude) &&
+          Number.isFinite(infra.longitude)
+        ) {
+          flyToWithoutOcclusion(
+            map,
+            infra.latitude,
+            infra.longitude,
+            Math.max(map.getZoom(), 17),
+            { duration: 0.8 },
+          );
         }
       }
       setIsEditingLocation(false);
@@ -1289,23 +1440,32 @@ export function NetworkMap({
     [map, onSelectInfrastructure, handleAutoSaveConnectCable],
   );
 
-
-
   const SNAP_DIST = 0.0004; // ~44m
 
-  const handleDrawAddPoint = useCallback((lat: number, lng: number) => {
-    let finalLat = lat, finalLng = lng, nodeId: string | null = null;
-    for (const infra of (fetchedData?.infrastructure ?? [])) {
-      if (Math.abs(infra.latitude - lat) < SNAP_DIST && Math.abs(infra.longitude - lng) < SNAP_DIST) {
-        finalLat = infra.latitude; finalLng = infra.longitude; nodeId = infra.id; break;
+  const handleDrawAddPoint = useCallback(
+    (lat: number, lng: number) => {
+      let finalLat = lat,
+        finalLng = lng,
+        nodeId: string | null = null;
+      for (const infra of fetchedData?.infrastructure ?? []) {
+        if (
+          Math.abs(infra.latitude - lat) < SNAP_DIST &&
+          Math.abs(infra.longitude - lng) < SNAP_DIST
+        ) {
+          finalLat = infra.latitude;
+          finalLng = infra.longitude;
+          nodeId = infra.id;
+          break;
+        }
       }
-    }
-    setDrawWaypoints((prev) => {
-      if (prev.length === 0 && nodeId) setDrawFirstNodeId(nodeId);
-      if (nodeId) setDrawLastNodeId(nodeId);
-      return [...prev, [finalLat, finalLng]];
-    });
-  }, [fetchedData]);
+      setDrawWaypoints((prev) => {
+        if (prev.length === 0 && nodeId) setDrawFirstNodeId(nodeId);
+        if (nodeId) setDrawLastNodeId(nodeId);
+        return [...prev, [finalLat, finalLng]];
+      });
+    },
+    [fetchedData],
+  );
 
   const handleDrawMouseMove = useCallback((lat: number, lng: number) => {
     setDrawMousePos([lat, lng]);
@@ -1353,7 +1513,16 @@ export function NetworkMap({
     } finally {
       setIsSavingDraw(false);
     }
-  }, [drawWaypoints, drawCableName, drawCableType, drawCableCapacity, drawCableColor, drawFirstNodeId, drawLastNodeId, fetchData]);
+  }, [
+    drawWaypoints,
+    drawCableName,
+    drawCableType,
+    drawCableCapacity,
+    drawCableColor,
+    drawFirstNodeId,
+    drawLastNodeId,
+    fetchData,
+  ]);
 
   const handleStartMoveInfra = useCallback(() => {
     if (!selectedInfra) return;
@@ -1365,7 +1534,9 @@ export function NetworkMap({
     setInfraActionSuccessMessage(null);
     setInfraActionErrorMessage(null);
     if (map) {
-      map.flyTo([selectedInfra.latitude, selectedInfra.longitude], 17, { duration: 0.6 });
+      map.flyTo([selectedInfra.latitude, selectedInfra.longitude], 17, {
+        duration: 0.6,
+      });
     }
   }, [selectedInfra, map]);
 
@@ -1414,7 +1585,9 @@ export function NetworkMap({
       setSelectedInfra(updatedPoint);
       setIsMovingInfra(false);
       setInfraMoveDraftCoords(null);
-      setInfraActionSuccessMessage(`Posisi perangkat '${updatedPoint.name}' berhasil diperbarui.`);
+      setInfraActionSuccessMessage(
+        `Posisi perangkat '${updatedPoint.name}' berhasil diperbarui.`,
+      );
       setTimeout(() => setInfraActionSuccessMessage(null), 4000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1436,7 +1609,9 @@ export function NetworkMap({
 
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Gagal menghapus perangkat infrastruktur.");
+        throw new Error(
+          json.error || "Gagal menghapus perangkat infrastruktur.",
+        );
       }
 
       const deletedId = selectedInfra.id;
@@ -1445,15 +1620,26 @@ export function NetworkMap({
 
       setFetchedData((prev) => {
         if (!prev) return prev;
-        const updatedInfra = prev.infrastructure.filter((i) => i.id !== deletedId);
+        const updatedInfra = prev.infrastructure.filter(
+          (i) => i.id !== deletedId,
+        );
         return {
           ...prev,
           infrastructure: updatedInfra,
           summary: {
             ...prev.summary,
-            totalRouters: deletedType === "router" ? Math.max(0, prev.summary.totalRouters - 1) : prev.summary.totalRouters,
-            totalOlts: deletedType === "olt" ? Math.max(0, prev.summary.totalOlts - 1) : prev.summary.totalOlts,
-            totalOdps: deletedType === "odp" ? Math.max(0, prev.summary.totalOdps - 1) : prev.summary.totalOdps,
+            totalRouters:
+              deletedType === "router"
+                ? Math.max(0, prev.summary.totalRouters - 1)
+                : prev.summary.totalRouters,
+            totalOlts:
+              deletedType === "olt"
+                ? Math.max(0, prev.summary.totalOlts - 1)
+                : prev.summary.totalOlts,
+            totalOdps:
+              deletedType === "odp"
+                ? Math.max(0, prev.summary.totalOdps - 1)
+                : prev.summary.totalOdps,
           },
         };
       });
@@ -1461,7 +1647,9 @@ export function NetworkMap({
       setSelectedInfra(null);
       setIsMovingInfra(false);
       setInfraMoveDraftCoords(null);
-      setInfraActionSuccessMessage(`Perangkat '${deletedName}' berhasil dihapus dari peta.`);
+      setInfraActionSuccessMessage(
+        `Perangkat '${deletedName}' berhasil dihapus dari peta.`,
+      );
       setTimeout(() => setInfraActionSuccessMessage(null), 4000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1471,45 +1659,57 @@ export function NetworkMap({
     }
   }, [selectedInfra]);
 
-  const handleSetParent = useCallback(async (parentId: string | null) => {
-    if (!selectedInfra) return;
-    setIsSettingParent(true);
-    try {
-      const res = await fetch(`/api/map/infrastructure/${selectedInfra.id}/parent`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Gagal set parent.");
-      setFetchedData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          infrastructure: prev.infrastructure.map((i) =>
-            i.id === selectedInfra.id ? { ...i, parentId } : i
-          ),
-        };
-      });
-    } catch (err) {
-      console.error("[SET PARENT]", err);
-    } finally {
-      setIsSettingParent(false);
-    }
-  }, [selectedInfra]);
+  const handleSetParent = useCallback(
+    async (parentId: string | null) => {
+      if (!selectedInfra) return;
+      setIsSettingParent(true);
+      try {
+        const res = await fetch(
+          `/api/map/infrastructure/${selectedInfra.id}/parent`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ parentId }),
+          },
+        );
+        const json = await res.json();
+        if (!res.ok || !json.ok)
+          throw new Error(json.error || "Gagal set parent.");
+        setFetchedData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            infrastructure: prev.infrastructure.map((i) =>
+              i.id === selectedInfra.id ? { ...i, parentId } : i,
+            ),
+          };
+        });
+      } catch (err) {
+        console.error("[SET PARENT]", err);
+      } finally {
+        setIsSettingParent(false);
+      }
+    },
+    [selectedInfra],
+  );
 
   const handleDeleteCustomer = useCallback(async () => {
     if (!selectedCustomer) return;
     setIsDeletingCustomer(true);
 
     try {
-      const res = await fetch(`/api/customers/${selectedCustomer.id}/location`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/customers/${selectedCustomer.id}/location`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Gagal menghapus titik koordinat pelanggan.");
+        throw new Error(
+          json.error || "Gagal menghapus titik koordinat pelanggan.",
+        );
       }
 
       const deletedId = selectedCustomer.id;
@@ -1528,7 +1728,8 @@ export function NetworkMap({
           summary: {
             ...prev.summary,
             geocodedCustomers: geocodedCustomers.length,
-            unmappedCustomers: updatedCustomers.length - geocodedCustomers.length,
+            unmappedCustomers:
+              updatedCustomers.length - geocodedCustomers.length,
           },
         };
       });
@@ -1555,7 +1756,11 @@ export function NetworkMap({
         })
         .catch((err) => {
           if (active) {
-            setLoadError(err instanceof Error ? err.message : "Gagal memuat data dari server");
+            setLoadError(
+              err instanceof Error
+                ? err.message
+                : "Gagal memuat data dari server",
+            );
             setIsLoading(false);
           }
         });
@@ -1620,7 +1825,8 @@ export function NetworkMap({
       if (statusFilter === "weak") {
         if (!c.opticalPower || c.opticalPower > -24.5) return false;
       }
-      if (statusFilter === "isolir" && c.billingStatus !== "isolir") return false;
+      if (statusFilter === "isolir" && c.billingStatus !== "isolir")
+        return false;
       if (statusFilter === "geocoded") {
         if (
           c.latitude === null ||
@@ -1642,10 +1848,19 @@ export function NetworkMap({
         const matchesName = c.name.toLowerCase().includes(query);
         const matchesUsername = c.pppoeUsername.toLowerCase().includes(query);
         const matchesId = c.id.toLowerCase().includes(query);
-        const matchesSerial = c.onuDetails?.serialNumber?.toLowerCase().includes(query) ?? false;
+        const matchesSerial =
+          c.onuDetails?.serialNumber?.toLowerCase().includes(query) ?? false;
         const matchesOdp = c.odpName?.toLowerCase().includes(query) ?? false;
-        const matchesAddress = c.address?.toLowerCase().includes(query) ?? false;
-        if (!matchesName && !matchesUsername && !matchesId && !matchesSerial && !matchesOdp && !matchesAddress) {
+        const matchesAddress =
+          c.address?.toLowerCase().includes(query) ?? false;
+        if (
+          !matchesName &&
+          !matchesUsername &&
+          !matchesId &&
+          !matchesSerial &&
+          !matchesOdp &&
+          !matchesAddress
+        ) {
           return false;
         }
       }
@@ -1693,10 +1908,18 @@ export function NetworkMap({
         const matchesName = c.name.toLowerCase().includes(q);
         const matchesUsername = c.pppoeUsername.toLowerCase().includes(q);
         const matchesId = c.id.toLowerCase().includes(q);
-        const matchesSerial = c.onuDetails?.serialNumber?.toLowerCase().includes(q) ?? false;
+        const matchesSerial =
+          c.onuDetails?.serialNumber?.toLowerCase().includes(q) ?? false;
         const matchesOdp = c.odpName?.toLowerCase().includes(q) ?? false;
         const matchesAddress = c.address?.toLowerCase().includes(q) ?? false;
-        return matchesName || matchesUsername || matchesId || matchesSerial || matchesOdp || matchesAddress;
+        return (
+          matchesName ||
+          matchesUsername ||
+          matchesId ||
+          matchesSerial ||
+          matchesOdp ||
+          matchesAddress
+        );
       })
       .slice(0, 6);
   }, [data, searchQuery, regionFilter]);
@@ -1767,7 +1990,9 @@ export function NetworkMap({
         const isHighlighted =
           selectedInfra?.id === infra.id ||
           selectedInfra?.id === parent.id ||
-          (selectedCustomer && selectedCustomer.odpName?.toLowerCase() === infra.name.toLowerCase());
+          (selectedCustomer &&
+            selectedCustomer.odpName?.toLowerCase() ===
+              infra.name.toLowerCase());
 
         routes.push({
           id: `parent-link-${parent.id}-${infra.id}`,
@@ -1797,12 +2022,13 @@ export function NetworkMap({
         const coords = cable.coordinates as [number, number][] | null;
         if (!Array.isArray(coords) || coords.length < 2) continue;
         const isHighlighted =
-          selectedInfra?.id === cable.sourceId || selectedInfra?.id === cable.targetId;
+          selectedInfra?.id === cable.sourceId ||
+          selectedInfra?.id === cable.targetId;
         routes.push({
           id: cable.id,
           name: cable.name,
           path: coords,
-          color: isHighlighted ? "#22d3ee" : (cable.color || "#3b82f6"),
+          color: isHighlighted ? "#22d3ee" : cable.color || "#3b82f6",
           type: cable.type,
           sourceId: cable.sourceId,
           sourceName: cable.sourceName,
@@ -1819,7 +2045,8 @@ export function NetworkMap({
 
     // 3. Kabel Drop: ODP -> Pelanggan bertitik
     for (const cust of geocodedList) {
-      if (!cust.odpName || cust.latitude === null || cust.longitude === null) continue;
+      if (!cust.odpName || cust.latitude === null || cust.longitude === null)
+        continue;
       const odp = infraList.find(
         (i) =>
           i.name.toLowerCase() === cust.odpName?.toLowerCase() ||
@@ -1836,7 +2063,11 @@ export function NetworkMap({
             [odp.latitude, odp.longitude],
             [cust.latitude, cust.longitude],
           ),
-          color: isCustHighlighted ? "#22d3ee" : (cust.isOnline ? "#10b981" : "#ef4444"),
+          color: isCustHighlighted
+            ? "#22d3ee"
+            : cust.isOnline
+              ? "#10b981"
+              : "#ef4444",
           type: "drop",
           sourceId: odp.id,
           sourceName: odp.name,
@@ -1857,14 +2088,28 @@ export function NetworkMap({
     if (!cableRoutes || cableRoutes.length === 0) return [];
     if (!enableCableOptimization || !viewportBounds) return cableRoutes;
     return cableRoutes.filter((cable) =>
-      isCableInViewport(cable, viewportBounds, currentZoom, enableCableOptimization),
+      isCableInViewport(
+        cable,
+        viewportBounds,
+        currentZoom,
+        enableCableOptimization,
+      ),
     );
-  }, [cableRoutes, enableCableOptimization, viewportBounds, currentZoom, isCableInViewport]);
+  }, [
+    cableRoutes,
+    enableCableOptimization,
+    viewportBounds,
+    currentZoom,
+    isCableInViewport,
+  ]);
 
   const selectedCable = useMemo(
-    () => selectedCableId
-      ? (visibleCableRoutes.find(c => c.id === selectedCableId) ?? cableRoutes.find(c => c.id === selectedCableId) ?? null)
-      : null,
+    () =>
+      selectedCableId
+        ? (visibleCableRoutes.find((c) => c.id === selectedCableId) ??
+          cableRoutes.find((c) => c.id === selectedCableId) ??
+          null)
+        : null,
     [selectedCableId, visibleCableRoutes, cableRoutes],
   );
 
@@ -1906,7 +2151,13 @@ export function NetworkMap({
       successMessage: saveSuccessMessage,
       errorMessage: saveErrorMessage,
     }),
-    [isEditingLocation, draftCoords, isSavingLocation, saveSuccessMessage, saveErrorMessage],
+    [
+      isEditingLocation,
+      draftCoords,
+      isSavingLocation,
+      saveSuccessMessage,
+      saveErrorMessage,
+    ],
   );
 
   const infraMoveState = useMemo(
@@ -2009,19 +2260,29 @@ export function NetworkMap({
                             Number.isFinite(cust.latitude) &&
                             Number.isFinite(cust.longitude)
                           ) {
-                            map.flyTo([cust.latitude, cust.longitude], 17, { duration: 0.8 });
+                            map.flyTo([cust.latitude, cust.longitude], 17, {
+                              duration: 0.8,
+                            });
                           }
                         }}
                         className="w-full text-left p-1.5 rounded-md hover:bg-muted/80 transition-colors flex items-center justify-between gap-2 text-xs"
                         data-testid="search-result-item"
                       >
                         <div className="min-w-0">
-                          <p className="font-semibold text-foreground truncate" data-testid="search-result-name">
+                          <p
+                            className="font-semibold text-foreground truncate"
+                            data-testid="search-result-name"
+                          >
                             {cust.name}
                           </p>
-                          <p className="font-mono text-[10px] text-muted-foreground truncate" data-testid="search-result-number">
+                          <p
+                            className="font-mono text-[10px] text-muted-foreground truncate"
+                            data-testid="search-result-number"
+                          >
                             {cust.pppoeUsername}
-                            {cust.onuDetails?.serialNumber ? ` • ${cust.onuDetails.serialNumber}` : ""}
+                            {cust.onuDetails?.serialNumber
+                              ? ` • ${cust.onuDetails.serialNumber}`
+                              : ""}
                           </p>
                         </div>
                         <div className="shrink-0 flex items-center gap-1.5">
@@ -2042,8 +2303,12 @@ export function NetworkMap({
                     ))}
                   </div>
                 ) : (
-                  <div className="p-3 text-center text-xs text-muted-foreground" data-testid="search-no-results">
-                    Tidak ditemukan pelanggan dengan nama atau nomor &quot;{searchQuery}&quot;
+                  <div
+                    className="p-3 text-center text-xs text-muted-foreground"
+                    data-testid="search-no-results"
+                  >
+                    Tidak ditemukan pelanggan dengan nama atau nomor &quot;
+                    {searchQuery}&quot;
                   </div>
                 )}
               </div>
@@ -2071,7 +2336,8 @@ export function NetworkMap({
             value={statusFilter}
             onChange={(e) =>
               setStatusFilter(
-                e.target.value as "all" | "online" | "offline" | "weak" | "isolir" | "geocoded",
+                e.target.value as
+                  "all" | "online" | "offline" | "weak" | "isolir" | "geocoded",
               )
             }
             className="h-9 sm:h-8 rounded-md border border-input bg-background px-2.5 sm:px-2.5 text-xs text-foreground font-medium shadow-xs focus:outline-none max-w-[140px] sm:max-w-none truncate"
@@ -2096,7 +2362,9 @@ export function NetworkMap({
             title="Segarkan data dari backend"
             data-testid="map-refresh-button"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
+            />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
@@ -2157,7 +2425,11 @@ export function NetworkMap({
                             <span>{provider.name}</span>
                           </div>
                           <span className="text-[10px] text-muted-foreground">
-                            {provider.id === "satellite" ? "Esri" : provider.id === "streets" ? "OSM" : "Topo"}
+                            {provider.id === "satellite"
+                              ? "Esri"
+                              : provider.id === "streets"
+                                ? "OSM"
+                                : "Topo"}
                           </span>
                         </label>
                       ))}
@@ -2185,12 +2457,16 @@ export function NetworkMap({
                         <input
                           type="checkbox"
                           checked={showInfrastructure}
-                          onChange={(e) => setShowInfrastructure(e.target.checked)}
+                          onChange={(e) =>
+                            setShowInfrastructure(e.target.checked)
+                          }
                           className="size-3 rounded text-primary"
                           data-testid="toggle-infrastructure-layer"
                         />
                         <span className="size-2 rounded-full bg-cyan-500" />
-                        <span>Infrastruktur ({data?.infrastructure.length ?? 0})</span>
+                        <span>
+                          Infrastruktur ({data?.infrastructure.length ?? 0})
+                        </span>
                       </label>
 
                       <label className="flex items-center gap-2 p-1 rounded cursor-pointer hover:bg-muted/40">
@@ -2209,7 +2485,9 @@ export function NetworkMap({
                         <input
                           type="checkbox"
                           checked={enableViewportCulling}
-                          onChange={(e) => setEnableViewportCulling(e.target.checked)}
+                          onChange={(e) =>
+                            setEnableViewportCulling(e.target.checked)
+                          }
                           className="size-3 rounded text-primary"
                           data-testid="toggle-viewport-culling"
                         />
@@ -2221,7 +2499,9 @@ export function NetworkMap({
                         <input
                           type="checkbox"
                           checked={enableCableOptimization}
-                          onChange={(e) => setEnableCableOptimization(e.target.checked)}
+                          onChange={(e) =>
+                            setEnableCableOptimization(e.target.checked)
+                          }
                           className="size-3 rounded text-primary"
                           data-testid="toggle-cable-optimization"
                         />
@@ -2244,7 +2524,9 @@ export function NetworkMap({
             <span
               className={cn(
                 "size-2 rounded-full",
-                enableViewportCulling ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground",
+                enableViewportCulling
+                  ? "bg-emerald-500 animate-pulse"
+                  : "bg-muted-foreground",
               )}
             />
             <span>
@@ -2266,7 +2548,9 @@ export function NetworkMap({
               <span
                 className={cn(
                   "size-2 rounded-full",
-                  enableCableOptimization ? "bg-cyan-500 animate-pulse" : "bg-muted-foreground",
+                  enableCableOptimization
+                    ? "bg-cyan-500 animate-pulse"
+                    : "bg-muted-foreground",
                 )}
               />
               <span>
@@ -2300,11 +2584,16 @@ export function NetworkMap({
             size="sm"
             onClick={handleLocateMe}
             disabled={isLocating}
-            className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", userLocation && "border-blue-500 text-blue-500")}
+            className={cn(
+              "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
+              userLocation && "border-blue-500 text-blue-500",
+            )}
             title="Tampilkan lokasi GPS teknisi saat ini"
             data-testid="locate-me-button"
           >
-            <Navigation className={cn("h-3.5 w-3.5", isLocating && "animate-spin")} />
+            <Navigation
+              className={cn("h-3.5 w-3.5", isLocating && "animate-spin")}
+            />
             <span className="hidden xl:inline">Lokasi Saya</span>
           </Button>
 
@@ -2326,7 +2615,11 @@ export function NetworkMap({
                 setConnectWaypoints([]);
               }
             }}
-            className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", isConnectCableMode && "bg-indigo-600 text-white border-indigo-700")}
+            className={cn(
+              "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
+              isConnectCableMode &&
+                "bg-indigo-600 text-white border-indigo-700",
+            )}
             title="Mode sambung kabel: klik 2 titik untuk buat jalur"
           >
             <Share2 className="h-3.5 w-3.5" />
@@ -2350,7 +2643,10 @@ export function NetworkMap({
                 setPlacementDraftCoords(null);
               }
             }}
-            className={cn("h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium", isDrawCableMode && "bg-violet-600 text-white border-violet-700")}
+            className={cn(
+              "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
+              isDrawCableMode && "bg-violet-600 text-white border-violet-700",
+            )}
             title="Mode gambar kabel: klik peta untuk tambah waypoint"
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -2360,7 +2656,9 @@ export function NetworkMap({
           {/* Tombol Tempatkan Titik Perangkat Infrastruktur */}
           <Button
             type="button"
-            variant={placementType || isPlacementPickerOpen ? "default" : "outline"}
+            variant={
+              placementType || isPlacementPickerOpen ? "default" : "outline"
+            }
             size="sm"
             onClick={() => {
               if (placementType || isPlacementPickerOpen) {
@@ -2378,14 +2676,17 @@ export function NetworkMap({
             }}
             className={cn(
               "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
-              (placementType || isPlacementPickerOpen) && "bg-primary text-primary-foreground",
+              (placementType || isPlacementPickerOpen) &&
+                "bg-primary text-primary-foreground",
             )}
             data-testid="toggle-device-placement-button"
             title="Pilih dan tempatkan titik perangkat infrastruktur di peta"
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">
-              {placementType ? `Pasang ${placementType.toUpperCase()}` : "Pasang Titik"}
+              {placementType
+                ? `Pasang ${placementType.toUpperCase()}`
+                : "Pasang Titik"}
             </span>
             <span className="sm:hidden">Pasang</span>
           </Button>
@@ -2393,7 +2694,9 @@ export function NetworkMap({
           {/* Tombol Tentukan Titik Koordinat Pelanggan */}
           <Button
             type="button"
-            variant={plottingCustomer || isCustomerPickerOpen ? "default" : "outline"}
+            variant={
+              plottingCustomer || isCustomerPickerOpen ? "default" : "outline"
+            }
             size="sm"
             onClick={() => {
               if (plottingCustomer || isCustomerPickerOpen) {
@@ -2413,24 +2716,28 @@ export function NetworkMap({
             }}
             className={cn(
               "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
-              (plottingCustomer || isCustomerPickerOpen) && "bg-primary text-primary-foreground",
+              (plottingCustomer || isCustomerPickerOpen) &&
+                "bg-primary text-primary-foreground",
             )}
             data-testid="open-customer-coordinate-picker-button"
             title="Tentukan titik koordinat pelanggan di peta dan simpan langsung ke database"
           >
             <MapPin className="h-3.5 w-3.5 text-emerald-500" />
             <span className="hidden sm:inline">
-              {plottingCustomer ? `Plot ${plottingCustomer.name}` : "Tentukan Titik"}
+              {plottingCustomer
+                ? `Plot ${plottingCustomer.name}`
+                : "Tentukan Titik"}
             </span>
             <span className="sm:hidden">Titik</span>
-            {data && data.customers.filter((c) => c.latitude === null).length > 0 && (
-              <Badge
-                variant="secondary"
-                className="px-1 py-0 text-[10px] h-4 font-normal bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-              >
-                {data.customers.filter((c) => c.latitude === null).length}
-              </Badge>
-            )}
+            {data &&
+              data.customers.filter((c) => c.latitude === null).length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="px-1 py-0 text-[10px] h-4 font-normal bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                >
+                  {data.customers.filter((c) => c.latitude === null).length}
+                </Badge>
+              )}
           </Button>
 
           {/* Tombol Input Titik Koordinat GPS Manual */}
@@ -2468,13 +2775,25 @@ export function NetworkMap({
             }}
             className={cn(
               "h-9 sm:h-8 px-2.5 text-xs gap-1.5 font-medium",
-              isInspectModeActive && "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600",
+              isInspectModeActive &&
+                "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600",
             )}
             data-testid="toggle-inspect-coord-button"
-            title={isInspectModeActive ? "Nonaktifkan mode pilih titik — klik peta tidak lagi mencatat koordinat" : "Aktifkan mode pilih titik — klik di peta untuk memilih koordinat"}
+            title={
+              isInspectModeActive
+                ? "Nonaktifkan mode pilih titik — klik peta tidak lagi mencatat koordinat"
+                : "Aktifkan mode pilih titik — klik di peta untuk memilih koordinat"
+            }
           >
-            <MapPin className={cn("h-3.5 w-3.5", isInspectModeActive ? "text-white" : "text-emerald-500")} />
-            <span className="hidden sm:inline">{isInspectModeActive ? "Batalkan Pilih" : "Pilih Titik"}</span>
+            <MapPin
+              className={cn(
+                "h-3.5 w-3.5",
+                isInspectModeActive ? "text-white" : "text-emerald-500",
+              )}
+            />
+            <span className="hidden sm:inline">
+              {isInspectModeActive ? "Batalkan Pilih" : "Pilih Titik"}
+            </span>
             <span className="sm:hidden">
               <MapPin className="h-3.5 w-3.5" />
             </span>
@@ -2496,7 +2815,8 @@ export function NetworkMap({
             Gagal Menghubungkan ke Backend Jaringan
           </h3>
           <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
-            {loadError}. Data operasional jaringan tidak dapat dimuat. Kebijakan zero-dummy: data tiruan tidak ditampilkan saat koneksi gagal.
+            {loadError}. Data operasional jaringan tidak dapat dimuat. Kebijakan
+            zero-dummy: data tiruan tidak ditampilkan saat koneksi gagal.
           </p>
           <Button
             type="button"
@@ -2507,32 +2827,40 @@ export function NetworkMap({
             data-testid="map-error-retry-button"
             className="text-xs gap-1.5"
           >
-            <RefreshCw className={cn("size-3.5", isLoading && "animate-spin")} />
+            <RefreshCw
+              className={cn("size-3.5", isLoading && "animate-spin")}
+            />
             <span>Coba Lagi</span>
           </Button>
         </div>
       )}
 
       {/* Empty State: Belum Ada Perangkat atau Titik Jaringan */}
-      {!isLoading && !loadError && data && data.customers.length === 0 && data.infrastructure.length === 0 && (
-        <div
-          className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
-          data-testid="map-empty-state"
-        >
-          <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
-            <MapPinOff className="size-7" />
+      {!isLoading &&
+        !loadError &&
+        data &&
+        data.customers.length === 0 &&
+        data.infrastructure.length === 0 && (
+          <div
+            className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
+            data-testid="map-empty-state"
+          >
+            <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
+              <MapPinOff className="size-7" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              Belum Ada Perangkat atau Titik Terdaftar
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
+              Peta dasar satelit siap digunakan. Daftarkan router MikroTik atau
+              OLT pada menu Setup agar topologi jaringan dan pelanggan dapat
+              dipetakan secara nyata.
+            </p>
+            <Button asChild size="sm" variant="outline" className="text-xs">
+              <Link href="/setup">Buka Setup Perangkat</Link>
+            </Button>
           </div>
-          <h3 className="text-base font-bold text-foreground">
-            Belum Ada Perangkat atau Titik Terdaftar
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
-            Peta dasar satelit siap digunakan. Daftarkan router MikroTik atau OLT pada menu Setup agar topologi jaringan dan pelanggan dapat dipetakan secara nyata.
-          </p>
-          <Button asChild size="sm" variant="outline" className="text-xs">
-            <Link href="/setup">Buka Setup Perangkat</Link>
-          </Button>
-        </div>
-      )}
+        )}
 
       {/* Floating Banner Mode Gambar Kabel */}
       {isDrawCableMode && !showDrawDialog && (
@@ -2542,27 +2870,45 @@ export function NetworkMap({
               <Pencil className="size-3.5 shrink-0" />
               <p className="font-bold text-xs">Gambar Jalur Kabel</p>
               {drawWaypoints.length > 0 && (
-                <span className="bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">{drawWaypoints.length} titik</span>
+                <span className="bg-white/20 text-[10px] px-1.5 py-0.5 rounded-full">
+                  {drawWaypoints.length} titik
+                </span>
               )}
             </div>
             <div className="flex gap-1">
               {drawWaypoints.length > 0 && (
-                <Button type="button" size="sm" variant="ghost"
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
                   className="text-white hover:bg-white/20 h-6 px-2 text-[10px]"
-                  onClick={handleDrawUndo}>
+                  onClick={handleDrawUndo}
+                >
                   ↩ Hapus
                 </Button>
               )}
               {drawWaypoints.length >= 2 && (
-                <Button type="button" size="sm" variant="ghost"
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
                   className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
-                  onClick={handleDrawFinish}>
+                  onClick={handleDrawFinish}
+                >
                   Selesai ✓
                 </Button>
               )}
-              <Button type="button" size="sm" variant="ghost"
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
                 className="text-white hover:bg-white/20 h-6 w-6 p-0"
-                onClick={() => { setIsDrawCableMode(false); setDrawWaypoints([]); setDrawMousePos(null); }}>
+                onClick={() => {
+                  setIsDrawCableMode(false);
+                  setDrawWaypoints([]);
+                  setDrawMousePos(null);
+                }}
+              >
                 <X className="size-3" />
               </Button>
             </div>
@@ -2584,9 +2930,12 @@ export function NetworkMap({
           <div className="flex items-center gap-2.5 min-w-0">
             <Move className="size-4 shrink-0 animate-bounce" />
             <div className="min-w-0">
-              <p className="font-bold truncate">Mode Geser Titik: {selectedCustomer.name}</p>
+              <p className="font-bold truncate">
+                Mode Geser Titik: {selectedCustomer.name}
+              </p>
               <p className="text-[11px] opacity-90 leading-tight">
-                Tarik pin merah di peta atau klik lokasi target baru. Simpan posisi titik di panel detail.
+                Tarik pin merah di peta atau klik lokasi target baru. Simpan
+                posisi titik di panel detail.
               </p>
             </div>
           </div>
@@ -2627,18 +2976,41 @@ export function NetworkMap({
                   {connectSavedSegments} tersimpan
                 </span>
               )}
-              {isSavingCable && <Loader2 className="size-3 animate-spin opacity-70" />}
+              {isSavingCable && (
+                <Loader2 className="size-3 animate-spin opacity-70" />
+              )}
             </div>
             <div className="flex items-center gap-1">
               {connectSavedSegments > 0 && (
-                <Button type="button" size="sm" variant="ghost"
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
                   className="text-white hover:bg-green-500/30 h-6 px-2 text-[10px] font-semibold"
-                  onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); setConnectWaypoints([]); }}>
+                  onClick={() => {
+                    setIsConnectCableMode(false);
+                    setConnectSource(null);
+                    setConnectSavedSegments(0);
+                    setConnectRouteName("");
+                    setConnectWaypoints([]);
+                  }}
+                >
                   Selesai
                 </Button>
               )}
-              <Button type="button" size="sm" variant="ghost" className="text-white hover:bg-white/20 h-6 w-6 p-0"
-                onClick={() => { setIsConnectCableMode(false); setConnectSource(null); setConnectSavedSegments(0); setConnectRouteName(""); setConnectWaypoints([]); }}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-white hover:bg-white/20 h-6 w-6 p-0"
+                onClick={() => {
+                  setIsConnectCableMode(false);
+                  setConnectSource(null);
+                  setConnectSavedSegments(0);
+                  setConnectRouteName("");
+                  setConnectWaypoints([]);
+                }}
+              >
                 <X className="size-3" />
               </Button>
             </div>
@@ -2647,20 +3019,37 @@ export function NetworkMap({
           {/* Fase 1: Pilih sumber dari daftar */}
           {!connectSource && (
             <div className="p-3 space-y-2">
-              <p className="text-[11px] opacity-80 font-medium">Pilih sumber jalur:</p>
+              <p className="text-[11px] opacity-80 font-medium">
+                Pilih sumber jalur:
+              </p>
               <div className="space-y-1 max-h-40 overflow-y-auto">
-                {(fetchedData?.infrastructure?.filter(i => ["olt","odp","odc"].includes(i.type)) ?? []).length === 0 ? (
-                  <p className="text-[11px] opacity-50 italic">Belum ada OLT/ODP/ODC di peta.</p>
+                {(
+                  fetchedData?.infrastructure?.filter((i) =>
+                    ["olt", "odp", "odc"].includes(i.type),
+                  ) ?? []
+                ).length === 0 ? (
+                  <p className="text-[11px] opacity-50 italic">
+                    Belum ada OLT/ODP/ODC di peta.
+                  </p>
                 ) : (
-                  (["olt","odc","odp"] as const).flatMap(typeKey => {
-                    const nodes = fetchedData!.infrastructure.filter(i => i.type === typeKey);
+                  (["olt", "odc", "odp"] as const).flatMap((typeKey) => {
+                    const nodes = fetchedData!.infrastructure.filter(
+                      (i) => i.type === typeKey,
+                    );
                     if (nodes.length === 0) return [];
                     const isNew = typeKey === "olt";
                     return [
-                      <p key={`hdr-${typeKey}`} className="text-[9px] uppercase font-bold opacity-40 pt-1 pb-0.5 tracking-wider">
-                        {typeKey === "olt" ? "OLT — Jalur Baru" : typeKey === "odc" ? "ODC — Lanjutkan" : "ODP — Lanjutkan"}
+                      <p
+                        key={`hdr-${typeKey}`}
+                        className="text-[9px] uppercase font-bold opacity-40 pt-1 pb-0.5 tracking-wider"
+                      >
+                        {typeKey === "olt"
+                          ? "OLT — Jalur Baru"
+                          : typeKey === "odc"
+                            ? "ODC — Lanjutkan"
+                            : "ODP — Lanjutkan"}
                       </p>,
-                      ...nodes.map(node => (
+                      ...nodes.map((node) => (
                         <button
                           key={node.id}
                           type="button"
@@ -2675,7 +3064,9 @@ export function NetworkMap({
                             <Boxes className="size-3 shrink-0 text-amber-300" />
                           )}
                           <span className="truncate flex-1">{node.name}</span>
-                          <span className={`text-[9px] font-bold shrink-0 ${isNew ? "text-cyan-300" : "text-amber-300"}`}>
+                          <span
+                            className={`text-[9px] font-bold shrink-0 ${isNew ? "text-cyan-300" : "text-amber-300"}`}
+                          >
                             {isNew ? "BARU" : "LANJUT"}
                           </span>
                         </button>
@@ -2685,7 +3076,9 @@ export function NetworkMap({
                 )}
               </div>
               <div>
-                <p className="text-[10px] opacity-60 mb-1">Nama rute (opsional):</p>
+                <p className="text-[10px] opacity-60 mb-1">
+                  Nama rute (opsional):
+                </p>
                 <Input
                   value={connectRouteName}
                   onChange={(e) => setConnectRouteName(e.target.value)}
@@ -2701,12 +3094,18 @@ export function NetworkMap({
             <div className="p-3 space-y-2">
               <div className="flex items-center gap-2 text-[11px]">
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/10 shrink-0">
-                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-green-400 text-white shrink-0">✓</span>
-                  <span className="truncate max-w-[110px] font-semibold">{connectSource.name}</span>
+                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-green-400 text-white shrink-0">
+                    ✓
+                  </span>
+                  <span className="truncate max-w-[110px] font-semibold">
+                    {connectSource.name}
+                  </span>
                 </div>
                 <span className="opacity-40 shrink-0">→</span>
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/20 animate-pulse font-semibold">
-                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/30 shrink-0">?</span>
+                  <span className="size-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-white/30 shrink-0">
+                    ?
+                  </span>
                   <span>Klik ODP di peta</span>
                 </div>
               </div>
@@ -2726,8 +3125,12 @@ export function NetworkMap({
       {selectedCable && (
         <div className="absolute bottom-24 left-3 right-3 sm:left-auto sm:right-3 sm:max-w-xs z-[1010] bg-background/95 backdrop-blur-md border border-rose-500/40 rounded-xl shadow-2xl px-3 py-2.5 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-foreground truncate">{selectedCable.name}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{selectedCable.sourceName} → {selectedCable.targetName ?? "—"}</p>
+            <p className="text-xs font-semibold text-foreground truncate">
+              {selectedCable.name}
+            </p>
+            <p className="text-[10px] text-muted-foreground truncate">
+              {selectedCable.sourceName} → {selectedCable.targetName ?? "—"}
+            </p>
           </div>
           <Button
             type="button"
@@ -2737,11 +3140,20 @@ export function NetworkMap({
             disabled={isDeletingCable}
             onClick={() => void handleDeleteCable(selectedCable.id)}
           >
-            {isDeletingCable ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+            {isDeletingCable ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <X className="size-3" />
+            )}
             Hapus
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0"
-            onClick={() => setSelectedCableId(null)}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 shrink-0"
+            onClick={() => setSelectedCableId(null)}
+          >
             <X className="size-3" />
           </Button>
         </div>
@@ -2820,7 +3232,8 @@ export function NetworkMap({
                 Mode Penempatan: {placementType.toUpperCase()}
               </p>
               <p className="text-[11px] opacity-90 leading-tight">
-                Klik lokasi pada peta untuk menentukan posisi titik perangkat ini.
+                Klik lokasi pada peta untuk menentukan posisi titik perangkat
+                ini.
               </p>
             </div>
           </div>
@@ -2840,123 +3253,158 @@ export function NetworkMap({
       )}
 
       {/* Search Empty State */}
-      {data && (data.customers.length > 0 || data.infrastructure.length > 0) && geocodedList.length === 0 && searchQuery && (
-        <div
-          className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-card/95 border backdrop-blur-md p-2.5 rounded-lg shadow-md text-xs flex items-center justify-between gap-2"
-          data-testid="search-empty-state"
-        >
-          <span className="text-muted-foreground">
-            Tidak ditemukan titik pelanggan untuk &ldquo;<strong className="text-foreground">{searchQuery}</strong>&rdquo;
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px]"
-            data-testid="reset-search-button"
-            onClick={() => setSearchQuery("")}
+      {data &&
+        (data.customers.length > 0 || data.infrastructure.length > 0) &&
+        geocodedList.length === 0 &&
+        searchQuery && (
+          <div
+            className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-card/95 border backdrop-blur-md p-2.5 rounded-lg shadow-md text-xs flex items-center justify-between gap-2"
+            data-testid="search-empty-state"
           >
-            Reset
-          </Button>
-        </div>
-      )}
+            <span className="text-muted-foreground">
+              Tidak ditemukan titik pelanggan untuk &ldquo;
+              <strong className="text-foreground">{searchQuery}</strong>&rdquo;
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px]"
+              data-testid="reset-search-button"
+              onClick={() => setSearchQuery("")}
+            >
+              Reset
+            </Button>
+          </div>
+        )}
 
       {/* Saringan Wilayah / Status Titik Kosong (Filter Empty State) */}
-      {data && (data.customers.length > 0 || data.infrastructure.length > 0) && geocodedList.length === 0 && !searchQuery && (statusFilter !== "all" || regionFilter !== "all") && (
-        <div
-          className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-card/95 border backdrop-blur-md p-2.5 rounded-lg shadow-md text-xs flex items-center justify-between gap-2 animate-in fade-in duration-150"
-          data-testid="filter-empty-state"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Filter className="size-3.5 text-muted-foreground shrink-0" />
-            <span className="text-muted-foreground text-xs leading-tight">
-              Tidak ada titik pelanggan untuk saringan{" "}
-              {regionFilter !== "all" && <strong className="text-foreground">Wilayah: {regionFilter}</strong>}
-              {regionFilter !== "all" && statusFilter !== "all" && " dan "}
-              {statusFilter !== "all" && <strong className="text-foreground">Status: {statusFilter}</strong>}
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px] shrink-0"
-            data-testid="reset-filter-button"
-            onClick={() => {
-              setStatusFilter("all");
-              setRegionFilter("all");
-            }}
+      {data &&
+        (data.customers.length > 0 || data.infrastructure.length > 0) &&
+        geocodedList.length === 0 &&
+        !searchQuery &&
+        (statusFilter !== "all" || regionFilter !== "all") && (
+          <div
+            className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-card/95 border backdrop-blur-md p-2.5 rounded-lg shadow-md text-xs flex items-center justify-between gap-2 animate-in fade-in duration-150"
+            data-testid="filter-empty-state"
           >
-            Reset Saringan
-          </Button>
-        </div>
-      )}
-
-      {/* Seluruh Pelanggan Belum Memiliki Koordinat GPS (Unmapped Customers State) */}
-      {data && data.customers.length > 0 && geocodedList.length === 0 && !searchQuery && statusFilter === "all" && regionFilter === "all" && !isUnmappedDismissed && (
-        <div
-          className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
-          data-testid="unmapped-customers-empty-state"
-        >
-          <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
-            <MapPinOff className="size-7 text-amber-500" />
-          </div>
-          <h3 className="text-base font-bold text-foreground">
-            Semua Pelanggan Belum Memiliki Koordinat GPS
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
-            Terdapat {data.customers.length} data pelanggan terdaftar, namun belum ada yang memiliki koordinat latitude dan longitude di database PostgreSQL. Lengkapi koordinat GPS pada tabel pelanggan agar titik dapat dipetakan secara nyata.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Filter className="size-3.5 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground text-xs leading-tight">
+                Tidak ada titik pelanggan untuk saringan{" "}
+                {regionFilter !== "all" && (
+                  <strong className="text-foreground">
+                    Wilayah: {regionFilter}
+                  </strong>
+                )}
+                {regionFilter !== "all" && statusFilter !== "all" && " dan "}
+                {statusFilter !== "all" && (
+                  <strong className="text-foreground">
+                    Status: {statusFilter}
+                  </strong>
+                )}
+              </span>
+            </div>
             <Button
               type="button"
+              variant="ghost"
               size="sm"
-              variant="default"
-              className="text-xs gap-1.5 font-semibold"
-              data-testid="start-plot-customer-button"
+              className="h-6 px-2 text-[11px] shrink-0"
+              data-testid="reset-filter-button"
               onClick={() => {
-                setIsUnmappedDismissed(true);
-                setIsCustomerPickerOpen(true);
+                setStatusFilter("all");
+                setRegionFilter("all");
               }}
             >
-              <MapPin className="size-3.5" />
-              <span>Tentukan Titik di Peta Sekarang</span>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="text-xs gap-1.5" data-testid="open-customer-table-button">
-              <Link href="/app/pelanggan">
-                <span>Buka Data Pelanggan</span>
-                <ExternalLink className="size-3.5" />
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="text-xs text-muted-foreground"
-              data-testid="dismiss-unmapped-banner-button"
-              onClick={() => setIsUnmappedDismissed(true)}
-            >
-              Lihat Peta Saja
+              Reset Saringan
             </Button>
           </div>
-        </div>
-      )}
+        )}
 
+      {/* Seluruh Pelanggan Belum Memiliki Koordinat GPS (Unmapped Customers State) */}
+      {data &&
+        data.customers.length > 0 &&
+        geocodedList.length === 0 &&
+        !searchQuery &&
+        statusFilter === "all" &&
+        regionFilter === "all" &&
+        !isUnmappedDismissed && (
+          <div
+            className="absolute inset-0 z-[990] flex flex-col items-center justify-center p-6 bg-background/85 backdrop-blur-xs text-center"
+            data-testid="unmapped-customers-empty-state"
+          >
+            <div className="size-14 rounded-full bg-muted border flex items-center justify-center text-muted-foreground mb-3">
+              <MapPinOff className="size-7 text-amber-500" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              Semua Pelanggan Belum Memiliki Koordinat GPS
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4 leading-relaxed">
+              Terdapat {data.customers.length} data pelanggan terdaftar, namun
+              belum ada yang memiliki koordinat latitude dan longitude di
+              database PostgreSQL. Lengkapi koordinat GPS pada tabel pelanggan
+              agar titik dapat dipetakan secara nyata.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                className="text-xs gap-1.5 font-semibold"
+                data-testid="start-plot-customer-button"
+                onClick={() => {
+                  setIsUnmappedDismissed(true);
+                  setIsCustomerPickerOpen(true);
+                }}
+              >
+                <MapPin className="size-3.5" />
+                <span>Tentukan Titik di Peta Sekarang</span>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="text-xs gap-1.5"
+                data-testid="open-customer-table-button"
+              >
+                <Link href="/app/pelanggan">
+                  <span>Buka Data Pelanggan</span>
+                  <ExternalLink className="size-3.5" />
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-xs text-muted-foreground"
+                data-testid="dismiss-unmapped-banner-button"
+                onClick={() => setIsUnmappedDismissed(true)}
+              >
+                Lihat Peta Saja
+              </Button>
+            </div>
+          </div>
+        )}
 
       {/* Zero-Dummy Status Notification Banner */}
-      {data && data.dataSource.isRealData && data.summary.geocodedCustomers === 0 && data.summary.totalCustomers > 0 && (
-        <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 backdrop-blur-md p-2.5 rounded-lg shadow-lg text-xs flex items-start gap-2 text-foreground">
-          <Database className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <p className="font-semibold text-amber-600 dark:text-amber-400">
-              {data.summary.totalCustomers} Pelanggan Terdaftar di PostgreSQL
-            </p>
-            <p className="text-muted-foreground text-[11px] leading-relaxed">
-              Koordinat GPS pelanggan belum diisi pada database. Menampilkan titik sentral infrastruktur Core CIARA, OLT HSGQ, dan ODP distribusi.
-            </p>
+      {data &&
+        data.dataSource.isRealData &&
+        data.summary.geocodedCustomers === 0 &&
+        data.summary.totalCustomers > 0 && (
+          <div className="absolute top-16 left-3 right-3 sm:right-auto sm:max-w-md z-[1000] bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/30 backdrop-blur-md p-2.5 rounded-lg shadow-lg text-xs flex items-start gap-2 text-foreground">
+            <Database className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-semibold text-amber-600 dark:text-amber-400">
+                {data.summary.totalCustomers} Pelanggan Terdaftar di PostgreSQL
+              </p>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Koordinat GPS pelanggan belum diisi pada database. Menampilkan
+                titik sentral infrastruktur Core CIARA, OLT HSGQ, dan ODP
+                distribusi.
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Penanda Saat Tile Gagal Dimuat */}
       {tileErrorCount > 0 && !isTileErrorDismissed && (
@@ -2982,7 +3430,12 @@ export function NetworkMap({
               </button>
             </div>
             <p className="text-muted-foreground text-[11px] leading-relaxed">
-              Penyedia tile <span className="font-medium text-foreground">{TILE_PROVIDERS[layerMode].name}</span> mengalami kendala koneksi atau batas akses. Titik dan jalur serat optik tetap aktif di atas kanvas.
+              Penyedia tile{" "}
+              <span className="font-medium text-foreground">
+                {TILE_PROVIDERS[layerMode].name}
+              </span>{" "}
+              mengalami kendala koneksi atau batas akses. Titik dan jalur serat
+              optik tetap aktif di atas kanvas.
             </p>
             <div className="flex items-center gap-2 pt-0.5">
               {layerMode !== "streets" ? (
@@ -3045,7 +3498,8 @@ export function NetworkMap({
           zoomControl={false}
         >
           {(() => {
-            const provider = TILE_PROVIDERS[layerMode] || TILE_PROVIDERS.satellite;
+            const provider =
+              TILE_PROVIDERS[layerMode] || TILE_PROVIDERS.satellite;
             const subdomains =
               provider.subdomains && provider.subdomains.length > 0
                 ? provider.subdomains
@@ -3076,29 +3530,45 @@ export function NetworkMap({
           {showCables &&
             visibleCableRoutes.map((cable) => {
               const style = resolveCableCapacityStyle({
-                coreCapacity: cable.coreCapacity ?? (cable.type === "backbone" ? 48 : cable.type === "feeder" ? 16 : 2),
+                coreCapacity:
+                  cable.coreCapacity ??
+                  (cable.type === "backbone"
+                    ? 48
+                    : cable.type === "feeder"
+                      ? 16
+                      : 2),
                 type: cable.type,
                 status: cable.status,
                 isHighlighted: cable.isHighlighted,
               });
               const baseWeight = style.baseWeight;
-              const scaledWeight = getZoomScaledLineWeight(baseWeight, currentZoom);
+              const scaledWeight = getZoomScaledLineWeight(
+                baseWeight,
+                currentZoom,
+              );
               const haloWeight = getZoomScaledLineWeight(
                 cable.isHighlighted ? baseWeight + 3.5 : baseWeight + 2.5,
                 currentZoom,
               );
               // Dynamic smoothFactor untuk optimasi titik kurva jalan Leaflet berdasarkan level zoom
-              const dynamicSmoothFactor = currentZoom >= 16 ? 0.25 : currentZoom >= 13 ? 1.0 : 2.0;
+              const dynamicSmoothFactor =
+                currentZoom >= 16 ? 0.25 : currentZoom >= 13 ? 1.0 : 2.0;
 
               return (
                 <span key={cable.id}>
                   {/* Glow/halo layer untuk kabel backbone atau yang sedang disorot (highlight) */}
-                  {(cable.isHighlighted || cable.type === "backbone" || cable.id.startsWith("backbone")) && (
+                  {(cable.isHighlighted ||
+                    cable.type === "backbone" ||
+                    cable.id.startsWith("backbone")) && (
                     <Polyline
                       positions={cable.path}
                       pathOptions={{
                         className: "cable-halo-polyline",
-                        color: cable.isHighlighted ? "#22d3ee" : (cable.color ? cable.color + "80" : style.haloColor),
+                        color: cable.isHighlighted
+                          ? "#22d3ee"
+                          : cable.color
+                            ? cable.color + "80"
+                            : style.haloColor,
                         weight: haloWeight,
                         opacity: cable.isHighlighted ? 0.6 : 0.35,
                         lineCap: "round",
@@ -3111,80 +3581,106 @@ export function NetworkMap({
                     positions={cable.path}
                     pathOptions={{
                       className: "sharp-cable-polyline",
-                      color: selectedCableId === cable.id ? "#ef4444" : (cable.color || style.color),
-                      weight: selectedCableId === cable.id ? scaledWeight + 2 : scaledWeight,
+                      color:
+                        selectedCableId === cable.id
+                          ? "#ef4444"
+                          : cable.color || style.color,
+                      weight:
+                        selectedCableId === cable.id
+                          ? scaledWeight + 2
+                          : scaledWeight,
                       opacity: style.opacity,
                       dashArray: style.dashArray,
                       lineCap: "round",
                       lineJoin: "round",
                     }}
                     smoothFactor={dynamicSmoothFactor}
-                    eventHandlers={{ click: () => setSelectedCableId(prev => prev === cable.id ? null : cable.id) }}
+                    eventHandlers={{
+                      click: () =>
+                        setSelectedCableId((prev) =>
+                          prev === cable.id ? null : cable.id,
+                        ),
+                    }}
                   >
-                  <Tooltip direction="center" opacity={0.95} sticky>
-                    <div
-                      className="flex flex-col gap-0.5 text-xs font-mono p-1"
-                      data-testid={`cable-tooltip-${cable.id}`}
-                    >
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span
-                          className="size-2 rounded-full shrink-0"
-                          style={{ backgroundColor: cable.color }}
-                        />
-                        <span className="truncate max-w-[220px]">{cable.name}</span>
-                      </div>
-                      {cable.sourceName && cable.targetName && (
-                        <div className="text-[10px] text-muted-foreground flex items-center gap-1 pt-0.5">
-                          <span className="font-semibold text-foreground">{cable.sourceName}</span>
-                          <span>&rarr;</span>
-                          <span className="font-semibold text-foreground">{cable.targetName}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-[10px] pt-0.5 text-muted-foreground">
-                        <span className="uppercase font-semibold">Tipe: {cable.type}</span>
-                        {cable.coreCapacity && <span>Kapasitas: {cable.coreCapacity} Core</span>}
-                        {cable.status && (
+                    <Tooltip direction="center" opacity={0.95} sticky>
+                      <div
+                        className="flex flex-col gap-0.5 text-xs font-mono p-1"
+                        data-testid={`cable-tooltip-${cable.id}`}
+                      >
+                        <div className="flex items-center gap-1.5 font-bold">
                           <span
-                            className={cn(
-                              "font-medium",
-                              cable.status === "offline" ? "text-rose-500" : "text-emerald-500",
-                            )}
-                          >
-                            Status: {cable.status}
+                            className="size-2 rounded-full shrink-0"
+                            style={{ backgroundColor: cable.color }}
+                          />
+                          <span className="truncate max-w-[220px]">
+                            {cable.name}
                           </span>
+                        </div>
+                        {cable.sourceName && cable.targetName && (
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 pt-0.5">
+                            <span className="font-semibold text-foreground">
+                              {cable.sourceName}
+                            </span>
+                            <span>&rarr;</span>
+                            <span className="font-semibold text-foreground">
+                              {cable.targetName}
+                            </span>
+                          </div>
                         )}
+                        <div className="flex items-center gap-2 text-[10px] pt-0.5 text-muted-foreground">
+                          <span className="uppercase font-semibold">
+                            Tipe: {cable.type}
+                          </span>
+                          {cable.coreCapacity && (
+                            <span>Kapasitas: {cable.coreCapacity} Core</span>
+                          )}
+                          {cable.status && (
+                            <span
+                              className={cn(
+                                "font-medium",
+                                cable.status === "offline"
+                                  ? "text-rose-500"
+                                  : "text-emerald-500",
+                              )}
+                            >
+                              Status: {cable.status}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Tooltip>
-                </Polyline>
-              </span>
-            );
-          })}
-
-          {/* Garis drop fiber: Pelanggan ke ODP */}
-          {showCustomers && visibleCustomers
-            .filter((c) => c.odpName && c.latitude !== null && c.longitude !== null)
-            .map((cust) => {
-              const odp = visibleInfrastructure.find(
-                (i) => i.name.toLowerCase() === cust.odpName?.toLowerCase()
-              );
-              if (!odp) return null;
-              return (
-                <Polyline
-                  key={`drop-${cust.id}`}
-                  positions={[
-                    [odp.latitude, odp.longitude],
-                    [cust.latitude as number, cust.longitude as number],
-                  ]}
-                  pathOptions={{
-                    color: cust.isOnline ? "#22c55e" : "#ef4444",
-                    weight: 1,
-                    opacity: 0.4,
-                    dashArray: "3 5",
-                  }}
-                />
+                    </Tooltip>
+                  </Polyline>
+                </span>
               );
             })}
+
+          {/* Garis drop fiber: Pelanggan ke ODP */}
+          {showCustomers &&
+            visibleCustomers
+              .filter(
+                (c) => c.odpName && c.latitude !== null && c.longitude !== null,
+              )
+              .map((cust) => {
+                const odp = visibleInfrastructure.find(
+                  (i) => i.name.toLowerCase() === cust.odpName?.toLowerCase(),
+                );
+                if (!odp) return null;
+                return (
+                  <Polyline
+                    key={`drop-${cust.id}`}
+                    positions={[
+                      [odp.latitude, odp.longitude],
+                      [cust.latitude as number, cust.longitude as number],
+                    ]}
+                    pathOptions={{
+                      color: cust.isOnline ? "#22c55e" : "#ef4444",
+                      weight: 1,
+                      opacity: 0.4,
+                      dashArray: "3 5",
+                    }}
+                  />
+                );
+              })}
 
           {/* Infrastruktur Jaringan: Core Router, OLT, ODP, ODC, Tiang (Vektor Tajam & Ikon) */}
           {showInfrastructure &&
@@ -3207,24 +3703,43 @@ export function NetworkMap({
                       : "#64748b";
 
               const radius = isRouter ? 12 : isOlt ? 10 : isOdp ? 11 : 8;
-              const isHighlighted = selectedInfra?.id === infra.id || focusedNodeId === infra.id;
-              const isConnectSource = isConnectCableMode && connectSource?.id === infra.id;
+              const isHighlighted =
+                selectedInfra?.id === infra.id || focusedNodeId === infra.id;
+              const isConnectSource =
+                isConnectCableMode && connectSource?.id === infra.id;
               const isConnectTarget = isConnectCableMode && !connectSource;
 
               return (
-                <span key={infra.id} data-marker-type={infra.type} data-highlighted={isHighlighted ? "true" : undefined}>
+                <span
+                  key={infra.id}
+                  data-marker-type={infra.type}
+                  data-highlighted={isHighlighted ? "true" : undefined}
+                >
                   {/* Ring pulse saat mode sambung kabel: source = hijau, semua node = indigo */}
                   {isConnectSource && (
                     <>
                       <CircleMarker
                         center={[infra.latitude, infra.longitude]}
                         radius={radius + 14}
-                        pathOptions={{ color: "#22c55e", fillColor: "#22c55e", fillOpacity: 0.25, weight: 3, className: "animate-pulse", interactive: false }}
+                        pathOptions={{
+                          color: "#22c55e",
+                          fillColor: "#22c55e",
+                          fillOpacity: 0.25,
+                          weight: 3,
+                          className: "animate-pulse",
+                          interactive: false,
+                        }}
                       />
                       <CircleMarker
                         center={[infra.latitude, infra.longitude]}
                         radius={radius + 7}
-                        pathOptions={{ color: "#22c55e", fillColor: "transparent", weight: 2, dashArray: "4,3", interactive: false }}
+                        pathOptions={{
+                          color: "#22c55e",
+                          fillColor: "transparent",
+                          weight: 2,
+                          dashArray: "4,3",
+                          interactive: false,
+                        }}
                       />
                     </>
                   )}
@@ -3232,7 +3747,14 @@ export function NetworkMap({
                     <CircleMarker
                       center={[infra.latitude, infra.longitude]}
                       radius={radius + 8}
-                      pathOptions={{ color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.2, weight: 2, className: "animate-pulse", interactive: false }}
+                      pathOptions={{
+                        color: "#6366f1",
+                        fillColor: "#6366f1",
+                        fillOpacity: 0.2,
+                        weight: 2,
+                        className: "animate-pulse",
+                        interactive: false,
+                      }}
                     />
                   )}
                   {/* Efek Sorot (Highlight Halo Rings) saat dipilih dari pohon atau peta */}
@@ -3307,12 +3829,19 @@ export function NetworkMap({
                                   : "📍 Tiang Fiber: "}
                           {infra.name}
                         </span>
-                        {infra.host && <span className="text-[10px] text-muted-foreground block font-mono">{infra.host}</span>}
-                        {isOdp && typeof infra.details?.connectedCustomers === "number" && (
-                          <span className="text-[10px] text-muted-foreground block">
-                            {infra.details.connectedCustomers} Pelanggan Terhubung
+                        {infra.host && (
+                          <span className="text-[10px] text-muted-foreground block font-mono">
+                            {infra.host}
                           </span>
                         )}
+                        {isOdp &&
+                          typeof infra.details?.connectedCustomers ===
+                            "number" && (
+                            <span className="text-[10px] text-muted-foreground block">
+                              {infra.details.connectedCustomers} Pelanggan
+                              Terhubung
+                            </span>
+                          )}
                         {isPole && (
                           <span className="text-[10px] text-muted-foreground block">
                             Tiang Distribusi Fiber Aerial
@@ -3340,23 +3869,38 @@ export function NetworkMap({
             })}
 
           {/* Preview waypoints jalur Koneksi ODP (garis sementara sebelum ODP diklik) */}
-          {isConnectCableMode && connectSource && connectWaypoints.length > 0 && (
-            <Polyline
-              positions={[
-                [connectSource.latitude, connectSource.longitude],
-                ...connectWaypoints,
-              ]}
-              pathOptions={{ color: "#f59e0b", weight: 2.5, dashArray: "6, 4", opacity: 0.8 }}
-              interactive={false}
-            />
-          )}
+          {isConnectCableMode &&
+            connectSource &&
+            connectWaypoints.length > 0 && (
+              <Polyline
+                positions={[
+                  [connectSource.latitude, connectSource.longitude],
+                  ...connectWaypoints,
+                ]}
+                pathOptions={{
+                  color: "#f59e0b",
+                  weight: 2.5,
+                  dashArray: "6, 4",
+                  opacity: 0.8,
+                }}
+                interactive={false}
+              />
+            )}
 
           {/* Preview jalur gambar kabel (di atas infra — waypoint dots terlihat) */}
           {isDrawCableMode && drawWaypoints.length > 0 && (
             <>
               <Polyline
-                positions={[...drawWaypoints, ...(drawMousePos ? [drawMousePos] : [])]}
-                pathOptions={{ color: drawCableColor, weight: 3, dashArray: "8 5", opacity: 0.8 }}
+                positions={[
+                  ...drawWaypoints,
+                  ...(drawMousePos ? [drawMousePos] : []),
+                ]}
+                pathOptions={{
+                  color: drawCableColor,
+                  weight: 3,
+                  dashArray: "8 5",
+                  opacity: 0.8,
+                }}
               />
               {drawWaypoints.map((pt, idx) => (
                 <CircleMarker
@@ -3378,9 +3922,11 @@ export function NetworkMap({
           {/* Titik Pelanggan (Vektor Tajam dengan Indikator Optik & Tagihan) */}
           {showCustomers &&
             visibleCustomers.map((cust) => {
-              if (cust.latitude === null || cust.longitude === null) return null;
+              if (cust.latitude === null || cust.longitude === null)
+                return null;
 
-              const isWeak = cust.opticalPower !== null && cust.opticalPower <= -24.5;
+              const isWeak =
+                cust.opticalPower !== null && cust.opticalPower <= -24.5;
               const isIsolir = cust.billingStatus === "isolir";
               const color = !cust.isOnline
                 ? "#ef4444"
@@ -3390,10 +3936,15 @@ export function NetworkMap({
                     ? "#94a3b8"
                     : "#10b981";
 
-              const isCustHighlighted = selectedCustomer?.id === cust.id || focusedNodeId === cust.id;
+              const isCustHighlighted =
+                selectedCustomer?.id === cust.id || focusedNodeId === cust.id;
 
               return (
-                <span key={cust.id} data-marker-type="customer" data-highlighted={isCustHighlighted ? "true" : undefined}>
+                <span
+                  key={cust.id}
+                  data-marker-type="customer"
+                  data-highlighted={isCustHighlighted ? "true" : undefined}
+                >
                   {/* Efek Sorot (Highlight Halo Rings) saat dipilih dari pohon atau peta */}
                   {isCustHighlighted && (
                     <>
@@ -3465,7 +4016,9 @@ export function NetworkMap({
                     <Tooltip direction="top" offset={[0, -6]}>
                       <div className="text-xs space-y-0.5">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-foreground">{cust.name}</p>
+                          <p className="font-semibold text-foreground">
+                            {cust.name}
+                          </p>
                           <span
                             className={cn(
                               "text-[9px] px-1 py-0.2 rounded font-medium uppercase tracking-wider",
@@ -3477,11 +4030,15 @@ export function NetworkMap({
                             {cust.billingStatus}
                           </span>
                         </div>
-                        <p className="font-mono text-[10px] text-muted-foreground">{cust.pppoeUsername}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">
+                          {cust.pppoeUsername}
+                        </p>
                         {cust.odpName && (
                           <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <span>ODP:</span>
-                            <span className="font-medium text-foreground">{cust.odpName}</span>
+                            <span className="font-medium text-foreground">
+                              {cust.odpName}
+                            </span>
                           </p>
                         )}
                         <div className="flex items-center gap-1.5 pt-0.5 border-t border-border/50">
@@ -3493,7 +4050,8 @@ export function NetworkMap({
                           />
                           <span className="text-[10px] font-medium">
                             {cust.isOnline ? "Online" : "Offline"}
-                            {cust.opticalPower !== null && ` • ${cust.opticalPower} dBm`}
+                            {cust.opticalPower !== null &&
+                              ` • ${cust.opticalPower} dBm`}
                           </span>
                         </div>
                       </div>
@@ -3522,9 +4080,13 @@ export function NetworkMap({
               setDraftCoords({ lat, lng });
               setInspectedMapCoord(null);
             }}
-            onInspectMapCoord={isInspectModeActive ? (lat, lng) => {
-              setInspectedMapCoord({ lat, lng });
-            } : undefined}
+            onInspectMapCoord={
+              isInspectModeActive
+                ? (lat, lng) => {
+                    setInspectedMapCoord({ lat, lng });
+                  }
+                : undefined
+            }
             isDrawCable={isDrawCableMode}
             onDrawCableAddPoint={handleDrawAddPoint}
             onDrawCableMouseMove={handleDrawMouseMove}
@@ -3552,7 +4114,8 @@ export function NetworkMap({
                     📍 Titik Baru {placementType?.toUpperCase() ?? "Perangkat"}
                   </span>
                   <span className="text-[10px] text-muted-foreground block font-mono">
-                    {placementDraftCoords.lat.toFixed(6)}, {placementDraftCoords.lng.toFixed(6)}
+                    {placementDraftCoords.lat.toFixed(6)},{" "}
+                    {placementDraftCoords.lng.toFixed(6)}
                   </span>
                 </div>
               </Tooltip>
@@ -3579,7 +4142,8 @@ export function NetworkMap({
                     📍 Geser: {selectedInfra.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground block font-mono">
-                    {infraMoveDraftCoords.lat.toFixed(6)}, {infraMoveDraftCoords.lng.toFixed(6)}
+                    {infraMoveDraftCoords.lat.toFixed(6)},{" "}
+                    {infraMoveDraftCoords.lng.toFixed(6)}
                   </span>
                 </div>
               </Tooltip>
@@ -3643,24 +4207,29 @@ export function NetworkMap({
           )}
 
           {/* Marker Titik Inspeksi Koordinat Bebas */}
-          {inspectedMapCoord && !plottingCustomer && !placementType && !isMovingInfra && !isEditingLocation && (
-            <CircleMarker
-              center={[inspectedMapCoord.lat, inspectedMapCoord.lng]}
-              radius={8}
-              pathOptions={{
-                color: "#10b981",
-                fillColor: "#10b981",
-                fillOpacity: 0.35,
-                weight: 2,
-              }}
-            >
-              <Tooltip permanent direction="top" offset={[0, -10]}>
-                <span className="font-mono text-[10px]">
-                  {inspectedMapCoord.lat.toFixed(6)}, {inspectedMapCoord.lng.toFixed(6)}
-                </span>
-              </Tooltip>
-            </CircleMarker>
-          )}
+          {inspectedMapCoord &&
+            !plottingCustomer &&
+            !placementType &&
+            !isMovingInfra &&
+            !isEditingLocation && (
+              <CircleMarker
+                center={[inspectedMapCoord.lat, inspectedMapCoord.lng]}
+                radius={8}
+                pathOptions={{
+                  color: "#10b981",
+                  fillColor: "#10b981",
+                  fillOpacity: 0.35,
+                  weight: 2,
+                }}
+              >
+                <Tooltip permanent direction="top" offset={[0, -10]}>
+                  <span className="font-mono text-[10px]">
+                    {inspectedMapCoord.lat.toFixed(6)},{" "}
+                    {inspectedMapCoord.lng.toFixed(6)}
+                  </span>
+                </Tooltip>
+              </CircleMarker>
+            )}
 
           {/* Lokasi GPS Teknisi */}
           {userLocation && (
@@ -3686,7 +4255,9 @@ export function NetworkMap({
                 }}
               >
                 <Tooltip permanent direction="top" offset={[0, -7]}>
-                  <span className="font-medium text-[11px]">Lokasi Anda (±{Math.round(userLocation.accuracy)}m)</span>
+                  <span className="font-medium text-[11px]">
+                    Lokasi Anda (±{Math.round(userLocation.accuracy)}m)
+                  </span>
                 </Tooltip>
               </CircleMarker>
             </>
@@ -3712,7 +4283,8 @@ export function NetworkMap({
                 {plottingCustomer.name}
               </h4>
               <p className="text-xs text-muted-foreground font-mono">
-                {plottingCustomer.pppoeUsername || "Tanpa PPPoE"} &bull; ODP: {plottingCustomer.odpName || "-"}
+                {plottingCustomer.pppoeUsername || "Tanpa PPPoE"} &bull; ODP:{" "}
+                {plottingCustomer.odpName || "-"}
               </p>
             </div>
             <Button
@@ -3733,18 +4305,24 @@ export function NetworkMap({
             {draftCoords ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[11px] text-muted-foreground block">Koordinat Terpilih:</span>
+                  <span className="text-[11px] text-muted-foreground block">
+                    Koordinat Terpilih:
+                  </span>
                   <span className="font-mono font-medium text-foreground">
                     {draftCoords.lat.toFixed(6)}, {draftCoords.lng.toFixed(6)}
                   </span>
                 </div>
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                <Badge
+                  variant="outline"
+                  className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]"
+                >
                   Siap Simpan
                 </Badge>
               </div>
             ) : (
               <p className="text-amber-600 dark:text-amber-400 font-medium">
-                👉 Klik pada peta untuk menentukan posisi rumah/titik pelanggan ini.
+                👉 Klik pada peta untuk menentukan posisi rumah/titik pelanggan
+                ini.
               </p>
             )}
           </div>
@@ -3802,66 +4380,79 @@ export function NetworkMap({
       )}
 
       {/* Floating Card: Koordinat Terpilih dari Klik Peta Bebas */}
-      {inspectedMapCoord && !plottingCustomer && !placementType && !isMovingInfra && !isEditingLocation && (
-        <Card
-          data-testid="inspected-map-coord-card"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1040] w-[90vw] max-w-sm p-3.5 bg-background/95 backdrop-blur-md border-emerald-500/30 shadow-xl space-y-2.5"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-              <Crosshair className="size-3.5" />
-              <span>Titik Koordinat Terpilih</span>
+      {inspectedMapCoord &&
+        !plottingCustomer &&
+        !placementType &&
+        !isMovingInfra &&
+        !isEditingLocation && (
+          <Card
+            data-testid="inspected-map-coord-card"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1040] w-[90vw] max-w-sm p-3.5 bg-background/95 backdrop-blur-md border-emerald-500/30 shadow-xl space-y-2.5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                <Crosshair className="size-3.5" />
+                <span>Titik Koordinat Terpilih</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                data-testid="close-inspected-coord-button"
+                className="size-6 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setInspectedMapCoord(null);
+                  setIsInspectModeActive(false);
+                }}
+              >
+                <X className="size-3.5" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              data-testid="close-inspected-coord-button"
-              className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setInspectedMapCoord(null);
-                setIsInspectModeActive(false);
-              }}
-            >
-              <X className="size-3.5" />
-            </Button>
-          </div>
 
-          <div className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50 border font-mono text-xs">
-            <span>
-              {inspectedMapCoord.lat.toFixed(6)}, {inspectedMapCoord.lng.toFixed(6)}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              data-testid="copy-inspected-coord-button"
-              className="size-6 text-muted-foreground hover:text-foreground shrink-0"
-              title="Salin Koordinat"
-              onClick={() => {
-                navigator.clipboard.writeText(
-                  `${inspectedMapCoord.lat.toFixed(6)}, ${inspectedMapCoord.lng.toFixed(6)}`
-                );
-                setIsCopiedCoord(true);
-                setTimeout(() => setIsCopiedCoord(false), 2000);
-              }}
-            >
-              {isCopiedCoord ? <span className="text-[10px] text-emerald-600 font-bold">✓</span> : <Copy className="size-3" />}
-            </Button>
-          </div>
+            <div className="flex items-center justify-between gap-2 p-2 rounded bg-muted/50 border font-mono text-xs">
+              <span>
+                {inspectedMapCoord.lat.toFixed(6)},{" "}
+                {inspectedMapCoord.lng.toFixed(6)}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                data-testid="copy-inspected-coord-button"
+                className="size-6 text-muted-foreground hover:text-foreground shrink-0"
+                title="Salin Koordinat"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${inspectedMapCoord.lat.toFixed(6)}, ${inspectedMapCoord.lng.toFixed(6)}`,
+                  );
+                  setIsCopiedCoord(true);
+                  setTimeout(() => setIsCopiedCoord(false), 2000);
+                }}
+              >
+                {isCopiedCoord ? (
+                  <span className="text-[10px] text-emerald-600 font-bold">
+                    ✓
+                  </span>
+                ) : (
+                  <Copy className="size-3" />
+                )}
+              </Button>
+            </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted-foreground">Tautkan ke pelanggan:</span>
-            <Button
-              size="sm"
-              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
-              data-testid="plot-inspected-customer-button"
-              onClick={() => setIsCustomerPickerOpen(true)}
-            >
-              <MapPin className="size-3" />
-              Plot Pelanggan
-            </Button>
-          </div>
-        </Card>
-      )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                Tautkan ke pelanggan:
+              </span>
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                data-testid="plot-inspected-customer-button"
+                onClick={() => setIsCustomerPickerOpen(true)}
+              >
+                <MapPin className="size-3" />
+                Plot Pelanggan
+              </Button>
+            </div>
+          </Card>
+        )}
 
       {/* Floating Card: Input Titik Koordinat GPS Manual */}
       {isManualCoordModalOpen && (
@@ -3878,7 +4469,8 @@ export function NetworkMap({
                 </h4>
               </div>
               <p className="text-xs text-muted-foreground">
-                Masukkan koordinat untuk melompat, menandai titik, atau menautkan ke pelanggan.
+                Masukkan koordinat untuk melompat, menandai titik, atau
+                menautkan ke pelanggan.
               </p>
             </div>
             <Button
@@ -3938,9 +4530,15 @@ export function NetworkMap({
 
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="font-medium">Format didukung:</span>
-              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">lat, lng</span>
-              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">lat lng</span>
-              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">Google Maps URL</span>
+              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">
+                lat, lng
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">
+                lat lng
+              </span>
+              <span className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">
+                Google Maps URL
+              </span>
             </div>
 
             {manualCoordError && (
@@ -3991,7 +4589,9 @@ export function NetworkMap({
                     setIsManualCoordModalOpen(false);
                     setIsCustomerPickerOpen(true);
                   } else {
-                    setManualCoordError("Tentukan koordinat yang valid terlebih dahulu.");
+                    setManualCoordError(
+                      "Tentukan koordinat yang valid terlebih dahulu.",
+                    );
                   }
                 }}
               >
@@ -4083,7 +4683,13 @@ export function NetworkMap({
         onCancelInfraMove={handleCancelMoveInfra}
         onSaveInfraMove={handleSaveMoveInfra}
         onDeleteInfra={handleDeleteInfra}
-        infraList={fetchedData?.infrastructure?.map((i) => ({ id: i.id, name: i.name, type: i.type })) || []}
+        infraList={
+          fetchedData?.infrastructure?.map((i) => ({
+            id: i.id,
+            name: i.name,
+            type: i.type,
+          })) || []
+        }
         onSetParent={handleSetParent}
         isSettingParent={isSettingParent}
       />
@@ -4096,24 +4702,40 @@ export function NetworkMap({
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Pencil className="size-4 text-violet-500" /> Simpan Jalur Kabel
               </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{drawWaypoints.length} titik waypoint</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {drawWaypoints.length} titik waypoint
+              </p>
             </div>
-            <Button type="button" size="icon" variant="ghost" className="size-6 shrink-0"
-              onClick={() => setShowDrawDialog(false)}>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-6 shrink-0"
+              onClick={() => setShowDrawDialog(false)}
+            >
               <X className="size-3.5" />
             </Button>
           </div>
           <div className="space-y-2 text-xs">
             <div>
-              <label className="text-muted-foreground block mb-1">Nama Jalur</label>
-              <Input value={drawCableName} onChange={(e) => setDrawCableName(e.target.value)}
-                className="h-7 text-xs" placeholder="Jalur Desa PON1" />
+              <label className="text-muted-foreground block mb-1">
+                Nama Jalur
+              </label>
+              <Input
+                value={drawCableName}
+                onChange={(e) => setDrawCableName(e.target.value)}
+                className="h-7 text-xs"
+                placeholder="Jalur Desa PON1"
+              />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-muted-foreground block mb-1">Tipe</label>
-                <select value={drawCableType} onChange={(e) => setDrawCableType(e.target.value)}
-                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
+                <select
+                  value={drawCableType}
+                  onChange={(e) => setDrawCableType(e.target.value)}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2"
+                >
                   <option value="backbone">Backbone</option>
                   <option value="feeder">Feeder</option>
                   <option value="distribution">Distribusi</option>
@@ -4122,27 +4744,54 @@ export function NetworkMap({
               </div>
               <div>
                 <label className="text-muted-foreground block mb-1">Core</label>
-                <select value={drawCableCapacity} onChange={(e) => setDrawCableCapacity(Number(e.target.value))}
-                  className="w-full h-7 text-xs rounded border border-border bg-background px-2">
-                  {[6, 12, 24, 48, 96, 144].map(n => <option key={n} value={n}>{n} Core</option>)}
+                <select
+                  value={drawCableCapacity}
+                  onChange={(e) => setDrawCableCapacity(Number(e.target.value))}
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2"
+                >
+                  {[6, 12, 24, 48, 96, 144].map((n) => (
+                    <option key={n} value={n}>
+                      {n} Core
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-muted-foreground shrink-0">Warna:</label>
-              <input type="color" value={drawCableColor} onChange={(e) => setDrawCableColor(e.target.value)}
-                className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5" />
+              <input
+                type="color"
+                value={drawCableColor}
+                onChange={(e) => setDrawCableColor(e.target.value)}
+                className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
+              />
             </div>
-            {drawCableError && <p className="text-destructive text-[11px]">{drawCableError}</p>}
+            {drawCableError && (
+              <p className="text-destructive text-[11px]">{drawCableError}</p>
+            )}
           </div>
           <div className="flex gap-2 pt-1">
-            <Button type="button" size="sm" variant="outline" className="h-7 text-xs px-3"
-              onClick={() => setShowDrawDialog(false)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs px-3"
+              onClick={() => setShowDrawDialog(false)}
+            >
               Lanjut Edit
             </Button>
-            <Button type="button" size="sm" className="flex-1 h-7 text-xs gap-1 bg-violet-600 hover:bg-violet-700"
-              disabled={!drawCableName.trim() || isSavingDraw} onClick={handleSaveDrawCable}>
-              {isSavingDraw ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+            <Button
+              type="button"
+              size="sm"
+              className="flex-1 h-7 text-xs gap-1 bg-violet-600 hover:bg-violet-700"
+              disabled={!drawCableName.trim() || isSavingDraw}
+              onClick={handleSaveDrawCable}
+            >
+              {isSavingDraw ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Save className="size-3" />
+              )}
               Simpan Kabel
             </Button>
           </div>
@@ -4155,7 +4804,9 @@ export function NetworkMap({
         onToggleCustomers={() => setShowCustomers(!showCustomers)}
         customerCount={geocodedList.length}
         showInfrastructure={showInfrastructure}
-        onToggleInfrastructure={() => setShowInfrastructure(!showInfrastructure)}
+        onToggleInfrastructure={() =>
+          setShowInfrastructure(!showInfrastructure)
+        }
         infraCount={data?.infrastructure.length ?? 0}
         showCables={showCables}
         onToggleCables={() => setShowCables(!showCables)}

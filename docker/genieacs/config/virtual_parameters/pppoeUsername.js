@@ -5,8 +5,14 @@
 
 // Nama PPPoE (nomor pelanggan): akun pada koneksi PPP pertama yang terisi.
 let user = "";
-for (const p of declare("InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username", {value: 1})) {
+for (const p of declare(
+  "InternetGatewayDevice.WANDevice.*.WANConnectionDevice.*.WANPPPConnection.*.Username",
+  { value: 1 },
+)) {
   const v = p.value && p.value[0];
-  if (v) { user = String(v); break; }
+  if (v) {
+    user = String(v);
+    break;
+  }
 }
-return {writable: false, value: [user, "xsd:string"]};
+return { writable: false, value: [user, "xsd:string"] };

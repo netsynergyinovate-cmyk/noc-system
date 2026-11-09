@@ -3,5 +3,7 @@
   "channel": "noc-connreq",
   "events": {},
   "precondition": "",
-  "configurations": [{ "type": "provision", "name": "noc-connreq", "args": null }]
+  "configurations": [
+    { "type": "provision", "name": "noc-connreq", "args": null }
+  ]
 }

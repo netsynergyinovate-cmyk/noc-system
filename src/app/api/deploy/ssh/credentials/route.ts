@@ -1,5 +1,8 @@
 import { withApiPermission } from "@/lib/api";
-import { evaluateDeployAccess, deployGuardResponse } from "@/lib/deploy/role-guard";
+import {
+  evaluateDeployAccess,
+  deployGuardResponse,
+} from "@/lib/deploy/role-guard";
 import { getDeployTarget } from "@/services/deploy-targets.service";
 import {
   getSshCredentialMeta,
@@ -26,7 +29,8 @@ const saveKeySchema = z
       return Boolean(data.privateKey && data.privateKey.trim().length >= 20);
     },
     {
-      message: "Wajib mengisi Password SSH atau Kunci Privat SSH (minimal 20 karakter).",
+      message:
+        "Wajib mengisi Password SSH atau Kunci Privat SSH (minimal 20 karakter).",
     },
   );
 
@@ -53,7 +57,10 @@ export async function POST(request: Request) {
 
   return withApiPermission(request, { system: ["manage"] }, async (session) => {
     if ("apiKeyId" in session && session.apiKeyId) {
-      return Response.json({ error: "API Key tidak diizinkan untuk menyimpan kunci SSH." }, { status: 403 });
+      return Response.json(
+        { error: "API Key tidak diizinkan untuk menyimpan kunci SSH." },
+        { status: 403 },
+      );
     }
     const body = await request.json().catch(() => ({}));
     const parsed = saveKeySchema.safeParse(body);
@@ -70,7 +77,10 @@ export async function POST(request: Request) {
       const target = await getDeployTarget();
       if (!target) {
         return Response.json(
-          { error: "Target SERVER NATIVE belum dikonfigurasi. Simpan target terlebih dahulu." },
+          {
+            error:
+              "Target SERVER NATIVE belum dikonfigurasi. Simpan target terlebih dahulu.",
+          },
           { status: 400 },
         );
       }
@@ -79,7 +89,8 @@ export async function POST(request: Request) {
 
     try {
       const meta = await saveSshCredential(targetId, {
-        authType: parsed.data.authType || (parsed.data.password ? "password" : "key"),
+        authType:
+          parsed.data.authType || (parsed.data.password ? "password" : "key"),
         privateKey: parsed.data.privateKey,
         passphrase: parsed.data.passphrase,
         password: parsed.data.password,
@@ -87,7 +98,8 @@ export async function POST(request: Request) {
       return Response.json({
         ok: true,
         data: meta,
-        message: "Kunci privat SSH berhasil disimpan dalam bentuk terenkripsi AES-256-GCM.",
+        message:
+          "Kunci privat SSH berhasil disimpan dalam bentuk terenkripsi AES-256-GCM.",
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -103,11 +115,17 @@ export async function DELETE(request: Request) {
 
   return withApiPermission(request, { system: ["manage"] }, async (session) => {
     if ("apiKeyId" in session && session.apiKeyId) {
-      return Response.json({ error: "API Key tidak diizinkan untuk menghapus kunci SSH." }, { status: 403 });
+      return Response.json(
+        { error: "API Key tidak diizinkan untuk menghapus kunci SSH." },
+        { status: 403 },
+      );
     }
     const target = await getDeployTarget();
     if (!target) {
-      return Response.json({ error: "Target tidak ditemukan" }, { status: 404 });
+      return Response.json(
+        { error: "Target tidak ditemukan" },
+        { status: 404 },
+      );
     }
 
     const deleted = await deleteSshCredential(target.id);

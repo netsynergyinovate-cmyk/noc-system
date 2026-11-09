@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, HelpCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  HelpCircle,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SETUP_PAGE_TIPS } from "@/lib/dashboard/setup-extended";
 

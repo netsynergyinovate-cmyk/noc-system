@@ -5,14 +5,26 @@
 
 // SSID Wi-Fi utama (2,4 GHz): WLANConfiguration.1; bila tak ada, SSID pertama yang terisi.
 let ssid = "";
-for (const p of declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.1.SSID", {value: 1})) {
+for (const p of declare(
+  "InternetGatewayDevice.LANDevice.*.WLANConfiguration.1.SSID",
+  { value: 1 },
+)) {
   const v = p.value && p.value[0];
-  if (v) { ssid = String(v); break; }
-}
-if (!ssid) {
-  for (const p of declare("InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID", {value: 1})) {
-    const v = p.value && p.value[0];
-    if (v) { ssid = String(v); break; }
+  if (v) {
+    ssid = String(v);
+    break;
   }
 }
-return {writable: false, value: [ssid, "xsd:string"]};
+if (!ssid) {
+  for (const p of declare(
+    "InternetGatewayDevice.LANDevice.*.WLANConfiguration.*.SSID",
+    { value: 1 },
+  )) {
+    const v = p.value && p.value[0];
+    if (v) {
+      ssid = String(v);
+      break;
+    }
+  }
+}
+return { writable: false, value: [ssid, "xsd:string"] };

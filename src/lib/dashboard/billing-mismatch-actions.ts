@@ -3,10 +3,7 @@
 // ponytail: hanya per-peramban; ganti dengan endpoint audit/billing saat backend ada.
 
 export type MismatchResolutionAction =
-  | "investigate"
-  | "ignore"
-  | "followup_customer"
-  | "manual_pair";
+  "investigate" | "ignore" | "followup_customer" | "manual_pair";
 
 export interface MismatchResolutionRecord {
   mismatchKey: string;
@@ -60,7 +57,11 @@ function read(): Record<string, MismatchResolutionRecord> {
     const raw = s.getItem(MISMATCH_RESOLUTIONS_KEY);
     if (raw === null) return {};
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
       return {};
     }
     const out: Record<string, MismatchResolutionRecord> = Object.create(null);

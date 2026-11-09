@@ -9,27 +9,33 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
 test("Task: Gambar Polilin Jalur Kabel Mengikuti Lekukan Jalan", async (t) => {
-  await t.test("1. Modul Utilitas cable-path-routing.ts & Ekspor Fungsi", () => {
-    const routingFile = path.join(
-      rootDir,
-      "src",
-      "lib",
-      "cable-path-routing.ts",
-    );
-    assert.ok(fs.existsSync(routingFile), "File cable-path-routing.ts harus ada");
+  await t.test(
+    "1. Modul Utilitas cable-path-routing.ts & Ekspor Fungsi",
+    () => {
+      const routingFile = path.join(
+        rootDir,
+        "src",
+        "lib",
+        "cable-path-routing.ts",
+      );
+      assert.ok(
+        fs.existsSync(routingFile),
+        "File cable-path-routing.ts harus ada",
+      );
 
-    const content = fs.readFileSync(routingFile, "utf-8");
-    assert.match(
-      content,
-      /export function generateRoadBendedPolyline/,
-      "Harus mengekspor fungsi generateRoadBendedPolyline",
-    );
-    assert.match(
-      content,
-      /export function calculatePolylineTotalMeters/,
-      "Harus mengekspor fungsi calculatePolylineTotalMeters",
-    );
-  });
+      const content = fs.readFileSync(routingFile, "utf-8");
+      assert.match(
+        content,
+        /export function generateRoadBendedPolyline/,
+        "Harus mengekspor fungsi generateRoadBendedPolyline",
+      );
+      assert.match(
+        content,
+        /export function calculatePolylineTotalMeters/,
+        "Harus mengekspor fungsi calculatePolylineTotalMeters",
+      );
+    },
+  );
 
   await t.test(
     "2. Algoritma generateRoadBendedPolyline Menghasilkan Polilin Berkelok (Bukan Garis Lurus 2 Titik)",
@@ -74,7 +80,11 @@ test("Task: Gambar Polilin Jalur Kabel Mengikuti Lekukan Jalan", async (t) => {
       );
 
       // Titik pertama harus sama persis dengan start
-      assert.deepEqual(polyline[0], start, "Titik pertama harus sama dengan start ODP");
+      assert.deepEqual(
+        polyline[0],
+        start,
+        "Titik pertama harus sama dengan start ODP",
+      );
 
       // Titik terakhir harus sama persis dengan end
       assert.deepEqual(
@@ -135,56 +145,62 @@ test("Task: Gambar Polilin Jalur Kabel Mengikuti Lekukan Jalan", async (t) => {
     },
   );
 
-  await t.test("4. Integrasi NetworkMap: Polilin Drop & Feeder Menggunakan generateRoadBendedPolyline", () => {
-    const networkMapFile = path.join(
-      rootDir,
-      "src",
-      "components",
-      "map",
-      "network-map.tsx",
-    );
-    const content = fs.readFileSync(networkMapFile, "utf-8");
+  await t.test(
+    "4. Integrasi NetworkMap: Polilin Drop & Feeder Menggunakan generateRoadBendedPolyline",
+    () => {
+      const networkMapFile = path.join(
+        rootDir,
+        "src",
+        "components",
+        "map",
+        "network-map.tsx",
+      );
+      const content = fs.readFileSync(networkMapFile, "utf-8");
 
-    assert.match(
-      content,
-      /import\s*\{[^}]*generateRoadBendedPolyline[^}]*\}\s*from\s*["']@\/lib\/cable-path-routing["']/,
-      "network-map.tsx harus mengimpor generateRoadBendedPolyline",
-    );
-    assert.match(
-      content,
-      /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*odp\.latitude,\s*odp\.longitude\s*\]/s,
-      "Kabel drop pelanggan harus menggunakan generateRoadBendedPolyline",
-    );
-    assert.match(
-      content,
-      /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*(?:parentCandidate|parent)\.latitude,\s*(?:parentCandidate|parent)\.longitude\s*\]/s,
-      "Kabel feeder ODP harus menggunakan generateRoadBendedPolyline",
-    );
-  });
+      assert.match(
+        content,
+        /import\s*\{[^}]*generateRoadBendedPolyline[^}]*\}\s*from\s*["']@\/lib\/cable-path-routing["']/,
+        "network-map.tsx harus mengimpor generateRoadBendedPolyline",
+      );
+      assert.match(
+        content,
+        /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*odp\.latitude,\s*odp\.longitude\s*\]/s,
+        "Kabel drop pelanggan harus menggunakan generateRoadBendedPolyline",
+      );
+      assert.match(
+        content,
+        /path:\s*generateRoadBendedPolyline\s*\(\s*\[\s*(?:parentCandidate|parent)\.latitude,\s*(?:parentCandidate|parent)\.longitude\s*\]/s,
+        "Kabel feeder ODP harus menggunakan generateRoadBendedPolyline",
+      );
+    },
+  );
 
-  await t.test("5. Integrasi Service cable-map.service.ts Menyimpan Polilin Koordinat Berkelok", () => {
-    const serviceFile = path.join(
-      rootDir,
-      "src",
-      "services",
-      "cable-map.service.ts",
-    );
-    const content = fs.readFileSync(serviceFile, "utf-8");
+  await t.test(
+    "5. Integrasi Service cable-map.service.ts Menyimpan Polilin Koordinat Berkelok",
+    () => {
+      const serviceFile = path.join(
+        rootDir,
+        "src",
+        "services",
+        "cable-map.service.ts",
+      );
+      const content = fs.readFileSync(serviceFile, "utf-8");
 
-    assert.match(
-      content,
-      /import\s*\{[^}]*generateRoadBendedPolyline[^}]*\}\s*from\s*["']@\/lib\/cable-path-routing["']/,
-      "cable-map.service.ts harus mengimpor generateRoadBendedPolyline",
-    );
-    assert.match(
-      content,
-      /generateRoadBendedPolyline\s*\(\s*\[\s*odp\.latitude,\s*odp\.longitude\s*\]/s,
-      "Drop kabel pelanggan di service harus menggunakan generateRoadBendedPolyline",
-    );
-    assert.match(
-      content,
-      /calculatePolylineTotalMeters\(path\)/,
-      "Kalkulasi panjang kabel harus menggunakan calculatePolylineTotalMeters",
-    );
-  });
+      assert.match(
+        content,
+        /import\s*\{[^}]*generateRoadBendedPolyline[^}]*\}\s*from\s*["']@\/lib\/cable-path-routing["']/,
+        "cable-map.service.ts harus mengimpor generateRoadBendedPolyline",
+      );
+      assert.match(
+        content,
+        /generateRoadBendedPolyline\s*\(\s*\[\s*odp\.latitude,\s*odp\.longitude\s*\]/s,
+        "Drop kabel pelanggan di service harus menggunakan generateRoadBendedPolyline",
+      );
+      assert.match(
+        content,
+        /calculatePolylineTotalMeters\(path\)/,
+        "Kalkulasi panjang kabel harus menggunakan calculatePolylineTotalMeters",
+      );
+    },
+  );
 });

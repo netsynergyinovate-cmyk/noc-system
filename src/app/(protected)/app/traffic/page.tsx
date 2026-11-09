@@ -16,8 +16,8 @@ export default async function TrafficPage() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Pemantauan throughput bandwidth unduh/unggah real-time dan analisis utilisasi kapasitas
-          link interface.
+          Pemantauan throughput bandwidth unduh/unggah real-time dan analisis
+          utilisasi kapasitas link interface.
         </p>
       </div>
       <TrafficTrendBoard nowSec={Math.floor(Date.now() / 1000)} />

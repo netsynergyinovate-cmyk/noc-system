@@ -31,7 +31,8 @@ globalThis.starterPostgresDb = {
       from: (t) => ((table = nameOf(t)), c),
       where: () => c,
       limit: () => c,
-      then: (res, rej) => Promise.resolve(state.rows[table] ?? []).then(res, rej),
+      then: (res, rej) =>
+        Promise.resolve(state.rows[table] ?? []).then(res, rej),
     };
     return c;
   },
@@ -54,14 +55,20 @@ globalThis.starterPostgresDb = {
 register();
 const { auth } = await import("../src/lib/auth.ts");
 const { encryptAES256GCM } = await import("../src/lib/encryption.ts");
-const { POST: routersTest } = await import("../src/app/api/routers/test/route.ts");
+const { POST: routersTest } =
+  await import("../src/app/api/routers/test/route.ts");
 const { POST: oltsTest } = await import("../src/app/api/olts/test/route.ts");
-const { POST: routerIdTest } = await import("../src/app/api/routers/[id]/test/route.ts");
-const { POST: oltIdTest } = await import("../src/app/api/olts/[id]/test/route.ts");
+const { POST: routerIdTest } =
+  await import("../src/app/api/routers/[id]/test/route.ts");
+const { POST: oltIdTest } =
+  await import("../src/app/api/olts/[id]/test/route.ts");
 
 let sessionOk = true;
 let permOk = true;
-auth.api.getSession = async () => (sessionOk ? { user: { id: "u1", name: "Budi", email: "b@x.id" }, session: {} } : null);
+auth.api.getSession = async () =>
+  sessionOk
+    ? { user: { id: "u1", name: "Budi", email: "b@x.id" }, session: {} }
+    : null;
 auth.api.userHasPermission = async () => ({ success: permOk });
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -69,14 +76,18 @@ const PASS = "rahasia-super-123";
 const req = (url, body) =>
   new Request(`http://localhost:3101${url}`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "http://localhost:3101" },
+    headers: {
+      "content-type": "application/json",
+      origin: "http://localhost:3101",
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 const callId = async (handler, url, id) => {
   const res = await handler(req(url), { params: Promise.resolve({ id }) });
   return { status: res.status, json: await res.json() };
 };
-const saved = () => state.inserts.filter((i) => i.table === "device_test_results");
+const saved = () =>
+  state.inserts.filter((i) => i.table === "device_test_results");
 
 const realFetch = globalThis.fetch;
 const stubFetch = (impl) => {
@@ -89,13 +100,24 @@ test.afterEach(() => {
   reset();
 });
 
-const jsonRes = (body, status = 200) => new Response(JSON.stringify(body), { status });
+const jsonRes = (body, status = 200) =>
+  new Response(JSON.stringify(body), { status });
 
 // --- Rute lama: simpan hasil ---------------------------------------------------
 
 test("POST /api/routers/test menyimpan hasil (sukses & gagal), tanpa password", async () => {
-  for (const [host, ok] of [["10.0.0.1", true], ["10.0.0.255", false]]) {
-    const res = await routersTest(req("/api/routers/test", { host, username: "admin", password: PASS, mode: "simulator" }));
+  for (const [host, ok] of [
+    ["10.0.0.1", true],
+    ["10.0.0.255", false],
+  ]) {
+    const res = await routersTest(
+      req("/api/routers/test", {
+        host,
+        username: "admin",
+        password: PASS,
+        mode: "simulator",
+      }),
+    );
     const json = await res.json();
     assert.equal(res.status, 200);
     assert.equal(json.data.ok, ok);
@@ -110,8 +132,19 @@ test("POST /api/routers/test menyimpan hasil (sukses & gagal), tanpa password", 
 });
 
 test("POST /api/olts/test menyimpan hasil (sukses & gagal), tanpa password", async () => {
-  for (const [host, ok] of [["10.0.0.1", true], ["10.0.0.255", false]]) {
-    const res = await oltsTest(req("/api/olts/test", { host, port: 80, username: "admin", password: PASS, mode: "simulator" }));
+  for (const [host, ok] of [
+    ["10.0.0.1", true],
+    ["10.0.0.255", false],
+  ]) {
+    const res = await oltsTest(
+      req("/api/olts/test", {
+        host,
+        port: 80,
+        username: "admin",
+        password: PASS,
+        mode: "simulator",
+      }),
+    );
     const json = await res.json();
     assert.equal(res.status, 200);
     assert.equal(json.data.ok, ok);
@@ -142,7 +175,11 @@ test("POST /api/routers/[id]/test: 403 tanpa router:manage, tanpa koneksi keluar
 });
 
 test("POST /api/routers/[id]/test: 404 ROUTER_NOT_FOUND", async () => {
-  const { status, json } = await callId(routerIdTest, `/api/routers/${ID}/test`, ID);
+  const { status, json } = await callId(
+    routerIdTest,
+    `/api/routers/${ID}/test`,
+    ID,
+  );
   assert.equal(status, 404);
   assert.equal(json.error.code, "ROUTER_NOT_FOUND");
   const bad = await callId(routerIdTest, "/api/routers/x/test", "x");
@@ -150,7 +187,14 @@ test("POST /api/routers/[id]/test: 404 ROUTER_NOT_FOUND", async () => {
 });
 
 test("POST /api/routers/[id]/test: 200, lastSeenAt, device_test_results, audit", async () => {
-  state.rows.routers = [{ id: ID, host: "10.0.0.1", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
+  state.rows.routers = [
+    {
+      id: ID,
+      host: "10.0.0.1",
+      username: "admin",
+      passwordEnc: encryptAES256GCM(PASS),
+    },
+  ];
   stubFetch(async (url) => {
     assert.match(String(url), /\/api\/v1\/routers\/preflight/);
     return jsonRes({
@@ -169,7 +213,11 @@ test("POST /api/routers/[id]/test: 200, lastSeenAt, device_test_results, audit",
       },
     });
   });
-  const { status, json } = await callId(routerIdTest, `/api/routers/${ID}/test`, ID);
+  const { status, json } = await callId(
+    routerIdTest,
+    `/api/routers/${ID}/test`,
+    ID,
+  );
   assert.equal(json.success, true);
   assert.equal(json.data.ok, true);
   assert.equal(json.data.status, "connected");
@@ -187,9 +235,35 @@ test("POST /api/routers/[id]/test: 200, lastSeenAt, device_test_results, audit",
 });
 
 test("POST /api/routers/[id]/test: gagal koneksi -> 200 ok=false, disimpan, lastSeenAt tidak disentuh", async () => {
-  state.rows.routers = [{ id: ID, host: "10.0.0.1", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
-  stubFetch(async () => jsonRes({ data: { ok: false, code: "AUTH_FAILED", message: "Login ditolak", latencyMs: 5, port: 443, tls: true, endpointTested: "REST" } }, 200));
-  const { status, json } = await callId(routerIdTest, `/api/routers/${ID}/test`, ID);
+  state.rows.routers = [
+    {
+      id: ID,
+      host: "10.0.0.1",
+      username: "admin",
+      passwordEnc: encryptAES256GCM(PASS),
+    },
+  ];
+  stubFetch(async () =>
+    jsonRes(
+      {
+        data: {
+          ok: false,
+          code: "AUTH_FAILED",
+          message: "Login ditolak",
+          latencyMs: 5,
+          port: 443,
+          tls: true,
+          endpointTested: "REST",
+        },
+      },
+      200,
+    ),
+  );
+  const { status, json } = await callId(
+    routerIdTest,
+    `/api/routers/${ID}/test`,
+    ID,
+  );
   assert.equal(status, 200);
   assert.equal(json.data.ok, false);
   assert.equal(json.data.code, "AUTH_FAILED");
@@ -220,10 +294,22 @@ test("POST /api/olts/[id]/test: 404 OLT_NOT_FOUND", async () => {
 });
 
 test("POST /api/olts/[id]/test: 200, lastSeenAt, device_test_results, audit", async () => {
-  state.rows.olts = [{ id: ID, host: "10.0.0.2", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
+  state.rows.olts = [
+    {
+      id: ID,
+      host: "10.0.0.2",
+      username: "admin",
+      passwordEnc: encryptAES256GCM(PASS),
+    },
+  ];
   stubFetch(async (url) => {
     assert.match(String(url), /10\.0\.0\.2.*\/api\/v1\/system/);
-    return jsonRes({ model: "HSGQ", firmware: "V1", uptime: "1d", ponPortCount: 8 });
+    return jsonRes({
+      model: "HSGQ",
+      firmware: "V1",
+      uptime: "1d",
+      ponPortCount: 8,
+    });
   });
   const { status, json } = await callId(oltIdTest, `/api/olts/${ID}/test`, ID);
   assert.equal(status, 200);
@@ -243,7 +329,14 @@ test("POST /api/olts/[id]/test: 200, lastSeenAt, device_test_results, audit", as
 });
 
 test("POST /api/olts/[id]/test: gagal koneksi -> 200 ok=false, disimpan", async () => {
-  state.rows.olts = [{ id: ID, host: "10.0.0.2", username: "admin", passwordEnc: encryptAES256GCM(PASS) }];
+  state.rows.olts = [
+    {
+      id: ID,
+      host: "10.0.0.2",
+      username: "admin",
+      passwordEnc: encryptAES256GCM(PASS),
+    },
+  ];
   stubFetch(async () => jsonRes({}, 401));
   const { status, json } = await callId(oltIdTest, `/api/olts/${ID}/test`, ID);
   assert.equal(status, 200);

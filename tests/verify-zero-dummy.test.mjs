@@ -21,7 +21,13 @@ DUMMY_OLT="false"
 });
 
 test("parseArgs mem-parsing argumen CLI", () => {
-  const opts = parseArgs(["--strict", "--format", "json", "--env-file", ".env.custom"]);
+  const opts = parseArgs([
+    "--strict",
+    "--format",
+    "json",
+    "--env-file",
+    ".env.custom",
+  ]);
   assert.equal(opts.strict, true);
   assert.equal(opts.format, "json");
   assert.equal(opts.envFile, ".env.custom");
@@ -44,7 +50,11 @@ test("verifyZeroDummy lulus jika konfigurasi bersih tanpa simulator/dummy", asyn
     DUMMY_NETFLOW: "false",
   };
 
-  const res = await verifyZeroDummy({ env: cleanEnv, strict: true, readFileFn: async () => "" });
+  const res = await verifyZeroDummy({
+    env: cleanEnv,
+    strict: true,
+    readFileFn: async () => "",
+  });
   assert.equal(res.ok, true);
   assert.equal(res.status, "ready");
   assert.equal(res.exitCode, 0);
@@ -59,7 +69,11 @@ test("verifyZeroDummy gagal jika ada mode simulator atau dummy aktif", async () 
     DUMMY_BILLING: "true",
   };
 
-  const res = await verifyZeroDummy({ env: dirtyEnv, strict: true, readFileFn: async () => "" });
+  const res = await verifyZeroDummy({
+    env: dirtyEnv,
+    strict: true,
+    readFileFn: async () => "",
+  });
   assert.equal(res.ok, false);
   assert.equal(res.status, "failed");
   assert.equal(res.exitCode, 1);

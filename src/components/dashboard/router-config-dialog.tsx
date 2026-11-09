@@ -1,11 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Activity, Check, RefreshCw, Save, Server, ShieldCheck, Trash2, X } from "lucide-react";
+import {
+  Activity,
+  Check,
+  RefreshCw,
+  Save,
+  Server,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { MockRouterDetail } from "@/lib/dashboard/routers";
 
 interface RouterConfigDialogProps {
@@ -27,11 +43,17 @@ export function RouterConfigDialog({
   const [host, setHost] = useState(router?.host ?? "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<"aktif" | "nonaktif">(router?.active ? "aktif" : "nonaktif");
+  const [status, setStatus] = useState<"aktif" | "nonaktif">(
+    router?.active ? "aktif" : "nonaktif",
+  );
   const [role, setRole] = useState(router?.role ?? "Gateway Utama + BRAS");
 
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; latencyMs?: number } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    ok: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -64,19 +86,25 @@ export function RouterConfigDialog({
       if (res.ok && json?.data?.ok) {
         setTestResult({
           ok: true,
-          message: json.data.message ?? "Koneksi REST API RouterOS berhasil tersambung.",
+          message:
+            json.data.message ??
+            "Koneksi REST API RouterOS berhasil tersambung.",
           latencyMs: json.data.latencyMs,
         });
       } else {
         setTestResult({
           ok: false,
-          message: json?.data?.message ?? json?.error?.message ?? `Koneksi gagal (HTTP ${res.status}).`,
+          message:
+            json?.data?.message ??
+            json?.error?.message ??
+            `Koneksi gagal (HTTP ${res.status}).`,
         });
       }
     } catch (e) {
       setTestResult({
         ok: false,
-        message: e instanceof Error ? e.message : "Gagal menguji koneksi router.",
+        message:
+          e instanceof Error ? e.message : "Gagal menguji koneksi router.",
       });
     } finally {
       setTesting(false);
@@ -105,7 +133,10 @@ export function RouterConfigDialog({
 
       const json = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(json?.error?.message ?? `Gagal menyimpan konfigurasi (HTTP ${res.status}).`);
+        throw new Error(
+          json?.error?.message ??
+            `Gagal menyimpan konfigurasi (HTTP ${res.status}).`,
+        );
       }
 
       setSuccessMessage("Konfigurasi router berhasil disimpan.");
@@ -114,7 +145,11 @@ export function RouterConfigDialog({
         onOpenChange(false);
       }, 1200);
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "Terjadi kesalahan saat menyimpan konfigurasi.");
+      setErrorMessage(
+        e instanceof Error
+          ? e.message
+          : "Terjadi kesalahan saat menyimpan konfigurasi.",
+      );
     } finally {
       setSaving(false);
     }
@@ -154,7 +189,9 @@ export function RouterConfigDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-foreground/90 font-medium">Nama Router</Label>
+              <Label className="text-foreground/90 font-medium">
+                Nama Router
+              </Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -164,7 +201,9 @@ export function RouterConfigDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-foreground/90 font-medium">Host / Alamat IP</Label>
+              <Label className="text-foreground/90 font-medium">
+                Host / Alamat IP
+              </Label>
               <Input
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
@@ -176,7 +215,9 @@ export function RouterConfigDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-foreground/90 font-medium">Username REST API</Label>
+              <Label className="text-foreground/90 font-medium">
+                Username REST API
+              </Label>
               <Input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -187,7 +228,10 @@ export function RouterConfigDialog({
 
             <div className="space-y-1.5">
               <Label className="text-foreground/90 font-medium">
-                Password Baru <span className="text-muted-foreground font-normal">(kosongkan jika tidak berubah)</span>
+                Password Baru{" "}
+                <span className="text-muted-foreground font-normal">
+                  (kosongkan jika tidak berubah)
+                </span>
               </Label>
               <Input
                 type="password"
@@ -201,13 +245,17 @@ export function RouterConfigDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-foreground/90 font-medium">Peran Router</Label>
+              <Label className="text-foreground/90 font-medium">
+                Peran Router
+              </Label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
               >
-                <option value="Gateway Utama + BRAS">Gateway Utama + BRAS</option>
+                <option value="Gateway Utama + BRAS">
+                  Gateway Utama + BRAS
+                </option>
                 <option value="Core BGP Gateway">Core BGP Gateway</option>
                 <option value="Distribusi OLT">Distribusi OLT</option>
                 <option value="Aggregator PPPoE">Aggregator PPPoE</option>
@@ -215,10 +263,14 @@ export function RouterConfigDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-foreground/90 font-medium">Status Operasional</Label>
+              <Label className="text-foreground/90 font-medium">
+                Status Operasional
+              </Label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as "aktif" | "nonaktif")}
+                onChange={(e) =>
+                  setStatus(e.target.value as "aktif" | "nonaktif")
+                }
                 className="w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
               >
                 <option value="aktif">Aktif (Live Telemetri)</option>
@@ -242,7 +294,9 @@ export function RouterConfigDialog({
                 disabled={testing}
                 className="h-7 text-[11px] gap-1 bg-muted hover:bg-muted/80 border-border text-foreground"
               >
-                <Activity className={`size-3 text-emerald-400 ${testing ? "animate-pulse" : ""}`} />
+                <Activity
+                  className={`size-3 text-emerald-400 ${testing ? "animate-pulse" : ""}`}
+                />
                 {testing ? "Menguji..." : "Uji Sekarang"}
               </Button>
             </div>
@@ -257,7 +311,9 @@ export function RouterConfigDialog({
               >
                 <span>{testResult.message}</span>
                 {testResult.latencyMs !== undefined && (
-                  <span className="font-semibold text-emerald-400">{testResult.latencyMs} ms</span>
+                  <span className="font-semibold text-emerald-400">
+                    {testResult.latencyMs} ms
+                  </span>
                 )}
               </div>
             )}
@@ -265,7 +321,9 @@ export function RouterConfigDialog({
 
           {/* Hapus router */}
           <div className="p-3 rounded-xl border border-rose-800/50 flex items-center justify-between gap-2">
-            <span className="text-rose-300 font-medium">Hapus router ini dari aplikasi</span>
+            <span className="text-rose-300 font-medium">
+              Hapus router ini dari aplikasi
+            </span>
             <Button
               type="button"
               variant="outline"
@@ -296,7 +354,11 @@ export function RouterConfigDialog({
             disabled={saving}
             className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
           >
-            {saving ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            {saving ? (
+              <RefreshCw className="size-3.5 animate-spin" />
+            ) : (
+              <Save className="size-3.5" />
+            )}
             {saving ? "Menyimpan..." : "Simpan Konfigurasi"}
           </Button>
         </DialogFooter>
@@ -304,4 +366,3 @@ export function RouterConfigDialog({
     </Dialog>
   );
 }
-

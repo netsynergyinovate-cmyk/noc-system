@@ -3,11 +3,13 @@
  * untuk mengizinkan HTTP Connection Request TR-069 seketika (Zero Delay) tanpa
  * membuka port 7547 ke publik/internet.
  */
-export function formatMikrotikConnReqRule(options: {
-  serverIp?: string;
-  ontIp?: string;
-  port?: number;
-} = {}): string {
+export function formatMikrotikConnReqRule(
+  options: {
+    serverIp?: string;
+    ontIp?: string;
+    port?: number;
+  } = {},
+): string {
   const srv = options.serverIp?.trim() || "<IP_SERVER_GENIEACS>";
   const dst = options.ontIp?.trim() ? options.ontIp.trim() : "<IP_ONT>";
   const p = options.port && options.port > 0 ? options.port : 7547;

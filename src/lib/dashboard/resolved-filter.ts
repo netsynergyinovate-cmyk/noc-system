@@ -97,7 +97,8 @@ export function searchTerms(query: string) {
   return query.toLowerCase().split(/\s+/).filter(Boolean);
 }
 
-type Dimension = "query" | "category" | "kind" | "severity" | "routerId" | "window";
+type Dimension =
+  "query" | "category" | "kind" | "severity" | "routerId" | "window";
 
 // `skip` mengabaikan satu saringan, untuk menghitung angka di samping pilihan
 // saringan itu sendiri. `text` adalah teks pencarian alert itu (hanya dipakai

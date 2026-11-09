@@ -267,9 +267,15 @@ export async function generateRealExportData(
     }
 
     if (dataset === "audit-log") {
-      const rawEntries = await getAuditEntries({ limit: 500, before: nowSec, nowSec });
+      const rawEntries = await getAuditEntries({
+        limit: 500,
+        before: nowSec,
+        nowSec,
+      });
       const sinceSec = rangeSec !== Infinity ? nowSec - rangeSec : 0;
-      const auditEntries = rawEntries.filter((a) => a.at <= nowSec && a.at > sinceSec);
+      const auditEntries = rawEntries.filter(
+        (a) => a.at <= nowSec && a.at > sinceSec,
+      );
       if (auditEntries.length > 0) {
         if (format === "json") {
           return {

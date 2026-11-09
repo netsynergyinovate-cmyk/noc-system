@@ -17,12 +17,16 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 const { auth } = await import("../src/lib/auth.ts");
-const { redactSecrets, testDeviceConnection } = await import("../src/services/device-connection-tester.ts");
-const { POST: devicesTest } = await import("../src/app/api/devices/test/route.ts");
-const { POST: routersTest } = await import("../src/app/api/routers/test/route.ts");
+const { redactSecrets, testDeviceConnection } =
+  await import("../src/services/device-connection-tester.ts");
+const { POST: devicesTest } =
+  await import("../src/app/api/devices/test/route.ts");
+const { POST: routersTest } =
+  await import("../src/app/api/routers/test/route.ts");
 const { POST: oltsTest } = await import("../src/app/api/olts/test/route.ts");
 const { POST: cpeTest } = await import("../src/app/api/cpe/test/route.ts");
-const { POST: billingTest } = await import("../src/app/api/billing/test/route.ts");
+const { POST: billingTest } =
+  await import("../src/app/api/billing/test/route.ts");
 
 auth.api.getSession = async () => ({ user: { id: "u1" }, session: {} });
 auth.api.userHasPermission = async () => ({ success: true });
@@ -31,16 +35,31 @@ const call = async (handler, url, body) => {
   const res = await handler(
     new Request(`http://localhost:3101${url}`, {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "http://localhost:3101" },
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost:3101",
+      },
       body: JSON.stringify(body),
     }),
   );
   return { status: res.status, json: await res.json() };
 };
 
-const REQUIRED = ["ok", "status", "code", "message", "latencyMs", "endpointTested", "timestamp"];
+const REQUIRED = [
+  "ok",
+  "status",
+  "code",
+  "message",
+  "latencyMs",
+  "endpointTested",
+  "timestamp",
+];
 const assertSeven = (data) => {
-  for (const k of REQUIRED) assert.ok(k in data && data[k] !== undefined, `field ${k} hilang: ${JSON.stringify(data)}`);
+  for (const k of REQUIRED)
+    assert.ok(
+      k in data && data[k] !== undefined,
+      `field ${k} hilang: ${JSON.stringify(data)}`,
+    );
   assert.equal(typeof data.ok, "boolean");
   assert.equal(typeof data.status, "string");
   assert.equal(typeof data.code, "string");
@@ -62,7 +81,15 @@ test("redactSecrets: password, base64, kredensial URL, query token", () => {
     "http://10.0.0.1/x?token=abc123&password=zzz&ok=1&secret=q&auth=w",
   ].join(" | ");
   const out = redactSecrets(text, req);
-  for (const leak of [req.password, b64, "hunter2", "abc123", "zzz", "=q", "=w"]) {
+  for (const leak of [
+    req.password,
+    b64,
+    "hunter2",
+    "abc123",
+    "zzz",
+    "=q",
+    "=w",
+  ]) {
     assert.ok(!out.includes(leak), `bocor: ${leak} dalam ${out}`);
   }
   assert.ok(out.includes("ok=1"));
@@ -72,20 +99,36 @@ test("testDeviceConnection real: galat jaringan tidak membocorkan rahasia", asyn
   const password = "P@ss-w0rd-123";
   const b64 = Buffer.from(`admin:${password}`).toString("base64");
   const leaky = async () => {
-    throw new Error(`boom ${password} Basic ${b64} http://admin:${password}@10.0.0.5/?token=tok999`);
+    throw new Error(
+      `boom ${password} Basic ${b64} http://admin:${password}@10.0.0.5/?token=tok999`,
+    );
   };
   const r = await testDeviceConnection(
-    { type: "mikrotik", host: "10.0.0.5", port: 80, username: "admin", password, mode: "real" },
+    {
+      type: "mikrotik",
+      host: "10.0.0.5",
+      port: 80,
+      username: "admin",
+      password,
+      mode: "real",
+    },
     { fetchImpl: leaky },
   );
   assert.equal(r.ok, false);
   assertSeven(r);
   const dump = JSON.stringify(r);
-  for (const leak of [password, b64, "tok999"]) assert.ok(!dump.includes(leak), `bocor: ${leak}`);
+  for (const leak of [password, b64, "tok999"])
+    assert.ok(!dump.includes(leak), `bocor: ${leak}`);
 });
 
 test("testDeviceConnection: semua cabang punya 7 field wajib", async () => {
-  const base = { type: "olt", host: "10.0.0.1", port: 80, username: "u", password: "p" };
+  const base = {
+    type: "olt",
+    host: "10.0.0.1",
+    port: 80,
+    username: "u",
+    password: "p",
+  };
   const results = await Promise.all([
     testDeviceConnection({ ...base, mode: "simulator" }),
     testDeviceConnection({ ...base, mode: "simulator", host: "10.0.0.0" }),
@@ -142,7 +185,8 @@ test("POST /api/routers/test: sukses simulator tetap membawa kunci RouterOS lama
   assert.equal(status, 200);
   assert.equal(json.data.ok, true);
   assertSeven(json.data);
-  for (const k of ["version", "cpu-load", "uptime", "board-name"]) assert.ok(k in json.data, k);
+  for (const k of ["version", "cpu-load", "uptime", "board-name"])
+    assert.ok(k in json.data, k);
 });
 
 test("POST /api/olts/test: gagal koneksi -> 200, data.ok=false, format seragam", async () => {
@@ -176,11 +220,37 @@ test("POST /api/olts/test: sukses simulator memuat field OLT", async () => {
 // --- Semua endpoint uji menghasilkan 7 field --------------------------------
 
 const endpoints = [
-  ["devices", devicesTest, "/api/devices/test", { type: "mikrotik", host: "10.0.0.1", mode: "simulator", username: "a", password: "b" }],
-  ["routers", routersTest, "/api/routers/test", { host: "10.0.0.1", username: "a", password: "b", mode: "simulator" }],
-  ["olts", oltsTest, "/api/olts/test", { host: "10.0.0.1", username: "a", password: "b", mode: "simulator" }],
+  [
+    "devices",
+    devicesTest,
+    "/api/devices/test",
+    {
+      type: "mikrotik",
+      host: "10.0.0.1",
+      mode: "simulator",
+      username: "a",
+      password: "b",
+    },
+  ],
+  [
+    "routers",
+    routersTest,
+    "/api/routers/test",
+    { host: "10.0.0.1", username: "a", password: "b", mode: "simulator" },
+  ],
+  [
+    "olts",
+    oltsTest,
+    "/api/olts/test",
+    { host: "10.0.0.1", username: "a", password: "b", mode: "simulator" },
+  ],
   ["cpe", cpeTest, "/api/cpe/test", { mode: "simulator" }],
-  ["billing", billingTest, "/api/billing/test", { host: "billing.local", mode: "simulator", username: "op", password: "b" }],
+  [
+    "billing",
+    billingTest,
+    "/api/billing/test",
+    { host: "billing.local", mode: "simulator", username: "op", password: "b" },
+  ],
 ];
 
 for (const [name, handler, url, body] of endpoints) {

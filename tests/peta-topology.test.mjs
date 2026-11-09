@@ -47,7 +47,12 @@ test("routeChainDeviceIds: urut sequence, drop pelanggan & duplikat dilewati", (
     { sequence: 4, toDeviceId: "odp1" },
     { sequence: 5, toDeviceId: "odp2" },
   ];
-  assert.deepEqual(routeChainDeviceIds("olt", segments), ["olt", "odc", "odp1", "odp2"]);
+  assert.deepEqual(routeChainDeviceIds("olt", segments), [
+    "olt",
+    "odc",
+    "odp1",
+    "odp2",
+  ]);
   assert.deepEqual(routeChainDeviceIds("olt", []), ["olt"]);
 });
 
@@ -102,7 +107,10 @@ test("oltPonCount: port pusat, lalu angka di nama, lalu kapasitas", () => {
 });
 
 test("renameForType: awalan ODP/ODC ikut jenis, nama lain tetap", () => {
-  assert.equal(renameForType("ODP 1 Mekar Jaya (2) PON 4", "odc"), "ODC 1 Mekar Jaya (2) PON 4");
+  assert.equal(
+    renameForType("ODP 1 Mekar Jaya (2) PON 4", "odc"),
+    "ODC 1 Mekar Jaya (2) PON 4",
+  );
   assert.equal(renameForType("ODC-07 Pasar", "odp"), "ODP-07 Pasar");
   assert.equal(renameForType("odp3 gang", "odc"), "odc3 gang");
   assert.equal(renameForType("Box Mekar Jaya", "odc"), "Box Mekar Jaya");

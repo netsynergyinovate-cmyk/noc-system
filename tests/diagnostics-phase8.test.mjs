@@ -444,9 +444,7 @@ test("Kasus tanpa bukti router menghasilkan cakupan unknown", () => {
 
 test("Kasus semua lapisan normal atau tidak dapat diperiksa", () => {
   // 1. Semua unchecked
-  const uncheckedAll = diagnosticLayers.map((l) =>
-    pendingLayer(l.id, l.label),
-  );
+  const uncheckedAll = diagnosticLayers.map((l) => pendingLayer(l.id, l.label));
   const vUnchecked = decideVerdict(uncheckedAll, noEvidence, null, now);
   assert.equal(vUnchecked.layer, null);
   assert.equal(vUnchecked.scope, "unknown");
@@ -460,7 +458,12 @@ test("Kasus semua lapisan normal atau tidak dapat diperiksa", () => {
   // 2. Sebagian ok, sebagian unchecked
   const okOptik = makeFinding({ layer: "optik", status: "ok" });
   const pendingHulu = pendingLayer("hulu", "Hulu");
-  const vPartial = decideVerdict([okOptik, pendingHulu], baseEvidence, null, now);
+  const vPartial = decideVerdict(
+    [okOptik, pendingHulu],
+    baseEvidence,
+    null,
+    now,
+  );
   assert.equal(vPartial.layer, null);
   assert.equal(vPartial.scope, "own");
   assert.match(vPartial.detail, /belum lengkap/);

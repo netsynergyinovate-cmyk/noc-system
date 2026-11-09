@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { runRouterTest, buildRouterTestDevice, DEFAULT_ROUTER_TEST_FORM } from "../src/lib/dashboard/router-test.ts";
+import {
+  runRouterTest,
+  buildRouterTestDevice,
+  DEFAULT_ROUTER_TEST_FORM,
+} from "../src/lib/dashboard/router-test.ts";
 
 const page = "src/app/(protected)/app/router/test/page.tsx";
 const board = "src/components/dashboard/router-test-board.tsx";
@@ -40,10 +44,25 @@ test("runRouterTest forceLocal: sukses (khusus pengujian offline)", async () => 
 });
 
 test("runRouterTest forceLocal: galat timeout, ditolak, auth, validasi", async () => {
-  const base = { ...DEFAULT_ROUTER_TEST_FORM, username: "admin", forceLocal: true };
-  assert.equal((await runRouterTest({ ...base, host: "10.10.0.0" })).outcome.code, "TIMEOUT");
-  assert.equal((await runRouterTest({ ...base, host: "10.10.0.1", port: "9999" })).outcome.code, "CONNECTION_REFUSED");
-  assert.equal((await runRouterTest({ ...base, host: "10.10.0.1", username: "bad-user" })).outcome.code, "AUTH_FAILED");
+  const base = {
+    ...DEFAULT_ROUTER_TEST_FORM,
+    username: "admin",
+    forceLocal: true,
+  };
+  assert.equal(
+    (await runRouterTest({ ...base, host: "10.10.0.0" })).outcome.code,
+    "TIMEOUT",
+  );
+  assert.equal(
+    (await runRouterTest({ ...base, host: "10.10.0.1", port: "9999" })).outcome
+      .code,
+    "CONNECTION_REFUSED",
+  );
+  assert.equal(
+    (await runRouterTest({ ...base, host: "10.10.0.1", username: "bad-user" }))
+      .outcome.code,
+    "AUTH_FAILED",
+  );
   const bad = await runRouterTest({ ...base, host: "", port: "70000" });
   assert.equal(bad.ok, false);
   assert.ok(bad.errors.host && bad.errors.port);

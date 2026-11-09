@@ -20,8 +20,10 @@ const {
   getMismatchResolution,
   deleteMismatchResolution,
 } = await import("../src/services/billing.service.ts");
-const mismatchesRoute = await import("../src/app/api/billing/mismatches/route.ts");
-const mismatchKeyRoute = await import("../src/app/api/billing/mismatches/[key]/route.ts");
+const mismatchesRoute =
+  await import("../src/app/api/billing/mismatches/route.ts");
+const mismatchKeyRoute =
+  await import("../src/app/api/billing/mismatches/[key]/route.ts");
 
 test("validator: updateMismatchSchema valid dan invalid payload", () => {
   const valid = updateMismatchSchema.safeParse({
@@ -84,11 +86,14 @@ test("endpoint: /api/billing/mismatches menolak anonim dengan status 401", async
 });
 
 test("endpoint: /api/billing/mismatches/[key] menolak anonim dengan status 401", async () => {
-  const req = new Request("http://localhost:3000/api/billing/mismatches/pair%7C123", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "ignore" }),
-  });
+  const req = new Request(
+    "http://localhost:3000/api/billing/mismatches/pair%7C123",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "ignore" }),
+    },
+  );
   const res = await mismatchKeyRoute.PATCH(req, {
     params: Promise.resolve({ key: "pair%7C123" }),
   });

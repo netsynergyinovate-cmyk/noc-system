@@ -54,9 +54,15 @@ test("live tanpa URL -> simulator", () => {
 });
 
 test("GENIEACS_TIMEOUT_MS diparse; tidak sah -> 5000", () => {
-  assert.equal(getGenieacsConfig({ GENIEACS_TIMEOUT_MS: "3000" }).timeoutMs, 3000);
+  assert.equal(
+    getGenieacsConfig({ GENIEACS_TIMEOUT_MS: "3000" }).timeoutMs,
+    3000,
+  );
   for (const bad of ["abc", "100", "999999", "1.5", ""]) {
-    assert.equal(getGenieacsConfig({ GENIEACS_TIMEOUT_MS: bad }).timeoutMs, 5000);
+    assert.equal(
+      getGenieacsConfig({ GENIEACS_TIMEOUT_MS: bad }).timeoutMs,
+      5000,
+    );
   }
 });
 
@@ -65,7 +71,10 @@ test("sanitizeGenieacsUrl membuang kredensial", () => {
     sanitizeGenieacsUrl("http://user:pass@host:7557/"),
     "http://host:7557",
   );
-  assert.equal(sanitizeGenieacsUrl("https://h.example/nbi"), "https://h.example/nbi");
+  assert.equal(
+    sanitizeGenieacsUrl("https://h.example/nbi"),
+    "https://h.example/nbi",
+  );
   assert.throws(() => sanitizeGenieacsUrl("not a url"));
   assert.throws(() => sanitizeGenieacsUrl("ftp://h"));
 });

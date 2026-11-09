@@ -23,7 +23,8 @@ export function useLiveCpe(enabled: boolean) {
           setError(null);
         }
       } catch (e) {
-        if (alive.current) setError(e instanceof Error ? e.message : "Gagal memuat modem.");
+        if (alive.current)
+          setError(e instanceof Error ? e.message : "Gagal memuat modem.");
       }
     };
     const first = setTimeout(() => void run(), 0);

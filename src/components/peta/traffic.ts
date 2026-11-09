@@ -23,7 +23,9 @@ export function toPoint(prev: Sample | null, cur: Sample): TrafficPoint {
 }
 
 /** Volume data (byte) dari deret Mbps: luas di bawah kurva antar titik berurutan (trapesium) */
-export function seriesUsageBytes(series: { t: number; down: number; up: number }[]) {
+export function seriesUsageBytes(
+  series: { t: number; down: number; up: number }[],
+) {
   let down = 0;
   let up = 0;
   for (let i = 1; i < series.length; i++) {

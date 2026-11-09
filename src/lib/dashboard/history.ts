@@ -24,7 +24,11 @@ const CAPACITY_MBPS = 400;
 
 const KINDS: IncidentKind[] = ["offline", "optical", "queue", "cpu", "port"];
 
-export function mockIncidents(_from?: number, _to?: number, _now?: number): Incident[] {
+export function mockIncidents(
+  _from?: number,
+  _to?: number,
+  _now?: number,
+): Incident[] {
   return [];
 }
 

@@ -18,7 +18,10 @@ interface DeviceModeSwitchProps {
   onModeChange?: (newMode: DeviceOperationMode) => void;
 }
 
-export function DeviceModeSwitch({ compact = false, onModeChange }: DeviceModeSwitchProps) {
+export function DeviceModeSwitch({
+  compact = false,
+  onModeChange,
+}: DeviceModeSwitchProps) {
   const modeState = useSyncExternalStore(
     subscribeDeviceMode,
     getDeviceMode,
@@ -78,15 +81,23 @@ export function DeviceModeSwitch({ compact = false, onModeChange }: DeviceModeSw
                   <AlertTriangle className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold">Aktifkan Mode Perangkat Fisik?</h3>
+                  <h3 className="text-base font-semibold">
+                    Aktifkan Mode Perangkat Fisik?
+                  </h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Sistem akan mulai mengirimkan panggilan REST dan SNMP ke alamat IP fisik perangkat. Pastikan server terhubung ke segmen jaringan router/OLT.
+                    Sistem akan mulai mengirimkan panggilan REST dan SNMP ke
+                    alamat IP fisik perangkat. Pastikan server terhubung ke
+                    segmen jaringan router/OLT.
                   </p>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowConfirm(false)}
+                >
                   Batal
                 </Button>
                 <Button size="sm" onClick={handleConfirmReal}>
@@ -104,8 +115,12 @@ export function DeviceModeSwitch({ compact = false, onModeChange }: DeviceModeSw
     <div className="rounded-xl border bg-card p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Saklar Sumber Data Perangkat:</span>
-          <Badge variant={currentMode === "simulator" ? "secondary" : "default"}>
+          <span className="text-sm font-semibold">
+            Saklar Sumber Data Perangkat:
+          </span>
+          <Badge
+            variant={currentMode === "simulator" ? "secondary" : "default"}
+          >
             {info.badge}
           </Badge>
         </div>
@@ -154,15 +169,23 @@ export function DeviceModeSwitch({ compact = false, onModeChange }: DeviceModeSw
                 <AlertTriangle className="size-5" />
               </div>
               <div>
-                <h3 className="text-base font-semibold">Konfirmasi Beralih ke Perangkat Fisik</h3>
+                <h3 className="text-base font-semibold">
+                  Konfirmasi Beralih ke Perangkat Fisik
+                </h3>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Semua kueri RouterOS REST v7, OLT HSGQ Telnet/SNMP, GenieACS, dan Scraper Billing akan diarahkan ke host fisik nyata yang diatur di variabel environment.
+                  Semua kueri RouterOS REST v7, OLT HSGQ Telnet/SNMP, GenieACS,
+                  dan Scraper Billing akan diarahkan ke host fisik nyata yang
+                  diatur di variabel environment.
                 </p>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t">
-              <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowConfirm(false)}
+              >
                 Batal
               </Button>
               <Button size="sm" onClick={handleConfirmReal}>

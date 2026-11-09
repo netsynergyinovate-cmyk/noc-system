@@ -26,7 +26,11 @@ function readPort(v: string | undefined, fallback: number): number {
 }
 
 // Nilai mode tak dikenal diabaikan (jatuh ke kandidat berikutnya).
-function readMode(source: Source, specific: string, hostKey: string): DeviceOperationMode {
+function readMode(
+  source: Source,
+  specific: string,
+  hostKey: string,
+): DeviceOperationMode {
   for (const key of [specific, "DEVICE_MODE"]) {
     const v = clean(source[key]).toLowerCase();
     if (v === "real" || v === "simulator") return v;
@@ -34,7 +38,9 @@ function readMode(source: Source, specific: string, hostKey: string): DeviceOper
   return clean(source[hostKey]) ? "real" : "simulator";
 }
 
-export function readMikrotikEnv(source: Source = process.env): DeviceEnvCredentials {
+export function readMikrotikEnv(
+  source: Source = process.env,
+): DeviceEnvCredentials {
   const port = readPort(source.MIKROTIK_REST_PORT, 443);
   return {
     type: "mikrotik",
@@ -58,7 +64,9 @@ export function readOltEnv(source: Source = process.env): DeviceEnvCredentials {
   };
 }
 
-export function readGenieacsEnv(source: Source = process.env): DeviceEnvCredentials {
+export function readGenieacsEnv(
+  source: Source = process.env,
+): DeviceEnvCredentials {
   const host = clean(source.GENIEACS_NBI_URL) || "http://localhost:7557";
   return {
     type: "genieacs",
@@ -72,7 +80,9 @@ export function readGenieacsEnv(source: Source = process.env): DeviceEnvCredenti
   };
 }
 
-export function readBillingEnv(source: Source = process.env): DeviceEnvCredentials {
+export function readBillingEnv(
+  source: Source = process.env,
+): DeviceEnvCredentials {
   const host = clean(source.BILLING_URL) || "http://localhost:8080";
   return {
     type: "billing",
@@ -86,7 +96,9 @@ export function readBillingEnv(source: Source = process.env): DeviceEnvCredentia
   };
 }
 
-export function readAllDeviceEnv(source: Source = process.env): Record<DeviceEnvType, DeviceEnvCredentials> {
+export function readAllDeviceEnv(
+  source: Source = process.env,
+): Record<DeviceEnvType, DeviceEnvCredentials> {
   return {
     mikrotik: readMikrotikEnv(source),
     olt: readOltEnv(source),
@@ -96,20 +108,33 @@ export function readAllDeviceEnv(source: Source = process.env): Record<DeviceEnv
 }
 
 // True hanya bila env wajib diisi eksplisit (default tidak dihitung).
-export function hasConfiguredEnvDevice(type: DeviceEnvType, source: Source = process.env): boolean {
+export function hasConfiguredEnvDevice(
+  type: DeviceEnvType,
+  source: Source = process.env,
+): boolean {
   const set = (k: string) => clean(source[k]) !== "";
   switch (type) {
     case "mikrotik":
-      return set("MIKROTIK_REST_HOST") && set("MIKROTIK_REST_USER") && set("MIKROTIK_REST_PASSWORD");
+      return (
+        set("MIKROTIK_REST_HOST") &&
+        set("MIKROTIK_REST_USER") &&
+        set("MIKROTIK_REST_PASSWORD")
+      );
     case "olt":
-      return set("OLT_HSGQ_HOST") && set("OLT_HSGQ_USER") && set("OLT_HSGQ_PASSWORD");
+      return (
+        set("OLT_HSGQ_HOST") && set("OLT_HSGQ_USER") && set("OLT_HSGQ_PASSWORD")
+      );
     case "genieacs":
       return set("GENIEACS_NBI_URL");
     case "billing":
-      return set("BILLING_URL") && set("BILLING_USERNAME") && set("BILLING_PASSWORD");
+      return (
+        set("BILLING_URL") && set("BILLING_USERNAME") && set("BILLING_PASSWORD")
+      );
   }
 }
 
-export function redactDeviceCredentials(creds: DeviceEnvCredentials): DeviceEnvCredentials {
+export function redactDeviceCredentials(
+  creds: DeviceEnvCredentials,
+): DeviceEnvCredentials {
   return { ...creds, password: "[REDACTED]" };
 }

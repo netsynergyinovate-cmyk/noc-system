@@ -40,19 +40,29 @@ export const opticalFilterSchema = z
   .strict();
 export type OpticalFilterInput = z.infer<typeof opticalFilterSchema>;
 
-export const mapOnuSchema = z.object({ customerId: z.string().uuid().nullable() }).strict();
+export const mapOnuSchema = z
+  .object({ customerId: z.string().uuid().nullable() })
+  .strict();
 
 export const ONU_MAX_LIMIT = 200;
 export const ONU_DEFAULT_LIMIT = 50;
 
 const clampInt = (v: unknown, min: number, max: number, fallback: number) => {
-  const n = typeof v === "string" && /^\d{1,9}$/.test(v) ? Number(v) : typeof v === "number" ? Math.trunc(v) : NaN;
+  const n =
+    typeof v === "string" && /^\d{1,9}$/.test(v)
+      ? Number(v)
+      : typeof v === "number"
+        ? Math.trunc(v)
+        : NaN;
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
 // Parameter daftar ONU dari query string; nilai buruk diabaikan/dijepit, bukan ditolak.
-export function parseListOnusParams(sp: URLSearchParams | Record<string, unknown>) {
-  const get = (k: string) => (sp instanceof URLSearchParams ? sp.get(k) : sp[k]);
+export function parseListOnusParams(
+  sp: URLSearchParams | Record<string, unknown>,
+) {
+  const get = (k: string) =>
+    sp instanceof URLSearchParams ? sp.get(k) : sp[k];
   const oltId = oltIdSchema.safeParse(get("oltId"));
   const customerId = oltIdSchema.safeParse(get("customerId"));
   const status = get("status");
@@ -63,15 +73,31 @@ export function parseListOnusParams(sp: URLSearchParams | Record<string, unknown
     isMappedRaw === "true" || isMappedRaw === true
       ? true
       : isMappedRaw === "false" || isMappedRaw === false
-      ? false
-      : undefined;
-  const q = typeof get("q") === "string" ? (get("q") as string).trim().slice(0, 100) : "";
+        ? false
+        : undefined;
+  const q =
+    typeof get("q") === "string"
+      ? (get("q") as string).trim().slice(0, 100)
+      : "";
   return {
     oltId: oltId.success ? oltId.data : undefined,
     customerId: customerId.success ? customerId.data : undefined,
-    status: status === "online" || status === "offline" ? (status as "online" | "offline") : undefined,
-    isWeak: isWeak === "true" || isWeak === true ? true : isWeak === "false" || isWeak === false ? false : undefined,
-    isTroubled: isTroubled === "true" || isTroubled === true ? true : isTroubled === "false" || isTroubled === false ? false : undefined,
+    status:
+      status === "online" || status === "offline"
+        ? (status as "online" | "offline")
+        : undefined,
+    isWeak:
+      isWeak === "true" || isWeak === true
+        ? true
+        : isWeak === "false" || isWeak === false
+          ? false
+          : undefined,
+    isTroubled:
+      isTroubled === "true" || isTroubled === true
+        ? true
+        : isTroubled === "false" || isTroubled === false
+          ? false
+          : undefined,
     isMapped,
     q: q || undefined,
     limit: clampInt(get("limit"), 1, ONU_MAX_LIMIT, ONU_DEFAULT_LIMIT),
@@ -83,7 +109,9 @@ export type ListOnusParams = ReturnType<typeof parseListOnusParams>;
 // Semua field opsional, tetapi minimal satu harus diisi.
 export const updateOltSchema = createOltSchema
   .partial()
-  .refine((v) => Object.keys(v).length > 0, { message: "Isi minimal satu field." });
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "Isi minimal satu field.",
+  });
 
 export type UpdateOltInput = z.infer<typeof updateOltSchema>;
 
@@ -116,7 +144,9 @@ export const testDeviceConnectionSchema = z
   })
   .strict();
 
-export type TestDeviceConnectionInput = z.infer<typeof testDeviceConnectionSchema>;
+export type TestDeviceConnectionInput = z.infer<
+  typeof testDeviceConnectionSchema
+>;
 
 // Uji portal billing: semua field opsional, yang kosong jatuh ke BILLING_* di env.
 export const testBillingConnectionSchema = z
@@ -130,7 +160,9 @@ export const testBillingConnectionSchema = z
   })
   .strict();
 
-export type TestBillingConnectionInput = z.infer<typeof testBillingConnectionSchema>;
+export type TestBillingConnectionInput = z.infer<
+  typeof testBillingConnectionSchema
+>;
 
 // Pasang TR-069 lewat web admin modem: IPv4 literal saja (backend memeriksa lagi
 // jaringan yang diizinkan). Kredensial opsional menimpa bawaan server; tidak
@@ -143,7 +175,10 @@ export const ontWebTr069Schema = z
     host: z
       .string()
       .trim()
-      .regex(/^(?:\d{1,3}\.){3}\d{1,3}$/, "Isi alamat IPv4 modem, mis. 172.16.15.248")
+      .regex(
+        /^(?:\d{1,3}\.){3}\d{1,3}$/,
+        "Isi alamat IPv4 modem, mis. 172.16.15.248",
+      )
       .optional(),
     username: z.string().trim().max(100).optional(),
     password: z.string().max(100).optional(),
@@ -152,7 +187,10 @@ export const ontWebTr069Schema = z
     ensureWan: z.boolean().optional(),
   })
   .strict()
-  .refine((v) => v.onuId !== undefined || v.host !== undefined, "Isi onuId atau host");
+  .refine(
+    (v) => v.onuId !== undefined || v.host !== undefined,
+    "Isi onuId atau host",
+  );
 export type OntWebTr069Input = z.infer<typeof ontWebTr069Schema>;
 
 // Pengaturan "Pasang GenieACS lewat web ONT" (tabel ont_web_settings). Kata sandi:
@@ -167,7 +205,11 @@ export const ontWebSettingsSchema = z
       .refine((v) => {
         try {
           const u = new URL(v);
-          return (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password;
+          return (
+            (u.protocol === "http:" || u.protocol === "https:") &&
+            !u.username &&
+            !u.password
+          );
         } catch {
           return false;
         }

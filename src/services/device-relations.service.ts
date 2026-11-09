@@ -105,7 +105,11 @@ export async function detectHierarchyCycle(
 // 3. Tambah Relasi Induk-Anak Baru
 export async function createDeviceRelation(
   input: CreateDeviceRelationInput,
-): Promise<{ success: boolean; data?: NetworkDeviceRelation; message: string }> {
+): Promise<{
+  success: boolean;
+  data?: NetworkDeviceRelation;
+  message: string;
+}> {
   // Ambil perangkat parent dan child dari database
   const [parentDevice] = await db
     .select()
@@ -142,13 +146,17 @@ export async function createDeviceRelation(
   if (!typeValidation.valid) {
     return {
       success: false,
-      message: typeValidation.message || "Relasi hierarki tipe perangkat tidak valid.",
+      message:
+        typeValidation.message || "Relasi hierarki tipe perangkat tidak valid.",
     };
   }
 
   // Deteksi siklus jika relasi bertipe hierarchy
   if (input.relationType === "hierarchy") {
-    const cycleCheck = await detectHierarchyCycle(input.childId, input.parentId);
+    const cycleCheck = await detectHierarchyCycle(
+      input.childId,
+      input.parentId,
+    );
     if (cycleCheck.hasCycle) {
       return {
         success: false,
@@ -230,7 +238,9 @@ export async function getDeviceRelations(
 
   if (filter?.deviceId) {
     const dId = filter.deviceId;
-    relations = relations.filter((r) => r.parentId === dId || r.childId === dId);
+    relations = relations.filter(
+      (r) => r.parentId === dId || r.childId === dId,
+    );
   }
   if (filter?.parentId) {
     relations = relations.filter((r) => r.parentId === filter.parentId);
@@ -272,7 +282,11 @@ export async function getDeviceRelations(
 export async function updateDeviceRelation(
   id: string,
   input: UpdateDeviceRelationInput,
-): Promise<{ success: boolean; data?: NetworkDeviceRelation; message: string }> {
+): Promise<{
+  success: boolean;
+  data?: NetworkDeviceRelation;
+  message: string;
+}> {
   const [existing] = await db
     .select()
     .from(networkDeviceRelations)
@@ -290,8 +304,10 @@ export async function updateDeviceRelation(
     .update(networkDeviceRelations)
     .set({
       relationType: input.relationType ?? existing.relationType,
-      parentPort: input.parentPort !== undefined ? input.parentPort : existing.parentPort,
-      childPort: input.childPort !== undefined ? input.childPort : existing.childPort,
+      parentPort:
+        input.parentPort !== undefined ? input.parentPort : existing.parentPort,
+      childPort:
+        input.childPort !== undefined ? input.childPort : existing.childPort,
       status: input.status ?? existing.status,
       details: input.details ?? existing.details,
       updatedAt: new Date(),
@@ -323,12 +339,17 @@ export async function deleteDeviceRelation(
     };
   }
 
-  await db.delete(networkDeviceRelations).where(eq(networkDeviceRelations.id, id));
+  await db
+    .delete(networkDeviceRelations)
+    .where(eq(networkDeviceRelations.id, id));
 
   // Jika relasi yang dihapus adalah hierarchy, bersihkan parentId di network_infrastructure jika cocok
   if (existing.relationType === "hierarchy") {
     const [child] = await db
-      .select({ id: networkInfrastructure.id, parentId: networkInfrastructure.parentId })
+      .select({
+        id: networkInfrastructure.id,
+        parentId: networkInfrastructure.parentId,
+      })
       .from(networkInfrastructure)
       .where(eq(networkInfrastructure.id, existing.childId))
       .limit(1);
@@ -351,9 +372,14 @@ export async function deleteDeviceRelation(
 }
 
 // 7. Ambil Rantai Leluhur Perangkat (Ancestors Lineage Chain)
-export async function getDeviceAncestors(
-  deviceId: string,
-): Promise<Array<{ id: string; name: string; type: InfrastructureDeviceType; level: number }>> {
+export async function getDeviceAncestors(deviceId: string): Promise<
+  Array<{
+    id: string;
+    name: string;
+    type: InfrastructureDeviceType;
+    level: number;
+  }>
+> {
   const ancestors: Array<{
     id: string;
     name: string;

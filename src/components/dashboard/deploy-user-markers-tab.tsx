@@ -102,12 +102,14 @@ const CATEGORY_MAP: Record<
 > = {
   used_frequently: {
     label: "Sering Digunakan",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    color:
+      "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     icon: Sparkles,
   },
   rarely_used: {
     label: "Jarang / Bingung",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    color:
+      "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
     icon: HelpCircle,
   },
   bug_issue: {
@@ -135,7 +137,8 @@ const STATUS_MAP: Record<
 > = {
   baru: {
     label: "Baru",
-    color: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    color:
+      "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
   },
   ditinjau: {
     label: "Ditinjau",
@@ -143,11 +146,13 @@ const STATUS_MAP: Record<
   },
   dikerjakan: {
     label: "Dikerjakan",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    color:
+      "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
   },
   selesai: {
     label: "Selesai",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    color:
+      "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
   },
 };
 
@@ -195,7 +200,9 @@ export function DeployUserMarkersTab({
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Alert Dialog Hapus
-  const [deleteTarget, setDeleteTarget] = useState<FeatureMarkerItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FeatureMarkerItem | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchMarkers = useCallback(async () => {
@@ -280,13 +287,26 @@ export function DeployUserMarkersTab({
         const matchEmail = m.userEmail.toLowerCase().includes(query);
         const matchElement = m.elementText.toLowerCase().includes(query);
         const matchDev = m.developerNotes.toLowerCase().includes(query);
-        if (!matchName && !matchNotes && !matchEmail && !matchElement && !matchDev) {
+        if (
+          !matchName &&
+          !matchNotes &&
+          !matchEmail &&
+          !matchElement &&
+          !matchDev
+        ) {
           return false;
         }
       }
       return true;
     });
-  }, [markers, selectedCategory, selectedStatus, selectedRole, selectedPage, search]);
+  }, [
+    markers,
+    selectedCategory,
+    selectedStatus,
+    selectedRole,
+    selectedPage,
+    search,
+  ]);
 
   // Diagnostic Report untuk marker yang sedang dibuka detailnya
   const diagnosticReport: TechnicalReport | null = useMemo(() => {
@@ -347,7 +367,8 @@ export function DeployUserMarkersTab({
       }
       setEditMarker(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal memperbarui status";
+      const msg =
+        err instanceof Error ? err.message : "Gagal memperbarui status";
       alert(msg);
     } finally {
       setIsUpdating(false);
@@ -432,7 +453,11 @@ export function DeployUserMarkersTab({
               Tanda Fitur, Fungsi & Diagnostik Teknis
             </h3>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-3xl">
-              Memantau fitur dan fungsi yang aktif digunakan di lapangan. Dilengkapi <strong>Source Mapping Otomatis</strong>: memetakan lokasi berkas komponen, endpoint API, fungsi runtime yang berjalan, serta langkah perbaikan terperinci untuk developer meskipun catatan pengguna singkat.
+              Memantau fitur dan fungsi yang aktif digunakan di lapangan.
+              Dilengkapi <strong>Source Mapping Otomatis</strong>: memetakan
+              lokasi berkas komponen, endpoint API, fungsi runtime yang
+              berjalan, serta langkah perbaikan terperinci untuk developer
+              meskipun catatan pengguna singkat.
             </p>
           </div>
 
@@ -444,7 +469,9 @@ export function DeployUserMarkersTab({
             onClick={fetchMarkers}
             className="text-xs h-8 gap-1.5 shrink-0"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+            />
             Segarkan Data
           </Button>
         </div>
@@ -621,12 +648,15 @@ export function DeployUserMarkersTab({
                   : "Tidak ada tanda fitur yang cocok dengan filter pencarian."}
               </p>
               <p className="text-[11px] mt-1 text-muted-foreground max-w-md mx-auto">
-                Pengguna dengan peran Super Admin, Admin, dan User dapat menandai tombol atau alur kerja di aplikasi menggunakan shortcut <strong>Ctrl + ~</strong>.
+                Pengguna dengan peran Super Admin, Admin, dan User dapat
+                menandai tombol atau alur kerja di aplikasi menggunakan shortcut{" "}
+                <strong>Ctrl + ~</strong>.
               </p>
             </div>
           ) : (
             filteredMarkers.map((marker) => {
-              const catInfo = CATEGORY_MAP[marker.category] || CATEGORY_MAP.used_frequently;
+              const catInfo =
+                CATEGORY_MAP[marker.category] || CATEGORY_MAP.used_frequently;
               const statusInfo = STATUS_MAP[marker.status] || STATUS_MAP.baru;
               const CatIcon = catInfo.icon;
 
@@ -645,8 +675,12 @@ export function DeployUserMarkersTab({
                         <CatIcon className="h-3 w-3" />
                         {catInfo.label}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        📅 {FREQUENCY_LABELS[marker.frequency] || marker.frequency}
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] text-muted-foreground"
+                      >
+                        📅{" "}
+                        {FREQUENCY_LABELS[marker.frequency] || marker.frequency}
                       </Badge>
                       <Badge
                         variant="outline"
@@ -676,9 +710,7 @@ export function DeployUserMarkersTab({
                         {marker.pagePath}
                         <ExternalLink className="h-2.5 w-2.5" />
                       </Link>
-                      {marker.pageTitle && (
-                        <span>• {marker.pageTitle}</span>
-                      )}
+                      {marker.pageTitle && <span>• {marker.pageTitle}</span>}
                     </div>
                   </div>
 
@@ -792,7 +824,9 @@ export function DeployUserMarkersTab({
                         className="text-xs h-7 gap-1"
                       >
                         <Edit3 className="h-3 w-3 text-purple-500" />
-                        {marker.developerNotes ? "Ubah Tanggapan" : "Respon & Status"}
+                        {marker.developerNotes
+                          ? "Ubah Tanggapan"
+                          : "Respon & Status"}
                       </Button>
 
                       <Button
@@ -837,7 +871,9 @@ export function DeployUserMarkersTab({
                       asChild
                       className="text-xs h-7 gap-1.5 bg-purple-600 hover:bg-purple-700 text-white font-medium"
                     >
-                      <Link href={`/app/deploy/markers/${selectedReportMarker.id}`}>
+                      <Link
+                        href={`/app/deploy/markers/${selectedReportMarker.id}`}
+                      >
                         <ExternalLink className="h-3 w-3" />
                         Buka Halaman Penuh
                       </Link>
@@ -846,7 +882,9 @@ export function DeployUserMarkersTab({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        navigator.clipboard.writeText(diagnosticReport.aiPrompt);
+                        navigator.clipboard.writeText(
+                          diagnosticReport.aiPrompt,
+                        );
                         setCopiedPromptId("modal");
                         setTimeout(() => setCopiedPromptId(null), 2500);
                       }}
@@ -867,7 +905,9 @@ export function DeployUserMarkersTab({
                   </div>
                 </div>
                 <DialogDescription className="text-xs">
-                  Diagnostik otomatis sistem: memetakan lokasi berkas, fungsi yang berjalan, dan panduan teknis perbaikan developer berdasarkan konteks aplikasi.
+                  Diagnostik otomatis sistem: memetakan lokasi berkas, fungsi
+                  yang berjalan, dan panduan teknis perbaikan developer
+                  berdasarkan konteks aplikasi.
                 </DialogDescription>
               </DialogHeader>
 
@@ -875,7 +915,9 @@ export function DeployUserMarkersTab({
               <div className="flex flex-wrap items-center gap-2 border-b pb-3 text-xs">
                 <Badge
                   variant="outline"
-                  className={CATEGORY_MAP[diagnosticReport.category]?.color || ""}
+                  className={
+                    CATEGORY_MAP[diagnosticReport.category]?.color || ""
+                  }
                 >
                   {CATEGORY_MAP[diagnosticReport.category]?.label}
                 </Badge>
@@ -909,7 +951,8 @@ export function DeployUserMarkersTab({
                       Masukan Pengguna
                     </span>
                     <span className="text-[11px]">
-                      {selectedReportMarker.userEmail} ({selectedReportMarker.userRole})
+                      {selectedReportMarker.userEmail} (
+                      {selectedReportMarker.userRole})
                     </span>
                   </div>
                   <div className="rounded-lg bg-background p-3 border border-border/60">
@@ -958,7 +1001,8 @@ export function DeployUserMarkersTab({
                         Selector Elemen:
                       </span>
                       <span className="text-foreground break-all">
-                        {selectedReportMarker.elementSelector || "(Seluruh Halaman)"}
+                        {selectedReportMarker.elementSelector ||
+                          "(Seluruh Halaman)"}
                       </span>
                     </div>
                   </div>
@@ -1044,7 +1088,8 @@ export function DeployUserMarkersTab({
                     </span>
                     <div className="flex items-center justify-between mt-1">
                       <code className="text-xs text-emerald-600 dark:text-emerald-400 font-mono truncate">
-                        {diagnosticReport.sourceMap.apiEndpoints[0] || "/api/..."}
+                        {diagnosticReport.sourceMap.apiEndpoints[0] ||
+                          "/api/..."}
                       </code>
                       <button
                         type="button"
@@ -1073,7 +1118,8 @@ export function DeployUserMarkersTab({
                     </span>
                     <div className="flex items-center justify-between mt-1">
                       <code className="text-xs text-foreground font-mono truncate">
-                        {diagnosticReport.sourceMap.serviceFiles[0] || "src/services/..."}
+                        {diagnosticReport.sourceMap.serviceFiles[0] ||
+                          "src/services/..."}
                       </code>
                       <button
                         type="button"
@@ -1213,14 +1259,18 @@ export function DeployUserMarkersTab({
                 </h4>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground">Status Pengerjaan:</span>
+                    <span className="text-muted-foreground">
+                      Status Pengerjaan:
+                    </span>
                     <select
                       value={selectedReportMarker.status}
                       onChange={(e) => {
                         const newStatus = e.target.value as FeatureMarkerStatus;
                         setEditMarker(selectedReportMarker);
                         setEditStatus(newStatus);
-                        setEditDevNotes(selectedReportMarker.developerNotes || "");
+                        setEditDevNotes(
+                          selectedReportMarker.developerNotes || "",
+                        );
                       }}
                       className="text-xs h-8 rounded-md border border-input bg-background px-2 font-semibold"
                     >
@@ -1271,7 +1321,8 @@ export function DeployUserMarkersTab({
               Tindak Lanjut Fitur: {editMarker?.featureName}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Ubah status pengerjaan atau tambahkan catatan respon developer untuk tanda fitur ini.
+              Ubah status pengerjaan atau tambahkan catatan respon developer
+              untuk tanda fitur ini.
             </DialogDescription>
           </DialogHeader>
 
@@ -1281,22 +1332,27 @@ export function DeployUserMarkersTab({
                 Status Alur Kerja
               </Label>
               <div className="grid grid-cols-4 gap-2">
-                {(["baru", "ditinjau", "dikerjakan", "selesai"] as FeatureMarkerStatus[]).map(
-                  (st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setEditStatus(st)}
-                      className={`rounded-md border py-1.5 px-2 text-center text-xs capitalize transition-all ${
-                        editStatus === st
-                          ? "border-purple-500 bg-purple-500/15 font-semibold text-purple-600 dark:text-purple-300"
-                          : "border-border text-muted-foreground hover:bg-muted/40"
-                      }`}
-                    >
-                      {STATUS_MAP[st]?.label || st}
-                    </button>
-                  ),
-                )}
+                {(
+                  [
+                    "baru",
+                    "ditinjau",
+                    "dikerjakan",
+                    "selesai",
+                  ] as FeatureMarkerStatus[]
+                ).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setEditStatus(st)}
+                    className={`rounded-md border py-1.5 px-2 text-center text-xs capitalize transition-all ${
+                      editStatus === st
+                        ? "border-purple-500 bg-purple-500/15 font-semibold text-purple-600 dark:text-purple-300"
+                        : "border-border text-muted-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    {STATUS_MAP[st]?.label || st}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1350,7 +1406,8 @@ export function DeployUserMarkersTab({
               Hapus Tanda Fitur Ini?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              Tanda fitur <strong>"{deleteTarget?.featureName}"</strong> akan dihapus secara permanen dari basis data telemetri.
+              Tanda fitur <strong>"{deleteTarget?.featureName}"</strong> akan
+              dihapus secara permanen dari basis data telemetri.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

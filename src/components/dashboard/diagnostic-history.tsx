@@ -254,7 +254,10 @@ export function DiagnosticHistory({
   };
 
   return (
-    <Card className={cn("w-full border-border", className)} data-testid="diagnostic-history">
+    <Card
+      className={cn("w-full border-border", className)}
+      data-testid="diagnostic-history"
+    >
       <CardHeader className="p-3 pb-2 border-b border-border/40">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -277,7 +280,10 @@ export function DiagnosticHistory({
           >
             {comparing ? (
               <>
-                <Loader2 aria-hidden="true" className="mr-1.5 size-3 animate-spin motion-reduce:animate-none" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-1.5 size-3 animate-spin motion-reduce:animate-none"
+                />
                 Membandingkan…
               </>
             ) : (
@@ -324,13 +330,17 @@ export function DiagnosticHistory({
                   <span className="ml-1 text-muted-foreground">
                     (
                     {scopeBadgeLabels[
-                      comparison.verdictBefore.scope as keyof typeof scopeBadgeLabels
+                      comparison.verdictBefore
+                        .scope as keyof typeof scopeBadgeLabels
                     ] ?? comparison.verdictBefore.scope}
                     )
                   </span>
                 )}
               </span>
-              <ArrowRight aria-hidden="true" className="size-3 text-muted-foreground" />
+              <ArrowRight
+                aria-hidden="true"
+                className="size-3 text-muted-foreground"
+              />
               <span className="font-medium">
                 {formatWhen(comparison.afterAt)}:{" "}
                 {comparison.verdictAfter.layer
@@ -340,7 +350,8 @@ export function DiagnosticHistory({
                   <span className="ml-1 text-muted-foreground">
                     (
                     {scopeBadgeLabels[
-                      comparison.verdictAfter.scope as keyof typeof scopeBadgeLabels
+                      comparison.verdictAfter
+                        .scope as keyof typeof scopeBadgeLabels
                     ] ?? comparison.verdictAfter.scope}
                     )
                   </span>
@@ -367,7 +378,9 @@ export function DiagnosticHistory({
                         {layerLabel(c.layer)} · {c.label}
                       </span>
                       <Badge
-                        variant={c.kind === "worse" ? "destructive" : "secondary"}
+                        variant={
+                          c.kind === "worse" ? "destructive" : "secondary"
+                        }
                         className={
                           c.kind === "better"
                             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -385,13 +398,17 @@ export function DiagnosticHistory({
                       <span>
                         Sebelum: {c.before?.status ?? "—"}{" "}
                         {c.before?.value ? `(${c.before.value})` : ""}{" "}
-                        {c.before?.threshold ? `[ambang ${c.before.threshold}]` : ""}
+                        {c.before?.threshold
+                          ? `[ambang ${c.before.threshold}]`
+                          : ""}
                       </span>
                       <span>→</span>
                       <span>
                         Sesudah: {c.after?.status ?? "—"}{" "}
                         {c.after?.value ? `(${c.after.value})` : ""}{" "}
-                        {c.after?.threshold ? `[ambang ${c.after.threshold}]` : ""}
+                        {c.after?.threshold
+                          ? `[ambang ${c.after.threshold}]`
+                          : ""}
                       </span>
                     </div>
                   </li>
@@ -523,7 +540,10 @@ export function DiagnosticHistory({
                       >
                         {isCopied ? (
                           <>
-                            <Check aria-hidden="true" className="size-3 text-emerald-600" />
+                            <Check
+                              aria-hidden="true"
+                              className="size-3 text-emerald-600"
+                            />
                             Tersalin
                           </>
                         ) : (
@@ -543,7 +563,11 @@ export function DiagnosticHistory({
                           data-testid="history-attach"
                           onClick={() => {
                             setAttachRunId(isAttachOpen ? null : r.id);
-                            if (!isAttachOpen && alerts.length > 0 && !selectedAlertId) {
+                            if (
+                              !isAttachOpen &&
+                              alerts.length > 0 &&
+                              !selectedAlertId
+                            ) {
                               setSelectedAlertId(alerts[0].id);
                             }
                           }}
@@ -570,7 +594,10 @@ export function DiagnosticHistory({
                         ) : (
                           <>
                             Detail
-                            <ChevronDown aria-hidden="true" className="size-3" />
+                            <ChevronDown
+                              aria-hidden="true"
+                              className="size-3"
+                            />
                           </>
                         )}
                       </Button>
@@ -584,7 +611,8 @@ export function DiagnosticHistory({
                       </span>
                       {alerts.length === 0 ? (
                         <p className="text-xs text-muted-foreground">
-                          Tidak ada alert untuk pelanggan ini yang dapat dilampirkan.
+                          Tidak ada alert untuk pelanggan ini yang dapat
+                          dilampirkan.
                         </p>
                       ) : (
                         <div className="flex flex-wrap items-center gap-2">

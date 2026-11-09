@@ -50,10 +50,7 @@ export function GET(
     } catch (err) {
       console.error("[GET CUSTOMER DETAIL ERROR]", err);
       const msg = err instanceof Error ? err.message : String(err);
-      return NextResponse.json(
-        { ok: false, error: msg },
-        { status: 500 },
-      );
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
   });
 }

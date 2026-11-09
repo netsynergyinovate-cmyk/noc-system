@@ -64,10 +64,45 @@ const OLTS: Record<number, { name: string; host: string }> = {
   3: { name: "OLT-GPON-CADANGAN-03", host: "10.10.2.30" },
 };
 
-const FIRST = ["Budi", "Dewi", "Agus", "Siti", "Rudi", "Wati", "Joko", "Rina", "Eko", "Lestari", "Hendra", "Putri"];
-const LAST = ["Santoso", "Wijaya", "Pratama", "Hidayat", "Kusuma", "Lubis", "Nugroho", "Saputra"];
-const STREETS = ["Jl. Melati", "Jl. Mawar", "Jl. Kenanga", "Jl. Anggrek", "Jl. Dahlia", "Jl. Flamboyan"];
-const MODELS = ["Huawei HG8245H5", "ZTE F609 v3", "Fiberhome AN5506-04", "ZTE F670L DualBand", "Huawei HG8145V5"];
+const FIRST = [
+  "Budi",
+  "Dewi",
+  "Agus",
+  "Siti",
+  "Rudi",
+  "Wati",
+  "Joko",
+  "Rina",
+  "Eko",
+  "Lestari",
+  "Hendra",
+  "Putri",
+];
+const LAST = [
+  "Santoso",
+  "Wijaya",
+  "Pratama",
+  "Hidayat",
+  "Kusuma",
+  "Lubis",
+  "Nugroho",
+  "Saputra",
+];
+const STREETS = [
+  "Jl. Melati",
+  "Jl. Mawar",
+  "Jl. Kenanga",
+  "Jl. Anggrek",
+  "Jl. Dahlia",
+  "Jl. Flamboyan",
+];
+const MODELS = [
+  "Huawei HG8245H5",
+  "ZTE F609 v3",
+  "Fiberhome AN5506-04",
+  "ZTE F670L DualBand",
+  "Huawei HG8145V5",
+];
 
 /** PRNG kecil (mulberry32) dengan benih dari teks. */
 function seeded(text: string): () => number {
@@ -88,19 +123,23 @@ function seeded(text: string): () => number {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const hex = (rand: () => number, len: number) =>
-  Array.from({ length: len }, () => Math.floor(rand() * 16).toString(16)).join("").toUpperCase();
+  Array.from({ length: len }, () => Math.floor(rand() * 16).toString(16))
+    .join("")
+    .toUpperCase();
 
 export type ParsedPonId =
   | { kind: "mock"; oltNo: number; ponIndex: number }
   | { kind: "db"; oltId: string; ponIndex: number };
 
 const MOCK_PON_ID = /^olt-(\d+)-pon-(\d+)$/;
-const DB_PON_ID = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?::|-pon-)(\d+)$/;
+const DB_PON_ID =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?::|-pon-)(\d+)$/;
 
 /** Urai id port PON: mock `olt-<n>-pon-<n>` atau nyata `<uuid-olt>:<n>` / `<uuid-olt>-pon-<n>`. */
 export function parsePonId(id: string): ParsedPonId | null {
   const mock = MOCK_PON_ID.exec(id);
-  if (mock) return { kind: "mock", oltNo: Number(mock[1]), ponIndex: Number(mock[2]) };
+  if (mock)
+    return { kind: "mock", oltNo: Number(mock[1]), ponIndex: Number(mock[2]) };
   const db = DB_PON_ID.exec(id);
   if (db) return { kind: "db", oltId: db[1], ponIndex: Number(db[2]) };
   return null;
@@ -119,7 +158,10 @@ export function getMockPonPortDetail(id: string): PonPortDetail {
   const m = /^olt-(\d+)-pon-(\d+)$/.exec(id);
   const oltNo = m ? Number(m[1]) : 1;
   const ponIndex = m ? Number(m[2]) : 1;
-  const olt = OLTS[oltNo] ?? { name: `OLT-${String(oltNo).padStart(2, "0")}`, host: `10.10.${oltNo}.10` };
+  const olt = OLTS[oltNo] ?? {
+    name: `OLT-${String(oltNo).padStart(2, "0")}`,
+    host: `10.10.${oltNo}.10`,
+  };
   const rand = seeded(`${oltNo}:${ponIndex}`);
 
   const txPowerDbm = round1(2 + rand() * 1.5);
@@ -130,7 +172,9 @@ export function getMockPonPortDetail(id: string): PonPortDetail {
     const weak = i % 7 === 0;
     // Deterministik: setiap ONU ke-11 LOS (-38 dBm), setiap ke-5 (sisa 3) offline, ditambah acak ~12%.
     const los = i % 11 === 0;
-    const rx = los ? -38 : round1(weak ? -27.5 - rand() * 2.5 : -17 - rand() * 8);
+    const rx = los
+      ? -38
+      : round1(weak ? -27.5 - rand() * 2.5 : -17 - rand() * 8);
     const offline = !los && (i % 5 === 3 || rand() < 0.12);
     const unseen = los || offline;
     const first = FIRST[Math.floor(rand() * FIRST.length)];
@@ -150,7 +194,9 @@ export function getMockPonPortDetail(id: string): PonPortDetail {
       macAddress: Array.from({ length: 6 }, () => hex(rand, 2)).join(":"),
       distanceMeters: 150 + Math.floor(rand() * 3351), // 150..3500
       isWeak: rx < WEAK_RX_DBM,
-      lastSeenAt: unseen ? SYNCED_AT_EPOCH - 600 - Math.floor(rand() * 86_400) : SYNCED_AT_EPOCH,
+      lastSeenAt: unseen
+        ? SYNCED_AT_EPOCH - 600 - Math.floor(rand() * 86_400)
+        : SYNCED_AT_EPOCH,
     };
     const trouble = classifyOnuTrouble({
       status: detail.status,
@@ -168,7 +214,11 @@ export function getMockPonPortDetail(id: string): PonPortDetail {
     : onus.reduce((s, o) => s + rxOf(o), 0) / onus.length;
 
   const troubleSummary = summarizeOnuTroubles(
-    onus.map((o) => ({ status: o.status, rxPowerDbm: o.rxPowerDbm, distanceMeters: o.distanceMeters })),
+    onus.map((o) => ({
+      status: o.status,
+      rxPowerDbm: o.rxPowerDbm,
+      distanceMeters: o.distanceMeters,
+    })),
   );
 
   return {
@@ -207,26 +257,35 @@ export interface PonPortSummary {
 }
 
 /** Ringkasan semua port PON satu OLT. Murni & deterministik dari oltId + ponIndex. */
-export function getMockPonPorts(oltId: string, totalPonPorts = 8, oltName = "OLT HSGQ"): PonPortSummary[] {
+export function getMockPonPorts(
+  oltId: string,
+  totalPonPorts = 8,
+  oltName = "OLT HSGQ",
+): PonPortSummary[] {
   const capacity = /epon/i.test(oltId) ? 64 : 128;
-  return Array.from({ length: Math.max(0, Math.floor(totalPonPorts)) }, (_, i) => {
-    const ponIndex = i + 1;
-    const rand = seeded(`${oltId}:${ponIndex}`);
-    const down = rand() < 0.1;
-    const onuCount = down ? 0 : Math.floor(capacity * (0.1 + rand() * 0.75));
-    const onlineOnuCount = down ? 0 : Math.floor(onuCount * (0.8 + rand() * 0.2));
-    return {
-      id: `${oltId}-pon-${ponIndex}`,
-      oltId,
-      oltName,
-      ponIndex,
-      name: `PON 1/1/${ponIndex}`,
-      status: down ? "down" : "up",
-      capacity,
-      onuCount,
-      onlineOnuCount,
-      txPowerDbm: round1(2 + rand() * 1.5),
-      avgRxPowerDbm: round1(-17 - rand() * 10),
-    };
-  });
+  return Array.from(
+    { length: Math.max(0, Math.floor(totalPonPorts)) },
+    (_, i) => {
+      const ponIndex = i + 1;
+      const rand = seeded(`${oltId}:${ponIndex}`);
+      const down = rand() < 0.1;
+      const onuCount = down ? 0 : Math.floor(capacity * (0.1 + rand() * 0.75));
+      const onlineOnuCount = down
+        ? 0
+        : Math.floor(onuCount * (0.8 + rand() * 0.2));
+      return {
+        id: `${oltId}-pon-${ponIndex}`,
+        oltId,
+        oltName,
+        ponIndex,
+        name: `PON 1/1/${ponIndex}`,
+        status: down ? "down" : "up",
+        capacity,
+        onuCount,
+        onlineOnuCount,
+        txPowerDbm: round1(2 + rand() * 1.5),
+        avgRxPowerDbm: round1(-17 - rand() * 10),
+      };
+    },
+  );
 }

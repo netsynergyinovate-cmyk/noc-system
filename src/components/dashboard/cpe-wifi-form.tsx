@@ -1,13 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Clock, Eye, EyeOff, KeyRound, Loader2, TriangleAlert, Wifi } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  TriangleAlert,
+  Wifi,
+} from "lucide-react";
 
 import { useCanDo } from "@/components/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { parseCpeWifiError, type CpeWifiErrorView } from "@/lib/dashboard/cpe-wifi-errors";
+import {
+  parseCpeWifiError,
+  type CpeWifiErrorView,
+} from "@/lib/dashboard/cpe-wifi-errors";
 import { changeDeviceWifiSchema } from "@/validators/cpe";
 
 type Errors = Partial<Record<"ssid" | "password", string>>;
@@ -73,8 +85,10 @@ export function CpeWifiForm({
       const next: Errors = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
-        if ((key === "ssid" || key === "password") && !next[key]) next[key] = issue.message;
-        if (key === undefined && !next.ssid) next.ssid = "Ubah nama WiFi atau isi password baru dulu.";
+        if ((key === "ssid" || key === "password") && !next[key])
+          next[key] = issue.message;
+        if (key === undefined && !next.ssid)
+          next.ssid = "Ubah nama WiFi atau isi password baru dulu.";
       }
       setErrors(next);
       return;
@@ -89,13 +103,19 @@ export function CpeWifiForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const body: { status?: string; message?: string; error?: { message?: string } } | null = await res.json().catch(() => null);
+      const body: {
+        status?: string;
+        message?: string;
+        error?: { message?: string };
+      } | null = await res.json().catch(() => null);
       if (res.ok) {
         setOutcome({
           tone: body?.status === "applied" ? "applied" : "queued",
           message:
             body?.message ??
-            (body?.status === "applied" ? "Wi-Fi diubah dan terverifikasi di modem." : "Perintah masuk antrean GenieACS."),
+            (body?.status === "applied"
+              ? "Wi-Fi diubah dan terverifikasi di modem."
+              : "Perintah masuk antrean GenieACS."),
         });
         setPassword("");
         onSuccess?.();
@@ -111,7 +131,12 @@ export function CpeWifiForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4" data-testid="cpe-wifi-form">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="space-y-4"
+      data-testid="cpe-wifi-form"
+    >
       <div className="space-y-2">
         <Label htmlFor="cpe-ssid" className="flex items-center gap-1.5">
           <Wifi className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -125,9 +150,15 @@ export function CpeWifiForm({
           aria-invalid={errors.ssid ? true : undefined}
           aria-describedby={errors.ssid ? "cpe-ssid-error" : undefined}
         />
-        <p className="text-xs text-muted-foreground">{ssid.length}/32 karakter</p>
+        <p className="text-xs text-muted-foreground">
+          {ssid.length}/32 karakter
+        </p>
         {errors.ssid && (
-          <p id="cpe-ssid-error" role="alert" className="text-sm text-destructive">
+          <p
+            id="cpe-ssid-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
             {errors.ssid}
           </p>
         )}
@@ -135,7 +166,10 @@ export function CpeWifiForm({
 
       <div className="space-y-2">
         <Label htmlFor="cpe-password" className="flex items-center gap-1.5">
-          <KeyRound className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <KeyRound
+            className="size-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           Password baru
         </Label>
         <div className="flex gap-2">
@@ -148,7 +182,9 @@ export function CpeWifiForm({
             maxLength={64}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={errors.password ? true : undefined}
-            aria-describedby={errors.password ? "cpe-password-error" : undefined}
+            aria-describedby={
+              errors.password ? "cpe-password-error" : undefined
+            }
           />
           <Button
             type="button"
@@ -158,14 +194,23 @@ export function CpeWifiForm({
             aria-pressed={showPassword}
             onClick={() => setShowPassword((v) => !v)}
           >
-            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {showPassword ? (
+              <EyeOff className="size-4" />
+            ) : (
+              <Eye className="size-4" />
+            )}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Perubahan nama atau password akan memutuskan koneksi perangkat yang sedang terhubung.
+          Perubahan nama atau password akan memutuskan koneksi perangkat yang
+          sedang terhubung.
         </p>
         {errors.password && (
-          <p id="cpe-password-error" role="alert" className="text-sm text-destructive">
+          <p
+            id="cpe-password-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
             {errors.password}
           </p>
         )}
@@ -178,9 +223,17 @@ export function CpeWifiForm({
           data-tone={outcome.tone}
           className={`flex items-start gap-2 rounded-md p-3 text-sm ${outcome.tone === "applied" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}
         >
-          {outcome.tone === "applied" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0" /> : <Clock className="mt-0.5 size-4 shrink-0" />}
+          {outcome.tone === "applied" ? (
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+          ) : (
+            <Clock className="mt-0.5 size-4 shrink-0" />
+          )}
           <div className="space-y-0.5">
-            <p className="font-medium">{outcome.tone === "applied" ? "Berhasil dan terverifikasi di modem" : "Masuk antrean, belum dijalankan"}</p>
+            <p className="font-medium">
+              {outcome.tone === "applied"
+                ? "Berhasil dan terverifikasi di modem"
+                : "Masuk antrean, belum dijalankan"}
+            </p>
             <p>{outcome.message}</p>
           </div>
         </div>
@@ -198,7 +251,13 @@ export function CpeWifiForm({
             <p className="font-medium">{errorView.title}</p>
             <p>{errorDetail || errorView.hint}</p>
             {errorView.canRetry && (
-              <Button type="button" variant="outline" size="sm" aria-disabled={pending} onClick={() => void submit()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-disabled={pending}
+                onClick={() => void submit()}
+              >
                 Coba lagi
               </Button>
             )}
@@ -207,7 +266,9 @@ export function CpeWifiForm({
       )}
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        {blockedReason && <span className="text-xs text-muted-foreground">{blockedReason}</span>}
+        {blockedReason && (
+          <span className="text-xs text-muted-foreground">{blockedReason}</span>
+        )}
         <Button type="submit" aria-disabled={blocked}>
           {pending && <Loader2 className="mr-2 size-4 animate-spin" />}
           {pending ? "Mengirim…" : "Simpan"}

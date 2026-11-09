@@ -13,23 +13,37 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { generateRealExportData } = await import("../src/services/export.service.ts");
+const { generateRealExportData } =
+  await import("../src/services/export.service.ts");
 const { getExportPreview } = await import("../src/lib/dashboard/export.ts");
 
 // Gunakan waktu masa lalu sebelum data tiruan dimulai (mis. tahun 2020)
 const EMPTY_NOW = Date.UTC(2020, 0, 1, 0, 0, 0) / 1000;
 
 test("ekspor kosong: generateRealExportData menghasilkan file dengan header CSV valid walau 0 baris", async () => {
-  const csv = await generateRealExportData("audit-log", "csv", "24h", EMPTY_NOW);
+  const csv = await generateRealExportData(
+    "audit-log",
+    "csv",
+    "24h",
+    EMPTY_NOW,
+  );
   assert.equal(csv.rowCount, 0);
   assert.equal(csv.isEmpty, true);
-  assert.ok(csv.content.includes("ID,Waktu"), "Header harus tetap ada di CSV kosong");
+  assert.ok(
+    csv.content.includes("ID,Waktu"),
+    "Header harus tetap ada di CSV kosong",
+  );
   // Hanya satu baris (header)
   assert.equal(csv.content.split("\r\n").length, 1);
 });
 
 test("ekspor kosong: generateRealExportData format JSON menghasilkan array kosong []", async () => {
-  const json = await generateRealExportData("audit-log", "json", "24h", EMPTY_NOW);
+  const json = await generateRealExportData(
+    "audit-log",
+    "json",
+    "24h",
+    EMPTY_NOW,
+  );
   assert.equal(json.rowCount, 0);
   assert.equal(json.isEmpty, true);
   assert.equal(json.content, "[]");

@@ -4,9 +4,19 @@ import {
   loneImpact,
   type ServiceDirectory,
 } from "./incident-root.ts";
-import type { AlertEndSource, AlertLocation, ActiveAlert, ResolvedAlert } from "./alerts.ts";
+import type {
+  AlertEndSource,
+  AlertLocation,
+  ActiveAlert,
+  ResolvedAlert,
+} from "./alerts.ts";
 import type { Anomaly, RawAnomaly } from "./anomalies.ts";
-import type { DashboardCustomer, DashboardRouter, IncidentKind, IncidentSeverity } from "./types.ts";
+import type {
+  DashboardCustomer,
+  DashboardRouter,
+  IncidentKind,
+  IncidentSeverity,
+} from "./types.ts";
 
 // ALERT NYATA dari tabel `alerts` (diisi rule engine Go; dibaca lewat
 // GET /api/alerts). File ini hanya memetakan bentuk baris database ke bentuk
@@ -38,10 +48,17 @@ export interface LiveAlertItem {
   location: AlertLocation;
 }
 
-const KINDS: readonly IncidentKind[] = ["offline", "optical", "queue", "cpu", "port"];
+const KINDS: readonly IncidentKind[] = [
+  "offline",
+  "optical",
+  "queue",
+  "cpu",
+  "port",
+];
 const SEVERITIES: readonly IncidentSeverity[] = ["info", "warning", "critical"];
 
-const isKind = (v: string): v is IncidentKind => (KINDS as readonly string[]).includes(v);
+const isKind = (v: string): v is IncidentKind =>
+  (KINDS as readonly string[]).includes(v);
 const isSeverity = (v: string): v is IncidentSeverity =>
   (SEVERITIES as readonly string[]).includes(v);
 const source = (v: string | null | undefined, fallback: "event" | "poll") =>
@@ -54,7 +71,10 @@ const source = (v: string | null | undefined, fallback: "event" | "poll") =>
 export function buildLiveDirectory(
   routers: readonly DashboardRouter[],
   customers: readonly DashboardCustomer[],
-  items: readonly Pick<LiveAlertItem, "routerId" | "customerId" | "location">[] = [],
+  items: readonly Pick<
+    LiveAlertItem,
+    "routerId" | "customerId" | "location"
+  >[] = [],
 ): ServiceDirectory {
   const routerNames = new Map<string, string>();
   const customerNames = new Map<string, string>();
@@ -67,9 +87,11 @@ export function buildLiveDirectory(
   return {
     routerName: (id) => routerNames.get(id) ?? id,
     customerName: (id) => customerNames.get(id) ?? id,
-    customersOnRouter: (id) => customers.filter((c) => c.routerId === id).length,
+    customersOnRouter: (id) =>
+      customers.filter((c) => c.routerId === id).length,
     customersOnOdp: (routerId, odpName) =>
-      customers.filter((c) => c.routerId === routerId && c.odpName === odpName).length,
+      customers.filter((c) => c.routerId === routerId && c.odpName === odpName)
+        .length,
   };
 }
 
@@ -129,14 +151,18 @@ export function toLiveActiveAlerts(
   }
   // Alert yang diduga satu sebab dikelompokkan (ODP, router, dst).
   const impactById = new Map<string, ReturnType<typeof groupImpact>>();
-  for (const group of correlateAlerts(base, { routerName: directory.routerName })) {
+  for (const group of correlateAlerts(base, {
+    routerName: directory.routerName,
+  })) {
     const impact = groupImpact(group, directory);
     for (const alert of group.alerts) impactById.set(alert.id, impact);
   }
   return base.map((alert) => ({ ...alert, ...impactById.get(alert.id)! }));
 }
 
-export function toLiveResolvedAlerts(items: readonly LiveAlertItem[]): ResolvedAlert[] {
+export function toLiveResolvedAlerts(
+  items: readonly LiveAlertItem[],
+): ResolvedAlert[] {
   const out: ResolvedAlert[] = [];
   for (const item of items) {
     if (item.endedAt === null) continue;
@@ -155,7 +181,8 @@ export function toLiveResolvedAlerts(items: readonly LiveAlertItem[]): ResolvedA
       timeSource: source(item.timeSource, "poll"),
       timeUncertaintySeconds: item.timeUncertaintySeconds,
       endTimeSource: endSource,
-      endTimeUncertaintySeconds: endSource === "operator" ? 0 : (item.endTimeUncertaintySeconds ?? 0),
+      endTimeUncertaintySeconds:
+        endSource === "operator" ? 0 : (item.endTimeUncertaintySeconds ?? 0),
       handledBy: endSource === "operator" ? (handled ?? "Petugas") : null,
     });
   }

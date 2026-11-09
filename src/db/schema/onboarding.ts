@@ -22,7 +22,10 @@ export const onboardingSteps = pgTable(
     description: text("description").notNull(),
     targetUrl: text("target_url").notNull(),
     targetLabel: text("target_label").notNull(),
-    prerequisiteStepIds: text("prerequisite_step_ids").array().notNull().default([]),
+    prerequisiteStepIds: text("prerequisite_step_ids")
+      .array()
+      .notNull()
+      .default([]),
     estimatedMinutes: integer("estimated_minutes").notNull().default(5),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

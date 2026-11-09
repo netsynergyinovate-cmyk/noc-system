@@ -22,7 +22,8 @@ export const FEATURE_MARKER_STATUSES = [
 ] as const;
 
 export type FeatureMarkerCategory = (typeof FEATURE_MARKER_CATEGORIES)[number];
-export type FeatureMarkerFrequency = (typeof FEATURE_MARKER_FREQUENCIES)[number];
+export type FeatureMarkerFrequency =
+  (typeof FEATURE_MARKER_FREQUENCIES)[number];
 export type FeatureMarkerStatus = (typeof FEATURE_MARKER_STATUSES)[number];
 
 export const createFeatureMarkerSchema = z
@@ -49,7 +50,9 @@ export const updateFeatureMarkerSchema = z
     "Sertakan status atau catatan developer untuk memperbarui tanda.",
   );
 
-export const featureMarkerIdSchema = z.string().uuid("ID tanda fitur tidak valid");
+export const featureMarkerIdSchema = z
+  .string()
+  .uuid("ID tanda fitur tidak valid");
 
 export const listFeatureMarkersSchema = z
   .object({
@@ -63,6 +66,10 @@ export const listFeatureMarkersSchema = z
   })
   .strict();
 
-export type CreateFeatureMarkerInput = z.infer<typeof createFeatureMarkerSchema>;
-export type UpdateFeatureMarkerInput = z.infer<typeof updateFeatureMarkerSchema>;
+export type CreateFeatureMarkerInput = z.infer<
+  typeof createFeatureMarkerSchema
+>;
+export type UpdateFeatureMarkerInput = z.infer<
+  typeof updateFeatureMarkerSchema
+>;
 export type ListFeatureMarkersInput = z.infer<typeof listFeatureMarkersSchema>;

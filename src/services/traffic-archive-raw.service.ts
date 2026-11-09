@@ -10,8 +10,7 @@ import {
 // Padanan traffic-archive.service.ts dengan SQL berparameter murni (node-postgres,
 // tanpa query builder Drizzle) untuk uji banding stack lokal.
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Cukup untuk pool.query dan PoolClient; memudahkan mock di tes.
 export interface SqlClient {

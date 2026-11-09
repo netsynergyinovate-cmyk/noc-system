@@ -5,7 +5,9 @@
 
 // Lama modem menyala, "1d 09:36:41". Nilai mentah DeviceInfo.UpTime dalam detik.
 let text = "";
-for (const p of declare("InternetGatewayDevice.DeviceInfo.UpTime", {value: 1})) {
+for (const p of declare("InternetGatewayDevice.DeviceInfo.UpTime", {
+  value: 1,
+})) {
   const sec = Number(p.value && p.value[0]);
   if (!isFinite(sec) || sec < 0) continue;
   const d = Math.floor(sec / 86400);
@@ -15,4 +17,4 @@ for (const p of declare("InternetGatewayDevice.DeviceInfo.UpTime", {value: 1})) 
   const two = (x) => (x < 10 ? "0" : "") + x;
   text = d + "d " + two(h) + ":" + two(m) + ":" + two(s);
 }
-return {writable: false, value: [text, "xsd:string"]};
+return { writable: false, value: [text, "xsd:string"] };

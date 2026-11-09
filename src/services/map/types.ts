@@ -48,7 +48,13 @@ export interface CustomerDetail {
       radioFrequency: string;
       clientCount: number;
     } | null;
-    hosts: { hostname: string; ip: string; mac: string; interfaceType: string; active: boolean }[];
+    hosts: {
+      hostname: string;
+      ip: string;
+      mac: string;
+      interfaceType: string;
+      active: boolean;
+    }[];
   } | null;
   onu: {
     model: string | null;
@@ -76,7 +82,12 @@ export interface CustomerDetail {
     remainingAmount: number;
     status: string;
   }[];
-  payments: { paymentCode: string; payDate: string; amount: number; method: string | null }[];
+  payments: {
+    paymentCode: string;
+    payDate: string;
+    amount: number;
+    method: string | null;
+  }[];
   alerts: {
     id: string;
     type: string;
@@ -107,7 +118,12 @@ export type OltRange = "live" | "1h" | "6h" | "24h" | "7d";
 
 /** Rincian OLT operasional: port PON, ringkasan ONU, dan trafik per PON (VLAN) dari aplikasi pusat */
 export interface OltDetail {
-  olt: { name: string; brand: string | null; status: string | null; lastSeenAt: string | null };
+  olt: {
+    name: string;
+    brand: string | null;
+    status: string | null;
+    lastSeenAt: string | null;
+  };
   range: OltRange;
   polledAt: string | null;
   pons: {

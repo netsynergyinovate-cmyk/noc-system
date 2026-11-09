@@ -5,7 +5,10 @@ import path from "node:path";
 
 test("route /api/deploy/health terdefinisi dan mengekspor method GET", () => {
   const filePath = path.resolve("src/app/api/deploy/health/route.ts");
-  assert.ok(fs.existsSync(filePath), "File /api/deploy/health/route.ts harus ada");
+  assert.ok(
+    fs.existsSync(filePath),
+    "File /api/deploy/health/route.ts harus ada",
+  );
 
   const content = fs.readFileSync(filePath, "utf-8");
   assert.ok(content.includes("export async function GET"));

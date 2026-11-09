@@ -112,7 +112,10 @@ export function AlertAutoRefreshControl() {
         </select>
       </label>
 
-      <div role="status" className="flex flex-col text-xs text-muted-foreground">
+      <div
+        role="status"
+        className="flex flex-col text-xs text-muted-foreground"
+      >
         <span>
           {describeAlertRefreshMode(mode, intervalMs)}
           {mode === "polling_fallback" && connection === "disconnected"

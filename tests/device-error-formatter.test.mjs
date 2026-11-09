@@ -3,8 +3,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { formatDeviceError } from "../src/lib/dashboard/device-config.ts";
 
-const dev = { host: "10.10.0.1", port: 443, username: "noc-monitor", type: "mikrotik", envPassKey: "MIKROTIK_REST_PASSWORD" };
-const fail = (extra) => ({ ok: false, message: "x", latencyMs: null, ...extra });
+const dev = {
+  host: "10.10.0.1",
+  port: 443,
+  username: "noc-monitor",
+  type: "mikrotik",
+  envPassKey: "MIKROTIK_REST_PASSWORD",
+};
+const fail = (extra) => ({
+  ok: false,
+  message: "x",
+  latencyMs: null,
+  ...extra,
+});
 
 test("formatter: TIMEOUT", () => {
   const e = formatDeviceError(fail({ code: "TIMEOUT" }), dev);
@@ -21,21 +32,30 @@ test("formatter: AUTH_FAILED", () => {
 });
 
 test("formatter: CONNECTION_REFUSED", () => {
-  const e = formatDeviceError(fail({ code: "CONNECTION_REFUSED" }), { ...dev, port: 9999 });
+  const e = formatDeviceError(fail({ code: "CONNECTION_REFUSED" }), {
+    ...dev,
+    port: 9999,
+  });
   assert.equal(e.title, "Koneksi Ditolak (Connection Refused)");
   assert.ok(e.detail.includes("Port 9999"));
   assert.ok(e.suggestion.includes("port 9999"));
 });
 
 test("formatter: INVALID_PORT", () => {
-  const e = formatDeviceError(fail({ code: "INVALID_PORT" }), { ...dev, port: 70000 });
+  const e = formatDeviceError(fail({ code: "INVALID_PORT" }), {
+    ...dev,
+    port: 70000,
+  });
   assert.equal(e.title, "Port Tidak Valid");
   assert.ok(e.detail.includes("70000"));
   assert.match(e.suggestion, /port standar yang valid/);
 });
 
 test("formatter: HTTP_ERROR dengan status code", () => {
-  const e = formatDeviceError(fail({ code: "HTTP_ERROR", statusCode: 500, message: "Internal" }), dev);
+  const e = formatDeviceError(
+    fail({ code: "HTTP_ERROR", statusCode: 500, message: "Internal" }),
+    dev,
+  );
   assert.equal(e.title, "Galat HTTP 500");
   assert.equal(e.detail, "Internal");
   assert.match(e.suggestion, /sertifikat TLS/);
@@ -47,7 +67,10 @@ test("formatter: default tanpa kode & pesan", () => {
   assert.equal(e.detail, "Perangkat mengembalikan respons galat.");
 });
 
-const src = readFileSync("src/components/dashboard/device-outcome-alert.tsx", "utf8");
+const src = readFileSync(
+  "src/components/dashboard/device-outcome-alert.tsx",
+  "utf8",
+);
 
 test("komponen: role status saat sukses, alert saat gagal", () => {
   assert.match(src, /role="status"/);
@@ -66,11 +89,22 @@ test("komponen: judul, detail, dan saran dirender", () => {
 test("komponen: timeout warning vs error destructive", () => {
   assert.match(src, /timeout \? Clock : AlertCircle/);
   assert.match(src, /border-warning\/30 bg-warning\/10 text-warning/);
-  assert.match(src, /border-destructive\/20 bg-destructive\/10 text-destructive/);
+  assert.match(
+    src,
+    /border-destructive\/20 bg-destructive\/10 text-destructive/,
+  );
 });
 
 test("integrasi: alert dipakai di tiga komponen", () => {
-  for (const f of ["device-quick-cards", "device-config-board", "device-test-button"]) {
-    assert.match(readFileSync(`src/components/dashboard/${f}.tsx`, "utf8"), /<DeviceOutcomeAlert/, f);
+  for (const f of [
+    "device-quick-cards",
+    "device-config-board",
+    "device-test-button",
+  ]) {
+    assert.match(
+      readFileSync(`src/components/dashboard/${f}.tsx`, "utf8"),
+      /<DeviceOutcomeAlert/,
+      f,
+    );
   }
 });

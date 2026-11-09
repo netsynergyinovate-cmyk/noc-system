@@ -29,7 +29,10 @@ test("enqueue: pending, id unik, tanggal ISO", () => {
 test("updateTaskStatus: pending -> running -> success/failed", () => {
   const t = enqueueDiagnosticTask(base);
   assert.equal(updateTaskStatus(t.id, "running").status, "running");
-  const ok = updateTaskStatus(t.id, "success", { resultSummary: "ok", latencyMs: 12 });
+  const ok = updateTaskStatus(t.id, "success", {
+    resultSummary: "ok",
+    latencyMs: 12,
+  });
   assert.equal(ok.status, "success");
   assert.equal(ok.resultSummary, "ok");
   assert.equal(ok.latencyMs, 12);
@@ -38,7 +41,10 @@ test("updateTaskStatus: pending -> running -> success/failed", () => {
   const bad = updateTaskStatus(t2.id, "failed", { errorReason: "timeout" });
   assert.equal(bad.errorReason, "timeout");
   assert.equal(updateTaskStatus("nope", "failed"), null);
-  assert.equal(getDiagnosticTasks().find((x) => x.id === t.id).status, "success");
+  assert.equal(
+    getDiagnosticTasks().find((x) => x.id === t.id).status,
+    "success",
+  );
 });
 
 test("getDiagnosticTasks: filter customerId", () => {
@@ -53,6 +59,9 @@ test("cpe-board menampilkan live note dan dialog diagnosa pelanggan terpasang", 
   const board = readFileSync("src/components/dashboard/cpe-board.tsx", "utf8");
   assert.ok(board.includes('data-testid="diagnostics-live-note"'));
   assert.match(board, /Tugas Diagnostik/);
-  const dlg = readFileSync("src/components/dashboard/customer-cpe-dialog.tsx", "utf8");
+  const dlg = readFileSync(
+    "src/components/dashboard/customer-cpe-dialog.tsx",
+    "utf8",
+  );
   assert.match(dlg, /Jalankan Diagnostik Cepat/);
 });

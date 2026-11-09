@@ -31,7 +31,8 @@ export const CABLE_CAPACITY_TIERS: CableCapacityTier[] = [
     haloColor: "#c084fc",
     baseWeight: 5.0,
     dashArray: "8, 6",
-    description: "Kabel backbone kapasitas tinggi penghubung Core Router ke OLT / Sentral.",
+    description:
+      "Kabel backbone kapasitas tinggi penghubung Core Router ke OLT / Sentral.",
   },
   {
     minCores: 24,
@@ -75,7 +76,8 @@ export const CABLE_CAPACITY_TIERS: CableCapacityTier[] = [
     haloColor: "#6ee7b7",
     baseWeight: 1.8,
     dashArray: undefined,
-    description: "Kabel drop wire 1-2 core dari kotak ODP ke modem ONU pelanggan.",
+    description:
+      "Kabel drop wire 1-2 core dari kotak ODP ke modem ONU pelanggan.",
   },
 ];
 
@@ -100,7 +102,9 @@ export interface ResolvedCableStyle {
  * Menentukan style visual konsisten (warna, ketebalan dasar, halo, dash) berdasarkan
  * kapasitas core, tipe segmen, status operasional, dan kondisi penyorotan.
  */
-export function resolveCableCapacityStyle(options: CableStyleOptions): ResolvedCableStyle {
+export function resolveCableCapacityStyle(
+  options: CableStyleOptions,
+): ResolvedCableStyle {
   const { coreCapacity, type, status, isHighlighted } = options;
 
   // 1. Temukan tingkatan berdasarkan coreCapacity atau fallback ke tipe

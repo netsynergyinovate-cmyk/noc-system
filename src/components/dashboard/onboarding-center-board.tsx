@@ -33,7 +33,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export function OnboardingCenterBoard() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => {
     return new Set(
-      MOCK_ONBOARDING_STEPS.filter((s) => s.status === "selesai").map((s) => s.id),
+      MOCK_ONBOARDING_STEPS.filter((s) => s.status === "selesai").map(
+        (s) => s.id,
+      ),
     );
   });
 
@@ -41,7 +43,10 @@ export function OnboardingCenterBoard() {
     fetch("/api/onboarding/steps")
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        if (json?.data?.completedStepIds && Array.isArray(json.data.completedStepIds)) {
+        if (
+          json?.data?.completedStepIds &&
+          Array.isArray(json.data.completedStepIds)
+        ) {
           setCompletedIds(new Set(json.data.completedStepIds));
         }
       })
@@ -50,7 +55,9 @@ export function OnboardingCenterBoard() {
 
   const steps = computeStepStatuses(MOCK_ONBOARDING_STEPS, completedIds);
   const overview = getMockOnboardingOverview(steps);
-  const [selectedFilter, setSelectedFilter] = useState<"semua" | OnboardingStepType>("semua");
+  const [selectedFilter, setSelectedFilter] = useState<
+    "semua" | OnboardingStepType
+  >("semua");
   const [activeNotice, setActiveNotice] = useState<string | null>(null);
   const [showMikrotikForm, setShowMikrotikForm] = useState(false);
 
@@ -58,7 +65,9 @@ export function OnboardingCenterBoard() {
     const nextCompleted = new Set(completedIds);
     nextCompleted.add("step-router-mikrotik");
     setCompletedIds(nextCompleted);
-    setActiveNotice("Langkah 1: Router MikroTik berhasil dikonfigurasi & diuji! Gerbang terbuka.");
+    setActiveNotice(
+      "Langkah 1: Router MikroTik berhasil dikonfigurasi & diuji! Gerbang terbuka.",
+    );
     setShowMikrotikForm(false);
   };
 
@@ -73,7 +82,9 @@ export function OnboardingCenterBoard() {
 
     if (nextCompleted.has(stepId)) {
       nextCompleted.delete(stepId);
-      setActiveNotice(`Langkah "${target?.title ?? stepId}" ditandai belum selesai.`);
+      setActiveNotice(
+        `Langkah "${target?.title ?? stepId}" ditandai belum selesai.`,
+      );
     } else {
       // Periksa apakah prasyarat sudah terpenuhi
       if (target) {
@@ -87,7 +98,9 @@ export function OnboardingCenterBoard() {
         }
       }
       nextCompleted.add(stepId);
-      setActiveNotice(`Langkah "${target?.title ?? stepId}" berhasil diselesaikan.`);
+      setActiveNotice(
+        `Langkah "${target?.title ?? stepId}" berhasil diselesaikan.`,
+      );
     }
 
     setCompletedIds(nextCompleted);
@@ -156,7 +169,9 @@ export function OnboardingCenterBoard() {
                   : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
               }`}
             >
-              {overview.isGatePassed ? "LULUS (Terbuka)" : "DITAHAN (Router Wajib)"}
+              {overview.isGatePassed
+                ? "LULUS (Terbuka)"
+                : "DITAHAN (Router Wajib)"}
             </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -178,7 +193,9 @@ export function OnboardingCenterBoard() {
             <span className="text-2xl font-bold tracking-tight">
               {overview.requiredCompleted} / {overview.requiredTotal}
             </span>
-            <span className="text-xs text-muted-foreground">Langkah Selesai</span>
+            <span className="text-xs text-muted-foreground">
+              Langkah Selesai
+            </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Prasyarat go-live dan pembukaan seluruh navigasi operasional.
@@ -195,7 +212,9 @@ export function OnboardingCenterBoard() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-bold tracking-tight">~35 Menit</span>
-            <span className="text-xs text-muted-foreground">dari Nol ke Go-Live</span>
+            <span className="text-xs text-muted-foreground">
+              dari Nol ke Go-Live
+            </span>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Terdiri dari 3 langkah wajib dan 5 langkah opsional terpandu.
@@ -215,7 +234,8 @@ export function OnboardingCenterBoard() {
                 Langkah 1: Konfigurasi & Uji REST API MikroTik (Gerbang Wajib)
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Buka form untuk menguji koneksi langsung ke router dan membuka gerbang onboarding.
+                Buka form untuk menguji koneksi langsung ke router dan membuka
+                gerbang onboarding.
               </p>
             </div>
           </div>
@@ -255,7 +275,9 @@ export function OnboardingCenterBoard() {
           {/* Sub-filter Langkah */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Filter:</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                Filter:
+              </span>
               <div className="flex gap-1.5">
                 <button
                   type="button"
@@ -369,30 +391,31 @@ export function OnboardingCenterBoard() {
                       </p>
 
                       {/* Indikator Prasyarat */}
-                      {step.prerequisiteTitles && step.prerequisiteTitles.length > 0 && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                          <span className="font-medium text-muted-foreground">
-                            Prasyarat:
-                          </span>
-                          {step.prerequisiteTitles.map((pTitle) => (
-                            <span
-                              key={pTitle}
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium ${
-                                prereqCheck.unlocked
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                  : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
-                              }`}
-                            >
-                              {prereqCheck.unlocked ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : (
-                                <Lock className="h-3 w-3" />
-                              )}
-                              {pTitle}
+                      {step.prerequisiteTitles &&
+                        step.prerequisiteTitles.length > 0 && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="font-medium text-muted-foreground">
+                              Prasyarat:
                             </span>
-                          ))}
-                        </div>
-                      )}
+                            {step.prerequisiteTitles.map((pTitle) => (
+                              <span
+                                key={pTitle}
+                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium ${
+                                  prereqCheck.unlocked
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                }`}
+                              >
+                                {prereqCheck.unlocked ? (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                ) : (
+                                  <Lock className="h-3 w-3" />
+                                )}
+                                {pTitle}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                       {/* Instruksi & CLI */}
                       {step.instruction && (
@@ -447,7 +470,8 @@ export function OnboardingCenterBoard() {
               </h3>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Visualisasi alur langkah berurutan: langkah berikutnya terbuka otomatis setelah prasyarat diselesaikan.
+              Visualisasi alur langkah berurutan: langkah berikutnya terbuka
+              otomatis setelah prasyarat diselesaikan.
             </p>
 
             <div className="mt-5 flex flex-col gap-3">
@@ -560,7 +584,8 @@ export function OnboardingCenterBoard() {
                   Catatan Pengoperasian Mandiri:
                 </p>
                 <p className="mt-1">
-                  Seluruh progres integrasi dan tutorial tersimpan di tabel database{" "}
+                  Seluruh progres integrasi dan tutorial tersimpan di tabel
+                  database{" "}
                   <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">
                     onboarding_steps
                   </code>{" "}
@@ -568,7 +593,8 @@ export function OnboardingCenterBoard() {
                   <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground">
                     onboarding_progress
                   </code>
-                  . Saat berpindah lingkungan atau naik versi ke server, progres tidak akan hilang.
+                  . Saat berpindah lingkungan atau naik versi ke server, progres
+                  tidak akan hilang.
                 </p>
               </div>
             </div>

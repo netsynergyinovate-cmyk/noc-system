@@ -112,7 +112,6 @@ export async function getFeatureMarkerById(id: string) {
   return row ?? null;
 }
 
-
 export async function getFeatureMarkerStats() {
   const [stats] = await db
     .select({

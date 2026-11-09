@@ -19,12 +19,18 @@ test("haversineDistanceM: sifat simetri dist(A, B) == dist(B, A)", () => {
   const d2 = haversineDistanceM(p2[0], p2[1], p1[0], p1[1]);
 
   assert.equal(d1, d2);
-  assert.ok(d1 > 2100 && d1 < 2300, `Jarak Monas-HI sekitar 2.2km, dapat: ${d1}m`);
+  assert.ok(
+    d1 > 2100 && d1 < 2300,
+    `Jarak Monas-HI sekitar 2.2km, dapat: ${d1}m`,
+  );
 });
 
 test("haversineDistanceM: perhitungan 1 derajat bujur di ekuator", () => {
   const dist = haversineDistanceM(0, 0, 0, 1);
-  assert.ok(dist > 111000 && dist < 111500, `Ekuator 1 deg ~111.19km, dapat: ${dist}m`);
+  assert.ok(
+    dist > 111000 && dist < 111500,
+    `Ekuator 1 deg ~111.19km, dapat: ${dist}m`,
+  );
 });
 
 test("calculatePolylineLengthM: polilin kosong atau 1 titik mengembalikan 0", () => {
@@ -70,7 +76,10 @@ test("generateSegmentSamples: interpolasi titik tiap interval 50m", () => {
   const p2 = [-6.195, 106.823];
   const res = generateSegmentSamples([p1, p2], 50);
 
-  assert.ok(res.samples.length > 40, `Harus ada minimal 40 titik sampling, dapat: ${res.samples.length}`);
+  assert.ok(
+    res.samples.length > 40,
+    `Harus ada minimal 40 titik sampling, dapat: ${res.samples.length}`,
+  );
   assert.equal(res.samples[0].sequence, 1);
   assert.equal(res.samples[0].cumulativeM, 0);
 
@@ -89,9 +98,15 @@ test("generateSegmentSamples: interpolasi titik tiap interval 50m", () => {
 
 test("generateSegmentSamples: jarak sampling berlanjut melintasi vertex", () => {
   // ~111m per ruas di ekuator (0.001 deg), belok di vertex tengah
-  const pts = [[0, 0], [0, 0.001], [0.001, 0.001]];
+  const pts = [
+    [0, 0],
+    [0, 0.001],
+    [0.001, 0.001],
+  ];
   const res = generateSegmentSamples(pts, 50);
   const mids = res.samples.slice(1, -1).map((s) => s.cumulativeM);
-  mids.forEach((m, i) => assert.ok(Math.abs(m - 50 * (i + 1)) < 0.1, `sampel ${i} di ${m}`));
+  mids.forEach((m, i) =>
+    assert.ok(Math.abs(m - 50 * (i + 1)) < 0.1, `sampel ${i} di ${m}`),
+  );
   assert.equal(mids.length, 4); // 50,100,150,200 dari ~222m
 });

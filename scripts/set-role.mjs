@@ -26,8 +26,7 @@ const permissionsContent = readFileSync(
   resolve(root, "src/lib/permissions.ts"),
   "utf8",
 );
-const rolesBlock =
-  permissionsContent.split(/export\s+const\s+roles/)[1] ?? "";
+const rolesBlock = permissionsContent.split(/export\s+const\s+roles/)[1] ?? "";
 const declared = [
   ...rolesBlock.matchAll(/^\s*([A-Za-z0-9_]+)\s*:\s*ac\.newRole/gm),
 ].map((match) => match[1]);

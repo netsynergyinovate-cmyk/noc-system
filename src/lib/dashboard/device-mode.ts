@@ -34,7 +34,10 @@ export function getDeviceMode(): DeviceModeState {
       const parsed = JSON.parse(raw);
       if (parsed.mode === "simulator" || parsed.mode === "real") {
         lastRaw = raw;
-        currentState = { mode: parsed.mode, lastChangedAt: Number(parsed.lastChangedAt) || 0 };
+        currentState = {
+          mode: parsed.mode,
+          lastChangedAt: Number(parsed.lastChangedAt) || 0,
+        };
       }
     }
   } catch {

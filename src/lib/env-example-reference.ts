@@ -9,7 +9,8 @@ export type ParsedEnvExample = {
 
 const LINE = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/;
 const SECRET_SUFFIX = /(_SECRET|_PASSWORD|_KEY|_TOKEN)$/;
-export const SECURITY_HEADER = "# PERINGATAN KEAMANAN: berkas ini TERLACAK di Git dan hanya template.";
+export const SECURITY_HEADER =
+  "# PERINGATAN KEAMANAN: berkas ini TERLACAK di Git dan hanya template.";
 
 export function parseEnvExample(content: string): ParsedEnvExample {
   const keys: string[] = [];
@@ -35,9 +36,13 @@ export function parseEnvExample(content: string): ParsedEnvExample {
   return { keys, keyValues, comments };
 }
 
-export function validateEnvExampleSecurity(content: string): { ok: boolean; violations: string[] } {
+export function validateEnvExampleSecurity(content: string): {
+  ok: boolean;
+  violations: string[];
+} {
   const violations: string[] = [];
-  if (content.split(/\r?\n/)[0] !== SECURITY_HEADER) violations.push("header peringatan keamanan hilang di baris 1");
+  if (content.split(/\r?\n/)[0] !== SECURITY_HEADER)
+    violations.push("header peringatan keamanan hilang di baris 1");
   const { keyValues } = parseEnvExample(content);
   for (const [k, v] of Object.entries(keyValues)) {
     if (SECRET_SUFFIX.test(k) && v !== "") violations.push(`${k} harus kosong`);

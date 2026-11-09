@@ -13,12 +13,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 
-const { parseTrafficTrendQuery, trafficRangeSchema } = await import(
-  "../src/validators/traffic.ts"
-);
-const { getTrafficTrendData } = await import(
-  "../src/services/traffic.service.ts"
-);
+const { parseTrafficTrendQuery, trafficRangeSchema } =
+  await import("../src/validators/traffic.ts");
+const { getTrafficTrendData } =
+  await import("../src/services/traffic.service.ts");
 const routeTrend = await import("../src/app/api/traffic/trend/route.ts");
 const routeTraffic = await import("../src/app/api/traffic/route.ts");
 
@@ -40,8 +38,12 @@ test("validator: parseTrafficTrendQuery validasi range dan uuid", () => {
   const q2 = parseTrafficTrendQuery(p2);
   assert.equal(q2.routerId, uuid);
 
-  assert.throws(() => parseTrafficTrendQuery(new URLSearchParams({ range: "bad" })));
-  assert.throws(() => parseTrafficTrendQuery(new URLSearchParams({ routerId: "not-uuid" })));
+  assert.throws(() =>
+    parseTrafficTrendQuery(new URLSearchParams({ range: "bad" })),
+  );
+  assert.throws(() =>
+    parseTrafficTrendQuery(new URLSearchParams({ routerId: "not-uuid" })),
+  );
 });
 
 test("getTrafficTrendData: mengembalikan series, overview, dan interfaces", async () => {

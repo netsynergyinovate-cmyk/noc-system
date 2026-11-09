@@ -75,7 +75,9 @@ export function CoverageMap({ summary }: CoverageMapProps) {
             <span className="text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
               {summary.criticalOpticsCount}
             </span>
-            <span className="text-[10px] text-muted-foreground">&le; -24.5 dBm</span>
+            <span className="text-[10px] text-muted-foreground">
+              &le; -24.5 dBm
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -107,7 +109,9 @@ export function CoverageMap({ summary }: CoverageMapProps) {
             <span className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
               {summary.totalOlts + summary.totalRouters}
             </span>
-            <span className="text-[10px] text-muted-foreground">1 OLT • 1 RTR</span>
+            <span className="text-[10px] text-muted-foreground">
+              1 OLT • 1 RTR
+            </span>
           </div>
         </CardContent>
       </Card>

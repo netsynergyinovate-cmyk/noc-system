@@ -4,9 +4,8 @@ import net from "node:net";
 import { register } from "tsx/esm/api";
 
 register();
-const { encodeSentence, SentenceParser, withRouterOsApi, RouterOsApiError } = await import(
-  "../src/lib/mikrotik/api-client.ts"
-);
+const { encodeSentence, SentenceParser, withRouterOsApi, RouterOsApiError } =
+  await import("../src/lib/mikrotik/api-client.ts");
 
 test("encodeSentence/SentenceParser round-trip di batas panjang kata, termasuk chunk terpotong", () => {
   // Kata kosong = terminator kalimat di protokol, jadi panjang 0 tidak bisa menjadi kata.
@@ -15,11 +14,15 @@ test("encodeSentence/SentenceParser round-trip di batas panjang kata, termasuk c
     const buf = encodeSentence(words);
     const p = new SentenceParser();
     const got = [];
-    for (let i = 0; i < buf.length; i += 5000) got.push(...p.push(buf.subarray(i, i + 5000)));
+    for (let i = 0; i < buf.length; i += 5000)
+      got.push(...p.push(buf.subarray(i, i + 5000)));
     assert.deepEqual(got, [words], `n=${n}`);
   }
   const p = new SentenceParser();
-  const two = Buffer.concat([encodeSentence(["!done"]), encodeSentence(["!re", "=a=1"])]);
+  const two = Buffer.concat([
+    encodeSentence(["!done"]),
+    encodeSentence(["!re", "=a=1"]),
+  ]);
   assert.deepEqual(p.push(two.subarray(0, 9)), [["!done"]]);
   assert.deepEqual(p.push(two.subarray(9)), [["!re", "=a=1"]]);
 });
@@ -47,13 +50,16 @@ test("withRouterOsApi: login v7 + run mengembalikan baris !re dan menutup soket"
     sock.on("close", () => (closed = true));
     if (s[0] === "/login") sock.write(encodeSentence(["!done", tagOf(s)]));
     else {
-      sock.write(encodeSentence(["!re", "=version=7.15", "=board-name=hAP", tagOf(s)]));
+      sock.write(
+        encodeSentence(["!re", "=version=7.15", "=board-name=hAP", tagOf(s)]),
+      );
       sock.write(encodeSentence(["!done", tagOf(s)]));
     }
   });
   const { port } = server.address();
-  const rows = await withRouterOsApi({ host: "127.0.0.1", port, username: "a", password: "b" }, (api) =>
-    api.run(["/system/resource/print"]),
+  const rows = await withRouterOsApi(
+    { host: "127.0.0.1", port, username: "a", password: "b" },
+    (api) => api.run(["/system/resource/print"]),
   );
   assert.deepEqual(rows, [{ version: "7.15", "board-name": "hAP" }]);
   await new Promise((r) => setTimeout(r, 50));
@@ -67,13 +73,33 @@ test("login !trap -> AUTH_FAILED; tanpa jawaban -> TIMEOUT", async () => {
     sock.write(encodeSentence(["!done", tagOf(s)]));
   });
   await assert.rejects(
-    withRouterOsApi({ host: "127.0.0.1", port: bad.address().port, username: "a", password: "b" }, async () => 1),
-    (e) => e instanceof RouterOsApiError && e.code === "AUTH_FAILED" && e.message === "cannot log in",
+    withRouterOsApi(
+      {
+        host: "127.0.0.1",
+        port: bad.address().port,
+        username: "a",
+        password: "b",
+      },
+      async () => 1,
+    ),
+    (e) =>
+      e instanceof RouterOsApiError &&
+      e.code === "AUTH_FAILED" &&
+      e.message === "cannot log in",
   );
   stop(bad);
   const mute = await fakeRouter(() => {});
   await assert.rejects(
-    withRouterOsApi({ host: "127.0.0.1", port: mute.address().port, username: "a", password: "b", timeoutMs: 200 }, async () => 1),
+    withRouterOsApi(
+      {
+        host: "127.0.0.1",
+        port: mute.address().port,
+        username: "a",
+        password: "b",
+        timeoutMs: 200,
+      },
+      async () => 1,
+    ),
     (e) => e instanceof RouterOsApiError && e.code === "TIMEOUT",
   );
   stop(mute);
@@ -81,13 +107,33 @@ test("login !trap -> AUTH_FAILED; tanpa jawaban -> TIMEOUT", async () => {
 
 test("!trap lalu soket ditutup tanpa !done -> AUTH_FAILED dengan pesan trap; kata kosong ditolak", async () => {
   const srv = await fakeRouter((sock, s) => {
-    sock.write(encodeSentence(["!trap", "=message=invalid user name or password", tagOf(s)]));
+    sock.write(
+      encodeSentence([
+        "!trap",
+        "=message=invalid user name or password",
+        tagOf(s),
+      ]),
+    );
     sock.end();
   });
   await assert.rejects(
-    withRouterOsApi({ host: "127.0.0.1", port: srv.address().port, username: "a", password: "b" }, async () => 1),
-    (e) => e instanceof RouterOsApiError && e.code === "AUTH_FAILED" && /invalid user/.test(e.message),
+    withRouterOsApi(
+      {
+        host: "127.0.0.1",
+        port: srv.address().port,
+        username: "a",
+        password: "b",
+      },
+      async () => 1,
+    ),
+    (e) =>
+      e instanceof RouterOsApiError &&
+      e.code === "AUTH_FAILED" &&
+      /invalid user/.test(e.message),
   );
   stop(srv);
-  assert.throws(() => encodeSentence(["/x", ""]), (e) => e.code === "PROTOCOL");
+  assert.throws(
+    () => encodeSentence(["/x", ""]),
+    (e) => e.code === "PROTOCOL",
+  );
 });

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useSession } from "@/components/session-provider";
 import { selectPreviewEnabled } from "@/lib/session-store";
 import { RefreshCw, Search, Users, Copy, Check } from "lucide-react";
@@ -24,7 +31,9 @@ function useLivePppoeSessions(routerId: string, enabled: boolean) {
   const load = useCallback(async (): Promise<boolean> => {
     if (!enabled) return true;
     try {
-      const res = await fetch(`/api/routers/${encodeURIComponent(routerId)}/pppoe`);
+      const res = await fetch(
+        `/api/routers/${encodeURIComponent(routerId)}/pppoe`,
+      );
       if (!res.ok) throw new Error(String(res.status));
       const json = (await res.json()) as { data?: RouterPppoeSession[] };
       if (alive.current) {
@@ -78,7 +87,10 @@ export function RouterPppoeTable({
       }
       dispatch({ type: "success" });
     } catch (e) {
-      dispatch({ type: "fail", message: e instanceof Error ? e.message : "Gagal menyegarkan sesi." });
+      dispatch({
+        type: "fail",
+        message: e instanceof Error ? e.message : "Gagal menyegarkan sesi.",
+      });
     }
   }
 
@@ -108,8 +120,13 @@ export function RouterPppoeTable({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 border border-border">
         <div className="flex items-center gap-2">
           <Users className="size-4 text-cyan-400" />
-          <span className="font-semibold text-foreground">Sesi PPPoE Aktif:</span>
-          <Badge variant="outline" className="border-cyan-800/80 bg-cyan-950/40 text-cyan-400 font-semibold text-[11px]">
+          <span className="font-semibold text-foreground">
+            Sesi PPPoE Aktif:
+          </span>
+          <Badge
+            variant="outline"
+            className="border-cyan-800/80 bg-cyan-950/40 text-cyan-400 font-semibold text-[11px]"
+          >
             {allSessions.length} Sesi Terhubung
           </Badge>
         </div>
@@ -133,14 +150,19 @@ export function RouterPppoeTable({
             disabled={isRefreshing}
             className="h-8 px-2.5 bg-muted hover:bg-muted border-border text-foreground/90 text-xs gap-1.5"
           >
-            <RefreshCw className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`size-3 text-cyan-400 ${isRefreshing ? "animate-spin" : ""}`}
+            />
             <span>{isRefreshing ? "..." : "Segarkan"}</span>
           </Button>
         </div>
       </div>
 
       {refresh.status === "error" && (
-        <div role="alert" className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs">
+        <div
+          role="alert"
+          className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs"
+        >
           {refresh.message}
         </div>
       )}
@@ -169,7 +191,10 @@ export function RouterPppoeTable({
               ))
             ) : visible.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                <td
+                  colSpan={6}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   {allSessions.length === 0
                     ? `Tidak ada sesi PPPoE aktif di ${routerName}.`
                     : "Tidak ada sesi yang cocok dengan kata kunci pencarian."}
@@ -177,14 +202,21 @@ export function RouterPppoeTable({
               </tr>
             ) : (
               visible.map((s, idx) => (
-                <tr key={s.id || s.name} className="hover:bg-muted/30 transition-colors">
-                  <td className="py-2.5 px-3 text-muted-foreground text-[10px]">{idx + 1}</td>
+                <tr
+                  key={s.id || s.name}
+                  className="hover:bg-muted/30 transition-colors"
+                >
+                  <td className="py-2.5 px-3 text-muted-foreground text-[10px]">
+                    {idx + 1}
+                  </td>
                   <td className="py-2.5 px-3">
                     <div className="flex flex-col">
                       <span className="font-semibold text-foreground">
                         {s.customerName || s.name.split("@")[0]}
                       </span>
-                      <span className="text-[10px] text-muted-foreground font-mono">{s.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {s.name}
+                      </span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
@@ -204,8 +236,12 @@ export function RouterPppoeTable({
                       </button>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-muted-foreground font-mono text-[10px]">{s.callerId || "—"}</td>
-                  <td className="py-2.5 px-3 text-foreground/90 font-mono text-[10px]">{s.uptimeHuman || s.uptime}</td>
+                  <td className="py-2.5 px-3 text-muted-foreground font-mono text-[10px]">
+                    {s.callerId || "—"}
+                  </td>
+                  <td className="py-2.5 px-3 text-foreground/90 font-mono text-[10px]">
+                    {s.uptimeHuman || s.uptime}
+                  </td>
                   <td className="py-2.5 px-3 text-right">
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 text-[10px]">
                       <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />

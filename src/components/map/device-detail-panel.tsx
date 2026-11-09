@@ -71,7 +71,9 @@ export function DeviceDetailPanel({
   const [isCopied, setIsCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showParentSelector, setShowParentSelector] = useState(false);
-  const [selectedParentId, setSelectedParentId] = useState<string>(device.parentId || "");
+  const [selectedParentId, setSelectedParentId] = useState<string>(
+    device.parentId || "",
+  );
 
   const isRouter = device.type === "router";
   const isOlt = device.type === "olt";
@@ -103,7 +105,8 @@ export function DeviceDetailPanel({
   // Pelanggan yang tersambung ke ODP ini (data nyata dari database PostgreSQL)
   const connectedCustomers = isOdp
     ? customers.filter(
-        (c) => c.odpName && c.odpName.toLowerCase() === device.name.toLowerCase(),
+        (c) =>
+          c.odpName && c.odpName.toLowerCase() === device.name.toLowerCase(),
       )
     : [];
 
@@ -111,7 +114,8 @@ export function DeviceDetailPanel({
   const offlineConnected = connectedCustomers.length - onlineConnected;
 
   const handleCopyCoordinates = () => {
-    if (!Number.isFinite(device.latitude) || !Number.isFinite(device.longitude)) return;
+    if (!Number.isFinite(device.latitude) || !Number.isFinite(device.longitude))
+      return;
     const text = `${device.latitude.toFixed(6)}, ${device.longitude.toFixed(6)}`;
     navigator.clipboard.writeText(text).then(() => {
       setIsCopied(true);
@@ -183,11 +187,16 @@ export function DeviceDetailPanel({
             </h3>
 
             {device.host ? (
-              <p className="font-mono text-xs text-muted-foreground truncate" data-testid="device-host">
+              <p
+                className="font-mono text-xs text-muted-foreground truncate"
+                data-testid="device-host"
+              >
                 Host: {device.host}
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground">Infrastruktur Distribusi Fisik</p>
+              <p className="text-[11px] text-muted-foreground">
+                Infrastruktur Distribusi Fisik
+              </p>
             )}
           </div>
 
@@ -214,14 +223,16 @@ export function DeviceDetailPanel({
               <span>Mode Pindah Lokasi Aktif</span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Geser pin di peta atau klik lokasi baru untuk menentukan koordinat baru perangkat.
+              Geser pin di peta atau klik lokasi baru untuk menentukan koordinat
+              baru perangkat.
             </p>
             {draftCoords && (
               <div
                 className="font-mono text-xs text-foreground bg-background/80 px-2 py-1 rounded border border-border/60"
                 data-testid="infra-draft-coords"
               >
-                📍 Koordinat Baru: {draftCoords.lat.toFixed(6)}, {draftCoords.lng.toFixed(6)}
+                📍 Koordinat Baru: {draftCoords.lat.toFixed(6)},{" "}
+                {draftCoords.lng.toFixed(6)}
               </div>
             )}
             <div className="flex items-center gap-2 pt-1">
@@ -312,8 +323,14 @@ export function DeviceDetailPanel({
                   Status Sesi
                 </span>
                 <span className="text-[11px] font-medium text-foreground block">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">{onlineConnected}</span> Online •{" "}
-                  <span className="text-rose-600 dark:text-rose-400 font-bold">{offlineConnected}</span> Offline
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                    {onlineConnected}
+                  </span>{" "}
+                  Online •{" "}
+                  <span className="text-rose-600 dark:text-rose-400 font-bold">
+                    {offlineConnected}
+                  </span>{" "}
+                  Offline
                 </span>
               </div>
             </>
@@ -327,7 +344,9 @@ export function DeviceDetailPanel({
                   Merek / Brand
                 </span>
                 <span className="font-semibold text-cyan-600 dark:text-cyan-400 block uppercase">
-                  {typeof device.details?.brand === "string" ? device.details.brand : "HSGQ GPON"}
+                  {typeof device.details?.brand === "string"
+                    ? device.details.brand
+                    : "HSGQ GPON"}
                 </span>
               </div>
 
@@ -352,7 +371,9 @@ export function DeviceDetailPanel({
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block capitalize">
                     {key}
                   </span>
-                  <span className="font-medium text-foreground truncate block">{String(val)}</span>
+                  <span className="font-medium text-foreground truncate block">
+                    {String(val)}
+                  </span>
                 </div>
               ))}
         </div>
@@ -366,7 +387,9 @@ export function DeviceDetailPanel({
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
                 <Users className="size-3 text-primary" />
-                <span>Pelanggan pada {device.name} ({connectedCustomers.length})</span>
+                <span>
+                  Pelanggan pada {device.name} ({connectedCustomers.length})
+                </span>
               </span>
             </div>
             <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
@@ -376,18 +399,25 @@ export function DeviceDetailPanel({
                   className="flex items-center justify-between gap-1 p-1 rounded bg-background/80 border border-border/40 text-[10px]"
                 >
                   <div className="min-w-0">
-                    <span className="font-semibold text-foreground truncate block">{cust.name}</span>
+                    <span className="font-semibold text-foreground truncate block">
+                      {cust.name}
+                    </span>
                     <span className="font-mono text-muted-foreground text-[9px] block">
                       {cust.pppoeUsername}
                     </span>
                   </div>
                   <div className="shrink-0 flex items-center gap-1">
                     <span
-                      className={cn("size-1.5 rounded-full", cust.isOnline ? "bg-emerald-500" : "bg-rose-500")}
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        cust.isOnline ? "bg-emerald-500" : "bg-rose-500",
+                      )}
                       title={cust.isOnline ? "Online" : "Offline"}
                     />
                     {cust.opticalPower !== null && (
-                      <span className="font-mono text-muted-foreground">{cust.opticalPower} dBm</span>
+                      <span className="font-mono text-muted-foreground">
+                        {cust.opticalPower} dBm
+                      </span>
                     )}
                   </div>
                 </div>
@@ -418,7 +448,10 @@ export function DeviceDetailPanel({
               type="button"
               variant="outline"
               size="sm"
-              className={cn("text-xs h-9 sm:h-8 gap-1.5 font-medium", onFocus ? "w-1/2" : "w-full")}
+              className={cn(
+                "text-xs h-9 sm:h-8 gap-1.5 font-medium",
+                onFocus ? "w-1/2" : "w-full",
+              )}
               data-testid="copy-device-coordinates-button"
               onClick={handleCopyCoordinates}
               title="Salin koordinat GPS perangkat ke clipboard"
@@ -426,7 +459,9 @@ export function DeviceDetailPanel({
               {isCopied ? (
                 <>
                   <Check className="size-3.5 text-emerald-500" />
-                  <span className="text-emerald-600 dark:text-emerald-400">Tersalin!</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Tersalin!
+                  </span>
                 </>
               ) : (
                 <>
@@ -506,7 +541,8 @@ export function DeviceDetailPanel({
                 <span>Hapus {device.name}?</span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Perangkat ini akan dihapus dari peta infrastruktur NOC. Tindakan ini tidak dapat dibatalkan.
+                Perangkat ini akan dihapus dari peta infrastruktur NOC. Tindakan
+                ini tidak dapat dibatalkan.
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Button
@@ -562,11 +598,17 @@ export function DeviceDetailPanel({
               >
                 <Network className="size-3 text-primary" />
                 {device.parentId ? "Ubah Parent" : "Set Parent Infra"}
-                {device.parentId && <span className="text-muted-foreground ml-1 text-[10px]">({device.parentId.slice(0, 8)}...)</span>}
+                {device.parentId && (
+                  <span className="text-muted-foreground ml-1 text-[10px]">
+                    ({device.parentId.slice(0, 8)}...)
+                  </span>
+                )}
               </Button>
             ) : (
               <div className="space-y-1.5">
-                <p className="text-[11px] text-muted-foreground">Pilih parent ({isOdp ? "ODC/OLT" : "OLT/Router"}):</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Pilih parent ({isOdp ? "ODC/OLT" : "OLT/Router"}):
+                </p>
                 <select
                   value={selectedParentId}
                   onChange={(e) => setSelectedParentId(e.target.value)}
@@ -574,19 +616,47 @@ export function DeviceDetailPanel({
                 >
                   <option value="">— Tidak ada parent —</option>
                   {infraList
-                    .filter((i) => i.id !== device.id && (isOdp ? ["odc", "olt", "router"] : ["olt", "router"]).includes(i.type))
+                    .filter(
+                      (i) =>
+                        i.id !== device.id &&
+                        (isOdp
+                          ? ["odc", "olt", "router"]
+                          : ["olt", "router"]
+                        ).includes(i.type),
+                    )
                     .map((i) => (
-                      <option key={i.id} value={i.id}>{i.name} ({i.type.toUpperCase()})</option>
+                      <option key={i.id} value={i.id}>
+                        {i.name} ({i.type.toUpperCase()})
+                      </option>
                     ))}
                 </select>
                 <div className="flex gap-1.5">
-                  <Button type="button" size="sm" variant="outline" onClick={() => setShowParentSelector(false)} className="h-6 text-[10px] flex-1" disabled={isSettingParent}>Batal</Button>
                   <Button
-                    type="button" size="sm" variant="default"
-                    onClick={async () => { await onSetParent(selectedParentId || null); setShowParentSelector(false); }}
-                    className="h-6 text-[10px] flex-1 gap-1" disabled={isSettingParent}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowParentSelector(false)}
+                    className="h-6 text-[10px] flex-1"
+                    disabled={isSettingParent}
                   >
-                    {isSettingParent ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                    Batal
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    onClick={async () => {
+                      await onSetParent(selectedParentId || null);
+                      setShowParentSelector(false);
+                    }}
+                    className="h-6 text-[10px] flex-1 gap-1"
+                    disabled={isSettingParent}
+                  >
+                    {isSettingParent ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Save className="size-3" />
+                    )}
                     Simpan
                   </Button>
                 </div>
@@ -612,7 +682,10 @@ export function DeviceDetailPanel({
                 className="h-9 sm:h-8 px-2.5 text-xs sm:text-[11px] gap-1.5 font-medium col-span-2 bg-background hover:bg-muted"
                 data-testid="shortcut-manage-router"
               >
-                <Link href="/app/router" title="Buka konfigurasi router MikroTik">
+                <Link
+                  href="/app/router"
+                  title="Buka konfigurasi router MikroTik"
+                >
                   <Router className="size-3.5 text-primary shrink-0" />
                   <span>Kelola Router MikroTik</span>
                 </Link>
@@ -625,7 +698,10 @@ export function DeviceDetailPanel({
                 className="h-9 sm:h-8 px-2.5 text-xs sm:text-[11px] gap-1.5 font-medium col-span-2 bg-background hover:bg-muted"
                 data-testid="shortcut-manage-olt"
               >
-                <Link href="/app/cpe" title="Buka manajemen OLT dan status optik PON">
+                <Link
+                  href="/app/cpe"
+                  title="Buka manajemen OLT dan status optik PON"
+                >
                   <Network className="size-3.5 text-cyan-500 shrink-0" />
                   <span>Kelola OLT &amp; Optik PON</span>
                 </Link>
@@ -644,7 +720,9 @@ export function DeviceDetailPanel({
                     title="Buka daftar pelanggan di ODP ini"
                   >
                     <Users className="size-3 text-primary shrink-0" />
-                    <span className="truncate">Pelanggan ({connectedCustomers.length})</span>
+                    <span className="truncate">
+                      Pelanggan ({connectedCustomers.length})
+                    </span>
                   </Link>
                 </Button>
 

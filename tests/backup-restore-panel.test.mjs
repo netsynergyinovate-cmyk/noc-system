@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { MOCK_BACKUP_SNAPSHOTS, formatBytes } = await import(
-  "../src/lib/dashboard/deploy-safety.ts"
-);
+const { MOCK_BACKUP_SNAPSHOTS, formatBytes } =
+  await import("../src/lib/dashboard/deploy-safety.ts");
 
 test("MOCK_BACKUP_SNAPSHOTS memuat snapshot dengan tipe dan checksum valid", () => {
   assert.ok(MOCK_BACKUP_SNAPSHOTS.length >= 3);

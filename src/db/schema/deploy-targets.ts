@@ -1,4 +1,11 @@
-import { check, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const deployModes = ["lan", "tailscale", "tunnel"] as const;

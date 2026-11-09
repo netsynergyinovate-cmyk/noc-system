@@ -1,5 +1,8 @@
 import { withApiSession } from "@/lib/api";
-import { listCpeDevices, type CpeStatusFilter } from "@/services/cpe-devices.service";
+import {
+  listCpeDevices,
+  type CpeStatusFilter,
+} from "@/services/cpe-devices.service";
 
 export const runtime = "nodejs";
 

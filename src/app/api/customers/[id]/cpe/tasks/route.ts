@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   return withApiPermission(request, { cpe: ["manage"] }, async () => {
     const { id } = await params;

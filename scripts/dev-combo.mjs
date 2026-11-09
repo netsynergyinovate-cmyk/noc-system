@@ -18,7 +18,9 @@ const heavyContainers = [
   "nocsystem-db-ui-1",
 ];
 
-console.log("\n1. Mematikan kontainer duplikat lokal (menghemat ~1.5 GB RAM)...");
+console.log(
+  "\n1. Mematikan kontainer duplikat lokal (menghemat ~1.5 GB RAM)...",
+);
 for (const c of heavyContainers) {
   try {
     spawnSync("docker", ["stop", c], { stdio: "ignore" });
@@ -50,7 +52,8 @@ if (fs.existsSync(envLocalPath)) {
     LOGTO_ENDPOINT: "http://192.168.0.25:3301",
     LOGTO_INTERNAL_ENDPOINT: "http://192.168.0.25:3301",
     LOGTO_ADMIN_ENDPOINT: "http://localhost:3002", // SSH tunnel: ssh -L 3002:127.0.0.1:3002 netsi@192.168.0.25
-    DATABASE_URL: "postgresql://starter:starter_password@127.0.0.1:5432/starter",
+    DATABASE_URL:
+      "postgresql://starter:starter_password@127.0.0.1:5432/starter",
   };
 
   for (const [k, v] of Object.entries(updates)) {
@@ -66,7 +69,9 @@ if (fs.existsSync(envLocalPath)) {
 }
 
 // 4. Jalankan Next.js Dev Server lokal
-console.log("\n4. Menjalankan Next.js Dev Server di http://localhost:3001...\n");
+console.log(
+  "\n4. Menjalankan Next.js Dev Server di http://localhost:3001...\n",
+);
 const nextDev = spawn("npx", ["next", "dev", "-p", "3001"], {
   cwd: rootDir,
   stdio: "inherit",

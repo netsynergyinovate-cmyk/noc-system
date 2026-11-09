@@ -57,13 +57,16 @@ function formatLastSeen(d: any, up: boolean): string {
   const t = d?.lastSeenAt;
   if (typeof t === "string" || typeof t === "number") {
     const date = new Date(t);
-    if (!Number.isNaN(date.getTime())) return `Terakhir terlihat ${date.toISOString()}`;
+    if (!Number.isNaN(date.getTime()))
+      return `Terakhir terlihat ${date.toISOString()}`;
   }
   return "Tidak terjangkau";
 }
 
 export function formatRate(mbps: number): string {
-  return mbps >= 1000 ? `${(mbps / 1000).toFixed(1)} Gbps` : `${Math.round(mbps)} Mbps`;
+  return mbps >= 1000
+    ? `${(mbps / 1000).toFixed(1)} Gbps`
+    : `${Math.round(mbps)} Mbps`;
 }
 
 function trafficOf(d: any): string | undefined {
@@ -101,7 +104,9 @@ export function transformRoutersToStatusCards(
   });
 }
 
-export function transformOltsToStatusCards(olts: any[]): DeviceHardwareStatus[] {
+export function transformOltsToStatusCards(
+  olts: any[],
+): DeviceHardwareStatus[] {
   return (olts ?? []).map((o) => {
     const up = isUp(o);
     const temp = num(o.temperature);

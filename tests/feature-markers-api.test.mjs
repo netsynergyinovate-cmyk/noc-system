@@ -23,22 +23,15 @@ const {
   FEATURE_MARKER_STATUSES,
 } = await import("../src/validators/feature-markers.ts");
 
-const {
-  isDeveloper,
-  isSuperAdmin,
-  isAdmin,
-  isUser,
-} = await import("../src/lib/roles.ts");
+const { isDeveloper, isSuperAdmin, isAdmin, isUser } =
+  await import("../src/lib/roles.ts");
 
-const { evaluateDeployAccess } = await import(
-  "../src/lib/deploy/role-guard.ts"
-);
+const { evaluateDeployAccess } =
+  await import("../src/lib/deploy/role-guard.ts");
 
 const { capabilities } = await import("../src/lib/access.ts");
-const { generateTechnicalReport } = await import(
-  "../src/lib/deploy/feature-diagnostic-engine.ts"
-);
-
+const { generateTechnicalReport } =
+  await import("../src/lib/deploy/feature-diagnostic-engine.ts");
 
 test("Validasi createFeatureMarkerSchema menerima payload valid dan memberi bawaan", () => {
   const parsed = createFeatureMarkerSchema.parse({
@@ -96,7 +89,10 @@ test("Validasi updateFeatureMarkerSchema menerima status atau developerNotes", (
   const withNotes = updateFeatureMarkerSchema.parse({
     developerNotes: "Akan diperbaiki di sprint berikutnya.",
   });
-  assert.equal(withNotes.developerNotes, "Akan diperbaiki di sprint berikutnya.");
+  assert.equal(
+    withNotes.developerNotes,
+    "Akan diperbaiki di sprint berikutnya.",
+  );
 
   // Harus melempar jika keduanya tidak disediakan
   assert.throws(() => {
@@ -153,7 +149,10 @@ test("Pemeriksaan Peran (isDeveloper, isSuperAdmin, isAdmin, isUser) akurat", ()
 });
 
 test("Kemampuan manageDeploy didefinisikan dengan izin deploy:manage di access.ts", () => {
-  assert.ok(capabilities.manageDeploy, "manageDeploy capability harus terdaftar");
+  assert.ok(
+    capabilities.manageDeploy,
+    "manageDeploy capability harus terdaftar",
+  );
   assert.deepEqual(capabilities.manageDeploy, { deploy: ["manage"] });
 });
 
@@ -184,9 +183,14 @@ test("generateTechnicalReport memetakan file, endpoint API, fungsi runtime dan c
     elementSelector: "button#reboot-cpe.bg-destructive",
   });
 
-  assert.equal(report.sourceMap.pageFile, "src/app/(protected)/app/pelanggan/page.tsx");
+  assert.equal(
+    report.sourceMap.pageFile,
+    "src/app/(protected)/app/pelanggan/page.tsx",
+  );
   assert.ok(
-    report.sourceMap.componentFiles.some((f) => f.includes("customer-cpe-dialog.tsx")),
+    report.sourceMap.componentFiles.some((f) =>
+      f.includes("customer-cpe-dialog.tsx"),
+    ),
     "Harus memetakan komponen customer-cpe-dialog.tsx",
   );
   assert.ok(
@@ -199,8 +203,14 @@ test("generateTechnicalReport memetakan file, endpoint API, fungsi runtime dan c
   );
   assert.ok(report.context.isInsideModal, "Harus mengenali konteks modal");
   assert.equal(report.context.modalName, "Pengaturan Perangkat Pelanggan");
-  assert.ok(report.remediationChecklist.length >= 4, "Harus menyediakan 4 langkah checklist investigasi");
-  assert.ok(report.troubleshootingGuidance.length >= 1, "Harus menyediakan panduan troubleshooting");
+  assert.ok(
+    report.remediationChecklist.length >= 4,
+    "Harus menyediakan 4 langkah checklist investigasi",
+  );
+  assert.ok(
+    report.troubleshootingGuidance.length >= 1,
+    "Harus menyediakan panduan troubleshooting",
+  );
 });
 
 test("Berkas API dan Komponen Telemetri Tanda Fitur Terdefinisi", () => {

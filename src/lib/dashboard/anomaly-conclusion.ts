@@ -42,7 +42,10 @@ export function getRecommendation(layer: string | null | undefined): string {
   return "Tinjau temuan diagnosa dan konfigurasi jaringan.";
 }
 
-export function clipDetail(text: string | null | undefined, maxLen = 160): string {
+export function clipDetail(
+  text: string | null | undefined,
+  maxLen = 160,
+): string {
   if (!text) return "—";
   const trimmed = text.trim();
   if (trimmed.length <= maxLen) return trimmed;
@@ -278,8 +281,14 @@ export function aggregateConclusions(
       finishedAt: r.finishedAt ?? null,
       age: formatAge(r.finishedAt, now),
       recommendation: getRecommendation(layer),
-      sources: (r.verdictLayer ? layerInfo(r.verdictLayer) : { explain: "Belum ada informasi sumber.", sources: [] }).sources,
-      explain: (r.verdictLayer ? layerInfo(r.verdictLayer) : { explain: "Belum ada informasi sumber.", sources: [] }).explain,
+      sources: (r.verdictLayer
+        ? layerInfo(r.verdictLayer)
+        : { explain: "Belum ada informasi sumber.", sources: [] }
+      ).sources,
+      explain: (r.verdictLayer
+        ? layerInfo(r.verdictLayer)
+        : { explain: "Belum ada informasi sumber.", sources: [] }
+      ).explain,
     };
   });
 

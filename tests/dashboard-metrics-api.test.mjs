@@ -13,14 +13,20 @@ const so = require.resolve("server-only");
 require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
-const { buildDashboardKpiMetrics } = await import(
-  "../src/services/dashboard-metrics.service.ts"
-);
+const { buildDashboardKpiMetrics } =
+  await import("../src/services/dashboard-metrics.service.ts");
 const { GET } = await import("../src/app/api/dashboard/metrics/route.ts");
 const { auth } = await import("../src/lib/auth.ts");
 
 const agg = {
-  customers: { total: 8, online: 6, weak: 2, critical: 1, paid: 5, isolated: 3 },
+  customers: {
+    total: 8,
+    online: 6,
+    weak: 2,
+    critical: 1,
+    paid: 5,
+    isolated: 3,
+  },
   routers: { total: 3, active: 2 },
   alerts: { active: 3, critical: 1, warning: 2 },
   traffic: [
@@ -55,7 +61,14 @@ test("agregasi: pelanggan, billing, router, alert", () => {
 
 test("agregasi: data kosong -> semua 0, tanpa NaN", () => {
   const m = buildDashboardKpiMetrics({
-    customers: { total: 0, online: 0, weak: 0, critical: 0, paid: 0, isolated: 0 },
+    customers: {
+      total: 0,
+      online: 0,
+      weak: 0,
+      critical: 0,
+      paid: 0,
+      isolated: 0,
+    },
     routers: { total: 0, active: 0 },
     alerts: { active: 0, critical: 0, warning: 0 },
     traffic: [],
@@ -68,7 +81,9 @@ test("agregasi: data kosong -> semua 0, tanpa NaN", () => {
 });
 
 test("GET tanpa sesi -> 401", async () => {
-  const res = await GET(new Request("http://localhost:3101/api/dashboard/metrics"));
+  const res = await GET(
+    new Request("http://localhost:3101/api/dashboard/metrics"),
+  );
   assert.equal(res.status, 401);
   assert.equal((await res.json()).error.code, "UNAUTHORIZED");
 });
@@ -80,7 +95,9 @@ test("GET dengan sesi valid -> 200 { data }", async () => {
     user: { id: "u1", role: "user" },
   });
   try {
-    const res = await GET(new Request("http://localhost:3101/api/dashboard/metrics"));
+    const res = await GET(
+      new Request("http://localhost:3101/api/dashboard/metrics"),
+    );
     assert.equal(res.status, 200);
     const { data } = await res.json();
     for (const k of [

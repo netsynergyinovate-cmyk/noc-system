@@ -26,7 +26,9 @@ export const dataSyncRuns = pgTable(
     actor: text("actor").default("system"),
     summaryMessage: text("summary_message"),
     errorMessage: text("error_message"),
-    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     metadata: text("metadata"),
   },
@@ -52,7 +54,9 @@ export const seedTracking = pgTable(
     checksum: text("checksum").notNull(),
     isIdempotent: boolean("is_idempotent").default(true).notNull(),
     status: text("status").default("seeded").notNull(), // seeded, verified, failed
-    seededAt: timestamp("seeded_at", { withTimezone: true }).defaultNow().notNull(),
+    seededAt: timestamp("seeded_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
     details: text("details"),
   },

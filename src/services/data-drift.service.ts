@@ -2,9 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { getRawPool } from "@/db";
-import {
-  getTransferConnectionConfig,
-} from "@/lib/transfer-config";
+import { getTransferConnectionConfig } from "@/lib/transfer-config";
 import {
   TRANSFERRABLE_TABLES,
   type TransferrableTable,
@@ -18,7 +16,13 @@ export interface TableDriftItem {
   sourceChecksum: string;
   targetChecksum: string | null;
   checksumMatched: boolean;
-  status: "in_sync" | "target_missing_records" | "source_missing_records" | "content_mismatch" | "target_empty" | "unverified";
+  status:
+    | "in_sync"
+    | "target_missing_records"
+    | "source_missing_records"
+    | "content_mismatch"
+    | "target_empty"
+    | "unverified";
 }
 
 export interface EnvironmentDriftReport {
@@ -26,12 +30,22 @@ export interface EnvironmentDriftReport {
   targetMasked: string;
   sourceReachable: boolean;
   targetReachable: boolean;
-  driftStatus: "in_sync" | "drift_detected" | "target_empty" | "target_unreachable" | "source_unreachable";
+  driftStatus:
+    | "in_sync"
+    | "drift_detected"
+    | "target_empty"
+    | "target_unreachable"
+    | "source_unreachable";
   totalSourceRecords: number;
   totalTargetRecords: number;
   inSyncTablesCount: number;
   driftedTablesCount: number;
-  recommendation: "no_action" | "needs_transfer" | "needs_seed" | "configure_target" | "check_source";
+  recommendation:
+    | "no_action"
+    | "needs_transfer"
+    | "needs_seed"
+    | "configure_target"
+    | "check_source";
   recommendationText: string;
   tables: TableDriftItem[];
   checkedAt: string;
@@ -64,7 +78,10 @@ export async function detectEnvironmentDataDrift(
 
   const customSource = !!options.sourceDatabaseUrl;
   const sourcePool = customSource
-    ? new Pool({ connectionString: options.sourceDatabaseUrl, connectionTimeoutMillis: 2000 })
+    ? new Pool({
+        connectionString: options.sourceDatabaseUrl,
+        connectionTimeoutMillis: 2000,
+      })
     : getRawPool();
   let sourceClient: PoolClient | null = null;
   let sourceReachable = false;
@@ -89,7 +106,8 @@ export async function detectEnvironmentDataDrift(
       inSyncTablesCount: 0,
       driftedTablesCount: 0,
       recommendation: "check_source",
-      recommendationText: "Basis data lokal tidak dapat dijangkau. Periksa koneksi DATABASE_URL.",
+      recommendationText:
+        "Basis data lokal tidak dapat dijangkau. Periksa koneksi DATABASE_URL.",
       tables: tables.map((t) => ({
         table: t,
         sourceCount: 0,
@@ -191,7 +209,9 @@ export async function detectEnvironmentDataDrift(
       });
     }
 
-    const inSyncCount = tableReports.filter((t) => t.status === "in_sync").length;
+    const inSyncCount = tableReports.filter(
+      (t) => t.status === "in_sync",
+    ).length;
     const driftedCount = tableReports.filter(
       (t) => t.status !== "in_sync" && t.status !== "unverified",
     ).length;

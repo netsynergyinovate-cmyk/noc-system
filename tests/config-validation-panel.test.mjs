@@ -2,9 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const { evaluateConfigValidation, MOCK_CONFIG_SCENARIOS } = await import(
-  "../src/lib/dashboard/config-validation.ts"
-);
+const { evaluateConfigValidation, MOCK_CONFIG_SCENARIOS } =
+  await import("../src/lib/dashboard/config-validation.ts");
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const scenario = (id) => MOCK_CONFIG_SCENARIOS.find((s) => s.id === id);
 const run = (id) => {
@@ -41,7 +40,10 @@ test("perangkat opsional kosong = warning, tetap ok", () => {
 });
 
 test("secret pendek = invalid fatal; spasi saja = kosong", () => {
-  const r = evaluateConfigValidation({ BETTER_AUTH_SECRET: "pendek", DATABASE_URL: "   " });
+  const r = evaluateConfigValidation({
+    BETTER_AUTH_SECRET: "pendek",
+    DATABASE_URL: "   ",
+  });
   assert.equal(find(r, "BETTER_AUTH_SECRET").status, "invalid");
   assert.equal(find(r, "DATABASE_URL").status, "missing");
 });
@@ -53,7 +55,10 @@ test("go-live: mode nyata + env belum lengkap = fatal", () => {
   assert.match(mode.message, /Penolakan saat start/);
   assert.equal(r.ok, false);
   // mode demo dengan env sama tidak menolak
-  const demo = evaluateConfigValidation(scenario("go_live_violation").env, "dummy");
+  const demo = evaluateConfigValidation(
+    scenario("go_live_violation").env,
+    "dummy",
+  );
   assert.equal(find(demo, "DASHBOARD_DATA").status, "valid");
 });
 
@@ -74,7 +79,13 @@ test("hasil tidak membocorkan nilai env", () => {
 test("MOCK_CONFIG_SCENARIOS: ada yang valid dan yang galat", () => {
   assert.deepEqual(
     MOCK_CONFIG_SCENARIOS.map((s) => s.id),
-    ["default", "missing_router", "missing_database", "go_live_violation", "all_valid"],
+    [
+      "default",
+      "missing_router",
+      "missing_database",
+      "go_live_violation",
+      "all_valid",
+    ],
   );
   assert.ok(MOCK_CONFIG_SCENARIOS.some((s) => run(s.id).ok));
   assert.ok(MOCK_CONFIG_SCENARIOS.some((s) => !run(s.id).ok));

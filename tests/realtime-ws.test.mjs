@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { authPayload, handleRealtimeMessage, connectRealtimeWs } = await import(
-  "../src/lib/dashboard/realtime-ws.ts"
-);
+const { authPayload, handleRealtimeMessage, connectRealtimeWs } =
+  await import("../src/lib/dashboard/realtime-ws.ts");
 
 const collect = () => {
   const calls = { snap: [], delta: [] };
@@ -37,7 +36,11 @@ test("parsing snapshot dan delta", () => {
   );
   assert.deepEqual(calls.delta[0], [{ traffic, statusChanges: [] }, 11]);
   handleRealtimeMessage(
-    JSON.stringify({ type: "status", time: 12, statusChanges: [{ customerId: "c", isOnline: false }] }),
+    JSON.stringify({
+      type: "status",
+      time: 12,
+      statusChanges: [{ customerId: "c", isOnline: false }],
+    }),
     opts,
   );
   assert.deepEqual(calls.delta[1], [
@@ -86,7 +89,12 @@ test("traffic null pada delta tidak melempar", () => {
   const { calls, opts } = collect();
   assert.doesNotThrow(() =>
     handleRealtimeMessage(
-      JSON.stringify({ type: "delta", time: 5, traffic: null, statusChanges: [{ customerId: "x", isOnline: true }] }),
+      JSON.stringify({
+        type: "delta",
+        time: 5,
+        traffic: null,
+        statusChanges: [{ customerId: "x", isOnline: true }],
+      }),
       opts,
     ),
   );
@@ -151,8 +159,14 @@ test("telemetry tiba tanpa `time` dan diteruskan apa adanya; tanpa data diabaika
   const seen = [];
   const opts = { ...collect().opts, onTelemetry: (t) => seen.push(t) };
   const data = { routers: [], alerts: { total: 0, items: [] } };
-  assert.equal(handleRealtimeMessage(JSON.stringify({ type: "telemetry", data }), opts), true);
+  assert.equal(
+    handleRealtimeMessage(JSON.stringify({ type: "telemetry", data }), opts),
+    true,
+  );
   assert.deepEqual(seen, [data]);
-  assert.equal(handleRealtimeMessage(JSON.stringify({ type: "telemetry" }), opts), false);
+  assert.equal(
+    handleRealtimeMessage(JSON.stringify({ type: "telemetry" }), opts),
+    false,
+  );
   assert.equal(seen.length, 1);
 });

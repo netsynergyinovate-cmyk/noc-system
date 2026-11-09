@@ -59,7 +59,15 @@ export const diagnosticRuns = pgTable(
     complaintAt: timestamp("complaint_at", { withTimezone: true }),
     // Kejadian log & alert di sekitar keluhan, potret saat diagnosa berjalan.
     timeline: jsonb("timeline")
-      .$type<{ at: string; kind: string; label: string; detail: string; source: string }[]>()
+      .$type<
+        {
+          at: string;
+          kind: string;
+          label: string;
+          detail: string;
+          source: string;
+        }[]
+      >()
       .default([])
       .notNull(),
     verdictLayer: text("verdict_layer"),

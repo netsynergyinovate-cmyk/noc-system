@@ -46,7 +46,10 @@ test("timeout: host akhiran .0", () => {
   assert.equal(r.status, "timeout");
   assert.equal(r.code, "TIMEOUT");
   assert.equal(r.latencyMs, 8000);
-  assert.equal(r.message, "Timeout 8000ms: host 10.10.0.0 tidak merespons. Periksa rute jaringan.");
+  assert.equal(
+    r.message,
+    "Timeout 8000ms: host 10.10.0.0 tidak merespons. Periksa rute jaringan.",
+  );
 });
 
 test("auth gagal: host .255 dan username bad-user", () => {
@@ -58,7 +61,10 @@ test("auth gagal: host .255 dan username bad-user", () => {
     assert.equal(r.statusCode, 401);
     assert.equal(r.code, "AUTH_FAILED");
   }
-  assert.equal(b.message, "Autentikasi gagal 401: periksa username/password untuk bad-user.");
+  assert.equal(
+    b.message,
+    "Autentikasi gagal 401: periksa username/password untuk bad-user.",
+  );
 });
 
 test("connection refused: port 9999 dan port 0", () => {
@@ -67,7 +73,10 @@ test("connection refused: port 9999 dan port 0", () => {
     assert.equal(r.ok, false);
     assert.equal(r.status, "error");
     assert.equal(r.code, "CONNECTION_REFUSED");
-    assert.equal(r.message, `Koneksi ditolak (Connection Refused) pada port ${port}.`);
+    assert.equal(
+      r.message,
+      `Koneksi ditolak (Connection Refused) pada port ${port}.`,
+    );
   }
 });
 
@@ -79,12 +88,18 @@ test("port tak valid lain: INVALID_PORT", () => {
 
 test("forceLocal tidak memanggil fetch, bahkan pada mode real", async () => {
   for (const mode of ["simulator", "real"]) {
-    const r = await runDeviceTest({ ...byType("mikrotik"), mode }, { forceLocal: true, fetchImpl: noFetch });
+    const r = await runDeviceTest(
+      { ...byType("mikrotik"), mode },
+      { forceLocal: true, fetchImpl: noFetch },
+    );
     assert.equal(r.ok, true);
     assert.equal(r.code, "OK");
     assert.match(r.message, /simulasi lokal/);
   }
-  const t = await runDeviceTest({ ...byType("mikrotik"), host: "10.10.0.0" }, { forceLocal: true, fetchImpl: noFetch });
+  const t = await runDeviceTest(
+    { ...byType("mikrotik"), host: "10.10.0.0" },
+    { forceLocal: true, fetchImpl: noFetch },
+  );
   assert.equal(t.status, "timeout");
 });
 
@@ -108,6 +123,12 @@ test("label & pemetaan outcome timeout", () => {
   assert.equal(next.latencyMs, 8000);
   assert.equal(next.lastTestedAt, 7);
   assert.match(next.errorMessage, /Timeout 8000ms/);
-  assert.equal(applyTestOutcome(d, { ok: false, message: "x", latencyMs: null }, 1).status, "error");
-  assert.equal(applyTestOutcome(d, { ok: true, message: "x", latencyMs: 1 }, 1).status, "connected");
+  assert.equal(
+    applyTestOutcome(d, { ok: false, message: "x", latencyMs: null }, 1).status,
+    "error",
+  );
+  assert.equal(
+    applyTestOutcome(d, { ok: true, message: "x", latencyMs: 1 }, 1).status,
+    "connected",
+  );
 });

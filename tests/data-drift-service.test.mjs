@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { computeTableChecksum, detectEnvironmentDataDrift } = await import(
-  "../src/services/data-drift.service.ts"
-);
+const { computeTableChecksum, detectEnvironmentDataDrift } =
+  await import("../src/services/data-drift.service.ts");
 
 test("computeTableChecksum menghasilkan hash sha256 konsisten", () => {
   const sum1 = computeTableChecksum([{ id: 1, name: "Router A" }]);

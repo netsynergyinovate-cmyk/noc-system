@@ -41,15 +41,21 @@ export function CustomerCoordinatePickerModal({
   prefilledCoord,
 }: CustomerCoordinatePickerModalProps) {
   const [search, setSearch] = useState("");
-  const [filterMode, setFilterMode] = useState<"unmapped" | "all" | "mapped">("unmapped");
+  const [filterMode, setFilterMode] = useState<"unmapped" | "all" | "mapped">(
+    "unmapped",
+  );
 
   const unmappedCount = useMemo(
-    () => customers.filter((c) => c.latitude === null || c.longitude === null).length,
+    () =>
+      customers.filter((c) => c.latitude === null || c.longitude === null)
+        .length,
     [customers],
   );
 
   const mappedCount = useMemo(
-    () => customers.filter((c) => c.latitude !== null && c.longitude !== null).length,
+    () =>
+      customers.filter((c) => c.latitude !== null && c.longitude !== null)
+        .length,
     [customers],
   );
 
@@ -96,7 +102,8 @@ export function CustomerCoordinatePickerModal({
                 Tentukan Titik Koordinat Pelanggan
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Pilih pelanggan untuk menentukan atau mengubah posisi titik GPS di peta dan menyimpan langsung ke database PostgreSQL.
+                Pilih pelanggan untuk menentukan atau mengubah posisi titik GPS
+                di peta dan menyimpan langsung ke database PostgreSQL.
               </DialogDescription>
             </div>
           </div>
@@ -109,7 +116,8 @@ export function CustomerCoordinatePickerModal({
                 <span>
                   Koordinat Terpilih:{" "}
                   <code className="font-mono text-primary font-semibold">
-                    {prefilledCoord.lat.toFixed(6)}, {prefilledCoord.lng.toFixed(6)}
+                    {prefilledCoord.lat.toFixed(6)},{" "}
+                    {prefilledCoord.lng.toFixed(6)}
                   </code>
                 </span>
               </span>
@@ -154,7 +162,10 @@ export function CustomerCoordinatePickerModal({
             >
               <MapPinOff className="size-3" />
               <span>Belum Ada GPS</span>
-              <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px] h-4">
+              <Badge
+                variant="secondary"
+                className="ml-1 px-1 py-0 text-[10px] h-4"
+              >
                 {unmappedCount}
               </Badge>
             </Button>
@@ -169,7 +180,10 @@ export function CustomerCoordinatePickerModal({
             >
               <User className="size-3" />
               <span>Semua</span>
-              <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px] h-4">
+              <Badge
+                variant="secondary"
+                className="ml-1 px-1 py-0 text-[10px] h-4"
+              >
                 {customers.length}
               </Badge>
             </Button>
@@ -184,7 +198,10 @@ export function CustomerCoordinatePickerModal({
             >
               <CheckCircle2 className="size-3" />
               <span>Sudah Ada Titik</span>
-              <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px] h-4">
+              <Badge
+                variant="secondary"
+                className="ml-1 px-1 py-0 text-[10px] h-4"
+              >
                 {mappedCount}
               </Badge>
             </Button>
@@ -269,7 +286,9 @@ export function CustomerCoordinatePickerModal({
                     </div>
 
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono flex-wrap">
-                      <span className="truncate">User: {cust.pppoeUsername}</span>
+                      <span className="truncate">
+                        User: {cust.pppoeUsername}
+                      </span>
                       {cust.odpName && (
                         <span className="truncate flex items-center gap-1 font-sans">
                           <Radio className="size-3 text-cyan-500" />
@@ -282,7 +301,8 @@ export function CustomerCoordinatePickerModal({
                       {hasGPS ? (
                         <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-mono text-[10px]">
                           <CheckCircle2 className="size-3" />
-                          {cust.latitude?.toFixed(4)}, {cust.longitude?.toFixed(4)}
+                          {cust.latitude?.toFixed(4)},{" "}
+                          {cust.longitude?.toFixed(4)}
                         </span>
                       ) : (
                         <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 text-[11px] font-medium">
@@ -296,7 +316,13 @@ export function CustomerCoordinatePickerModal({
                   <Button
                     type="button"
                     size="sm"
-                    variant={prefilledCoord ? "default" : hasGPS ? "secondary" : "default"}
+                    variant={
+                      prefilledCoord
+                        ? "default"
+                        : hasGPS
+                          ? "secondary"
+                          : "default"
+                    }
                     onClick={() => handleSelect(cust)}
                     className="h-8 text-xs shrink-0 font-medium gap-1.5 px-3"
                     data-testid={`select-customer-plot-${cust.id}`}
@@ -319,4 +345,3 @@ export function CustomerCoordinatePickerModal({
     </Dialog>
   );
 }
-

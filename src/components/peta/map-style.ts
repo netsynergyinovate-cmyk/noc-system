@@ -1,4 +1,11 @@
-import { House, Network, Server, Split, UtilityPole, type LucideIcon } from "lucide-react";
+import {
+  House,
+  Network,
+  Server,
+  Split,
+  UtilityPole,
+  type LucideIcon,
+} from "lucide-react";
 import type { MapDevice } from "@/services/map/types";
 
 // Isi SVG (viewBox 24, garis) ikon lucide yang sama dengan komponen di bawah, untuk penanda Leaflet (HTML string)
@@ -61,7 +68,11 @@ export const CONNECTION_STYLE = {
   terhubung: { color: "#22c55e", label: "Terhubung", flow: "map-flow" },
   isolir: { color: "#eab308", label: "Isolir", flow: "map-flow map-flow-slow" },
   loss: { color: "#ef4444", label: "Loss / Terputus", flow: "map-flow-off" },
-  unknown: { color: "#94a3b8", label: "Status belum tersedia", flow: "map-flow-off" },
+  unknown: {
+    color: "#94a3b8",
+    label: "Status belum tersedia",
+    flow: "map-flow-off",
+  },
 } as const;
 
 export function connectionStyle(status: string | null | undefined) {
@@ -100,7 +111,12 @@ export const CAPACITY_TIERS = [
   { maxCore: 12, color: "#3b82f6", weight: 4, label: "8 – 12 Core" },
   { maxCore: 24, color: "#6366f1", weight: 5, label: "24 Core (Distribusi)" },
   { maxCore: 48, color: "#ea580c", weight: 6, label: "48 Core (Feeder)" },
-  { maxCore: Infinity, color: "#78350f", weight: 7, label: "96+ Core (Backbone)" },
+  {
+    maxCore: Infinity,
+    color: "#78350f",
+    weight: 7,
+    label: "96+ Core (Backbone)",
+  },
 ] as const;
 
 export function capacityStyle(fiberCapacity: number) {

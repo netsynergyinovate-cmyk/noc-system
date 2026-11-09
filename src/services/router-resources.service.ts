@@ -26,7 +26,10 @@ const pack = (items: MockRouterDetail[]): RouterResourcesResult => ({
 const clampPct = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
 
 // Cache pembacaan byte antarmuka untuk kalkulasi laju real-time lintas pemanggilan HTTP
-const ifaceCache = new Map<string, { rxByte: number; txByte: number; ts: number }>();
+const ifaceCache = new Map<
+  string,
+  { rxByte: number; txByte: number; ts: number }
+>();
 
 // Hanya kolom non-rahasia + passwordEnc (dipakai di server untuk login ke router,
 // tidak pernah masuk ke item hasil).
@@ -75,10 +78,16 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       });
       const t0 = performance.now();
       const resource = await client.getResource();
-      const latencyMs = Math.max(0.8, Math.round((performance.now() - t0) * 10) / 10);
+      const latencyMs = Math.max(
+        0.8,
+        Math.round((performance.now() - t0) * 10) / 10,
+      );
 
       const [queues, temperature, ifaces] = await Promise.all([
-        client.getQueues().then((q) => q.length, () => 0),
+        client.getQueues().then(
+          (q) => q.length,
+          () => 0,
+        ),
         client.getTemperature().catch(() => 0),
         (async () => {
           try {
@@ -88,7 +97,11 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
             if (!hasPrior && list.length > 0) {
               // Simpan sampel awal lalu tunggu sejenak untuk delta pertama (400ms)
               for (const it of list) {
-                ifaceCache.set(`${r.id}:${it.name}`, { rxByte: it.rxByte, txByte: it.txByte, ts: tNow });
+                ifaceCache.set(`${r.id}:${it.name}`, {
+                  rxByte: it.rxByte,
+                  txByte: it.txByte,
+                  ts: tNow,
+                });
               }
               await new Promise((res) => setTimeout(res, 400));
               const secondList = await client.getInterfaces().catch(() => null);
@@ -108,13 +121,29 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
                 if (prev && tNow > prev.ts) {
                   const dtSec = (tNow - prev.ts) / 1000;
                   if (dtSec >= 0.35 && dtSec <= 30) {
-                    const dRx = it.rxByte >= prev.rxByte ? it.rxByte - prev.rxByte : it.rxByte;
-                    const dTx = it.txByte >= prev.txByte ? it.txByte - prev.txByte : it.txByte;
-                    rxMbps = Math.max(0, Math.round(((dRx * 8) / (dtSec * 1_000_000)) * 10) / 10);
-                    txMbps = Math.max(0, Math.round(((dTx * 8) / (dtSec * 1_000_000)) * 10) / 10);
+                    const dRx =
+                      it.rxByte >= prev.rxByte
+                        ? it.rxByte - prev.rxByte
+                        : it.rxByte;
+                    const dTx =
+                      it.txByte >= prev.txByte
+                        ? it.txByte - prev.txByte
+                        : it.txByte;
+                    rxMbps = Math.max(
+                      0,
+                      Math.round(((dRx * 8) / (dtSec * 1_000_000)) * 10) / 10,
+                    );
+                    txMbps = Math.max(
+                      0,
+                      Math.round(((dTx * 8) / (dtSec * 1_000_000)) * 10) / 10,
+                    );
                   }
                 }
-                ifaceCache.set(cacheKey, { rxByte: it.rxByte, txByte: it.txByte, ts: tNow });
+                ifaceCache.set(cacheKey, {
+                  rxByte: it.rxByte,
+                  txByte: it.txByte,
+                  ts: tNow,
+                });
                 return {
                   id: it.id,
                   name: it.name,
@@ -135,7 +164,9 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
 
       // Cari uplink interface (ether2-lan0 atau dengan komentar UPLINK)
       const uplinkIface = ifaces.find(
-        (i) => i.comment?.toUpperCase().includes("UPLINK") || i.name === "ether2-lan0",
+        (i) =>
+          i.comment?.toUpperCase().includes("UPLINK") ||
+          i.name === "ether2-lan0",
       );
 
       let currentDl = uplinkIface?.rxMbps;
@@ -212,7 +243,10 @@ export async function getRouterResourcesSummary(): Promise<RouterResourcesResult
       boardModel: m.boardName,
       rosVersion: m.version,
       cpuLoad: clampPct(m.cpuLoad),
-      memoryUsage: m.totalMemory > 0 ? clampPct(((m.totalMemory - m.freeMemory) / m.totalMemory) * 100) : 0,
+      memoryUsage:
+        m.totalMemory > 0
+          ? clampPct(((m.totalMemory - m.freeMemory) / m.totalMemory) * 100)
+          : 0,
       uptime: formatRouterOsUptime(m.uptime),
       active: true,
     };

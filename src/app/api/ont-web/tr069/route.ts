@@ -44,7 +44,8 @@ export function POST(request: Request) {
           {
             error: {
               code: "BACKEND_UNAVAILABLE",
-              message: "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong).",
+              message:
+                "Backend belum dikonfigurasi (REALTIME_TOKEN_SECRET kosong).",
             },
           },
           { status: 503 },
@@ -61,14 +62,22 @@ export function POST(request: Request) {
       try {
         res = await fetch(`${env.BACKEND_INTERNAL_URL}/api/v1/ont-web/tr069`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(input),
           cache: "no-store",
           signal: AbortSignal.timeout(TIMEOUT_MS),
         });
       } catch {
         return Response.json(
-          { error: { code: "BACKEND_UNREACHABLE", message: "Backend tidak dapat dihubungi." } },
+          {
+            error: {
+              code: "BACKEND_UNREACHABLE",
+              message: "Backend tidak dapat dihubungi.",
+            },
+          },
           { status: 502 },
         );
       }
@@ -89,7 +98,9 @@ export function POST(request: Request) {
       // diteruskan; selain itu pesan umum.
       const passThrough = new Set([400, 409, 422, 423, 502, 503, 504]);
       const message =
-        passThrough.has(res.status) && typeof body?.message === "string" && body.message
+        passThrough.has(res.status) &&
+        typeof body?.message === "string" &&
+        body.message
           ? body.message
           : "Gagal memasang TR-069 di modem.";
       return Response.json(

@@ -24,20 +24,23 @@ export const createDeviceRelationSchema = z
       .min(1, "ID perangkat anak tidak boleh kosong."),
     relationType: z
       .enum(deviceRelationTypes, {
-        error: "Tipe relasi harus salah satu dari: hierarchy, feeder, backup, distribution.",
+        error:
+          "Tipe relasi harus salah satu dari: hierarchy, feeder, backup, distribution.",
       })
       .default("hierarchy"),
     parentPort: z.string().trim().max(100).optional(),
     childPort: z.string().trim().max(100).optional(),
     status: z
       .enum(["active", "standby", "maintenance"], {
-        error: "Status relasi harus salah satu dari: active, standby, maintenance.",
+        error:
+          "Status relasi harus salah satu dari: active, standby, maintenance.",
       })
       .default("active"),
     details: z.record(z.string(), z.unknown()).optional(),
   })
   .refine((data) => data.parentId !== data.childId, {
-    message: "Perangkat tidak boleh menjadi induk dari dirinya sendiri (self-reference dilarang).",
+    message:
+      "Perangkat tidak boleh menjadi induk dari dirinya sendiri (self-reference dilarang).",
     path: ["childId"],
   });
 

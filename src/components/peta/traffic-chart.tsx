@@ -3,7 +3,9 @@
 import { niceStep, type TrafficPoint } from "./traffic";
 
 export const bitRate = (bps: number) =>
-  bps >= 1e6 ? `${(bps / 1e6).toFixed(2)} Mbps` : `${(bps / 1e3).toFixed(1)} kbps`;
+  bps >= 1e6
+    ? `${(bps / 1e6).toFixed(2)} Mbps`
+    : `${(bps / 1e3).toFixed(1)} kbps`;
 export const byteSize = (b: number) =>
   b >= 1e12
     ? `${(b / 1e12).toFixed(2)} TB`
@@ -13,9 +15,17 @@ export const byteSize = (b: number) =>
 
 // Label sumbu ringkas: "2.5M", "500k"
 const axisRate = (bps: number) =>
-  bps === 0 ? "0" : bps >= 1e6 ? `${+(bps / 1e6).toFixed(2)}M` : `${+(bps / 1e3).toFixed(1)}k`;
+  bps === 0
+    ? "0"
+    : bps >= 1e6
+      ? `${+(bps / 1e6).toFixed(2)}M`
+      : `${+(bps / 1e3).toFixed(1)}k`;
 const clock = (t: number) =>
-  new Date(t).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  new Date(t).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 // Grafik ala Winbox: download biru berisi, upload oranye, garis bantu di nilai bulat
 export function TrafficChart({ points }: { points: TrafficPoint[] }) {
@@ -24,12 +34,19 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
   const top = step * 4;
   const x = (i: number) => (i / Math.max(1, points.length - 1)) * 100;
   const y = (v: number) => 100 - (v / top) * 100;
-  const line = (k: "down" | "up") => points.map((p, i) => `${x(i)},${y(p[k])}`).join(" ");
+  const line = (k: "down" | "up") =>
+    points.map((p, i) => `${x(i)},${y(p[k])}`).join(" ");
   const last = points.at(-1);
   // Label waktu di 0%, 50%, 100% lebar grafik
   // Set: dengan 2-3 titik, posisi 50% bisa jatuh di indeks yang sama dengan ujungnya
   const timeTicks =
-    points.length > 1 ? [...new Set([0, 0.5, 1].map((f) => Math.round(f * (points.length - 1))))] : [];
+    points.length > 1
+      ? [
+          ...new Set(
+            [0, 0.5, 1].map((f) => Math.round(f * (points.length - 1))),
+          ),
+        ]
+      : [];
 
   return (
     <div className="rounded-lg bg-card border border-border p-2 pb-1 space-y-1.5">
@@ -47,14 +64,22 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
         {/* Sumbu Y */}
         <div className="relative w-9 h-32 shrink-0 text-[9px] font-mono text-muted-foreground text-right">
           {[4, 3, 2, 1, 0].map((n) => (
-            <span key={n} className="absolute right-0 -translate-y-1/2" style={{ top: `${y(step * n)}%` }}>
+            <span
+              key={n}
+              className="absolute right-0 -translate-y-1/2"
+              style={{ top: `${y(step * n)}%` }}
+            >
               {axisRate(step * n)}
             </span>
           ))}
         </div>
         <div className="flex-1 min-w-0">
           <div className="relative h-32">
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="absolute inset-0 w-full h-full overflow-visible"
+            >
               {[0, 1, 2, 3, 4].map((n) => (
                 <line
                   key={n}
@@ -63,17 +88,33 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
                   y1={y(step * n)}
                   y2={y(step * n)}
                   stroke="currentColor"
-                  className={n === 0 ? "text-muted-foreground/50" : "text-border/50"}
+                  className={
+                    n === 0 ? "text-muted-foreground/50" : "text-border/50"
+                  }
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
                 />
               ))}
               {timeTicks.map((i) => (
-                <line key={i} x1={x(i)} x2={x(i)} y1="0" y2="100" stroke="currentColor" className="text-border/50" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                <line
+                  key={i}
+                  x1={x(i)}
+                  x2={x(i)}
+                  y1="0"
+                  y2="100"
+                  stroke="currentColor"
+                  className="text-border/50"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
               ))}
               {points.length > 1 && (
                 <>
-                  <polygon points={`0,100 ${line("down")} 100,100`} fill="#60a5fa" fillOpacity="0.12" />
+                  <polygon
+                    points={`0,100 ${line("down")} 100,100`}
+                    fill="#60a5fa"
+                    fillOpacity="0.12"
+                  />
                   <polyline
                     points={line("down")}
                     fill="none"
@@ -116,4 +157,3 @@ export function TrafficChart({ points }: { points: TrafficPoint[] }) {
     </div>
   );
 }
-

@@ -44,7 +44,10 @@ export function measureTcpLatency(
     const t0 = performance.now();
     let settled = false;
 
-    const finish = (latencyMs: number | null, status: "online" | "timeout" | "error") => {
+    const finish = (
+      latencyMs: number | null,
+      status: "online" | "timeout" | "error",
+    ) => {
       if (settled) return;
       settled = true;
       socket.destroy();
@@ -89,7 +92,9 @@ export async function getNetworkLatencyOverview(
   }
 
   const results = await Promise.all(targets.map((t) => measureTcpLatency(t)));
-  const onlineItems = results.filter((r) => r.status === "online" && r.latencyMs !== null);
+  const onlineItems = results.filter(
+    (r) => r.status === "online" && r.latencyMs !== null,
+  );
   const avgLatencyMs =
     onlineItems.length > 0
       ? Math.round(
@@ -111,4 +116,3 @@ export async function getNetworkLatencyOverview(
   lastMeasurementTime = now;
   return summary;
 }
-

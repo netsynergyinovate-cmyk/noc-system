@@ -9,9 +9,16 @@ import {
 } from "@/db/schema/deploy-runs";
 import type { DeployTarget } from "@/db/schema/deploy-targets";
 import type { DecryptedSshCredential } from "./ssh-credentials.service";
-import { executeSshCommand, executeSshScript, testSshConnection } from "./ssh-client.service";
+import {
+  executeSshCommand,
+  executeSshScript,
+  testSshConnection,
+} from "./ssh-client.service";
 import { getAppVersion } from "./deploy-version.service";
-import { buildReleaseBundle, uploadAndExtractRelease } from "./deploy-build.service";
+import {
+  buildReleaseBundle,
+  uploadAndExtractRelease,
+} from "./deploy-build.service";
 import {
   exportLocalConfigData,
   generateTableUpsertSql,
@@ -110,7 +117,12 @@ export async function runDryRun(
 
   // 2. Pemeriksaan Node.js & Go di server
   try {
-    const nodeRes = await executeSshCommand(target, credential, "node -v; go version", host);
+    const nodeRes = await executeSshCommand(
+      target,
+      credential,
+      "node -v; go version",
+      host,
+    );
     const lines = nodeRes.stdout.trim().split("\n");
     const nodeVer = lines[0] || "tidak ditemukan";
     const goVer = lines[1] || "tidak ditemukan";
@@ -198,7 +210,8 @@ export async function runDryRun(
         id: "check-dirs",
         name: "Direktori & Izin Tulis (/srv/noc)",
         status: "lulus",
-        detail: "Direktori releases, shared, dan backups tersedia dan dapat ditulis.",
+        detail:
+          "Direktori releases, shared, dan backups tersedia dan dapat ditulis.",
       });
     } else {
       ready = false;
@@ -206,7 +219,8 @@ export async function runDryRun(
         id: "check-dirs",
         name: "Direktori & Izin Tulis (/srv/noc)",
         status: "gagal",
-        detail: "Direktori /srv/noc/releases, shared, atau backups belum ada atau izin tulis ditolak.",
+        detail:
+          "Direktori /srv/noc/releases, shared, atau backups belum ada atau izin tulis ditolak.",
       });
     }
   } catch (err: unknown) {
@@ -228,13 +242,22 @@ export async function runDryRun(
       'if [ -n "$PG_CONTAINER" ]; then',
       '  echo "CONTAINER:$PG_CONTAINER"',
       '  docker exec "$PG_CONTAINER" pg_isready 2>/dev/null || echo "NOT_READY"',
-      'else',
+      "else",
       '  echo "NO_CONTAINER"',
-      'fi',
+      "fi",
     ].join("\n");
 
-    const dbRes = await executeSshScript(target, credential, "bash -s", dbCmd, host);
-    if (dbRes.stdout.includes("CONTAINER:") && !dbRes.stdout.includes("NOT_READY")) {
+    const dbRes = await executeSshScript(
+      target,
+      credential,
+      "bash -s",
+      dbCmd,
+      host,
+    );
+    if (
+      dbRes.stdout.includes("CONTAINER:") &&
+      !dbRes.stdout.includes("NOT_READY")
+    ) {
       const cName = dbRes.stdout.split("CONTAINER:")[1]?.split("\n")[0]?.trim();
       checks.push({
         id: "check-db",
@@ -266,21 +289,37 @@ export async function runDryRun(
   try {
     const localDeviceSecret = process.env.DEVICE_SECRET;
     if (localDeviceSecret) {
-      const localHash = crypto.createHash("sha256").update(localDeviceSecret).digest("hex").slice(0, 8);
+      const localHash = crypto
+        .createHash("sha256")
+        .update(localDeviceSecret)
+        .digest("hex")
+        .slice(0, 8);
       const secretCheckCmd =
         "grep -E '^DEVICE_SECRET=' /srv/noc/shared/.env 2>/dev/null || echo 'NONE'";
-      const secretRes = await executeSshCommand(target, credential, secretCheckCmd, host);
+      const secretRes = await executeSshCommand(
+        target,
+        credential,
+        secretCheckCmd,
+        host,
+      );
 
       if (secretRes.stdout.startsWith("DEVICE_SECRET=")) {
-        const remoteSecret = secretRes.stdout.replace("DEVICE_SECRET=", "").trim();
-        const remoteHash = crypto.createHash("sha256").update(remoteSecret).digest("hex").slice(0, 8);
+        const remoteSecret = secretRes.stdout
+          .replace("DEVICE_SECRET=", "")
+          .trim();
+        const remoteHash = crypto
+          .createHash("sha256")
+          .update(remoteSecret)
+          .digest("hex")
+          .slice(0, 8);
 
         if (localHash === remoteHash) {
           checks.push({
             id: "check-device-secret",
             name: "Konsistensi Kunci Enkripsi DEVICE_SECRET",
             status: "lulus",
-            detail: "Kunci DEVICE_SECRET di server selaras dengan localhost (kredensial terenkripsi aman ditransfer).",
+            detail:
+              "Kunci DEVICE_SECRET di server selaras dengan localhost (kredensial terenkripsi aman ditransfer).",
           });
         } else {
           ready = false;
@@ -288,7 +327,8 @@ export async function runDryRun(
             id: "check-device-secret",
             name: "Konsistensi Kunci Enkripsi DEVICE_SECRET",
             status: "gagal",
-            detail: "DEVICE_SECRET di /srv/noc/shared/.env berbeda dengan localhost. Sandi perangkat router/OLT akan gagal didekripsi di server.",
+            detail:
+              "DEVICE_SECRET di /srv/noc/shared/.env berbeda dengan localhost. Sandi perangkat router/OLT akan gagal didekripsi di server.",
           });
         }
       } else {
@@ -297,7 +337,8 @@ export async function runDryRun(
           id: "check-device-secret",
           name: "Konsistensi Kunci Enkripsi DEVICE_SECRET",
           status: "gagal",
-          detail: "DEVICE_SECRET belum disetel di /srv/noc/shared/.env. Server tidak akan bisa mendekripsi password router dan OLT.",
+          detail:
+            "DEVICE_SECRET belum disetel di /srv/noc/shared/.env. Server tidak akan bisa mendekripsi password router dan OLT.",
         });
       }
     }
@@ -368,14 +409,21 @@ export async function executeDeployRun(
 }> {
   const versionInfo = await getAppVersion();
   const host = effectiveHost || target.host;
-  const buildSuffix = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-  const version = sanitizeVersion(`${versionInfo.fullVersion}+build.${buildSuffix}`);
+  const buildSuffix = new Date()
+    .toISOString()
+    .replace(/[-:T]/g, "")
+    .slice(0, 14);
+  const version = sanitizeVersion(
+    `${versionInfo.fullVersion}+build.${buildSuffix}`,
+  );
   if (!version) {
     throw new Error("Nomor versi tidak valid.");
   }
 
   if (isDeployInProgress) {
-    throw new Error("Proses deploy atau rollback lain sedang berlangsung. Tunggu hingga selesai.");
+    throw new Error(
+      "Proses deploy atau rollback lain sedang berlangsung. Tunggu hingga selesai.",
+    );
   }
   isDeployInProgress = true;
 
@@ -391,7 +439,11 @@ export async function executeDeployRun(
         dijalankanOleh: userEmail,
       })
       .returning();
-    const run = (Array.isArray(inserted) ? inserted[0] : (inserted as { rows?: DeployRun[] })?.rows?.[0] || inserted) as DeployRun;
+    const run = (
+      Array.isArray(inserted)
+        ? inserted[0]
+        : (inserted as { rows?: DeployRun[] })?.rows?.[0] || inserted
+    ) as DeployRun;
     runId = run.id;
   }
   activeDeployRunId = runId;
@@ -415,7 +467,11 @@ export async function executeDeployRun(
         selesai: status !== "berjalan" ? new Date() : null,
       })
       .returning();
-    const step = (Array.isArray(inserted) ? inserted[0] : (inserted as { rows?: DeployStep[] })?.rows?.[0] || inserted) as DeployStep;
+    const step = (
+      Array.isArray(inserted)
+        ? inserted[0]
+        : (inserted as { rows?: DeployStep[] })?.rows?.[0] || inserted
+    ) as DeployStep;
     currentActiveStepId = step.id;
     return step;
   }
@@ -496,7 +552,10 @@ export async function executeDeployRun(
   try {
     // LANGKAH 1: Pre-flight & Koneksi SSH
     const step1 = await addStep(1, "Pre-flight & Koneksi SSH", "berjalan");
-    const step1Logger = makeStepLogger(step1.id, `ssh -p ${target.port} ${target.sshUser}@${host}\nMemeriksa latensi dan autentikasi...\n`);
+    const step1Logger = makeStepLogger(
+      step1.id,
+      `ssh -p ${target.port} ${target.sshUser}@${host}\nMemeriksa latensi dan autentikasi...\n`,
+    );
     const connTest = await testSshConnection(target, credential, host);
     if (!connTest.success) {
       await step1Logger.finalize("gagal", connTest.message);
@@ -505,23 +564,37 @@ export async function executeDeployRun(
 
     // Pastikan hak akses sudo non-interaktif untuk perintah deploy aktif di server
     if (credential.password) {
-      step1Logger.log("$ Menyelaraskan izin sudo non-interaktif di server...\n");
+      step1Logger.log(
+        "$ Menyelaraskan izin sudo non-interaktif di server...\n",
+      );
       const escapedPw = credential.password.replace(/'/g, "'\\''");
       const sudoInitScript = [
         "if ! sudo -n true 2>/dev/null; then",
         `  echo '${escapedPw}' | sudo -S bash -c 'echo "${target.sshUser} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/noc-nopasswd && chmod 0440 /etc/sudoers.d/noc-nopasswd' 2>/dev/null || true`,
         "fi",
       ].join("\n");
-      await executeSshScript(target, credential, "bash -s", sudoInitScript, host);
+      await executeSshScript(
+        target,
+        credential,
+        "bash -s",
+        sudoInitScript,
+        host,
+      );
     }
 
-    await step1Logger.finalize("berhasil", `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`);
+    await step1Logger.finalize(
+      "berhasil",
+      `✓ Terhubung ke ${target.sshUser}@${host}:${target.port} (latensi ${connTest.latencyMs || 0}ms)`,
+    );
 
     // LANGKAH 2: Backup Database Server
     const step2 = await addStep(2, "Backup Database Server", "berjalan");
     const timestampStr = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFile = `/srv/noc/backups/backup-${timestampStr}.sql.gz`;
-    const step2Logger = makeStepLogger(step2.id, `$ docker exec <postgres> pg_dump -U starter -d starter | gzip > ${backupFile}\n`);
+    const step2Logger = makeStepLogger(
+      step2.id,
+      `$ docker exec <postgres> pg_dump -U starter -d starter | gzip > ${backupFile}\n`,
+    );
     // Gunakan stdin script agar kutip dan pipefail tidak terpotong oleh bash -c
     const backupScript = [
       "set -euo pipefail",
@@ -533,8 +606,8 @@ export async function executeDeployRun(
       'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
       'if [ -z "$PG_CID" ]; then echo "Kontainer postgres tidak ditemukan di server"; exit 1; fi',
       'DB_URL=$(grep -E "^DATABASE_URL=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
-      'DB_USER=$(echo "$DB_URL" | sed -E \'s|^.*://([^:]+):.*$|\\1|\')',
-      'DB_NAME=$(echo "$DB_URL" | sed -E \'s|^.*/([^?]+).*$|\\1|\')',
+      "DB_USER=$(echo \"$DB_URL\" | sed -E 's|^.*://([^:]+):.*$|\\1|')",
+      "DB_NAME=$(echo \"$DB_URL\" | sed -E 's|^.*/([^?]+).*$|\\1|')",
       'if [ -z "$DB_USER" ] || [ "$DB_USER" = "$DB_URL" ]; then DB_USER="starter"; fi',
       'if [ -z "$DB_NAME" ] || [ "$DB_NAME" = "$DB_URL" ]; then DB_NAME="starter"; fi',
       `$DOCKER exec "$PG_CID" pg_dump -U "$DB_USER" -d "$DB_NAME" | gzip > "${backupFile}"`,
@@ -542,29 +615,57 @@ export async function executeDeployRun(
       `ls -lh "${backupFile}"`,
     ].join("\n");
 
-    const backupRes = await executeSshScript(target, credential, "bash -s", backupScript, host, 60000, step2Logger.log);
+    const backupRes = await executeSshScript(
+      target,
+      credential,
+      "bash -s",
+      backupScript,
+      host,
+      60000,
+      step2Logger.log,
+    );
     if (backupRes.code !== 0) {
       await step2Logger.finalize("gagal", backupRes.stderr || backupRes.stdout);
-      throw new Error(`Backup database gagal: ${backupRes.stderr || backupRes.stdout}`);
+      throw new Error(
+        `Backup database gagal: ${backupRes.stderr || backupRes.stdout}`,
+      );
     }
-    await step2Logger.finalize("berhasil", `Backup berhasil disimpan di ${backupFile} (${backupRes.stdout.trim()})`);
+    await step2Logger.finalize(
+      "berhasil",
+      `Backup berhasil disimpan di ${backupFile} (${backupRes.stdout.trim()})`,
+    );
     // LANGKAH 3: Bangun Artefak Rilis & Unggah ke Server
     const step3 = await addStep(3, "Bangun Artefak Rilis & Unggah", "berjalan");
     const releasePath = `/srv/noc/releases/${version}`;
 
     // Pastikan direktori rilis dibuat di server
-    await executeSshCommand(target, credential, `mkdir -p "${releasePath}" /srv/noc/shared`, host);
+    await executeSshCommand(
+      target,
+      credential,
+      `mkdir -p "${releasePath}" /srv/noc/shared`,
+      host,
+    );
 
     // Build tarball di localhost
-    const step3Log = makeStepLogger(step3.id, `Mempersiapkan artefak rilis terisolasi untuk ${version}...\n`);
+    const step3Log = makeStepLogger(
+      step3.id,
+      `Mempersiapkan artefak rilis terisolasi untuk ${version}...\n`,
+    );
     const buildResult = await buildReleaseBundle(version, (msg) => {
       step3Log.log(`[BUILD] ${msg}\n`);
     });
 
     // Upload via SFTP dan ekstrak di server
-    await uploadAndExtractRelease(target, credential, buildResult.tarPath, releasePath, host, (msg) => {
-      step3Log.log(`[SFTP] ${msg}\n`);
-    });
+    await uploadAndExtractRelease(
+      target,
+      credential,
+      buildResult.tarPath,
+      releasePath,
+      host,
+      (msg) => {
+        step3Log.log(`[SFTP] ${msg}\n`);
+      },
+    );
     await step3Log.finalize(
       "berhasil",
       `Artefak rilis ${(buildResult.sizeBytes / 1024 / 1024).toFixed(2)} MB berhasil diunggah dan diekstrak di ${releasePath}`,
@@ -578,20 +679,40 @@ export async function executeDeployRun(
       'DB_URL=$(grep -E "^DATABASE_URL=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
       'if [ -f "scripts/migrate-server.mjs" ]; then',
       '  DATABASE_URL="$DB_URL" node "scripts/migrate-server.mjs"',
-      'else',
+      "else",
       '  echo "Skrip migrasi tidak ditemukan, melewati."',
-      'fi',
+      "fi",
     ].join("\n");
-    const step4Log = makeStepLogger(step4.id, `$ cd ${releasePath} && node scripts/migrate-server.mjs\n`);
-    const migRes = await executeSshScript(target, credential, "bash -s", migScript, host, 60000, step4Log.log);
+    const step4Log = makeStepLogger(
+      step4.id,
+      `$ cd ${releasePath} && node scripts/migrate-server.mjs\n`,
+    );
+    const migRes = await executeSshScript(
+      target,
+      credential,
+      "bash -s",
+      migScript,
+      host,
+      60000,
+      step4Log.log,
+    );
     if (migRes.code !== 0) {
       await step4Log.finalize("gagal", migRes.stderr || migRes.stdout);
-      throw new Error(`Migrasi database gagal: ${migRes.stderr || migRes.stdout}`);
+      throw new Error(
+        `Migrasi database gagal: ${migRes.stderr || migRes.stdout}`,
+      );
     }
-    await step4Log.finalize("berhasil", `Migrasi database sukses dieksekusi: ${migRes.stdout.trim() || "OK"}`);
+    await step4Log.finalize(
+      "berhasil",
+      `Migrasi database sukses dieksekusi: ${migRes.stdout.trim() || "OK"}`,
+    );
 
     // LANGKAH 5: Pemindahan Konfigurasi Localhost -> Server (idempoten)
-    const step5 = await addStep(5, "Pemindahan Konfigurasi Localhost -> Server", "berjalan");
+    const step5 = await addStep(
+      5,
+      "Pemindahan Konfigurasi Localhost -> Server",
+      "berjalan",
+    );
     try {
       const localData = await exportLocalConfigData();
       let totalInserted = 0;
@@ -605,7 +726,11 @@ export async function executeDeployRun(
       for (const item of SYNCABLE_CONFIG_TABLES) {
         const rows = localData[item.table] || [];
         if (rows.length > 0) {
-          const sqlScript = generateTableUpsertSql(item.table, rows, routerHostMap);
+          const sqlScript = generateTableUpsertSql(
+            item.table,
+            rows,
+            routerHostMap,
+          );
           if (sqlScript) {
             sqlStatements.push(sqlScript);
           }
@@ -639,28 +764,55 @@ export async function executeDeployRun(
           'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "name=noc-postgres" --format "{{.Names}}" | head -n1); fi',
           'if [ -z "$PG_CID" ]; then PG_CID=$($DOCKER ps --filter "publish=5432" --format "{{.Names}}" | head -n1); fi',
           'DB_URL=$(grep -E "^DATABASE_URL=" /srv/noc/shared/.env 2>/dev/null | cut -d= -f2- | tr -d \'"\\r\\n\' || true)',
-          'DB_USER=$(echo "$DB_URL" | sed -E \'s|^.*://([^:]+):.*$|\\1|\')',
-          'DB_NAME=$(echo "$DB_URL" | sed -E \'s|^.*/([^?]+).*$|\\1|\')',
+          "DB_USER=$(echo \"$DB_URL\" | sed -E 's|^.*://([^:]+):.*$|\\1|')",
+          "DB_NAME=$(echo \"$DB_URL\" | sed -E 's|^.*/([^?]+).*$|\\1|')",
           'if [ -z "$DB_USER" ] || [ "$DB_USER" = "$DB_URL" ]; then DB_USER="starter"; fi',
           'if [ -z "$DB_NAME" ] || [ "$DB_NAME" = "$DB_URL" ]; then DB_NAME="starter"; fi',
           '$DOCKER exec -i "$PG_CID" psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 --single-transaction -f -',
         ].join(" && ");
-        const step5Log = makeStepLogger(step5.id, `Menyinkronkan ${totalInserted} baris konfigurasi ke database server...\n`);
-        const execRes = await executeSshScript(target, credential, execCmd, combinedSql, host, 60000, step5Log.log);
+        const step5Log = makeStepLogger(
+          step5.id,
+          `Menyinkronkan ${totalInserted} baris konfigurasi ke database server...\n`,
+        );
+        const execRes = await executeSshScript(
+          target,
+          credential,
+          execCmd,
+          combinedSql,
+          host,
+          60000,
+          step5Log.log,
+        );
         if (execRes.code !== 0) {
-          throw new Error(`Sinkronisasi konfigurasi database gagal: ${execRes.stderr || execRes.stdout}`);
+          throw new Error(
+            `Sinkronisasi konfigurasi database gagal: ${execRes.stderr || execRes.stdout}`,
+          );
         }
-        await step5Log.finalize("berhasil", `Konfigurasi berhasil disinkronkan (${totalInserted} baris).`);
+        await step5Log.finalize(
+          "berhasil",
+          `Konfigurasi berhasil disinkronkan (${totalInserted} baris).`,
+        );
       }
     } catch (err: unknown) {
-      await updateStep(step5.id, "gagal", err instanceof Error ? err.message : String(err));
-      throw new Error(`Pemindahan konfigurasi gagal: ${err instanceof Error ? err.message : String(err)}`);
+      await updateStep(
+        step5.id,
+        "gagal",
+        err instanceof Error ? err.message : String(err),
+      );
+      throw new Error(
+        `Pemindahan konfigurasi gagal: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     // LANGKAH 6: Catat Titik Balik Versi Aktif Sebelum Swap
     const step6 = await addStep(6, "Pencatatan Titik Balik Versi", "berjalan");
     const getVersionCmd = `test -L /srv/noc/current && readlink -f /srv/noc/current || echo 'NONE'`;
-    const getVersionRes = await executeSshCommand(target, credential, getVersionCmd, host);
+    const getVersionRes = await executeSshCommand(
+      target,
+      credential,
+      getVersionCmd,
+      host,
+    );
     const activeCurrentPath = getVersionRes.stdout.trim();
 
     if (activeCurrentPath && activeCurrentPath !== "NONE") {
@@ -682,24 +834,42 @@ export async function executeDeployRun(
     );
 
     // LANGKAH 7: Tukar Symlink `current` secara Atomik
-    const step7 = await addStep(7, "Penukaran Symlink current (Atomik)", "berjalan");
+    const step7 = await addStep(
+      7,
+      "Penukaran Symlink current (Atomik)",
+      "berjalan",
+    );
     const swapCmd = `ln -sfn "${releasePath}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current`;
     const swapRes = await executeSshCommand(target, credential, swapCmd, host);
     if (swapRes.code !== 0) {
       await updateStep(step7.id, "gagal", swapRes.stderr || swapRes.stdout);
       throw new Error(`Penukaran symlink current gagal: ${swapRes.stderr}`);
     }
-    await updateStep(step7.id, "berhasil", `Symlink /srv/noc/current -> ${releasePath}`);
+    await updateStep(
+      step7.id,
+      "berhasil",
+      `Symlink /srv/noc/current -> ${releasePath}`,
+    );
 
     // LANGKAH 8: Restart Layanan systemd (noc-web & noc-backend)
     const step8 = await addStep(8, "Restart Layanan systemd", "berjalan");
-    const step8Log = makeStepLogger(step8.id, `$ sudo -n systemctl restart noc-web noc-backend\n`);
+    const step8Log = makeStepLogger(
+      step8.id,
+      `$ sudo -n systemctl restart noc-web noc-backend\n`,
+    );
     const restartCmd = [
       `if [ -f /srv/noc/shared/.env ]; then sudo -n sed -i -E 's/^PORT=8080/PORT=3000/' /srv/noc/shared/.env 2>/dev/null || true; fi`,
       `if [ -d "${releasePath}/systemd" ]; then sudo -n cp -f "${releasePath}/systemd/"*.service /etc/systemd/system/ 2>/dev/null && sudo -n systemctl daemon-reload || true; fi`,
       `sudo -n systemctl restart noc-web noc-backend`,
     ].join(" && ");
-    const restartRes = await executeSshCommand(target, credential, restartCmd, host, 60000, step8Log.log);
+    const restartRes = await executeSshCommand(
+      target,
+      credential,
+      restartCmd,
+      host,
+      60000,
+      step8Log.log,
+    );
     if (restartRes.code !== 0) {
       await step8Log.finalize("gagal", restartRes.stderr || restartRes.stdout);
       // Restart gagal setelah swap -> picu rollback otomatis jika ada titik balik
@@ -711,9 +881,14 @@ export async function executeDeployRun(
           host,
         );
       }
-      throw new Error(`Restart unit systemd gagal: ${restartRes.stderr || restartRes.stdout}`);
+      throw new Error(
+        `Restart unit systemd gagal: ${restartRes.stderr || restartRes.stdout}`,
+      );
     }
-    await step8Log.finalize("berhasil", "Layanan noc-web dan noc-backend berhasil di-restart.");
+    await step8Log.finalize(
+      "berhasil",
+      "Layanan noc-web dan noc-backend berhasil di-restart.",
+    );
 
     // LANGKAH 9: Health Check Setelah Deploy (Next.js :3000 dan Go :8080)
     const step9 = await addStep(9, "Health Check Pasca-Deploy", "berjalan");
@@ -737,7 +912,9 @@ export async function executeDeployRun(
 
       const nextCode = probeNext.stdout.trim();
       const goCode = probeGo.stdout.trim();
-      step9Log.log(`Percobaan ${i + 1}/15: curl :3000 -> HTTP ${nextCode || "ERR"}, curl :8080 -> HTTP ${goCode || "ERR"}\n`);
+      step9Log.log(
+        `Percobaan ${i + 1}/15: curl :3000 -> HTTP ${nextCode || "ERR"}, curl :8080 -> HTTP ${goCode || "ERR"}\n`,
+      );
 
       if (nextCode === "200" && goCode === "200") {
         healthy = true;
@@ -765,7 +942,13 @@ export async function executeDeployRun(
       await step9Log.finalize("gagal", failDetail);
       if (titikBalikVersi) {
         const rollbackCmd = `ln -sfn "/srv/noc/releases/${titikBalikVersi}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current && sudo -n systemctl restart noc-web noc-backend`;
-        const rollbackRes = await executeSshCommand(target, credential, rollbackCmd, host, 30000);
+        const rollbackRes = await executeSshCommand(
+          target,
+          credential,
+          rollbackCmd,
+          host,
+          30000,
+        );
 
         let rollbackHealthy = false;
         if (rollbackRes.code === 0) {
@@ -823,7 +1006,8 @@ export async function executeDeployRun(
         runId,
         version,
         autoRollbackTriggered: false,
-        message: "Health check gagal dan tidak ada titik balik rilis sebelumnya untuk dipulihkan.",
+        message:
+          "Health check gagal dan tidak ada titik balik rilis sebelumnya untuk dipulihkan.",
       };
     }
 
@@ -858,13 +1042,23 @@ export async function executeDeployRun(
     if (currentActiveStepId) {
       await db
         .update(deploySteps)
-        .set({ status: "gagal", keluaran: `Gagal pada langkah ini: ${errorMsg}`, selesai: new Date() })
+        .set({
+          status: "gagal",
+          keluaran: `Gagal pada langkah ini: ${errorMsg}`,
+          selesai: new Date(),
+        })
         .where(eq(deploySteps.id, currentActiveStepId));
     }
     await db
       .update(deploySteps)
-      .set({ status: "gagal", keluaran: `Deploy terhenti: ${errorMsg}`, selesai: new Date() })
-      .where(and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")));
+      .set({
+        status: "gagal",
+        keluaran: `Deploy terhenti: ${errorMsg}`,
+        selesai: new Date(),
+      })
+      .where(
+        and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")),
+      );
 
     await db
       .update(deployRuns)
@@ -896,7 +1090,9 @@ export async function executeManualRollback(
   effectiveHost?: string,
 ): Promise<{ success: boolean; message: string }> {
   if (isDeployInProgress) {
-    throw new Error("Proses deploy atau rollback lain sedang berlangsung. Tunggu hingga selesai.");
+    throw new Error(
+      "Proses deploy atau rollback lain sedang berlangsung. Tunggu hingga selesai.",
+    );
   }
   isDeployInProgress = true;
 
@@ -905,59 +1101,70 @@ export async function executeManualRollback(
     if (!version) {
       return { success: false, message: "Nomor versi rollback tidak valid." };
     }
-  const host = effectiveHost || target.host;
-  const targetReleasePath = `/srv/noc/releases/${version}`;
+    const host = effectiveHost || target.host;
+    const targetReleasePath = `/srv/noc/releases/${version}`;
 
-  // Periksa apakah rilis ada di server
-  const checkCmd = `test -d "${targetReleasePath}" && echo 'EXISTS' || echo 'MISSING'`;
-  const checkRes = await executeSshCommand(target, credential, checkCmd, host);
+    // Periksa apakah rilis ada di server
+    const checkCmd = `test -d "${targetReleasePath}" && echo 'EXISTS' || echo 'MISSING'`;
+    const checkRes = await executeSshCommand(
+      target,
+      credential,
+      checkCmd,
+      host,
+    );
 
-  if (!checkRes.stdout.includes("EXISTS")) {
-    return {
-      success: false,
-      message: `Direktori rilis ${targetReleasePath} tidak ditemukan di server.`,
-    };
-  }
+    if (!checkRes.stdout.includes("EXISTS")) {
+      return {
+        success: false,
+        message: `Direktori rilis ${targetReleasePath} tidak ditemukan di server.`,
+      };
+    }
 
-  // Tukar symlink
-  const swapCmd = `ln -sfn "${targetReleasePath}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current`;
-  const swapRes = await executeSshCommand(target, credential, swapCmd, host);
-  if (swapRes.code !== 0) {
-    return { success: false, message: `Gagal menukar symlink: ${swapRes.stderr}` };
-  }
+    // Tukar symlink
+    const swapCmd = `ln -sfn "${targetReleasePath}" /srv/noc/current.tmp && mv -Tf /srv/noc/current.tmp /srv/noc/current`;
+    const swapRes = await executeSshCommand(target, credential, swapCmd, host);
+    if (swapRes.code !== 0) {
+      return {
+        success: false,
+        message: `Gagal menukar symlink: ${swapRes.stderr}`,
+      };
+    }
 
-  // Restart layanan
-  const restartRes = await executeSshCommand(
-    target,
-    credential,
-    "sudo -n systemctl restart noc-web noc-backend",
-    host,
-  );
-  if (restartRes.code !== 0) {
-    return { success: false, message: `Gagal me-restart layanan: ${restartRes.stderr}` };
-  }
+    // Restart layanan
+    const restartRes = await executeSshCommand(
+      target,
+      credential,
+      "sudo -n systemctl restart noc-web noc-backend",
+      host,
+    );
+    if (restartRes.code !== 0) {
+      return {
+        success: false,
+        message: `Gagal me-restart layanan: ${restartRes.stderr}`,
+      };
+    }
 
-  // Catat riwayat rollback
-  await db.insert(deployRuns).values({
-    targetId: target.id,
-    versi: version,
-    jenis: "rollback",
-    status: "berhasil",
-    otomatis: false,
-    dijalankanOleh: userEmail,
-    selesai: new Date(),
-  });
+    // Catat riwayat rollback
+    await db.insert(deployRuns).values({
+      targetId: target.id,
+      versi: version,
+      jenis: "rollback",
+      status: "berhasil",
+      otomatis: false,
+      dijalankanOleh: userEmail,
+      selesai: new Date(),
+    });
 
-  // Perbarui status rilis aktif
-  await db
-    .update(deployReleases)
-    .set({ aktif: false })
-    .where(eq(deployReleases.targetId, target.id));
+    // Perbarui status rilis aktif
+    await db
+      .update(deployReleases)
+      .set({ aktif: false })
+      .where(eq(deployReleases.targetId, target.id));
 
-  await db
-    .update(deployReleases)
-    .set({ aktif: true })
-    .where(eq(deployReleases.versi, version));
+    await db
+      .update(deployReleases)
+      .set({ aktif: true })
+      .where(eq(deployReleases.versi, version));
 
     return {
       success: true,
@@ -997,10 +1204,16 @@ export async function reconcileStaleDeployRuns(): Promise<number> {
           .update(deploySteps)
           .set({
             status: "gagal",
-            keluaran: "Proses deploy terhenti / koneksi terputus (melebihi batas waktu 30 menit).",
+            keluaran:
+              "Proses deploy terhenti / koneksi terputus (melebihi batas waktu 30 menit).",
             selesai: now,
           })
-          .where(and(eq(deploySteps.runId, r.id), eq(deploySteps.status, "berjalan")));
+          .where(
+            and(
+              eq(deploySteps.runId, r.id),
+              eq(deploySteps.status, "berjalan"),
+            ),
+          );
 
         count++;
       }
@@ -1029,7 +1242,9 @@ export async function cancelDeployRun(runId: string): Promise<boolean> {
       keluaran: "Dibatalkan secara manual oleh operator.",
       selesai: now,
     })
-    .where(and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")));
+    .where(
+      and(eq(deploySteps.runId, runId), eq(deploySteps.status, "berjalan")),
+    );
 
   if (activeDeployRunId === runId) {
     activeDeployRunId = null;

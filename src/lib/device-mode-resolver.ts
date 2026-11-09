@@ -10,10 +10,7 @@ import {
 export type DeviceOperationMode = "simulator" | "real";
 export type DashboardDataMode = "demo" | "live";
 export type DeviceModeReason =
-  | "REQUESTED_SIMULATOR"
-  | "REAL_READY"
-  | "ENV_INCOMPLETE"
-  | "DEMO_DEFAULT";
+  "REQUESTED_SIMULATOR" | "REAL_READY" | "ENV_INCOMPLETE" | "DEMO_DEFAULT";
 
 export type ResolveDeviceModeOptions = {
   kind: DeviceKind;
@@ -39,22 +36,42 @@ export type DeviceModeResolution = {
 export function resolveDeviceOperationMode(
   options: ResolveDeviceModeOptions,
 ): DeviceModeResolution {
-  const { kind, requestedMode, dashboardData, envSource, allowFallback } = options;
+  const { kind, requestedMode, dashboardData, envSource, allowFallback } =
+    options;
   const env = evaluateDeviceEnv(kind, envSource);
   const ready = env.status === "siap";
   const base = { kind, ready, missingEnv: env.missing };
 
   if (requestedMode === "simulator") {
-    return { ...base, effectiveMode: "simulator", fallback: false, reason: "REQUESTED_SIMULATOR", warning: null };
+    return {
+      ...base,
+      effectiveMode: "simulator",
+      fallback: false,
+      reason: "REQUESTED_SIMULATOR",
+      warning: null,
+    };
   }
 
-  const wantsReal = requestedMode === "real" || (!requestedMode && dashboardData === "live");
+  const wantsReal =
+    requestedMode === "real" || (!requestedMode && dashboardData === "live");
   if (!wantsReal) {
-    return { ...base, effectiveMode: "simulator", fallback: false, reason: "DEMO_DEFAULT", warning: null };
+    return {
+      ...base,
+      effectiveMode: "simulator",
+      fallback: false,
+      reason: "DEMO_DEFAULT",
+      warning: null,
+    };
   }
 
   if (ready) {
-    return { ...base, effectiveMode: "real", fallback: false, reason: "REAL_READY", warning: null };
+    return {
+      ...base,
+      effectiveMode: "real",
+      fallback: false,
+      reason: "REAL_READY",
+      warning: null,
+    };
   }
 
   const names = env.missing.join(", ");
@@ -80,6 +97,9 @@ export function resolveAllDeviceModes(
   options: Omit<ResolveDeviceModeOptions, "kind"> = {},
 ): Record<DeviceKind, DeviceModeResolution> {
   return Object.fromEntries(
-    DEVICE_KINDS.map((kind) => [kind, resolveDeviceOperationMode({ ...options, kind })]),
+    DEVICE_KINDS.map((kind) => [
+      kind,
+      resolveDeviceOperationMode({ ...options, kind }),
+    ]),
   ) as Record<DeviceKind, DeviceModeResolution>;
 }

@@ -86,15 +86,20 @@ export interface OltInput {
 export const OLT_BRANDS = ["HSGQ", "ZTE", "Huawei", "Fiberhome"] as const;
 export const OLT_PON_OPTIONS = [4, 8, 16, 32] as const;
 
-const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+const IPV4 =
+  /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
-export function validateOltInput(input: OltInput): Partial<Record<keyof OltInput, string>> {
+export function validateOltInput(
+  input: OltInput,
+): Partial<Record<keyof OltInput, string>> {
   const e: Partial<Record<keyof OltInput, string>> = {};
   if (!input.name.trim()) e.name = "Nama wajib diisi.";
   else if (input.name.trim().length > 64) e.name = "Nama maksimal 64 karakter.";
-  if (!(OLT_BRANDS as readonly string[]).includes(input.brand)) e.brand = "Pilih brand yang tersedia.";
+  if (!(OLT_BRANDS as readonly string[]).includes(input.brand))
+    e.brand = "Pilih brand yang tersedia.";
   if (!input.driver.trim()) e.driver = "Driver wajib diisi.";
-  if (!IPV4.test(input.host.trim())) e.host = "Host harus berupa alamat IPv4 yang valid.";
+  if (!IPV4.test(input.host.trim()))
+    e.host = "Host harus berupa alamat IPv4 yang valid.";
   if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535)
     e.port = "Port harus bilangan bulat 1-65535.";
   if (!input.username.trim()) e.username = "Username wajib diisi.";
@@ -113,10 +118,21 @@ export function mockTestOltConnection(input: OltInput): {
   const host = input.host.trim();
   const protocol = input.port === 22 ? "SSH" : "Telnet";
   if (host.endsWith(".0"))
-    return { ok: false, reason: "Koneksi timeout: perangkat tidak merespons.", diagnostics: { latencyMs: 5000, protocol } };
+    return {
+      ok: false,
+      reason: "Koneksi timeout: perangkat tidak merespons.",
+      diagnostics: { latencyMs: 5000, protocol },
+    };
   if (host.endsWith(".255"))
-    return { ok: false, reason: "Autentikasi gagal: username atau password salah.", diagnostics: { latencyMs: 120, protocol } };
-  return { ok: true, diagnostics: { latencyMs: 42, protocol, firmware: `${input.brand} v1.0.0` } };
+    return {
+      ok: false,
+      reason: "Autentikasi gagal: username atau password salah.",
+      diagnostics: { latencyMs: 120, protocol },
+    };
+  return {
+    ok: true,
+    diagnostics: { latencyMs: 42, protocol, firmware: `${input.brand} v1.0.0` },
+  };
 }
 
 /** Bentuk baris OLT dari GET /api/devices (kolom publik tabel olts). */
@@ -157,7 +173,10 @@ export const OLT_STALE_AFTER_SEC = 300;
 export type OltLinkState = "waiting" | "online" | "stale" | "down";
 
 /** waiting: OLT aktif tapi belum pernah dipoll; stale: terakhir terlihat terlalu lama; down: dinonaktifkan. */
-export function oltLinkState(olt: Pick<DashboardOlt, "status" | "lastSeenAt">, nowSec: number): OltLinkState {
+export function oltLinkState(
+  olt: Pick<DashboardOlt, "status" | "lastSeenAt">,
+  nowSec: number,
+): OltLinkState {
   if (olt.status !== "aktif") return "down";
   if (olt.lastSeenAt === null) return "waiting";
   return nowSec - olt.lastSeenAt > OLT_STALE_AFTER_SEC ? "stale" : "online";

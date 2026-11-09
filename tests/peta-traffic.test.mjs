@@ -20,7 +20,11 @@ test("toPoint: rate dari selisih byte per detik", () => {
 });
 
 test("toPoint: bacaan pertama dan penghitung reset memakai rate MikroTik", () => {
-  assert.deepEqual(toPoint(null, sample(5, 5, 1000)), { t: 1000, down: 111, up: 222 });
+  assert.deepEqual(toPoint(null, sample(5, 5, 1000)), {
+    t: 1000,
+    down: 111,
+    up: 222,
+  });
   assert.deepEqual(toPoint(sample(900, 900, 1000), sample(10, 10, 2000)), {
     t: 2000,
     down: 111,
@@ -38,7 +42,8 @@ test("niceStep: langkah bulat yang 4 kalinya menutup puncak", () => {
 });
 
 test("seriesUsageBytes: luas trapesium Mbps x detik / 8", async () => {
-  const { seriesUsageBytes } = await import("../src/components/peta/traffic.ts");
+  const { seriesUsageBytes } =
+    await import("../src/components/peta/traffic.ts");
   // 8 Mbps rata selama 10 detik = 10 MB; upload naik 0 -> 8 Mbps = rata 4 Mbps = 5 MB
   const u = seriesUsageBytes([
     { t: 0, down: 8, up: 0 },
@@ -46,5 +51,8 @@ test("seriesUsageBytes: luas trapesium Mbps x detik / 8", async () => {
   ]);
   assert.equal(u.down, 10_000_000);
   assert.equal(u.up, 5_000_000);
-  assert.deepEqual(seriesUsageBytes([{ t: 0, down: 5, up: 5 }]), { down: 0, up: 0 });
+  assert.deepEqual(seriesUsageBytes([{ t: 0, down: 5, up: 5 }]), {
+    down: 0,
+    up: 0,
+  });
 });

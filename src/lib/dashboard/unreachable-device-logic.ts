@@ -37,8 +37,10 @@ const BACKOFF_MS = [2000, 5000, 10000, 20000, 30000] as const;
 export function mapFailureCode(raw?: string): UnreachableFailureCode {
   const c = (raw ?? "").trim().toUpperCase();
   if (c === "TIMEOUT" || c === "ETIMEDOUT") return "TIMEOUT";
-  if (c === "CONNECTION_REFUSED" || c === "ECONNREFUSED") return "CONNECTION_REFUSED";
-  if (c === "AUTH_FAILED" || c === "HTTP_401" || c === "HTTP_403") return "AUTH_FAILED";
+  if (c === "CONNECTION_REFUSED" || c === "ECONNREFUSED")
+    return "CONNECTION_REFUSED";
+  if (c === "AUTH_FAILED" || c === "HTTP_401" || c === "HTTP_403")
+    return "AUTH_FAILED";
   if (
     c === "HOST_UNREACHABLE" ||
     c === "EHOSTUNREACH" ||
@@ -66,7 +68,10 @@ const LABEL: Record<UnreachableDeviceType, string> = {
   billing: "portal billing",
 };
 
-function codeStep(code: UnreachableFailureCode, type: UnreachableDeviceType): string {
+function codeStep(
+  code: UnreachableFailureCode,
+  type: UnreachableDeviceType,
+): string {
   switch (code) {
     case "TIMEOUT":
       return `Cek daya dan kabel/uplink ${LABEL[type]}, lalu ping dari server NOC.`;
@@ -144,7 +149,10 @@ export function diagnoseUnreachableDevice(params: {
     downtimeSeconds: Math.max(0, downtime),
     failureReason: REASON[failureCode],
     failureCode,
-    consecutiveFailures: Math.max(1, Math.floor(params.consecutiveFailures ?? 1)),
+    consecutiveFailures: Math.max(
+      1,
+      Math.floor(params.consecutiveFailures ?? 1),
+    ),
     troubleshootingSteps: steps,
     ...(cli && { suggestedCliCommand: cli }),
   };
@@ -155,7 +163,9 @@ export function computeRetryPolicy(
   lastRetryEpoch: number,
   nowSec: number,
 ): DeviceRetryPolicy {
-  const n = Number.isFinite(consecutiveFailures) ? Math.max(1, Math.floor(consecutiveFailures)) : 1;
+  const n = Number.isFinite(consecutiveFailures)
+    ? Math.max(1, Math.floor(consecutiveFailures))
+    : 1;
   const backoffMs = BACKOFF_MS[Math.min(n, BACKOFF_MS.length) - 1];
   const nextRetryEpoch = lastRetryEpoch + Math.ceil(backoffMs / 1000);
   return {
@@ -170,6 +180,7 @@ export function formatDowntime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   if (s < 60) return `${s} detik`;
   if (s < 3600) return `${Math.floor(s / 60)} menit`;
-  if (s < 86400) return `${Math.floor(s / 3600)} jam ${Math.floor((s % 3600) / 60)} menit`;
+  if (s < 86400)
+    return `${Math.floor(s / 3600)} jam ${Math.floor((s % 3600) / 60)} menit`;
   return `${Math.floor(s / 86400)} hari ${Math.floor((s % 86400) / 3600)} jam`;
 }

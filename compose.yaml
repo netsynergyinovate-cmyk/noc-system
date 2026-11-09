@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -U starter -d starter']
+      test: ["CMD-SHELL", "pg_isready -U starter -d starter"]
       interval: 2s
       timeout: 5s
       retries: 20
@@ -107,7 +107,11 @@ services:
       # dibuka (bawaan: alamat pribadi RFC 1918 + 100.64.0.0/10).
       ONT_WEB_ALLOWED_CIDRS: ${ONT_WEB_ALLOWED_CIDRS:-}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10

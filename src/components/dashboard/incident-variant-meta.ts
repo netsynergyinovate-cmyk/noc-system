@@ -23,7 +23,10 @@ export interface IncidentVariantStyle {
   text: string;
 }
 
-export const incidentVariantStyle: Record<IncidentVariantId, IncidentVariantStyle> = {
+export const incidentVariantStyle: Record<
+  IncidentVariantId,
+  IncidentVariantStyle
+> = {
   los: {
     Icon: Unplug,
     edge: "border-l-destructive",

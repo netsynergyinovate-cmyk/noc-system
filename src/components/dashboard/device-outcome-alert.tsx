@@ -1,6 +1,10 @@
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type DeviceConfig, type TestOutcome, formatDeviceError } from "@/lib/dashboard/device-config";
+import {
+  type DeviceConfig,
+  type TestOutcome,
+  formatDeviceError,
+} from "@/lib/dashboard/device-config";
 
 interface Props {
   outcome: TestOutcome;
@@ -25,7 +29,8 @@ export function DeviceOutcomeAlert({ outcome, device, className }: Props) {
         <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <div className="min-w-0 space-y-0.5">
           <p className="font-semibold">
-            Koneksi berhasil{outcome.latencyMs != null ? ` (${outcome.latencyMs} ms)` : ""}
+            Koneksi berhasil
+            {outcome.latencyMs != null ? ` (${outcome.latencyMs} ms)` : ""}
           </p>
           {outcome.message && <p className="break-words">{outcome.message}</p>}
         </div>
@@ -58,7 +63,10 @@ export function DeviceOutcomeAlert({ outcome, device, className }: Props) {
         <p className="break-words" data-testid="device-outcome-detail">
           {err.detail}
         </p>
-        <p className="break-words text-foreground" data-testid="device-outcome-suggestion">
+        <p
+          className="break-words text-foreground"
+          data-testid="device-outcome-suggestion"
+        >
           Saran: {err.suggestion}
         </p>
       </div>

@@ -31,20 +31,35 @@ export type InfrastructureStatus = (typeof infrastructureStatuses)[number];
 export const networkInfrastructure = pgTable(
   "network_infrastructure",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     type: text("type").$type<InfrastructureDeviceType>().notNull(),
     host: text("host"),
-    status: text("status").$type<InfrastructureStatus>().default("active").notNull(),
-    latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
-    longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
+    status: text("status")
+      .$type<InfrastructureStatus>()
+      .default("active")
+      .notNull(),
+    latitude: numeric("latitude", {
+      precision: 9,
+      scale: 6,
+      mode: "number",
+    }).notNull(),
+    longitude: numeric("longitude", {
+      precision: 9,
+      scale: 6,
+      mode: "number",
+    }).notNull(),
     parentId: text("parent_id"),
     routeId: text("route_id"),
     capacity: integer("capacity"),
     usedCapacity: integer("used_capacity").default(0),
     description: text("description"),
     address: text("address"),
-    details: jsonb("details").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -80,7 +95,9 @@ export const networkInfrastructure = pgTable(
 export const networkCables = pgTable(
   "network_cables",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     sourceId: text("source_id").notNull(),
     targetId: text("target_id"),
@@ -95,7 +112,9 @@ export const networkCables = pgTable(
     }),
     polyline: jsonb("polyline").$type<Array<[number, number]>>().notNull(),
     status: text("status").default("active").notNull(),
-    details: jsonb("details").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -122,7 +141,9 @@ export type DeviceRelationType = (typeof deviceRelationTypes)[number];
 export const networkDeviceRelations = pgTable(
   "network_device_relations",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     parentId: text("parent_id")
       .notNull()
       .references(() => networkInfrastructure.id, { onDelete: "cascade" }),
@@ -136,7 +157,9 @@ export const networkDeviceRelations = pgTable(
     parentPort: text("parent_port"),
     childPort: text("child_port"),
     status: text("status").default("active").notNull(),
-    details: jsonb("details").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`),
+    details: jsonb("details")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -148,7 +171,10 @@ export const networkDeviceRelations = pgTable(
     index("network_device_rel_parent_idx").on(table.parentId),
     index("network_device_rel_child_idx").on(table.childId),
     index("network_device_rel_type_idx").on(table.relationType),
-    check("network_device_rel_not_self", sql`${table.parentId} != ${table.childId}`),
+    check(
+      "network_device_rel_not_self",
+      sql`${table.parentId} != ${table.childId}`,
+    ),
     check(
       "network_device_rel_type_check",
       sql`${table.relationType} in ('hierarchy', 'feeder', 'backup', 'distribution')`,
@@ -194,8 +220,10 @@ export const networkDeviceRelationsRelations = relations(
 );
 
 export type NetworkInfrastructure = typeof networkInfrastructure.$inferSelect;
-export type NewNetworkInfrastructure = typeof networkInfrastructure.$inferInsert;
+export type NewNetworkInfrastructure =
+  typeof networkInfrastructure.$inferInsert;
 export type NetworkDeviceRelation = typeof networkDeviceRelations.$inferSelect;
-export type NewNetworkDeviceRelation = typeof networkDeviceRelations.$inferInsert;
+export type NewNetworkDeviceRelation =
+  typeof networkDeviceRelations.$inferInsert;
 export type NetworkCable = typeof networkCables.$inferSelect;
 export type NewNetworkCable = typeof networkCables.$inferInsert;

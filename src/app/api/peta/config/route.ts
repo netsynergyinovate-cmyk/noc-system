@@ -1,6 +1,9 @@
 import { withApiSession } from "@/lib/api";
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from "@/config/map";
-import { ROUTE_SAMPLE_INTERVAL_M, SNAP_TOLERANCE_M } from "@/services/map/adapter";
+import {
+  ROUTE_SAMPLE_INTERVAL_M,
+  SNAP_TOLERANCE_M,
+} from "@/services/map/adapter";
 
 export const runtime = "nodejs";
 
@@ -13,7 +16,7 @@ const TILE_PRESETS = {
     subdomains: "0123",
     maxNativeZoom: 20,
     attribution:
-      'Citra &copy; Google (endpoint tile tidak resmi, dapat diblokir sewaktu-waktu)',
+      "Citra &copy; Google (endpoint tile tidak resmi, dapat diblokir sewaktu-waktu)",
   },
   esri: {
     satellite:
@@ -61,7 +64,8 @@ export function GET(request: Request) {
     return Response.json({
       tileProvider: provider,
       tileUrl: process.env.NEXT_PUBLIC_TILE_URL || preset.satellite,
-      streetsTileUrl: process.env.NEXT_PUBLIC_TILE_URL_STREETS || preset.streets,
+      streetsTileUrl:
+        process.env.NEXT_PUBLIC_TILE_URL_STREETS || preset.streets,
       tileSubdomains: preset.subdomains,
       tileAttribution: preset.attribution,
       defaultCenter: DEFAULT_MAP_CENTER,

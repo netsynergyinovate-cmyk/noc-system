@@ -12,7 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
-import { OntWebSettingsPanel, type OntWebSettings } from "./ont-web-settings-panel";
+import {
+  OntWebSettingsPanel,
+  type OntWebSettings,
+} from "./ont-web-settings-panel";
 
 type Phase =
   | { kind: "idle" }
@@ -31,7 +34,9 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
   const [ensureWan, setEnsureWan] = useState(true);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   // Pengaturan GenieACS dari database; null = sedang dimuat, "error" = gagal dimuat.
-  const [settings, setSettings] = useState<OntWebSettings | "error" | null>(null);
+  const [settings, setSettings] = useState<OntWebSettings | "error" | null>(
+    null,
+  );
   // 403 dari GET pengaturan = akun ini bukan admin (izin kelola CPE).
   const [forbidden, setForbidden] = useState(false);
   const saving = phase.kind === "saving";
@@ -44,7 +49,8 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
   // Satu-satunya alasan tombol tidak bisa dipakai; selalu ditulis di layar supaya
   // klik yang ditolak tidak terasa "tidak ada respons".
   let blockReason: string | null = null;
-  if (forbidden) blockReason = "Hanya admin (izin kelola CPE) yang boleh memasang GenieACS.";
+  if (forbidden)
+    blockReason = "Hanya admin (izin kelola CPE) yang boleh memasang GenieACS.";
   else if (settings === null) blockReason = "Memuat pengaturan…";
   else if (settings !== "error" && !settings.configured)
     blockReason = "Isi dan simpan Pengaturan GenieACS dulu.";
@@ -56,11 +62,14 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
     fetch("/api/ont-web/settings", { signal: ctrl.signal, cache: "no-store" })
       .then((r) => {
         if (r.status === 403) setForbidden(true);
-        return r.ok ? (r.json() as Promise<OntWebSettings>) : Promise.reject(new Error(String(r.status)));
+        return r.ok
+          ? (r.json() as Promise<OntWebSettings>)
+          : Promise.reject(new Error(String(r.status)));
       })
       .then(setSettings)
       .catch((err: unknown) => {
-        if (!(err instanceof DOMException && err.name === "AbortError")) setSettings("error");
+        if (!(err instanceof DOMException && err.name === "AbortError"))
+          setSettings("error");
       });
     return () => ctrl.abort();
   }, []);
@@ -81,12 +90,18 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
           onuId: onu.id,
           ensureWan,
           ...(hostTyped ? { host: host.trim() } : {}),
-          ...(username.trim() || password ? { username: username.trim(), password } : {}),
+          ...(username.trim() || password
+            ? { username: username.trim(), password }
+            : {}),
         }),
       });
-      const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; message?: string; host?: string | null; wanNote?: string; error?: { message?: string } }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+        host?: string | null;
+        wanNote?: string;
+        error?: { message?: string };
+      } | null;
       if (res.ok && json?.ok) {
         setPhase({
           kind: "done",
@@ -96,10 +111,16 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
         });
         setPassword("");
       } else {
-        setPhase({ kind: "failed", message: json?.error?.message ?? "Gagal memasang TR-069 di modem." });
+        setPhase({
+          kind: "failed",
+          message: json?.error?.message ?? "Gagal memasang TR-069 di modem.",
+        });
       }
     } catch {
-      setPhase({ kind: "failed", message: "Server aplikasi tidak terjangkau." });
+      setPhase({
+        kind: "failed",
+        message: "Server aplikasi tidak terjangkau.",
+      });
     }
   }
 
@@ -108,8 +129,9 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Pasang GenieACS lewat web ONT</DialogTitle>
         <DialogDescription>
-          Server mencari IP modem dari sesi PPPoE pelanggan, login ke halaman admin modem, membuka Settings
-          &gt; TR-069, lalu mengisi alamat GenieACS. Tidak perlu mengetik apa pun bila pengaturan sudah ada.
+          Server mencari IP modem dari sesi PPPoE pelanggan, login ke halaman
+          admin modem, membuka Settings &gt; TR-069, lalu mengisi alamat
+          GenieACS. Tidak perlu mengetik apa pun bila pengaturan sudah ada.
         </DialogDescription>
       </DialogHeader>
 
@@ -119,7 +141,9 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
           {mapped ? (
             <>
               {onu.customerName}{" "}
-              <span className="font-mono text-xs text-muted-foreground">({onu.pppoeUsername})</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                ({onu.pppoeUsername})
+              </span>
             </>
           ) : (
             "Belum dipetakan (IP dicari dari MAC ONU)"
@@ -133,7 +157,8 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
 
       {settings === "error" && !forbidden && (
         <p role="alert" className="text-sm text-destructive">
-          Pengaturan GenieACS tidak bisa dimuat. Pemasangan tetap dicoba memakai yang tersimpan di server.
+          Pengaturan GenieACS tidak bisa dimuat. Pemasangan tetap dicoba memakai
+          yang tersimpan di server.
         </p>
       )}
       {settings !== null && settings !== "error" && (
@@ -153,19 +178,25 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
           <span>
             Sambungkan TR-069 ke WAN internet bila perlu
             <span className="block text-xs text-muted-foreground">
-              Modem hanya melapor ke GenieACS lewat WAN bertipe TR069. Bila modem ini hanya punya WAN
-              INTERNET, tipenya diubah jadi TR069_INTERNET dan PPPoE pelanggan tersambung ulang sekitar 30
-              detik. Pada GGCLink (ZICG GM22) WAN pelanggan tidak diubah: aplikasi menambahkan WAN TR-069
-              baru (DHCP, tanpa VLAN) yang dilayani router.
+              Modem hanya melapor ke GenieACS lewat WAN bertipe TR069. Bila
+              modem ini hanya punya WAN INTERNET, tipenya diubah jadi
+              TR069_INTERNET dan PPPoE pelanggan tersambung ulang sekitar 30
+              detik. Pada GGCLink (ZICG GM22) WAN pelanggan tidak diubah:
+              aplikasi menambahkan WAN TR-069 baru (DHCP, tanpa VLAN) yang
+              dilayani router.
             </span>
           </span>
         </label>
 
         <details className="rounded-md border p-3 text-sm">
-          <summary className="cursor-pointer font-medium">Lanjutan (opsional)</summary>
+          <summary className="cursor-pointer font-medium">
+            Lanjutan (opsional)
+          </summary>
           <fieldset disabled={saving} className="mt-3 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="ont-web-host">IP web modem (kosong = otomatis dari PPPoE)</Label>
+              <Label htmlFor="ont-web-host">
+                IP web modem (kosong = otomatis dari PPPoE)
+              </Label>
               <Input
                 id="ont-web-host"
                 inputMode="decimal"
@@ -177,8 +208,8 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Admin web modem khusus modem ini. Kosongkan untuk memakai yang tersimpan di database. Tidak
-              disimpan dan tidak dicatat.
+              Admin web modem khusus modem ini. Kosongkan untuk memakai yang
+              tersimpan di database. Tidak disimpan dan tidak dicatat.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -209,20 +240,32 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
             id="ont-web-block"
             data-testid="ont-web-block"
             role={attempted ? "alert" : undefined}
-            className={attempted ? "text-sm font-medium text-destructive" : "text-sm text-muted-foreground"}
+            className={
+              attempted
+                ? "text-sm font-medium text-destructive"
+                : "text-sm text-muted-foreground"
+            }
           >
             {blockReason}
           </p>
         )}
         {phase.kind === "done" && (
-          <p role="status" data-testid="ont-web-result" className="text-sm text-success">
+          <p
+            role="status"
+            data-testid="ont-web-result"
+            className="text-sm text-success"
+          >
             {phase.message}
             {phase.host ? ` (modem ${phase.host})` : ""}
             {phase.wanNote ? ` ${phase.wanNote}` : ""}
           </p>
         )}
         {phase.kind === "failed" && (
-          <p role="alert" data-testid="ont-web-result" className="text-sm text-destructive">
+          <p
+            role="alert"
+            data-testid="ont-web-result"
+            className="text-sm text-destructive"
+          >
             {phase.message}
           </p>
         )}
@@ -236,7 +279,9 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
             data-testid="btn-ont-web-submit"
             className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
             aria-disabled={!canSubmit}
-            aria-describedby={blockReason !== null ? "ont-web-block" : undefined}
+            aria-describedby={
+              blockReason !== null ? "ont-web-block" : undefined
+            }
             onClick={(e) => {
               if (!canSubmit) {
                 e.preventDefault();
@@ -244,7 +289,11 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
               }
             }}
           >
-            {saving ? "Memasang…" : phase.kind === "failed" ? "Coba lagi" : "Pasang TR-069"}
+            {saving
+              ? "Memasang…"
+              : phase.kind === "failed"
+                ? "Coba lagi"
+                : "Pasang TR-069"}
           </Button>
         </div>
       </form>
@@ -265,7 +314,9 @@ export function OntWebDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="ont-web-dialog">
         {/* key: formulir (termasuk kata sandi) dibuang setiap ONU berganti atau dialog ditutup */}
-        {onu && <Body key={onu.id} onu={onu} onClose={() => onOpenChange(false)} />}
+        {onu && (
+          <Body key={onu.id} onu={onu} onClose={() => onOpenChange(false)} />
+        )}
       </DialogContent>
     </Dialog>
   );

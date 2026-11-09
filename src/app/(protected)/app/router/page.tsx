@@ -23,25 +23,40 @@ export default async function RouterPage() {
             Kelola Router
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl">
-            Daftar router MikroTik yang terhubung dan dipantau secara real-time via REST &amp; Winbox API dengan visualisasi throughput antarmuka.
+            Daftar router MikroTik yang terhubung dan dipantau secara real-time
+            via REST &amp; Winbox API dengan visualisasi throughput antarmuka.
           </p>
         </div>
 
         {/* Header Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button size="sm" variant="outline" className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase gap-1.5" asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase gap-1.5"
+            asChild
+          >
             <Link href="/app/router/queues">
               <Layers className="size-3.5 text-primary" />
               Daftar Queue
             </Link>
           </Button>
-          <Button size="sm" variant="outline" className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase gap-1.5" asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase gap-1.5"
+            asChild
+          >
             <Link href="/app/router/test">
               <Activity className="size-3.5 text-emerald-600 dark:text-emerald-400" />
               Uji Koneksi
             </Link>
           </Button>
-          <Button size="sm" className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase font-semibold gap-1.5 shadow-xs" asChild>
+          <Button
+            size="sm"
+            className="h-9 px-3.5 rounded-xl font-mono text-xs uppercase font-semibold gap-1.5 shadow-xs"
+            asChild
+          >
             <Link href="/app/router/new">
               <Plus className="size-3.5" />
               Tambah Router

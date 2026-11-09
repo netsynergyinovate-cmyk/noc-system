@@ -115,7 +115,7 @@ export async function getCompleteRealMapData(
     .orderBy(asc(networkInfrastructure.name));
 
   // 3. Ambil data kabel serat optik jika diminta
-  let rawCables: typeof networkCables.$inferSelect[] = [];
+  let rawCables: (typeof networkCables.$inferSelect)[] = [];
   if (includeCables) {
     try {
       rawCables = await db.select().from(networkCables);
@@ -166,7 +166,11 @@ export async function getCompleteRealMapData(
     if (c.isOnline) onlineCount++;
     else offlineCount++;
 
-    const optical = c.onuRxPower ? Number(c.onuRxPower) : c.opticalPower ? Number(c.opticalPower) : null;
+    const optical = c.onuRxPower
+      ? Number(c.onuRxPower)
+      : c.opticalPower
+        ? Number(c.opticalPower)
+        : null;
     if (optical !== null && optical <= -24.5) {
       criticalOpticsCount++;
     }
@@ -257,7 +261,11 @@ export async function getCompleteRealMapData(
         : c.targetId || "Unassigned Target";
 
     const statusVal: "active" | "warning" | "offline" =
-      c.status === "active" ? "active" : c.status === "maintenance" ? "warning" : "offline";
+      c.status === "active"
+        ? "active"
+        : c.status === "maintenance"
+          ? "warning"
+          : "offline";
 
     return {
       id: c.id,
@@ -284,7 +292,9 @@ export async function getCompleteRealMapData(
   if (options?.includeHierarchy) {
     try {
       hierarchyTree = await getDeviceHierarchyTree();
-      const [relCount] = await db.select({ total: count() }).from(networkDeviceRelations);
+      const [relCount] = await db
+        .select({ total: count() })
+        .from(networkDeviceRelations);
       totalRelations = Number(relCount?.total ?? 0);
     } catch {
       hierarchyTree = [];
@@ -336,13 +346,17 @@ export async function checkMapDatabaseHealth(): Promise<MapDatabaseHealthResult>
         const [res] = await db.select({ total: count() }).from(customers);
         rowCount = Number(res?.total ?? 0);
       } else if (reg.tableName === "network_infrastructure") {
-        const [res] = await db.select({ total: count() }).from(networkInfrastructure);
+        const [res] = await db
+          .select({ total: count() })
+          .from(networkInfrastructure);
         rowCount = Number(res?.total ?? 0);
       } else if (reg.tableName === "network_cables") {
         const [res] = await db.select({ total: count() }).from(networkCables);
         rowCount = Number(res?.total ?? 0);
       } else if (reg.tableName === "network_device_relations") {
-        const [res] = await db.select({ total: count() }).from(networkDeviceRelations);
+        const [res] = await db
+          .select({ total: count() })
+          .from(networkDeviceRelations);
         rowCount = Number(res?.total ?? 0);
       }
 

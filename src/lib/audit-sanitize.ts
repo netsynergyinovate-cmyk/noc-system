@@ -7,7 +7,8 @@ const MAX_DEPTH = 6;
 export const REDACTED = "[REDACTED]";
 
 function clean(value: unknown, depth: number): unknown {
-  if (typeof value === "string") return SECRET_VALUE.test(value) ? REDACTED : value;
+  if (typeof value === "string")
+    return SECRET_VALUE.test(value) ? REDACTED : value;
   if (value === null || typeof value !== "object") return value;
   if (depth >= MAX_DEPTH) return REDACTED;
   if (Array.isArray(value)) return value.map((v) => clean(v, depth + 1));
@@ -26,7 +27,8 @@ export function sanitizeAuditDetail(
   return out;
 }
 
-export const isSuccessStatus = (status: number) => status >= 200 && status < 300;
+export const isSuccessStatus = (status: number) =>
+  status >= 200 && status < 300;
 
 type Session = { user: { id: string } };
 type Record_ = (
@@ -39,14 +41,14 @@ type Record_ = (
 // Inti withAudit tanpa dependensi server, agar kontraknya bisa diuji.
 export function createWithAudit(record: Record_) {
   return ({
-    action,
-    getTarget,
-    getDetail,
-  }: {
-    action: string;
-    getTarget?: (req: Request, res: Response, session: Session) => string;
-    getDetail?: (req: Request, res: Response) => Record<string, unknown>;
-  }) =>
+      action,
+      getTarget,
+      getDetail,
+    }: {
+      action: string;
+      getTarget?: (req: Request, res: Response, session: Session) => string;
+      getDetail?: (req: Request, res: Response) => Record<string, unknown>;
+    }) =>
     <S extends Session>(
       request: Request,
       handler: (session: S) => Promise<Response>,
@@ -57,7 +59,8 @@ export function createWithAudit(record: Record_) {
         await record(
           session.user.id,
           action,
-          getTarget?.(request, response, session) ?? new URL(request.url).pathname,
+          getTarget?.(request, response, session) ??
+            new URL(request.url).pathname,
           { method: request.method, ...(getDetail?.(request, response) ?? {}) },
         );
       return response;

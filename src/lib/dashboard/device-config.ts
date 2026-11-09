@@ -3,7 +3,8 @@
 
 export type DeviceType = "mikrotik" | "olt" | "genieacs" | "billing";
 export type DeviceMode = "simulator" | "real";
-export type ConnectionStatus = "connected" | "disconnected" | "error" | "timeout" | "untested";
+export type ConnectionStatus =
+  "connected" | "disconnected" | "error" | "timeout" | "untested";
 
 export interface DeviceConfig {
   id: string;
@@ -30,7 +31,8 @@ export const MOCK_DEVICE_CONFIGS: DeviceConfig[] = [
     id: "dev-mt-01",
     type: "mikrotik",
     name: "Router Core MikroTik CCR2004",
-    description: "Router gateway utama ISP untuk manajemen simple queue, bandwidth, dan resource CPU.",
+    description:
+      "Router gateway utama ISP untuk manajemen simple queue, bandwidth, dan resource CPU.",
     host: "10.10.0.1",
     port: 443,
     protocol: "HTTPS (REST API v7)",
@@ -52,7 +54,8 @@ export const MOCK_DEVICE_CONFIGS: DeviceConfig[] = [
     id: "dev-olt-01",
     type: "olt",
     name: "OLT HSGQ EPON/GPON 8-Port",
-    description: "Konsentrator fiber optik distribusi untuk monitoring port PON, redaman, dan status hidup/mati ONU.",
+    description:
+      "Konsentrator fiber optik distribusi untuk monitoring port PON, redaman, dan status hidup/mati ONU.",
     host: "10.10.1.1",
     port: 80,
     protocol: "HTTP/Telnet CLI",
@@ -75,7 +78,8 @@ export const MOCK_DEVICE_CONFIGS: DeviceConfig[] = [
     id: "dev-acs-01",
     type: "genieacs",
     name: "GenieACS NBI TR-069 Server",
-    description: "Server Auto Configuration Server untuk kendali CPE pelanggan jarak jauh (SSID, Wi-Fi, host).",
+    description:
+      "Server Auto Configuration Server untuk kendali CPE pelanggan jarak jauh (SSID, Wi-Fi, host).",
     host: "10.10.2.1",
     port: 7557,
     protocol: "HTTP REST NBI",
@@ -96,7 +100,8 @@ export const MOCK_DEVICE_CONFIGS: DeviceConfig[] = [
     id: "dev-bil-01",
     type: "billing",
     name: "Portal Billing ISP",
-    description: "Sistem otomasi tagihan & invoice pelanggan dengan scraper sesi login (cookiejar + CSRF).",
+    description:
+      "Sistem otomasi tagihan & invoice pelanggan dengan scraper sesi login (cookiejar + CSRF).",
     host: "10.10.3.1",
     port: 443,
     protocol: "HTTPS Web Scraper",
@@ -164,7 +169,12 @@ export type MockTestResult = TestOutcome & {
 export const DEVICE_TEST_TIMEOUT_MS = 8000;
 
 // Latensi simulasi tetap per jenis perangkat supaya hasil deterministik.
-const SIM_LATENCY_MS: Record<DeviceType, number> = { mikrotik: 12, olt: 24, genieacs: 18, billing: 45 };
+const SIM_LATENCY_MS: Record<DeviceType, number> = {
+  mikrotik: 12,
+  olt: 24,
+  genieacs: 18,
+  billing: 45,
+};
 // Port yang disimulasikan menolak koneksi.
 const REFUSED_PORTS = new Set([0, 9999]);
 
@@ -261,7 +271,10 @@ const HOST_LABEL = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 
 /** Buang karakter kontrol & spasi tepi; batasi panjang. */
 export function sanitizeText(value: string, max = 120): string {
-  return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim()
+    .slice(0, max);
 }
 
 export function isValidHost(host: string): boolean {
@@ -276,17 +289,28 @@ export function isValidHost(host: string): boolean {
 }
 
 export function isValidPort(port: unknown): boolean {
-  return typeof port === "number" && Number.isInteger(port) && port >= 1 && port <= 65535;
+  return (
+    typeof port === "number" &&
+    Number.isInteger(port) &&
+    port >= 1 &&
+    port <= 65535
+  );
 }
 
-export type DeviceInputErrors = Partial<Record<"name" | "host" | "port" | "username", string>>;
+export type DeviceInputErrors = Partial<
+  Record<"name" | "host" | "port" | "username", string>
+>;
 
 export function validateDeviceInput(input: {
   name: string;
   host: string;
   port: number;
   username: string;
-}): { ok: boolean; errors: DeviceInputErrors; clean: { name: string; host: string; port: number; username: string } } {
+}): {
+  ok: boolean;
+  errors: DeviceInputErrors;
+  clean: { name: string; host: string; port: number; username: string };
+} {
   const clean = {
     name: sanitizeText(input.name),
     host: sanitizeText(input.host, 253),
@@ -295,8 +319,10 @@ export function validateDeviceInput(input: {
   };
   const errors: DeviceInputErrors = {};
   if (!clean.name) errors.name = "Nama perangkat wajib diisi.";
-  if (!isValidHost(clean.host)) errors.host = "Host harus berupa IPv4 atau nama host yang valid.";
-  if (!isValidPort(clean.port)) errors.port = "Port harus bilangan bulat 1-65535.";
+  if (!isValidHost(clean.host))
+    errors.host = "Host harus berupa IPv4 atau nama host yang valid.";
+  if (!isValidPort(clean.port))
+    errors.port = "Port harus bilangan bulat 1-65535.";
   if (!clean.username) errors.username = "Username wajib diisi.";
   return { ok: Object.keys(errors).length === 0, errors, clean };
 }
@@ -318,15 +344,18 @@ export async function runDeviceTest(
   options: RunDeviceTestOptions | typeof fetch = {},
 ): Promise<TestOutcome> {
   // Kompatibel mundur: argumen kedua boleh berupa fungsi fetch.
-  const opts: RunDeviceTestOptions = typeof options === "function" ? { fetchImpl: options } : options;
+  const opts: RunDeviceTestOptions =
+    typeof options === "function" ? { fetchImpl: options } : options;
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const offline =
+    typeof navigator !== "undefined" && navigator.onLine === false;
   const simulate = (why: string): TestOutcome => {
     const r = mockRunDeviceTest(d);
     return { ...r, message: `${r.message} (simulasi lokal: ${why})` };
   };
   const fallback = (why: string): TestOutcome => {
-    if (d.mode !== "simulator") return { ok: false, message: why, latencyMs: null };
+    if (d.mode !== "simulator")
+      return { ok: false, message: why, latencyMs: null };
     return simulate(why);
   };
   if (opts.forceLocal) return simulate("dipaksa tanpa panggilan jaringan");
@@ -358,16 +387,36 @@ export async function runDeviceTest(
         ...(d.statusCode && { statusCode: d.statusCode }),
         ...(d.endpointTested && { endpointTested: d.endpointTested }),
         ...(d.timestamp && { timestamp: d.timestamp }),
-        ...(d.data && typeof d.data === "object" && { data: d.data as Record<string, unknown> }),
+        ...(d.data &&
+          typeof d.data === "object" && {
+            data: d.data as Record<string, unknown>,
+          }),
       };
     }
-    if (res.status === 401) return { ok: false, message: "Sesi berakhir, silakan masuk lagi.", latencyMs: null };
+    if (res.status === 401)
+      return {
+        ok: false,
+        message: "Sesi berakhir, silakan masuk lagi.",
+        latencyMs: null,
+      };
     if (res.status === 403)
-      return { ok: false, message: "Akun ini tidak berhak menguji perangkat (butuh izin router:manage).", latencyMs: null };
-    if (res.status === 404 || res.status >= 500) return fallback(`API uji koneksi belum tersedia (HTTP ${res.status})`);
-    return { ok: false, message: json?.error?.message ?? `Server menjawab HTTP ${res.status}.`, latencyMs: null };
+      return {
+        ok: false,
+        message:
+          "Akun ini tidak berhak menguji perangkat (butuh izin router:manage).",
+        latencyMs: null,
+      };
+    if (res.status === 404 || res.status >= 500)
+      return fallback(`API uji koneksi belum tersedia (HTTP ${res.status})`);
+    return {
+      ok: false,
+      message: json?.error?.message ?? `Server menjawab HTTP ${res.status}.`,
+      latencyMs: null,
+    };
   } catch (e) {
-    const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+    const timeout =
+      e instanceof Error &&
+      (e.name === "TimeoutError" || e.name === "AbortError");
     if (timeout)
       return {
         ok: false,
@@ -389,7 +438,10 @@ export interface FormattedDeviceError {
 /** Pesan galat ramah operator (Bahasa Indonesia), seragam di semua kartu perangkat. */
 export function formatDeviceError(
   outcome: TestOutcome,
-  device: Pick<DeviceConfig, "host" | "port" | "username" | "type" | "envPassKey">,
+  device: Pick<
+    DeviceConfig,
+    "host" | "port" | "username" | "type" | "envPassKey"
+  >,
 ): FormattedDeviceError {
   const { host, port, username, envPassKey } = device;
   switch (outcome.code) {
@@ -397,7 +449,8 @@ export function formatDeviceError(
       return {
         title: "Batas Waktu Terlampaui (Timeout)",
         detail: `Host ${host}:${port} tidak merespons dalam ${DEVICE_TEST_TIMEOUT_MS / 1000} detik.`,
-        suggestion: "Periksa rute jaringan, IP gateway, atau pastikan perangkat dalam kondisi hidup.",
+        suggestion:
+          "Periksa rute jaringan, IP gateway, atau pastikan perangkat dalam kondisi hidup.",
       };
     case "AUTH_FAILED":
       return {
@@ -419,9 +472,12 @@ export function formatDeviceError(
       };
     default:
       return {
-        title: outcome.statusCode ? `Galat HTTP ${outcome.statusCode}` : "Koneksi Gagal",
+        title: outcome.statusCode
+          ? `Galat HTTP ${outcome.statusCode}`
+          : "Koneksi Gagal",
         detail: outcome.message || "Perangkat mengembalikan respons galat.",
-        suggestion: "Periksa format URL API, sertifikat TLS, atau log service perangkat.",
+        suggestion:
+          "Periksa format URL API, sertifikat TLS, atau log service perangkat.",
       };
   }
 }
@@ -453,9 +509,20 @@ export interface DeviceStatusSummary {
  * Agregasi status perangkat. Perangkat yang sedang diuji (`testingIds`) dihitung
  * hanya sebagai `testing`, apa pun status tersimpannya. "disconnected" dihitung `error`.
  */
-export function summarizeDeviceStatuses(devices: DeviceConfig[], testingIds: string[] = []): DeviceStatusSummary {
+export function summarizeDeviceStatuses(
+  devices: DeviceConfig[],
+  testingIds: string[] = [],
+): DeviceStatusSummary {
   const busy = new Set(testingIds);
-  const s: DeviceStatusSummary = { total: devices.length, connected: 0, error: 0, timeout: 0, untested: 0, testing: 0, allOk: false };
+  const s: DeviceStatusSummary = {
+    total: devices.length,
+    connected: 0,
+    error: 0,
+    timeout: 0,
+    untested: 0,
+    testing: 0,
+    allOk: false,
+  };
   for (const d of devices) {
     if (busy.has(d.id)) s.testing++;
     else if (d.status === "connected") s.connected++;
@@ -467,7 +534,8 @@ export function summarizeDeviceStatuses(devices: DeviceConfig[], testingIds: str
   return s;
 }
 
-export type StatusBadgeKind = "testing" | "connected" | "error" | "timeout" | "untested";
+export type StatusBadgeKind =
+  "testing" | "connected" | "error" | "timeout" | "untested";
 
 /** Model tampilan badge status: `isTesting` selalu menimpa status. */
 export function getStatusBadgeModel(
@@ -476,15 +544,40 @@ export function getStatusBadgeModel(
   latencyMs: number | null = null,
   showLatency = true,
 ): { kind: StatusBadgeKind; label: string; ariaLabel: string; busy: boolean } {
-  if (isTesting) return { kind: "testing", label: "Sedang diuji...", ariaLabel: "Status koneksi: sedang diuji", busy: true };
+  if (isTesting)
+    return {
+      kind: "testing",
+      label: "Sedang diuji...",
+      ariaLabel: "Status koneksi: sedang diuji",
+      busy: true,
+    };
   const kind: StatusBadgeKind =
-    status === "connected" ? "connected" : status === "timeout" ? "timeout" : status === "untested" ? "untested" : "error";
+    status === "connected"
+      ? "connected"
+      : status === "timeout"
+        ? "timeout"
+        : status === "untested"
+          ? "untested"
+          : "error";
   const base = kind === "untested" ? "Belum Diuji" : statusLabel(status);
-  const label = kind === "connected" && showLatency && latencyMs != null ? `${base} · ${latencyMs} ms` : base;
+  const label =
+    kind === "connected" && showLatency && latencyMs != null
+      ? `${base} · ${latencyMs} ms`
+      : base;
   return { kind, label, ariaLabel: `Status koneksi: ${label}`, busy: false };
 }
 
-export function applyTestOutcome(d: DeviceConfig, r: TestOutcome, nowSec = Math.floor(Date.now() / 1000)): DeviceConfig {
+export function applyTestOutcome(
+  d: DeviceConfig,
+  r: TestOutcome,
+  nowSec = Math.floor(Date.now() / 1000),
+): DeviceConfig {
   const status: ConnectionStatus = r.status ?? (r.ok ? "connected" : "error");
-  return { ...d, status, lastTestedAt: nowSec, latencyMs: r.latencyMs, errorMessage: r.ok ? undefined : r.message };
+  return {
+    ...d,
+    status,
+    lastTestedAt: nowSec,
+    latencyMs: r.latencyMs,
+    errorMessage: r.ok ? undefined : r.message,
+  };
 }

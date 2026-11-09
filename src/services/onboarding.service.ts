@@ -23,7 +23,9 @@ export async function ensureDefaultOnboardingStepsSeeded(): Promise<void> {
     const pool = getRawPool();
     const client = await pool.connect();
     try {
-      const res = await client.query("SELECT COUNT(*) AS count FROM \"onboarding_steps\"");
+      const res = await client.query(
+        'SELECT COUNT(*) AS count FROM "onboarding_steps"',
+      );
       const count = Number(res.rows[0]?.count ?? 0);
       if (count === 0) {
         for (const step of MOCK_ONBOARDING_STEPS) {

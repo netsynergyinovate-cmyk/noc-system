@@ -43,7 +43,10 @@ const where = (ctx?: Context) =>
   ctx?.host ? ` ${ctx.host}${ctx.port ? `:${ctx.port}` : ""}` : "";
 
 // Bentuk dasar tiap kode; message diisi pemanggil.
-const TABLE: Record<MikrotikErrorCode, Omit<MikrotikMappedError, "code" | "message">> = {
+const TABLE: Record<
+  MikrotikErrorCode,
+  Omit<MikrotikMappedError, "code" | "message">
+> = {
   INVALID_HOST: {
     status: 422,
     retryable: false,
@@ -123,18 +126,24 @@ const TABLE: Record<MikrotikErrorCode, Omit<MikrotikMappedError, "code" | "messa
   },
 };
 
-function build(code: MikrotikErrorCode, message: string, over?: Partial<MikrotikMappedError>): MikrotikMappedError {
+function build(
+  code: MikrotikErrorCode,
+  message: string,
+  over?: Partial<MikrotikMappedError>,
+): MikrotikMappedError {
   return { ...TABLE[code], ...over, code, message };
 }
 
 function httpStatusOf(err: unknown): number | null {
   if (typeof err === "number") return Number.isInteger(err) ? err : null;
-  if (typeof err === "string") return /^\d{3}$/.test(err.trim()) ? Number(err.trim()) : null;
+  if (typeof err === "string")
+    return /^\d{3}$/.test(err.trim()) ? Number(err.trim()) : null;
   if (err && typeof err === "object") {
     const o = err as { status?: unknown; statusCode?: unknown };
     for (const v of [o.status, o.statusCode]) {
       if (typeof v === "number" && Number.isInteger(v)) return v;
-      if (typeof v === "string" && /^\d{3}$/.test(v.trim())) return Number(v.trim());
+      if (typeof v === "string" && /^\d{3}$/.test(v.trim()))
+        return Number(v.trim());
     }
   }
   return null;
@@ -142,27 +151,47 @@ function httpStatusOf(err: unknown): number | null {
 
 function fromHttpStatus(s: number, ctx?: Context): MikrotikMappedError | null {
   if (s === 401 || s === 403)
-    return build("AUTH_FAILED", `Router${where(ctx)} menolak login (HTTP ${s}): periksa username dan password.`);
+    return build(
+      "AUTH_FAILED",
+      `Router${where(ctx)} menolak login (HTTP ${s}): periksa username dan password.`,
+    );
   if (s === 404)
-    return build("NOT_FOUND", `Endpoint REST tidak ditemukan (HTTP 404). Pastikan RouterOS v7 dan layanan www/www-ssl aktif.`);
+    return build(
+      "NOT_FOUND",
+      `Endpoint REST tidak ditemukan (HTTP 404). Pastikan RouterOS v7 dan layanan www/www-ssl aktif.`,
+    );
   if (s >= 500 && s <= 599)
-    return build("HTTP_ERROR", `Router${where(ctx)} membalas HTTP ${s}.`, { retryable: true });
-  if (s >= 300) return build("HTTP_ERROR", `Router${where(ctx)} membalas HTTP ${s}.`);
+    return build("HTTP_ERROR", `Router${where(ctx)} membalas HTTP ${s}.`, {
+      retryable: true,
+    });
+  if (s >= 300)
+    return build("HTTP_ERROR", `Router${where(ctx)} membalas HTTP ${s}.`);
   return null;
 }
 
 const KNOWN = new Set<string>(Object.keys(TABLE));
 
-function fromCode(code: string, message: string, ctx?: Context): MikrotikMappedError {
+function fromCode(
+  code: string,
+  message: string,
+  ctx?: Context,
+): MikrotikMappedError {
   if (KNOWN.has(code)) return build(code as MikrotikErrorCode, message);
   // Kode luar daftar (mis. UNREACHABLE) diperlakukan sebagai galat jaringan.
   if (code === "UNREACHABLE") return build("NETWORK_ERROR", message);
-  return build("CONNECTION_FAILED", message || `Gagal menghubungi router${where(ctx)}.`);
+  return build(
+    "CONNECTION_FAILED",
+    message || `Gagal menghubungi router${where(ctx)}.`,
+  );
 }
 
-export function mapMikrotikError(err: unknown, context?: Context): MikrotikMappedError {
+export function mapMikrotikError(
+  err: unknown,
+  context?: Context,
+): MikrotikMappedError {
   if (err instanceof MikrotikError) return err.mapped;
-  if (err instanceof DeviceConnectionError) return fromCode(err.code, err.message, context);
+  if (err instanceof DeviceConnectionError)
+    return fromCode(err.code, err.message, context);
 
   const status = httpStatusOf(err);
   if (status !== null) {
@@ -171,25 +200,67 @@ export function mapMikrotikError(err: unknown, context?: Context): MikrotikMappe
   }
 
   if (err && typeof err === "object") {
-    const e = err as { name?: unknown; message?: unknown; code?: unknown; cause?: { code?: unknown } };
-    const text = [e.message, e.code, e.cause?.code].filter((v) => typeof v === "string").join(" ");
+    const e = err as {
+      name?: unknown;
+      message?: unknown;
+      code?: unknown;
+      cause?: { code?: unknown };
+    };
+    const text = [e.message, e.code, e.cause?.code]
+      .filter((v) => typeof v === "string")
+      .join(" ");
     const label = `router${where(context)}`;
-    if (e.name === "AbortError" || /ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/.test(text))
-      return build("TIMEOUT", `Koneksi ke ${label} lambat atau terputus (timeout).`);
-    if (/ECONNRESET|UND_ERR_SOCKET|other side closed|socket hang up|EPIPE|forcibly closed|wsarecv|wsasend|WSAECONNRESET/i.test(text))
-      return build("CONNECTION_CLOSED", `Router${where(context)} menutup koneksi setelah tersambung: kemungkinan IP server ini tidak diizinkan di address= layanan www.`);
+    if (
+      e.name === "AbortError" ||
+      /ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/.test(text)
+    )
+      return build(
+        "TIMEOUT",
+        `Koneksi ke ${label} lambat atau terputus (timeout).`,
+      );
+    if (
+      /ECONNRESET|UND_ERR_SOCKET|other side closed|socket hang up|EPIPE|forcibly closed|wsarecv|wsasend|WSAECONNRESET/i.test(
+        text,
+      )
+    )
+      return build(
+        "CONNECTION_CLOSED",
+        `Router${where(context)} menutup koneksi setelah tersambung: kemungkinan IP server ini tidak diizinkan di address= layanan www.`,
+      );
     if (text.includes("ECONNREFUSED"))
-      return build("CONNECTION_REFUSED", `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`);
+      return build(
+        "CONNECTION_REFUSED",
+        `Koneksi ditolak oleh ${label}. Pastikan port terbuka.`,
+      );
     if (/ENOTFOUND|EAI_AGAIN/.test(text))
-      return build("DNS_ERROR", "Host tidak ditemukan. Pastikan alamat IP atau domain benar.");
+      return build(
+        "DNS_ERROR",
+        "Host tidak ditemukan. Pastikan alamat IP atau domain benar.",
+      );
     // Sebelum cabang "fetch failed": kegagalan TLS juga datang sebagai "fetch failed".
-    if (/SELF_SIGNED|UNABLE_TO_VERIFY|CERT_|ERR_TLS|ERR_SSL|EPROTO|certificate/i.test(text))
-      return build("TLS_ERROR", `Koneksi HTTPS ke ${label} gagal: sertifikat tidak dipercaya atau router tidak berbicara HTTPS di port ini.`);
+    if (
+      /SELF_SIGNED|UNABLE_TO_VERIFY|CERT_|ERR_TLS|ERR_SSL|EPROTO|certificate/i.test(
+        text,
+      )
+    )
+      return build(
+        "TLS_ERROR",
+        `Koneksi HTTPS ke ${label} gagal: sertifikat tidak dipercaya atau router tidak berbicara HTTPS di port ini.`,
+      );
     if (/EHOSTUNREACH|ENETUNREACH|fetch failed|NetworkError/.test(text))
-      return build("NETWORK_ERROR", `Gagal menghubungi ${label}. Pastikan alamat benar dan perangkat menyala.`);
+      return build(
+        "NETWORK_ERROR",
+        `Gagal menghubungi ${label}. Pastikan alamat benar dan perangkat menyala.`,
+      );
     if (typeof e.message === "string" && e.message)
-      return build("CONNECTION_FAILED", `Gagal menghubungi ${label}: ${e.message}`);
+      return build(
+        "CONNECTION_FAILED",
+        `Gagal menghubungi ${label}: ${e.message}`,
+      );
   }
 
-  return build("CONNECTION_FAILED", `Gagal menghubungi router${where(context)}: kesalahan tidak dikenal`);
+  return build(
+    "CONNECTION_FAILED",
+    `Gagal menghubungi router${where(context)}: kesalahan tidak dikenal`,
+  );
 }

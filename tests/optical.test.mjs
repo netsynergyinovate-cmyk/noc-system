@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getOpticalSignalStatus, getPonPortOpticalStatus } from "../src/lib/dashboard/optical.ts";
+import {
+  getOpticalSignalStatus,
+  getPonPortOpticalStatus,
+} from "../src/lib/dashboard/optical.ts";
 
 test("getOpticalSignalStatus: semua batas", () => {
   const cases = [
@@ -36,7 +39,11 @@ test("getOpticalSignalStatus: semua batas", () => {
 });
 
 test("getPonPortOpticalStatus: batas Tx dan Rx inklusif", () => {
-  assert.deepEqual(getPonPortOpticalStatus(-20, 3), { isTxNormal: true, isRxNormal: true, isOutOfThreshold: false });
+  assert.deepEqual(getPonPortOpticalStatus(-20, 3), {
+    isTxNormal: true,
+    isRxNormal: true,
+    isOutOfThreshold: false,
+  });
   assert.equal(getPonPortOpticalStatus(-20, 1.5).isTxNormal, true);
   assert.equal(getPonPortOpticalStatus(-20, 5.0).isTxNormal, true);
   assert.equal(getPonPortOpticalStatus(-20, 1.4).isTxNormal, false);

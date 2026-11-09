@@ -1,9 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { MOCK_HEALTH_CHECKS } = await import(
-  "../src/lib/dashboard/deploy-safety.ts"
-);
+const { MOCK_HEALTH_CHECKS } =
+  await import("../src/lib/dashboard/deploy-safety.ts");
 
 test("MOCK_HEALTH_CHECKS memiliki seluruh kategori esensial", () => {
   const categories = new Set(MOCK_HEALTH_CHECKS.map((c) => c.category));

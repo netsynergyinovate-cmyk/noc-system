@@ -72,7 +72,10 @@ test("urutan dan registri lapisan diagnostik mencakup lapisan aktif", () => {
     decideVerdict([fAktif, fTrafik], emptyEvidence, null, now).layer,
     "trafik",
   );
-  assert.equal(decideVerdict([fAktif], emptyEvidence, null, now).layer, "aktif");
+  assert.equal(
+    decideVerdict([fAktif], emptyEvidence, null, now).layer,
+    "aktif",
+  );
 
   // Warn di aktif mendahului billing
   const fAktifWarn = {
@@ -276,7 +279,10 @@ test("rate baseline: riwayat kurang = unchecked", () => {
   );
   assert.equal(r.length, 1);
   assert.equal(r[0].status, "unchecked");
-  assert.match(r[0].detail, /Riwayat sampel trafik kurang \(12 dari minimum 24/);
+  assert.match(
+    r[0].detail,
+    /Riwayat sampel trafik kurang \(12 dari minimum 24/,
+  );
 
   const rNoDown = evaluateRateBaseline(
     {
@@ -323,7 +329,10 @@ test("rate baseline: pelanggan 10 Mbps vs 50 Mbps dengan angka Mbps absolut yang
   assert.equal(res10.length, 1);
   assert.equal(res10[0].metric, "rate_baseline");
   assert.equal(res10[0].status, "warn");
-  assert.match(res10[0].detail, /mencapai 95% dari kapasitas paket \(10 Mbps\)/);
+  assert.match(
+    res10[0].detail,
+    /mencapai 95% dari kapasitas paket \(10 Mbps\)/,
+  );
 
   // Pelanggan B (Paket 50 Mbps):
   // Puncak 9.5 Mbps hanya 19% dari limit (< 90% RATE_SATURATION_PCT) -> normal (ok).
@@ -340,7 +349,10 @@ test("rate baseline: pelanggan 10 Mbps vs 50 Mbps dengan angka Mbps absolut yang
   assert.equal(res50.length, 2);
   assert.equal(res50[0].metric, "rate_baseline");
   assert.equal(res50[0].status, "ok"); // Tidak jenuh
-  assert.match(res50[0].detail, /berada di bawah batas paket \(19% dari 50 Mbps\)/);
+  assert.match(
+    res50[0].detail,
+    /berada di bawah batas paket \(19% dari 50 Mbps\)/,
+  );
 
   assert.equal(res50[1].metric, "rate_unused");
   assert.equal(res50[1].status, "warn"); // Paket terhambat/tidak terpakai

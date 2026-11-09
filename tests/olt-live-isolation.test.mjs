@@ -14,8 +14,10 @@ require.cache[so] = { id: so, filename: so, loaded: true, exports: {} };
 
 register();
 const { env } = await import("../src/lib/env.ts");
-const { getOltPonPorts, getOltLiveOnus, getOltOpticalData } = await import("../src/services/devices.service.ts");
-const { resolvePonPortDetail } = await import("../src/lib/dashboard/pon-port-resolver.ts");
+const { getOltPonPorts, getOltLiveOnus, getOltOpticalData } =
+  await import("../src/services/devices.service.ts");
+const { resolvePonPortDetail } =
+  await import("../src/lib/dashboard/pon-port-resolver.ts");
 
 // env adalah objek biasa hasil parse: mode diganti per tes (dibaca tiap pemanggilan).
 const mode = (m) => {
@@ -35,7 +37,9 @@ test("demo: data tiruan tetap berfungsi", async () => {
   mode("demo");
   const ports = await getOltPonPorts("olt-1");
   assert.equal(ports.length, 8);
-  ports.forEach((p) => assert.ok(p.id.startsWith("olt-1-pon-") && p.capacity > 0));
+  ports.forEach((p) =>
+    assert.ok(p.id.startsWith("olt-1-pon-") && p.capacity > 0),
+  );
 
   const onus = await getOltLiveOnus("olt-1", {});
   assert.equal(onus.source, "simulator");

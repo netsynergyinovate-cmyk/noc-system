@@ -2,7 +2,10 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/session";
 import { evaluateDeployAccess } from "@/lib/deploy/role-guard";
-import { getDeployTarget, detectConnectionPath } from "@/services/deploy-targets.service";
+import {
+  getDeployTarget,
+  detectConnectionPath,
+} from "@/services/deploy-targets.service";
 import { DeployDashboard } from "@/components/dashboard/deploy-dashboard";
 
 export const dynamic = "force-dynamic";
@@ -44,5 +47,7 @@ export default async function DeployPage() {
     detection = await detectConnectionPath(target);
   }
 
-  return <DeployDashboard initialTarget={target} initialDetection={detection} />;
+  return (
+    <DeployDashboard initialTarget={target} initialDetection={detection} />
+  );
 }

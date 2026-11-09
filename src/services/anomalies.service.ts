@@ -130,8 +130,6 @@ export async function getAnomaliesList(
 ): Promise<AnomalyListResult> {
   const kind = query.kind ?? query.type;
 
-
-
   const conditions: SQL[] = [];
 
   if (query.status === "active") {
@@ -314,8 +312,6 @@ export async function detectAnomalies(
     persist?: boolean;
   } = {},
 ): Promise<DetectAnomaliesResult> {
-
-
   // Nonaktifkan trigger evaluasi mandiri di Next.js:
   // Serahkan sepenuhnya ke engine Go (backend/internal/engine)
   // Next.js cukup mengambil anomali aktif dari DB:
@@ -339,7 +335,8 @@ export interface AnomalyDetailResult {
   sourceStatus: "nyata" | "dummy";
 }
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Mengambil detail satu anomali lengkap dengan panduan troubleshooting dan status review.
@@ -349,47 +346,47 @@ export async function getAnomalyById(id: string): Promise<AnomalyDetailResult> {
     throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
   }
   const [row] = await db
-      .select({
-        id: alerts.id,
-        routerId: alerts.routerId,
-        customerId: alerts.customerId,
-        type: alerts.type,
-        severity: alerts.severity,
-        startedAt: alerts.startedAt,
-        endedAt: alerts.endedAt,
-        detail: alerts.detail,
-        routerName: routersTable.name,
-        customerName: customersTable.name,
-      })
-      .from(alerts)
-      .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
-      .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
-      .where(eq(alerts.id, id))
-      .limit(1);
+    .select({
+      id: alerts.id,
+      routerId: alerts.routerId,
+      customerId: alerts.customerId,
+      type: alerts.type,
+      severity: alerts.severity,
+      startedAt: alerts.startedAt,
+      endedAt: alerts.endedAt,
+      detail: alerts.detail,
+      routerName: routersTable.name,
+      customerName: customersTable.name,
+    })
+    .from(alerts)
+    .leftJoin(routersTable, eq(alerts.routerId, routersTable.id))
+    .leftJoin(customersTable, eq(alerts.customerId, customersTable.id))
+    .where(eq(alerts.id, id))
+    .limit(1);
 
-    if (!row) {
-      throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
-    }
+  if (!row) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
 
-    const item = mapLogToAnomaly({
-      ...row,
-      detail: (row.detail ?? {}) as Record<string, unknown>,
-    });
-    const detail = (row.detail ?? {}) as Record<string, unknown>;
-    const reviewed = Boolean(detail.reviewed) || isAnomalyReviewed(id);
-    const reviewedBy = (detail.reviewedBy as string | null) ?? null;
-    const reviewedAt = (detail.reviewedAt as string | null) ?? null;
-    const note = (detail.note as string | null) ?? null;
+  const item = mapLogToAnomaly({
+    ...row,
+    detail: (row.detail ?? {}) as Record<string, unknown>,
+  });
+  const detail = (row.detail ?? {}) as Record<string, unknown>;
+  const reviewed = Boolean(detail.reviewed) || isAnomalyReviewed(id);
+  const reviewedBy = (detail.reviewedBy as string | null) ?? null;
+  const reviewedAt = (detail.reviewedAt as string | null) ?? null;
+  const note = (detail.note as string | null) ?? null;
 
-    return {
-      anomaly: item,
-      troubleshooting: getAnomalyTroubleshootingSteps(item),
-      reviewed,
-      reviewedBy,
-      reviewedAt,
-      note,
-      sourceStatus: "nyata",
-    };
+  return {
+    anomaly: item,
+    troubleshooting: getAnomalyTroubleshootingSteps(item),
+    reviewed,
+    reviewedBy,
+    reviewedAt,
+    note,
+    sourceStatus: "nyata",
+  };
 }
 
 /**
@@ -403,57 +400,57 @@ export async function updateAnomalyStatus(
     throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
   }
   const [existing] = await db
-      .select()
-      .from(alerts)
-      .where(eq(alerts.id, id))
-      .limit(1);
+    .select()
+    .from(alerts)
+    .where(eq(alerts.id, id))
+    .limit(1);
 
-    if (!existing) {
-      throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
-    }
+  if (!existing) {
+    throw new ApiError(404, "ANOMALY_NOT_FOUND", "Anomali tidak ditemukan.");
+  }
 
-    const currentDetail = (existing.detail ?? {}) as Record<string, unknown>;
-    const newDetail = { ...currentDetail };
+  const currentDetail = (existing.detail ?? {}) as Record<string, unknown>;
+  const newDetail = { ...currentDetail };
 
-    if (update.note !== undefined) {
-      newDetail.note = update.note;
-    }
+  if (update.note !== undefined) {
+    newDetail.note = update.note;
+  }
 
-    if (update.reviewed === true || update.status === "reviewed") {
-      newDetail.reviewed = true;
-      newDetail.reviewedBy = update.operator ?? "Operator NOC";
-      newDetail.reviewedAt = new Date().toISOString();
-      markAnomalyReviewed(id, update.operator ?? "Operator NOC");
-    } else if (update.reviewed === false) {
-      newDetail.reviewed = false;
-      newDetail.reviewedBy = null;
-      newDetail.reviewedAt = null;
-    }
+  if (update.reviewed === true || update.status === "reviewed") {
+    newDetail.reviewed = true;
+    newDetail.reviewedBy = update.operator ?? "Operator NOC";
+    newDetail.reviewedAt = new Date().toISOString();
+    markAnomalyReviewed(id, update.operator ?? "Operator NOC");
+  } else if (update.reviewed === false) {
+    newDetail.reviewed = false;
+    newDetail.reviewedBy = null;
+    newDetail.reviewedAt = null;
+  }
 
-    const setValues: {
-      endedAt?: Date | null;
-      status?: AlertStatus;
-      severity?: AlertSeverity;
-      detail?: Record<string, unknown>;
-      updatedAt: Date;
-    } = { detail: newDetail, updatedAt: new Date() };
+  const setValues: {
+    endedAt?: Date | null;
+    status?: AlertStatus;
+    severity?: AlertSeverity;
+    detail?: Record<string, unknown>;
+    updatedAt: Date;
+  } = { detail: newDetail, updatedAt: new Date() };
 
-    if (update.status === "resolved") {
-      setValues.endedAt = update.endedAt ?? new Date();
-      setValues.status = "resolved";
-    } else if (update.status === "active") {
-      setValues.endedAt = null;
-      setValues.status = "active";
-    } else if (update.endedAt !== undefined) {
-      setValues.endedAt = update.endedAt;
-      setValues.status = update.endedAt !== null ? "resolved" : "active";
-    }
+  if (update.status === "resolved") {
+    setValues.endedAt = update.endedAt ?? new Date();
+    setValues.status = "resolved";
+  } else if (update.status === "active") {
+    setValues.endedAt = null;
+    setValues.status = "active";
+  } else if (update.endedAt !== undefined) {
+    setValues.endedAt = update.endedAt;
+    setValues.status = update.endedAt !== null ? "resolved" : "active";
+  }
 
-    if (update.severity) {
-      setValues.severity = update.severity;
-    }
+  if (update.severity) {
+    setValues.severity = update.severity;
+  }
 
-    await db.update(alerts).set(setValues).where(eq(alerts.id, id));
+  await db.update(alerts).set(setValues).where(eq(alerts.id, id));
 
-    return getAnomalyById(id);
+  return getAnomalyById(id);
 }

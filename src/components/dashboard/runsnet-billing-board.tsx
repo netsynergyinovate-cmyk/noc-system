@@ -4,16 +4,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, EyeOff, ExternalLink, RefreshCw, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "cn";
 
 interface RunsnetOverview {
   availablePeriods: string[];
   customers: { total: number; active: number; isolir: number };
-  invoices: { total: number; totalAmount: number; unpaidAmount: number; unpaidCount: number; paidCount: number };
+  invoices: {
+    total: number;
+    totalAmount: number;
+    unpaidAmount: number;
+    unpaidCount: number;
+    paidCount: number;
+  };
   payments: { total: number; totalPaid: number };
   delinquentCustomersCount: number;
-  lastSync: { startedAt: string; completedAt: string | null; status: string; errorMessage: string | null } | null;
+  lastSync: {
+    startedAt: string;
+    completedAt: string | null;
+    status: string;
+    errorMessage: string | null;
+  } | null;
 }
 
 interface CustomerItem {
@@ -84,9 +101,28 @@ interface CustomerLive {
 type Tab = "delinquent" | "customers" | "invoices" | "payments";
 
 const HIDE_KEY = "billing-hide-numbers";
-const MONTHS = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const MONTHS = [
+  "",
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
 
-const rupiah = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+const rupiah = (n: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(n);
 
 function periodLabel(p: string): string {
   if (p === "all") return "Semua periode";
@@ -102,17 +138,29 @@ async function readData<T>(res: Response): Promise<T | null> {
 }
 
 const cell = "px-3 py-2.5";
-const head = "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
+const head =
+  "px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
 
 function StatusPill({ status }: { status: string }) {
   const s = status.toLowerCase();
   const tone =
     s === "paid" || s === "active" || s === "terhubung"
       ? "text-success"
-      : s === "unpaid" || s === "isolir" || s === "terminate" || s.includes("terputus") || s.includes("tidak")
+      : s === "unpaid" ||
+          s === "isolir" ||
+          s === "terminate" ||
+          s.includes("terputus") ||
+          s.includes("tidak")
         ? "text-destructive"
         : "text-warning";
-  const label = s === "paid" ? "Lunas" : s === "unpaid" ? "Belum bayar" : s === "partial" ? "Sebagian" : status;
+  const label =
+    s === "paid"
+      ? "Lunas"
+      : s === "unpaid"
+        ? "Belum bayar"
+        : s === "partial"
+          ? "Sebagian"
+          : status;
   return <span className={cn("text-xs font-medium", tone)}>{label}</span>;
 }
 
@@ -120,7 +168,14 @@ function Tile({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="rounded-lg border bg-card px-3 py-2.5">
       <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className={cn("mt-0.5 break-all text-sm font-medium", value === null && "text-muted-foreground")}>{value ?? "-"}</div>
+      <div
+        className={cn(
+          "mt-0.5 break-all text-sm font-medium",
+          value === null && "text-muted-foreground",
+        )}
+      >
+        {value ?? "-"}
+      </div>
     </div>
   );
 }
@@ -142,7 +197,10 @@ export function RunsnetBillingBoard() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -151,7 +209,10 @@ export function RunsnetBillingBoard() {
 
   // Pilihan sembunyikan angka diingat di peramban; bawaan tersembunyi.
   useEffect(() => {
-    const t = setTimeout(() => setHidden(localStorage.getItem(HIDE_KEY) !== "0"), 0);
+    const t = setTimeout(
+      () => setHidden(localStorage.getItem(HIDE_KEY) !== "0"),
+      0,
+    );
     return () => clearTimeout(t);
   }, []);
   const toggleHidden = () =>
@@ -160,7 +221,8 @@ export function RunsnetBillingBoard() {
       return !h;
     });
   // Semua angka (nominal dan jumlah) jadi titik saat disembunyikan; ID dan tanggal tetap terlihat.
-  const m = (text: string) => (hidden ? text.replace(/\d[\d.,]*/g, "•••") : text);
+  const m = (text: string) =>
+    hidden ? text.replace(/\d[\d.,]*/g, "•••") : text;
 
   useEffect(() => {
     let active = true;
@@ -174,10 +236,14 @@ export function RunsnetBillingBoard() {
         ]);
         if (!active) return;
         if (ov.ok) setOverview(await readData<RunsnetOverview>(ov));
-        if (tab === "delinquent") setDelinquent((await readData<DelinquentItem[]>(items)) ?? []);
-        if (tab === "customers") setCustomers((await readData<CustomerItem[]>(items)) ?? []);
-        if (tab === "invoices") setInvoices((await readData<InvoiceItem[]>(items)) ?? []);
-        if (tab === "payments") setPayments((await readData<PaymentItem[]>(items)) ?? []);
+        if (tab === "delinquent")
+          setDelinquent((await readData<DelinquentItem[]>(items)) ?? []);
+        if (tab === "customers")
+          setCustomers((await readData<CustomerItem[]>(items)) ?? []);
+        if (tab === "invoices")
+          setInvoices((await readData<InvoiceItem[]>(items)) ?? []);
+        if (tab === "payments")
+          setPayments((await readData<PaymentItem[]>(items)) ?? []);
       } catch (e) {
         console.error("Gagal memuat data billing RunsNet:", e);
       } finally {
@@ -217,23 +283,44 @@ export function RunsnetBillingBoard() {
     setFeedback(null);
     try {
       const res = await fetch("/api/billing/runsnet/sync", { method: "POST" });
-      const json: { ok?: boolean; message?: string; error?: string } | null = await res.json().catch(() => null);
+      const json: { ok?: boolean; message?: string; error?: string } | null =
+        await res.json().catch(() => null);
       const ok = res.ok && json?.ok === true;
-      setFeedback({ ok, text: ok ? (json?.message ?? "Sinkronisasi selesai.") : (json?.error ?? "Sinkronisasi gagal.") });
+      setFeedback({
+        ok,
+        text: ok
+          ? (json?.message ?? "Sinkronisasi selesai.")
+          : (json?.error ?? "Sinkronisasi gagal."),
+      });
       if (ok) setRefreshKey((k) => k + 1);
     } catch (e) {
-      setFeedback({ ok: false, text: e instanceof Error ? e.message : "Jaringan bermasalah saat sinkronisasi." });
+      setFeedback({
+        ok: false,
+        text:
+          e instanceof Error
+            ? e.message
+            : "Jaringan bermasalah saat sinkronisasi.",
+      });
     } finally {
       setSyncing(false);
     }
   }
 
   const q = query.trim().toLowerCase();
-  const has = (...f: (string | null | undefined)[]) => !q || f.some((x) => x?.toLowerCase().includes(q));
-  const rowsDelinquent = delinquent.filter((d) => has(d.custName, d.custId, d.serviceProfile));
-  const rowsCustomers = customers.filter((c) => has(c.name, c.custId, c.serviceProfile, c.ipAddress, c.macAddress));
-  const rowsInvoices = invoices.filter((i) => has(i.custName, i.custId, i.invoiceCode));
-  const rowsPayments = payments.filter((p) => has(p.custName, p.custId, p.paymentCode, p.invoiceCode));
+  const has = (...f: (string | null | undefined)[]) =>
+    !q || f.some((x) => x?.toLowerCase().includes(q));
+  const rowsDelinquent = delinquent.filter((d) =>
+    has(d.custName, d.custId, d.serviceProfile),
+  );
+  const rowsCustomers = customers.filter((c) =>
+    has(c.name, c.custId, c.serviceProfile, c.ipAddress, c.macAddress),
+  );
+  const rowsInvoices = invoices.filter((i) =>
+    has(i.custName, i.custId, i.invoiceCode),
+  );
+  const rowsPayments = payments.filter((p) =>
+    has(p.custName, p.custId, p.paymentCode, p.invoiceCode),
+  );
 
   const periods = useMemo(() => {
     const set = new Set([currentMonth, ...(overview?.availablePeriods ?? [])]);
@@ -241,24 +328,56 @@ export function RunsnetBillingBoard() {
   }, [currentMonth, overview?.availablePeriods]);
 
   const empty = (n: number, text: string) =>
-    n === 0 && <p className="px-3 py-10 text-center text-sm text-muted-foreground">{loading ? "Memuat…" : text}</p>;
+    n === 0 && (
+      <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+        {loading ? "Memuat…" : text}
+      </p>
+    );
   const detailBtn = (id: string) => (
-    <button type="button" className="text-xs text-primary hover:underline" onClick={() => setSelected(id)}>
+    <button
+      type="button"
+      className="text-xs text-primary hover:underline"
+      onClick={() => setSelected(id)}
+    >
       Detail
     </button>
   );
 
   const kpis = overview
     ? [
-        { label: "Menunggak", value: String(overview.delinquentCustomersCount), hint: `${rupiah(overview.invoices.unpaidAmount)} belum dibayar`, tone: "text-destructive" },
-        { label: "Pelanggan", value: String(overview.customers.total), hint: `${overview.customers.active} aktif · ${overview.customers.isolir} isolir`, tone: "" },
-        { label: "Tagihan", value: rupiah(overview.invoices.totalAmount), hint: `${overview.invoices.paidCount} lunas · ${overview.invoices.unpaidCount} belum bayar`, tone: "" },
-        { label: "Pembayaran", value: rupiah(overview.payments.totalPaid), hint: `${overview.payments.total} transaksi`, tone: "text-success" },
+        {
+          label: "Menunggak",
+          value: String(overview.delinquentCustomersCount),
+          hint: `${rupiah(overview.invoices.unpaidAmount)} belum dibayar`,
+          tone: "text-destructive",
+        },
+        {
+          label: "Pelanggan",
+          value: String(overview.customers.total),
+          hint: `${overview.customers.active} aktif · ${overview.customers.isolir} isolir`,
+          tone: "",
+        },
+        {
+          label: "Tagihan",
+          value: rupiah(overview.invoices.totalAmount),
+          hint: `${overview.invoices.paidCount} lunas · ${overview.invoices.unpaidCount} belum bayar`,
+          tone: "",
+        },
+        {
+          label: "Pembayaran",
+          value: rupiah(overview.payments.totalPaid),
+          hint: `${overview.payments.total} transaksi`,
+          tone: "text-success",
+        },
       ]
     : [];
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
-    { id: "delinquent", label: "Menunggak", count: overview?.delinquentCustomersCount },
+    {
+      id: "delinquent",
+      label: "Menunggak",
+      count: overview?.delinquentCustomersCount,
+    },
     { id: "customers", label: "Pelanggan", count: overview?.customers.total },
     { id: "invoices", label: "Invoice", count: overview?.invoices.total },
     { id: "payments", label: "Pembayaran", count: overview?.payments.total },
@@ -276,7 +395,9 @@ export function RunsnetBillingBoard() {
         >
           {periods.map((p) => (
             <option key={p} value={p}>
-              {p === currentMonth ? `Bulan ini · ${periodLabel(p)}` : periodLabel(p)}
+              {p === currentMonth
+                ? `Bulan ini · ${periodLabel(p)}`
+                : periodLabel(p)}
             </option>
           ))}
           <option value="all">Semua periode</option>
@@ -285,7 +406,11 @@ export function RunsnetBillingBoard() {
           {overview?.lastSync && (
             <span className="hidden text-xs text-muted-foreground sm:block">
               Sinkron terakhir{" "}
-              {new Date(overview.lastSync.startedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "short", timeStyle: "short" })}
+              {new Date(overview.lastSync.startedAt).toLocaleString("id-ID", {
+                timeZone: "Asia/Jakarta",
+                dateStyle: "short",
+                timeStyle: "short",
+              })}
             </span>
           )}
           <Button
@@ -297,8 +422,14 @@ export function RunsnetBillingBoard() {
             title={hidden ? "Tampilkan angka" : "Sembunyikan angka"}
             data-testid="toggle-hide-numbers"
           >
-            {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            <span className="hidden sm:inline">{hidden ? "Angka tersembunyi" : "Angka terlihat"}</span>
+            {hidden ? (
+              <EyeOff className="size-4" />
+            ) : (
+              <Eye className="size-4" />
+            )}
+            <span className="hidden sm:inline">
+              {hidden ? "Angka tersembunyi" : "Angka terlihat"}
+            </span>
           </Button>
           <Button type="button" size="sm" onClick={sync} disabled={syncing}>
             <RefreshCw className={cn("size-4", syncing && "animate-spin")} />
@@ -308,7 +439,13 @@ export function RunsnetBillingBoard() {
       </div>
 
       {feedback && (
-        <p role={feedback.ok ? "status" : "alert"} className={cn("text-sm", feedback.ok ? "text-success" : "text-destructive")}>
+        <p
+          role={feedback.ok ? "status" : "alert"}
+          className={cn(
+            "text-sm",
+            feedback.ok ? "text-success" : "text-destructive",
+          )}
+        >
           {feedback.text}
         </p>
       )}
@@ -318,8 +455,14 @@ export function RunsnetBillingBoard() {
         {kpis.map((k) => (
           <div key={k.label} className="rounded-xl border bg-card p-4">
             <div className="text-xs text-muted-foreground">{k.label}</div>
-            <div className={cn("mt-1 text-2xl font-semibold tabular-nums", k.tone)}>{m(k.value)}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{m(k.hint)}</div>
+            <div
+              className={cn("mt-1 text-2xl font-semibold tabular-nums", k.tone)}
+            >
+              {m(k.value)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {m(k.hint)}
+            </div>
           </div>
         ))}
       </div>
@@ -337,16 +480,25 @@ export function RunsnetBillingBoard() {
                 onClick={() => setTab(t.id)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm transition-colors",
-                  tab === t.id ? "bg-accent font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+                  tab === t.id
+                    ? "bg-accent font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {t.label}
-                {t.count !== undefined && <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">{t.count}</span>}
+                {t.count !== undefined && (
+                  <span className="ml-1.5 text-xs text-muted-foreground tabular-nums">
+                    {t.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
           <div className="relative ml-auto w-full sm:w-64">
-            <Search aria-hidden="true" className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              aria-hidden="true"
+              className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            />
             <input
               type="search"
               value={query}
@@ -377,18 +529,38 @@ export function RunsnetBillingBoard() {
                     <tr key={d.custId} className="hover:bg-muted/30">
                       <td className={cell}>
                         <div className="font-medium">{d.custName}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{d.custId}</div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {d.custId}
+                        </div>
                       </td>
-                      <td className={cn(cell, "text-muted-foreground")}>{d.serviceProfile ?? "-"}</td>
-                      <td className={cn(cell, "text-right tabular-nums")}>{m(`${d.unpaidCount} bln`)}</td>
-                      <td className={cn(cell, "text-right font-medium tabular-nums text-destructive")}>{m(rupiah(d.totalDebt))}</td>
-                      <td className={cn(cell, "text-muted-foreground")}>{d.oldestDueDate ?? "-"}</td>
-                      <td className={cn(cell, "text-right")}>{detailBtn(d.custId)}</td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {d.serviceProfile ?? "-"}
+                      </td>
+                      <td className={cn(cell, "text-right tabular-nums")}>
+                        {m(`${d.unpaidCount} bln`)}
+                      </td>
+                      <td
+                        className={cn(
+                          cell,
+                          "text-right font-medium tabular-nums text-destructive",
+                        )}
+                      >
+                        {m(rupiah(d.totalDebt))}
+                      </td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {d.oldestDueDate ?? "-"}
+                      </td>
+                      <td className={cn(cell, "text-right")}>
+                        {detailBtn(d.custId)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {empty(rowsDelinquent.length, "Tidak ada pelanggan menunggak pada periode ini.")}
+              {empty(
+                rowsDelinquent.length,
+                "Tidak ada pelanggan menunggak pada periode ini.",
+              )}
             </>
           )}
 
@@ -411,26 +583,51 @@ export function RunsnetBillingBoard() {
                     <tr key={c.custId} className="hover:bg-muted/30">
                       <td className={cell}>
                         <div className="font-medium">{c.name}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{c.custId}</div>
+                        <div className="font-mono text-xs text-muted-foreground">
+                          {c.custId}
+                        </div>
                       </td>
                       <td className={cell}>
-                        <div className="text-muted-foreground">{c.serviceProfile ?? "-"}</div>
-                        {c.type && <div className="text-xs text-muted-foreground/70">{c.type}</div>}
+                        <div className="text-muted-foreground">
+                          {c.serviceProfile ?? "-"}
+                        </div>
+                        {c.type && (
+                          <div className="text-xs text-muted-foreground/70">
+                            {c.type}
+                          </div>
+                        )}
                       </td>
                       {[c.ipAddress, c.macAddress].map((v, k) => (
                         <td
                           key={k}
-                          className={cn(cell, "font-mono text-xs", c.connectivity?.toLowerCase() !== "terhubung" && "text-muted-foreground")}
-                          title={v && c.connectivity?.toLowerCase() !== "terhubung" ? `Sesi terakhir, diperbarui ${c.ipSyncedAt ? new Date(c.ipSyncedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" }) : "-"}` : undefined}
+                          className={cn(
+                            cell,
+                            "font-mono text-xs",
+                            c.connectivity?.toLowerCase() !== "terhubung" &&
+                              "text-muted-foreground",
+                          )}
+                          title={
+                            v && c.connectivity?.toLowerCase() !== "terhubung"
+                              ? `Sesi terakhir, diperbarui ${c.ipSyncedAt ? new Date(c.ipSyncedAt).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" }) : "-"}`
+                              : undefined
+                          }
                         >
                           {v ?? "-"}
                         </td>
                       ))}
-                      <td className={cell}>{c.connectivity ? <StatusPill status={c.connectivity} /> : "-"}</td>
+                      <td className={cell}>
+                        {c.connectivity ? (
+                          <StatusPill status={c.connectivity} />
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td className={cell}>
                         <StatusPill status={c.status} />
                       </td>
-                      <td className={cn(cell, "text-right")}>{detailBtn(c.custId)}</td>
+                      <td className={cn(cell, "text-right")}>
+                        {detailBtn(c.custId)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -458,22 +655,43 @@ export function RunsnetBillingBoard() {
                     <tr key={i.invoiceCode} className="hover:bg-muted/30">
                       <td className={cn(cell, "font-mono text-xs")}>
                         {i.fileUrl ? (
-                          <a href={`https://app.runsnet.id/view/${i.fileUrl}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                            {i.invoiceCode} <ExternalLink className="size-3" aria-hidden="true" />
+                          <a
+                            href={`https://app.runsnet.id/view/${i.fileUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {i.invoiceCode}{" "}
+                            <ExternalLink
+                              className="size-3"
+                              aria-hidden="true"
+                            />
                           </a>
                         ) : (
                           i.invoiceCode
                         )}
                       </td>
                       <td className={cell}>
-                        <button type="button" className="text-left hover:underline" onClick={() => setSelected(i.custId)}>
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => setSelected(i.custId)}
+                        >
                           {i.custName}
                         </button>
                       </td>
-                      <td className={cn(cell, "text-muted-foreground")}>{i.periode ?? "-"}</td>
-                      <td className={cn(cell, "text-muted-foreground")}>{i.dueDate ?? "-"}</td>
-                      <td className={cn(cell, "text-right tabular-nums")}>{m(rupiah(i.amount))}</td>
-                      <td className={cn(cell, "text-right tabular-nums")}>{m(rupiah(i.remainingAmount))}</td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {i.periode ?? "-"}
+                      </td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {i.dueDate ?? "-"}
+                      </td>
+                      <td className={cn(cell, "text-right tabular-nums")}>
+                        {m(rupiah(i.amount))}
+                      </td>
+                      <td className={cn(cell, "text-right tabular-nums")}>
+                        {m(rupiah(i.remainingAmount))}
+                      </td>
                       <td className={cell}>
                         <StatusPill status={i.status} />
                       </td>
@@ -481,7 +699,10 @@ export function RunsnetBillingBoard() {
                   ))}
                 </tbody>
               </table>
-              {empty(rowsInvoices.length, "Tidak ada invoice pada periode ini.")}
+              {empty(
+                rowsInvoices.length,
+                "Tidak ada invoice pada periode ini.",
+              )}
             </>
           )}
 
@@ -501,46 +722,86 @@ export function RunsnetBillingBoard() {
                 <tbody className="divide-y">
                   {rowsPayments.map((p) => (
                     <tr key={p.paymentCode} className="hover:bg-muted/30">
-                      <td className={cn(cell, "font-mono text-xs")}>{p.paymentCode}</td>
+                      <td className={cn(cell, "font-mono text-xs")}>
+                        {p.paymentCode}
+                      </td>
                       <td className={cell}>
-                        <button type="button" className="text-left hover:underline" onClick={() => setSelected(p.custId)}>
+                        <button
+                          type="button"
+                          className="text-left hover:underline"
+                          onClick={() => setSelected(p.custId)}
+                        >
                           {p.custName}
                         </button>
                       </td>
-                      <td className={cn(cell, "font-mono text-xs text-muted-foreground")}>{p.invoiceCode ?? "-"}</td>
-                      <td className={cn(cell, "text-muted-foreground")}>{p.payDate ?? "-"}</td>
-                      <td className={cn(cell, "text-right font-medium tabular-nums text-success")}>{m(rupiah(p.amount))}</td>
-                      <td className={cn(cell, "text-muted-foreground")}>{p.method ?? "-"}</td>
+                      <td
+                        className={cn(
+                          cell,
+                          "font-mono text-xs text-muted-foreground",
+                        )}
+                      >
+                        {p.invoiceCode ?? "-"}
+                      </td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {p.payDate ?? "-"}
+                      </td>
+                      <td
+                        className={cn(
+                          cell,
+                          "text-right font-medium tabular-nums text-success",
+                        )}
+                      >
+                        {m(rupiah(p.amount))}
+                      </td>
+                      <td className={cn(cell, "text-muted-foreground")}>
+                        {p.method ?? "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {empty(rowsPayments.length, "Belum ada pembayaran pada periode ini.")}
+              {empty(
+                rowsPayments.length,
+                "Belum ada pembayaran pada periode ini.",
+              )}
             </>
           )}
         </div>
       </div>
 
       {/* Detail pelanggan */}
-      <Dialog open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(open) => !open && setSelected(null)}
+      >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
               {detail?.customer?.name ?? "Detail pelanggan"}
-              {detail?.customer && <Badge variant="outline">{detail.customer.status}</Badge>}
+              {detail?.customer && (
+                <Badge variant="outline">{detail.customer.status}</Badge>
+              )}
             </DialogTitle>
             <DialogDescription className="font-mono text-xs">
               {selected}
-              {detail?.customer?.serviceProfile ? ` · ${detail.customer.serviceProfile}` : ""}
+              {detail?.customer?.serviceProfile
+                ? ` · ${detail.customer.serviceProfile}`
+                : ""}
             </DialogDescription>
           </DialogHeader>
 
-          <section aria-label="Info layanan" className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <section
+            aria-label="Info layanan"
+            className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
+          >
             {live === undefined ? (
-              <p className="col-span-full text-sm text-muted-foreground">Mengambil info layanan dari RunsNet…</p>
+              <p className="col-span-full text-sm text-muted-foreground">
+                Mengambil info layanan dari RunsNet…
+              </p>
             ) : live === null ? (
               <p className="col-span-full text-sm text-muted-foreground">
-                Info layanan tidak tersedia (pelanggan offline atau RunsNet tidak menjawab).
+                Info layanan tidak tersedia (pelanggan offline atau RunsNet
+                tidak menjawab).
               </p>
             ) : (
               <>
@@ -550,8 +811,12 @@ export function RunsnetBillingBoard() {
                 <Tile label="Last Logout" value={live.lastLogout} />
                 <Tile label="Session Time" value={live.sessionTime} />
                 <Tile label="Status Layanan" value={live.statusLayanan} />
-                {live.uploadUsage !== null && <Tile label="Pemakaian Upload" value={live.uploadUsage} />}
-                {live.downloadUsage !== null && <Tile label="Pemakaian Download" value={live.downloadUsage} />}
+                {live.uploadUsage !== null && (
+                  <Tile label="Pemakaian Upload" value={live.uploadUsage} />
+                )}
+                {live.downloadUsage !== null && (
+                  <Tile label="Pemakaian Download" value={live.downloadUsage} />
+                )}
               </>
             )}
           </section>
@@ -559,7 +824,9 @@ export function RunsnetBillingBoard() {
           {detail && (
             <div className="grid gap-5 lg:grid-cols-2">
               <section>
-                <h3 className="mb-1.5 text-sm font-medium">Tagihan ({detail.invoices.length})</h3>
+                <h3 className="mb-1.5 text-sm font-medium">
+                  Tagihan ({detail.invoices.length})
+                </h3>
                 <div className="max-h-64 overflow-y-auto rounded-md border">
                   <table className="w-full text-xs">
                     <tbody className="divide-y">
@@ -567,11 +834,17 @@ export function RunsnetBillingBoard() {
                         <tr key={i.invoiceCode}>
                           <td className="px-2.5 py-1.5">
                             <div className="font-mono">{i.invoiceCode}</div>
-                            <div className="text-muted-foreground">{i.periode ?? "-"}</div>
+                            <div className="text-muted-foreground">
+                              {i.periode ?? "-"}
+                            </div>
                           </td>
                           <td className="px-2.5 py-1.5 text-right tabular-nums">
                             {m(rupiah(i.amount))}
-                            {i.remainingAmount > 0 && <div className="text-destructive">sisa {m(rupiah(i.remainingAmount))}</div>}
+                            {i.remainingAmount > 0 && (
+                              <div className="text-destructive">
+                                sisa {m(rupiah(i.remainingAmount))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-2.5 py-1.5 text-right">
                             <StatusPill status={i.status} />
@@ -580,11 +853,17 @@ export function RunsnetBillingBoard() {
                       ))}
                     </tbody>
                   </table>
-                  {detail.invoices.length === 0 && <p className="p-3 text-center text-xs text-muted-foreground">Belum ada tagihan.</p>}
+                  {detail.invoices.length === 0 && (
+                    <p className="p-3 text-center text-xs text-muted-foreground">
+                      Belum ada tagihan.
+                    </p>
+                  )}
                 </div>
               </section>
               <section>
-                <h3 className="mb-1.5 text-sm font-medium">Pembayaran ({detail.payments.length})</h3>
+                <h3 className="mb-1.5 text-sm font-medium">
+                  Pembayaran ({detail.payments.length})
+                </h3>
                 <div className="max-h-64 overflow-y-auto rounded-md border">
                   <table className="w-full text-xs">
                     <tbody className="divide-y">
@@ -592,15 +871,25 @@ export function RunsnetBillingBoard() {
                         <tr key={p.paymentCode}>
                           <td className="px-2.5 py-1.5">
                             <div className="font-mono">{p.paymentCode}</div>
-                            <div className="text-muted-foreground">{p.payDate ?? "-"}</div>
+                            <div className="text-muted-foreground">
+                              {p.payDate ?? "-"}
+                            </div>
                           </td>
-                          <td className="px-2.5 py-1.5 text-right tabular-nums text-success">{m(rupiah(p.amount))}</td>
-                          <td className="px-2.5 py-1.5 text-right text-muted-foreground">{p.method ?? "-"}</td>
+                          <td className="px-2.5 py-1.5 text-right tabular-nums text-success">
+                            {m(rupiah(p.amount))}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right text-muted-foreground">
+                            {p.method ?? "-"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {detail.payments.length === 0 && <p className="p-3 text-center text-xs text-muted-foreground">Belum ada pembayaran.</p>}
+                  {detail.payments.length === 0 && (
+                    <p className="p-3 text-center text-xs text-muted-foreground">
+                      Belum ada pembayaran.
+                    </p>
+                  )}
                 </div>
               </section>
             </div>

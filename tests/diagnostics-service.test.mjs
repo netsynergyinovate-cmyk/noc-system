@@ -202,14 +202,12 @@ test(
   { skip },
   async () => {
     const { db, schema } = m;
-    await db
-      .insert(schema.runsnetCustomers)
-      .values({
-        custId: `b-${tag}`,
-        name: `B ${tag}`,
-        status: "Active",
-        connectivity: "Terhubung",
-      });
+    await db.insert(schema.runsnetCustomers).values({
+      custId: `b-${tag}`,
+      name: `B ${tag}`,
+      status: "Active",
+      connectivity: "Terhubung",
+    });
     await db.insert(schema.runsnetInvoices).values({
       invoiceCode: `INV-${tag}`,
       custId: `b-${tag}`,
@@ -423,19 +421,13 @@ test(
   { skip },
   async () => {
     const runA1 = await waitDone(
-      (
-        await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })
-      ).run.id,
+      (await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })).run.id,
     );
     const runA2 = await waitDone(
-      (
-        await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })
-      ).run.id,
+      (await m.startManualDiagnostic(ids.a, { id: "u1", name: "Op" })).run.id,
     );
     const runB = await waitDone(
-      (
-        await m.startManualDiagnostic(ids.b, { id: "u1", name: "Op" })
-      ).run.id,
+      (await m.startManualDiagnostic(ids.b, { id: "u1", name: "Op" })).run.id,
     );
 
     await assert.rejects(

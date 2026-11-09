@@ -47,10 +47,7 @@ test("guide contains no real-looking secrets", () => {
   assert.doesNotMatch(guide, /\b(ngpk_|sk-|ghp_|AKIA)[A-Za-z0-9]{8,}/);
   assert.doesNotMatch(guide, /Bearer\s+[A-Za-z0-9._-]{16,}/);
   // no KEY=value assignment of a secret in the guide
-  assert.doesNotMatch(
-    guide,
-    /^(\w*(SECRET|PASSWORD|PASS|TOKEN)\w*)=\S+/m,
-  );
+  assert.doesNotMatch(guide, /^(\w*(SECRET|PASSWORD|PASS|TOKEN)\w*)=\S+/m);
 });
 
 test(".env.server.example itself keeps placeholders only", () => {

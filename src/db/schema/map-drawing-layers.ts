@@ -11,12 +11,7 @@ import {
 import { sql } from "drizzle-orm";
 
 export type DrawingShapeType =
-  | "rectangle"
-  | "circle"
-  | "arrow"
-  | "line"
-  | "text"
-  | "polygon";
+  "rectangle" | "circle" | "arrow" | "line" | "text" | "polygon";
 
 export interface DrawingShape {
   id: string;
@@ -44,7 +39,9 @@ export interface DrawingShape {
 export const mapDrawingLayers = pgTable(
   "map_drawing_layers",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
     description: text("description"),
     opacity: numeric("opacity", { precision: 3, scale: 2, mode: "number" })

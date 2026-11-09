@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getTableColumns } from "drizzle-orm";
-import {
-  auditLog,
-  operatorActivityLogs,
-} from "../src/db/schema/audit-log.ts";
+import { auditLog, operatorActivityLogs } from "../src/db/schema/audit-log.ts";
 
 test("auditLog dan operatorActivityLogs schema definisi sesuai kontrak", () => {
   assert.equal(auditLog, operatorActivityLogs);

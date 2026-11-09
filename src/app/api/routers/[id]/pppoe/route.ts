@@ -4,7 +4,10 @@ import { getRouterPppoeSessions } from "@/services/router-pppoe.service";
 
 export const runtime = "nodejs";
 
-export const GET = (request: Request, { params }: { params: Promise<{ id: string }> }) =>
+export const GET = (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) =>
   withApiSession(request, async () => {
     const { id } = await params;
     const sp = new URL(request.url).searchParams;
@@ -12,4 +15,3 @@ export const GET = (request: Request, { params }: { params: Promise<{ id: string
     const sessions = await getRouterPppoeSessions(id, q);
     return NextResponse.json({ data: sessions });
   });
-

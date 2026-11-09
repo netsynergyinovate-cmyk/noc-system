@@ -35,14 +35,18 @@ export async function PATCH(
         return NextResponse.json(
           {
             ok: false,
-            error: "Nilai transparansi tidak valid (harus berada di rentang 0.0 hingga 1.0)",
+            error:
+              "Nilai transparansi tidak valid (harus berada di rentang 0.0 hingga 1.0)",
             details: parsed.error.format(),
           },
           { status: 400 },
         );
       }
 
-      const updated = await updateMapDrawingLayerOpacity(id, parsed.data.opacity);
+      const updated = await updateMapDrawingLayerOpacity(
+        id,
+        parsed.data.opacity,
+      );
 
       return NextResponse.json({
         ok: true,

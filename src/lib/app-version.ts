@@ -28,12 +28,7 @@ export function parseFourPartVersion(v?: string | null): FourPartVersion {
     return Number.isFinite(num) && num >= 0 ? num : 0;
   });
 
-  return [
-    parsed[0] ?? 1,
-    parsed[1] ?? 0,
-    parsed[2] ?? 0,
-    parsed[3] ?? 0,
-  ];
+  return [parsed[0] ?? 1, parsed[1] ?? 0, parsed[2] ?? 0, parsed[3] ?? 0];
 }
 
 /**
@@ -100,7 +95,9 @@ export function getAppDisplayVersion(): string {
     return formatFourPartVersion(parseFourPartVersion(process.env.APP_VERSION));
   }
   if (process.env.NEXT_PUBLIC_APP_VERSION?.trim()) {
-    return formatFourPartVersion(parseFourPartVersion(process.env.NEXT_PUBLIC_APP_VERSION));
+    return formatFourPartVersion(
+      parseFourPartVersion(process.env.NEXT_PUBLIC_APP_VERSION),
+    );
   }
 
   // 4. Periksa package.json di root proyek

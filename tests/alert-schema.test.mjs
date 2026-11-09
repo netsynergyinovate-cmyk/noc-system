@@ -19,14 +19,35 @@ test("alerts diekspor dari alerts.ts dan schema index", () => {
 
 test("alerts: kolom penting", () => {
   for (const n of [
-    "id", "router_id", "customer_id", "type", "severity", "status",
-    "started_at", "detected_at", "ended_at", "time_source", "handled_by",
-    "ticket_status", "ticket_priority", "detail",
+    "id",
+    "router_id",
+    "customer_id",
+    "type",
+    "severity",
+    "status",
+    "started_at",
+    "detected_at",
+    "ended_at",
+    "time_source",
+    "handled_by",
+    "ticket_status",
+    "ticket_priority",
+    "detail",
   ]) {
     assert.ok(cols[n], n);
   }
   assert.ok(cols.id.primary && cols.id.hasDefault);
-  for (const n of ["type", "severity", "status", "started_at", "detected_at", "time_source", "ticket_status", "ticket_priority", "detail"]) {
+  for (const n of [
+    "type",
+    "severity",
+    "status",
+    "started_at",
+    "detected_at",
+    "time_source",
+    "ticket_status",
+    "ticket_priority",
+    "detail",
+  ]) {
     assert.ok(cols[n].notNull, n);
   }
   for (const n of ["router_id", "customer_id", "ended_at", "handled_by"]) {
@@ -51,33 +72,76 @@ test("alerts: foreign key", () => {
 
 test("alerts: index dan check", () => {
   assert.deepEqual(cfg.indexes.map((i) => i.config.name).sort(), [
-    "alerts_active_idx", "alerts_customer_idx", "alerts_router_started_idx",
-    "alerts_started_idx", "alerts_status_idx",
+    "alerts_active_idx",
+    "alerts_customer_idx",
+    "alerts_router_started_idx",
+    "alerts_started_idx",
+    "alerts_status_idx",
   ]);
   assert.deepEqual(cfg.checks.map((c) => c.name).sort(), [
-    "alerts_period_check", "alerts_severity_check", "alerts_status_check",
-    "alerts_ticket_priority_check", "alerts_ticket_status_check", "alerts_type_check",
+    "alerts_period_check",
+    "alerts_severity_check",
+    "alerts_status_check",
+    "alerts_ticket_priority_check",
+    "alerts_ticket_status_check",
+    "alerts_type_check",
   ]);
 });
 
 test("konstanta enum", () => {
-  assert.deepEqual(direct.alertKinds, ["queue", "cpu", "port", "optical", "offline"]);
+  assert.deepEqual(direct.alertKinds, [
+    "queue",
+    "cpu",
+    "port",
+    "optical",
+    "offline",
+  ]);
   assert.deepEqual(direct.alertSeverities, ["info", "warning", "critical"]);
-  assert.deepEqual(direct.alertStatuses, ["active", "resolved", "handled", "acknowledged"]);
-  assert.deepEqual(direct.alertTicketStatuses, ["open", "in_progress", "resolved", "escalated"]);
-  assert.deepEqual(direct.alertTicketPriorities, ["low", "medium", "high", "critical"]);
+  assert.deepEqual(direct.alertStatuses, [
+    "active",
+    "resolved",
+    "handled",
+    "acknowledged",
+  ]);
+  assert.deepEqual(direct.alertTicketStatuses, [
+    "open",
+    "in_progress",
+    "resolved",
+    "escalated",
+  ]);
+  assert.deepEqual(direct.alertTicketPriorities, [
+    "low",
+    "medium",
+    "high",
+    "critical",
+  ]);
   assert.equal(barrel.alertKinds, direct.alertKinds);
 });
 
 test("migrasi memuat CREATE TABLE alerts + foreign key", () => {
   const dir = new URL("../drizzle/", import.meta.url);
-  const file = readdirSync(dir).filter((f) => f.endsWith(".sql"))
-    .find((f) => readFileSync(new URL(f, dir), "utf8").includes('CREATE TABLE "alerts"'));
+  const file = readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .find((f) =>
+      readFileSync(new URL(f, dir), "utf8").includes('CREATE TABLE "alerts"'),
+    );
   assert.ok(file, "migrasi alerts tidak ditemukan");
   const sql = readFileSync(new URL(file, dir), "utf8");
-  for (const col of ['"router_id" uuid', '"customer_id" uuid', '"started_at"', '"ticket_status"', '"detail" jsonb']) {
+  for (const col of [
+    '"router_id" uuid',
+    '"customer_id" uuid',
+    '"started_at"',
+    '"ticket_status"',
+    '"detail" jsonb',
+  ]) {
     assert.ok(sql.includes(col), col);
   }
-  assert.match(sql, /FOREIGN KEY \("router_id"\) REFERENCES "public"\."routers"\("id"\) ON DELETE restrict/);
-  assert.match(sql, /FOREIGN KEY \("customer_id"\) REFERENCES "public"\."customers"\("id"\) ON DELETE set null/);
+  assert.match(
+    sql,
+    /FOREIGN KEY \("router_id"\) REFERENCES "public"\."routers"\("id"\) ON DELETE restrict/,
+  );
+  assert.match(
+    sql,
+    /FOREIGN KEY \("customer_id"\) REFERENCES "public"\."customers"\("id"\) ON DELETE set null/,
+  );
 });

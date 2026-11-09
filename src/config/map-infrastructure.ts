@@ -28,7 +28,8 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
     shortLabel: "Router Core",
     color: "#8b5cf6", // Violet
     haloColor: "rgba(139, 92, 246, 0.22)",
-    badgeClass: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    badgeClass:
+      "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
     emoji: "🖧",
     radius: 12,
     description: "Gateway BGP, PPPoE Server, Routing Core",
@@ -40,7 +41,8 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
     shortLabel: "OLT Fiber",
     color: "#06b6d4", // Cyan
     haloColor: "rgba(6, 182, 212, 0.22)",
-    badgeClass: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+    badgeClass:
+      "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
     emoji: "📡",
     radius: 10,
     description: "Optical Line Terminal HSGQ GPON/EPON",
@@ -52,7 +54,8 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
     shortLabel: "ODC Feeder",
     color: "#3b82f6", // Blue
     haloColor: "rgba(59, 130, 246, 0.22)",
-    badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    badgeClass:
+      "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
     emoji: "🗄️",
     radius: 9,
     description: "Kabinet Feeder Sentral Serat Optik",
@@ -64,7 +67,8 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
     shortLabel: "ODP Kotak",
     color: "#f59e0b", // Amber
     haloColor: "rgba(245, 158, 11, 0.22)",
-    badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    badgeClass:
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
     emoji: "📦",
     radius: 8,
     description: "Kotak Distribusi Fiber ke Rumah Pelanggan",
@@ -76,7 +80,8 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
     shortLabel: "Tiang Fiber",
     color: "#64748b", // Slate
     haloColor: "rgba(100, 116, 139, 0.22)",
-    badgeClass: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
+    badgeClass:
+      "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30",
     emoji: "📍",
     radius: 7,
     description: "Tiang Tumpu Kabel Aerial Serat Optik",
@@ -87,8 +92,10 @@ export const INFRASTRUCTURE_DEVICE_CONFIG: Record<
 export function getInfrastructureDeviceStyle(
   type: string | null | undefined,
 ): InfrastructureVisualConfig {
-  const normalized = (type?.toLowerCase() ?? "pole") as InfrastructureDeviceType;
+  const normalized = (type?.toLowerCase() ??
+    "pole") as InfrastructureDeviceType;
   return (
-    INFRASTRUCTURE_DEVICE_CONFIG[normalized] ?? INFRASTRUCTURE_DEVICE_CONFIG.pole
+    INFRASTRUCTURE_DEVICE_CONFIG[normalized] ??
+    INFRASTRUCTURE_DEVICE_CONFIG.pole
   );
 }

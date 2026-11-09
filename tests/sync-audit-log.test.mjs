@@ -13,9 +13,8 @@ process.env.BETTER_AUTH_URL ??= "http://localhost:3101";
 
 register();
 
-const { logSyncOperationAudit } = await import(
-  "../src/services/audit.service.ts"
-);
+const { logSyncOperationAudit } =
+  await import("../src/services/audit.service.ts");
 
 test("logSyncOperationAudit gagal-aman saat database offline", async () => {
   const res = await logSyncOperationAudit({

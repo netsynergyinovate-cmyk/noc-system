@@ -8,9 +8,8 @@ const {
   getMockTransferOverview,
 } = await import("../src/lib/dashboard/transfer-status.ts");
 
-const { SETUP_DATA_SOURCE_REGISTRY } = await import(
-  "../src/lib/dashboard/setup-extended.ts"
-);
+const { SETUP_DATA_SOURCE_REGISTRY } =
+  await import("../src/lib/dashboard/setup-extended.ts");
 
 test("TRANSFER_STATUS_MOCK_ENTRY terdaftar di SETUP_DATA_SOURCE_REGISTRY", () => {
   assert.equal(TRANSFER_STATUS_MOCK_ENTRY.id, "local-to-server-transfer");

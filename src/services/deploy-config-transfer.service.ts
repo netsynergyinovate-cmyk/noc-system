@@ -1,6 +1,9 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
-import { deployConfigSyncs, type DeployConfigSync } from "@/db/schema/deploy-runs";
+import {
+  deployConfigSyncs,
+  type DeployConfigSync,
+} from "@/db/schema/deploy-runs";
 
 export interface ConfigTableConfig {
   table: string;
@@ -16,7 +19,13 @@ export const SYNCABLE_CONFIG_TABLES: readonly ConfigTableConfig[] = [
     name: "Router MikroTik",
     description: "Daftar router dan kredensial terenkripsi",
     conflictTarget: '"host"',
-    allowedUpdateColumns: ["name", "username", "password_enc", "latitude", "longitude"],
+    allowedUpdateColumns: [
+      "name",
+      "username",
+      "password_enc",
+      "latitude",
+      "longitude",
+    ],
   },
   {
     table: "olts",
@@ -74,14 +83,28 @@ export const SYNCABLE_CONFIG_TABLES: readonly ConfigTableConfig[] = [
     name: "Infrastruktur Jaringan",
     description: "Server, core switch, dan ODF",
     conflictTarget: '"id"',
-    allowedUpdateColumns: ["name", "category", "type", "model", "latitude", "longitude", "notes"],
+    allowedUpdateColumns: [
+      "name",
+      "category",
+      "type",
+      "model",
+      "latitude",
+      "longitude",
+      "notes",
+    ],
   },
   {
     table: "customers",
     name: "Pelanggan & PPPoE",
     description: "Data pelanggan, paket, dan pemetaan IP",
     conflictTarget: '"pppoe_username"',
-    allowedUpdateColumns: ["name", "address", "latitude", "longitude", "odp_name"],
+    allowedUpdateColumns: [
+      "name",
+      "address",
+      "latitude",
+      "longitude",
+      "odp_name",
+    ],
   },
 ] as const;
 
@@ -135,7 +158,9 @@ export async function previewConfigTransfer(): Promise<ConfigTablePreview[]> {
 /**
  * Mengambil seluruh data konfigurasi dari localhost dalam format JSON terstruktur.
  */
-export async function exportLocalConfigData(): Promise<Record<string, Record<string, unknown>[]>> {
+export async function exportLocalConfigData(): Promise<
+  Record<string, Record<string, unknown>[]>
+> {
   const data: Record<string, Record<string, unknown>[]> = {};
 
   for (const item of SYNCABLE_CONFIG_TABLES) {
@@ -169,7 +194,9 @@ export function generateTableUpsertSql(
   const columnList = allColumns.map((c) => `"${c}"`).join(", ");
 
   // Filter kolom update hanya yang masuk daftar izinkan
-  const validUpdateColumns = cfg.allowedUpdateColumns.filter((c) => allColumns.includes(c));
+  const validUpdateColumns = cfg.allowedUpdateColumns.filter((c) =>
+    allColumns.includes(c),
+  );
   if (validUpdateColumns.length === 0) return "";
 
   const updateClause = validUpdateColumns
@@ -182,7 +209,12 @@ export function generateTableUpsertSql(
       if (tableName === "alert_thresholds" && col === "updated_by") {
         return "NULL";
       }
-      if (tableName === "customers" && col === "router_id" && routerHostMap && typeof val === "string") {
+      if (
+        tableName === "customers" &&
+        col === "router_id" &&
+        routerHostMap &&
+        typeof val === "string"
+      ) {
         const rHost = routerHostMap.get(val);
         if (rHost) {
           return `COALESCE((SELECT "id" FROM "routers" WHERE "host" = '${rHost}' LIMIT 1), '${val}')`;

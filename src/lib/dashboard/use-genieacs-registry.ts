@@ -10,15 +10,28 @@ const MAX_PAGES = 10;
 async function fetchAll(signal?: AbortSignal): Promise<CpeLite[]> {
   const out: CpeLite[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const res = await fetch(`/api/cpe?limit=${PAGE}&page=${page}`, { signal, cache: "no-store" });
+    const res = await fetch(`/api/cpe?limit=${PAGE}&page=${page}`, {
+      signal,
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error(String(res.status));
     const json = (await res.json()) as {
-      data?: { deviceId: string; pppoeUsername: string; macAddress: string; isOnline: boolean }[];
+      data?: {
+        deviceId: string;
+        pppoeUsername: string;
+        macAddress: string;
+        isOnline: boolean;
+      }[];
       total?: number;
     };
     const rows = Array.isArray(json.data) ? json.data : [];
     for (const d of rows) {
-      out.push({ deviceId: d.deviceId, pppoeUsername: d.pppoeUsername ?? "", macAddress: d.macAddress ?? "", isOnline: !!d.isOnline });
+      out.push({
+        deviceId: d.deviceId,
+        pppoeUsername: d.pppoeUsername ?? "",
+        macAddress: d.macAddress ?? "",
+        isOnline: !!d.isOnline,
+      });
     }
     if (rows.length < PAGE || out.length >= (json.total ?? 0)) break;
   }

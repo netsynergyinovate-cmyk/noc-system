@@ -19,7 +19,8 @@ export const MAP_DATA_SOURCE_REGISTRY: readonly MapDataSourceItem[] = [
     coordinateFields: ["latitude", "longitude"],
     sourceType: "postgresql",
     endpointPath: "/api/map/customers",
-    description: "Data pelanggan aktif PPPoE dengan koordinat GPS rumah/lokasi terpasang.",
+    description:
+      "Data pelanggan aktif PPPoE dengan koordinat GPS rumah/lokasi terpasang.",
     isLiveOperational: true,
   },
   {
@@ -30,7 +31,8 @@ export const MAP_DATA_SOURCE_REGISTRY: readonly MapDataSourceItem[] = [
     coordinateFields: ["latitude", "longitude"],
     sourceType: "postgresql",
     endpointPath: "/api/map/infrastructure",
-    description: "Peletakan fisik Core Router, OLT HSGQ, ODC, ODP, dan Tiang di lapangan.",
+    description:
+      "Peletakan fisik Core Router, OLT HSGQ, ODC, ODP, dan Tiang di lapangan.",
     isLiveOperational: true,
   },
   {
@@ -41,7 +43,8 @@ export const MAP_DATA_SOURCE_REGISTRY: readonly MapDataSourceItem[] = [
     coordinateFields: ["polyline"],
     sourceType: "postgresql",
     endpointPath: "/api/map/cables",
-    description: "Polilin jalur kabel distribusi, feeder, dan drop optic menyusuri lekukan jalan nyata.",
+    description:
+      "Polilin jalur kabel distribusi, feeder, dan drop optic menyusuri lekukan jalan nyata.",
     isLiveOperational: true,
   },
   {
@@ -57,14 +60,18 @@ export const MAP_DATA_SOURCE_REGISTRY: readonly MapDataSourceItem[] = [
   },
 ] as const;
 
-export function getMapDataSourceById(id: string): MapDataSourceItem | undefined {
+export function getMapDataSourceById(
+  id: string,
+): MapDataSourceItem | undefined {
   return MAP_DATA_SOURCE_REGISTRY.find((item) => item.id === id);
 }
 
 export function getMapDataSourcesSummary() {
   return {
     totalSources: MAP_DATA_SOURCE_REGISTRY.length,
-    liveOperationalSources: MAP_DATA_SOURCE_REGISTRY.filter((s) => s.isLiveOperational).length,
+    liveOperationalSources: MAP_DATA_SOURCE_REGISTRY.filter(
+      (s) => s.isLiveOperational,
+    ).length,
     registeredTables: MAP_DATA_SOURCE_REGISTRY.map((s) => s.tableName),
     registeredEndpoints: MAP_DATA_SOURCE_REGISTRY.map((s) => s.endpointPath),
   };

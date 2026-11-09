@@ -1,12 +1,44 @@
 import "server-only";
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db } from "@/db";
 import { ApiError } from "@/lib/api";
-import { auditLog, customers, deviceTestResults, oltOnus, oltPonPorts, olts, routers } from "@/db/schema";
-import { callerIdLookupAllowed, sessionNameForOnu } from "@/lib/dashboard/onu-caller-id";
-import { codeContradictsPppoe, matchOnuToCustomer, onuNameCode } from "@/lib/dashboard/onu-matcher";
+import {
+  auditLog,
+  customers,
+  deviceTestResults,
+  oltOnus,
+  oltPonPorts,
+  olts,
+  routers,
+} from "@/db/schema";
+import {
+  callerIdLookupAllowed,
+  sessionNameForOnu,
+} from "@/lib/dashboard/onu-caller-id";
+import {
+  codeContradictsPppoe,
+  matchOnuToCustomer,
+  onuNameCode,
+} from "@/lib/dashboard/onu-matcher";
 import { displayNameFromOnu } from "@/lib/dashboard/onu-name";
-import { classifyOnuTrouble, summarizeOnuTroubles, type OnuTroubleEvaluation } from "@/lib/dashboard/onu-trouble-classifier";
+import {
+  classifyOnuTrouble,
+  summarizeOnuTroubles,
+  type OnuTroubleEvaluation,
+} from "@/lib/dashboard/onu-trouble-classifier";
 import { env } from "@/lib/env";
 import { MikrotikRestClient } from "@/lib/mikrotik/client";
 import { getRouterDecryptedCredentials } from "@/services/device-credentials.service";
@@ -58,7 +90,10 @@ export type RouterItem = Awaited<ReturnType<typeof listRouters>>[number];
 export type OltItem = Awaited<ReturnType<typeof createOlt>>;
 
 function listRouters() {
-  return db.select(publicRouterColumns).from(routers).orderBy(asc(routers.name));
+  return db
+    .select(publicRouterColumns)
+    .from(routers)
+    .orderBy(asc(routers.name));
 }
 
 export async function listDevices() {
@@ -67,12 +102,18 @@ export async function listDevices() {
     db.select(publicOltColumns).from(olts).orderBy(asc(olts.name)),
     // Jumlah port dan ONU dihitung dari hasil polling backend (olt_pon_ports, olt_onus),
     // bukan angka bawaan.
-    db.select({ oltId: oltPonPorts.oltId, n: count() }).from(oltPonPorts).groupBy(oltPonPorts.oltId),
+    db
+      .select({ oltId: oltPonPorts.oltId, n: count() })
+      .from(oltPonPorts)
+      .groupBy(oltPonPorts.oltId),
     db
       .select({
         oltId: oltOnus.oltId,
         total: count(),
-        online: sql<number>`count(*) filter (where ${oltOnus.status} = 'online')`.mapWith(Number),
+        online:
+          sql<number>`count(*) filter (where ${oltOnus.status} = 'online')`.mapWith(
+            Number,
+          ),
       })
       .from(oltOnus)
       .groupBy(oltOnus.oltId),
@@ -107,8 +148,19 @@ export type DeviceStatusItem = {
   latencyMs: number | null;
 };
 
-type LatestTest = { host: string; status: string; latencyMs: number | null; testedAt: Date };
-type DeviceRow = { id: string; name: string; host: string; status: string; lastSeenAt: Date | null };
+type LatestTest = {
+  host: string;
+  status: string;
+  latencyMs: number | null;
+  testedAt: Date;
+};
+type DeviceRow = {
+  id: string;
+  name: string;
+  host: string;
+  status: string;
+  lastSeenAt: Date | null;
+};
 
 export function computeReachability(
   d: Pick<DeviceRow, "status" | "lastSeenAt">,
@@ -116,13 +168,19 @@ export function computeReachability(
   now: number,
 ): Reachability {
   if (d.status === "nonaktif") return "unreachable";
-  const seenRecently = d.lastSeenAt !== null && now - d.lastSeenAt.getTime() <= REACHABLE_WINDOW_MS;
+  const seenRecently =
+    d.lastSeenAt !== null &&
+    now - d.lastSeenAt.getTime() <= REACHABLE_WINDOW_MS;
   if (test?.status === "connected" || seenRecently) return "reachable";
   if (test && test.status !== "untested") return "unreachable"; // disconnected / error / timeout
   return "unknown";
 }
 
-function toStatusItem(d: DeviceRow, test: LatestTest | null, now: number): DeviceStatusItem {
+function toStatusItem(
+  d: DeviceRow,
+  test: LatestTest | null,
+  now: number,
+): DeviceStatusItem {
   return {
     id: d.id,
     name: d.name,
@@ -145,12 +203,18 @@ export function buildDevicesStatus(
   nowDate = new Date(),
 ) {
   const now = nowDate.getTime();
-  const byHost = (tests: LatestTest[]) => new Map(tests.map((t) => [t.host, t]));
+  const byHost = (tests: LatestTest[]) =>
+    new Map(tests.map((t) => [t.host, t]));
   const rt = byHost(routerTests);
   const ot = byHost(oltTests);
-  const routerItems = routerRows.map((r) => toStatusItem(r, rt.get(r.host) ?? null, now));
-  const oltItems = oltRows.map((o) => toStatusItem(o, ot.get(o.host) ?? null, now));
-  const n = (items: DeviceStatusItem[], r: Reachability) => items.filter((i) => i.reachability === r).length;
+  const routerItems = routerRows.map((r) =>
+    toStatusItem(r, rt.get(r.host) ?? null, now),
+  );
+  const oltItems = oltRows.map((o) =>
+    toStatusItem(o, ot.get(o.host) ?? null, now),
+  );
+  const n = (items: DeviceStatusItem[], r: Reachability) =>
+    items.filter((i) => i.reachability === r).length;
   const summary = {
     totalRouters: routerItems.length,
     onlineRouters: n(routerItems, "reachable"),
@@ -210,7 +274,11 @@ export async function createOlt(input: CreateOltInput) {
 }
 
 export async function getOlt(id: string) {
-  const [olt] = await db.select(publicOltColumns).from(olts).where(eq(olts.id, id)).limit(1);
+  const [olt] = await db
+    .select(publicOltColumns)
+    .from(olts)
+    .where(eq(olts.id, id))
+    .limit(1);
   return olt ?? null;
 }
 
@@ -221,13 +289,20 @@ export async function updateOlt(id: string, input: Partial<CreateOltInput>) {
     ...(password !== undefined && { passwordEnc: encryptAES256GCM(password) }),
   };
   if (Object.keys(set).length === 0) return getOlt(id);
-  const [olt] = await db.update(olts).set(set).where(eq(olts.id, id)).returning(publicOltColumns);
+  const [olt] = await db
+    .update(olts)
+    .set(set)
+    .where(eq(olts.id, id))
+    .returning(publicOltColumns);
   return olt ?? null;
 }
 
 // pon ports & onus ikut terhapus lewat ON DELETE CASCADE di database.
 export async function deleteOlt(id: string) {
-  const rows = await db.delete(olts).where(eq(olts.id, id)).returning({ id: olts.id });
+  const rows = await db
+    .delete(olts)
+    .where(eq(olts.id, id))
+    .returning({ id: olts.id });
   return rows.length > 0;
 }
 
@@ -235,7 +310,11 @@ export async function deleteOlt(id: string) {
 // atau route handler; jangan dicatat di log.
 export async function getOltCredentials(id: string) {
   const [row] = await db
-    .select({ host: olts.host, username: olts.username, passwordEnc: olts.passwordEnc })
+    .select({
+      host: olts.host,
+      username: olts.username,
+      passwordEnc: olts.passwordEnc,
+    })
     .from(olts)
     .where(eq(olts.id, id))
     .limit(1);
@@ -248,28 +327,58 @@ export async function getOltCredentials(id: string) {
 }
 
 export type RouterConnectionResult =
-  | { ok: true; version?: string; cpuLoad?: number; uptime?: string; boardName?: string }
+  | {
+      ok: true;
+      version?: string;
+      cpuLoad?: number;
+      uptime?: string;
+      boardName?: string;
+    }
   | { ok: false; code: string; message: string };
 
 /**
  * Uji koneksi nyata ke router tersimpan. Sukses -> `last_seen_at` diperbarui;
  * gagal -> hasil error terstruktur dan `last_seen_at` tidak disentuh.
  */
-export async function testRouterConnection(id: string): Promise<RouterConnectionResult> {
+export async function testRouterConnection(
+  id: string,
+): Promise<RouterConnectionResult> {
   const row = await db.query.routers.findFirst({ where: eq(routers.id, id) });
-  if (!row) return { ok: false, code: "NOT_FOUND", message: "Router tidak ditemukan." };
+  if (!row)
+    return { ok: false, code: "NOT_FOUND", message: "Router tidak ditemukan." };
   if (!row.passwordEnc) {
-    return { ok: false, code: "NO_CREDENTIALS", message: "Router belum punya kata sandi tersimpan." };
+    return {
+      ok: false,
+      code: "NO_CREDENTIALS",
+      message: "Router belum punya kata sandi tersimpan.",
+    };
   }
   try {
     const password = decryptAES256GCM(row.passwordEnc);
-    const result = await testMikrotikConnection({ host: row.host, username: row.username, password });
-    if (!result.ok) return { ok: false, code: "CONNECTION_FAILED", message: "Router tidak menjawab." };
-    await db.update(routers).set({ lastSeenAt: new Date() }).where(eq(routers.id, id));
+    const result = await testMikrotikConnection({
+      host: row.host,
+      username: row.username,
+      password,
+    });
+    if (!result.ok)
+      return {
+        ok: false,
+        code: "CONNECTION_FAILED",
+        message: "Router tidak menjawab.",
+      };
+    await db
+      .update(routers)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(routers.id, id));
     return { ...result, ok: true };
   } catch (e) {
-    if (e instanceof ApiError) return { ok: false, code: e.code, message: e.message };
-    return { ok: false, code: "CONNECTION_FAILED", message: "Gagal menghubungi router." };
+    if (e instanceof ApiError)
+      return { ok: false, code: e.code, message: e.message };
+    return {
+      ok: false,
+      code: "CONNECTION_FAILED",
+      message: "Gagal menghubungi router.",
+    };
   }
 }
 
@@ -328,7 +437,11 @@ export async function autoMatchOnus(
         ),
       ),
     db
-      .select({ id: customers.id, name: customers.name, pppoeUsername: customers.pppoeUsername })
+      .select({
+        id: customers.id,
+        name: customers.name,
+        pppoeUsername: customers.pppoeUsername,
+      })
       .from(customers)
       .leftJoin(oltOnus, eq(oltOnus.customerId, customers.id))
       .where(isNull(oltOnus.id)),
@@ -345,9 +458,18 @@ export async function autoMatchOnus(
     const code = onuNameCode(description);
     if (code) codeCount.set(code, (codeCount.get(code) ?? 0) + 1);
   }
-  const duplicateCodes = new Set([...codeCount].filter(([, n]) => n > 1).map(([code]) => code));
+  const duplicateCodes = new Set(
+    [...codeCount].filter(([, n]) => n > 1).map(([code]) => code),
+  );
 
-  type Claim = { onuId: string; customerId: string; onuName: string | null; rxPower: number | null; status: string; by: string };
+  type Claim = {
+    onuId: string;
+    customerId: string;
+    onuName: string | null;
+    rxPower: number | null;
+    status: string;
+    by: string;
+  };
   const result = { matched: 0, ambiguous: 0, unmatched: 0, namesFilled: 0 };
   const claims: Claim[] = [];
   const unresolved: typeof onus = [];
@@ -355,11 +477,21 @@ export async function autoMatchOnus(
     const m = matchOnuToCustomer(onu, free, { duplicateCodes });
     if (m.status === "ambiguous") result.ambiguous++;
     else if (m.status === "unmatched") unresolved.push(onu);
-    else claims.push({ onuId: onu.id, customerId: m.customerId, onuName: onu.description, rxPower: onu.rxPower, status: onu.status, by: m.status });
+    else
+      claims.push({
+        onuId: onu.id,
+        customerId: m.customerId,
+        onuName: onu.description,
+        rxPower: onu.rxPower,
+        status: onu.status,
+        by: m.status,
+      });
   }
 
   // ONU tanpa nama yang bisa dicocokkan: cari lewat sesi PPPoE yang MAC-nya berdekatan.
-  const viaSession = unresolved.filter((o) => o.status === "online" && callerIdLookupAllowed(o.model));
+  const viaSession = unresolved.filter(
+    (o) => o.status === "online" && callerIdLookupAllowed(o.model),
+  );
   const resolved = new Set<string>();
   const sessions = viaSession.length > 0 ? await loadPppSessions() : null;
   if (sessions) {
@@ -374,9 +506,17 @@ export async function autoMatchOnus(
       if (ids?.length !== 1) continue;
       // ONU yang sudah dilabeli kode pelanggan lain dibiarkan: label dan sesi saling bertentangan.
       const owner = free.find((c) => c.id === ids[0]);
-      if (!owner || codeContradictsPppoe(onu.description, owner.pppoeUsername)) continue;
+      if (!owner || codeContradictsPppoe(onu.description, owner.pppoeUsername))
+        continue;
       resolved.add(onu.id);
-      claims.push({ onuId: onu.id, customerId: ids[0], onuName: onu.description, rxPower: onu.rxPower, status: onu.status, by: "caller_id" });
+      claims.push({
+        onuId: onu.id,
+        customerId: ids[0],
+        onuName: onu.description,
+        rxPower: onu.rxPower,
+        status: onu.status,
+        by: "caller_id",
+      });
     }
   }
   result.unmatched = unresolved.filter((o) => !resolved.has(o.id)).length;
@@ -384,10 +524,12 @@ export async function autoMatchOnus(
   // Satu pelanggan diklaim beberapa ONU (nama kembar, ONU lama yang pindah port): hanya bila
   // tepat satu yang online; selain itu tidak menebak.
   const byCustomer = new Map<string, Claim[]>();
-  for (const c of claims) byCustomer.set(c.customerId, [...(byCustomer.get(c.customerId) ?? []), c]);
+  for (const c of claims)
+    byCustomer.set(c.customerId, [...(byCustomer.get(c.customerId) ?? []), c]);
   const pairs: Claim[] = [];
   for (const group of byCustomer.values()) {
-    const live = group.length === 1 ? group : group.filter((c) => c.status === "online");
+    const live =
+      group.length === 1 ? group : group.filter((c) => c.status === "online");
     if (live.length === 1) {
       pairs.push(live[0]);
       result.ambiguous += group.length - 1;
@@ -396,15 +538,26 @@ export async function autoMatchOnus(
     }
   }
   result.matched = pairs.length;
-  const pairSummary = pairs.map((p) => ({ onuId: p.onuId, customerId: p.customerId, onuName: p.onuName, by: p.by }));
+  const pairSummary = pairs.map((p) => ({
+    onuId: p.onuId,
+    customerId: p.customerId,
+    onuName: p.onuName,
+    by: p.by,
+  }));
   if (opts.dryRun) return { ...result, pairs: pairSummary };
 
   await db.transaction(async (tx) => {
     for (const p of pairs) {
-      await tx.update(oltOnus).set({ customerId: p.customerId }).where(eq(oltOnus.id, p.onuId));
+      await tx
+        .update(oltOnus)
+        .set({ customerId: p.customerId })
+        .where(eq(oltOnus.id, p.onuId));
       // Redaman langsung terlihat di dasbor; polling OLT berikutnya menimpa dengan nilai terbaru.
       if (p.rxPower !== null) {
-        await tx.update(customers).set({ opticalPower: p.rxPower, lastUpdatedAt: new Date() }).where(eq(customers.id, p.customerId));
+        await tx
+          .update(customers)
+          .set({ opticalPower: p.rxPower, lastUpdatedAt: new Date() })
+          .where(eq(customers.id, p.customerId));
       }
       // Pelanggan hasil impor router bernama sama dengan username PPPoE-nya (router
       // tidak menyimpan nama). Nama dari OLT menggantikannya, tetapi tidak pernah
@@ -414,7 +567,12 @@ export async function autoMatchOnus(
         const updated = await tx
           .update(customers)
           .set({ name: real })
-          .where(and(eq(customers.id, p.customerId), eq(customers.name, customers.pppoeUsername)))
+          .where(
+            and(
+              eq(customers.id, p.customerId),
+              eq(customers.name, customers.pppoeUsername),
+            ),
+          )
           .returning({ id: customers.id });
         result.namesFilled += updated.length;
       }
@@ -434,7 +592,10 @@ export async function autoMatchOnus(
 // Sesi PPPoE aktif semua router aktif, atau null bila ada router yang tidak terbaca: ONU
 // bisa saja ada di router itu, dan tanpa semua sesi satu-satunya kandidat bisa modem tetangga.
 async function loadPppSessions() {
-  const active = await db.select({ id: routers.id }).from(routers).where(eq(routers.status, "aktif"));
+  const active = await db
+    .select({ id: routers.id })
+    .from(routers)
+    .where(eq(routers.status, "aktif"));
   const sessions: { name: string; callerId: string; address: string }[] = [];
   for (const { id } of active) {
     try {
@@ -451,7 +612,10 @@ async function loadPppSessions() {
       });
       sessions.push(...(await client.getPppActive()));
     } catch (err) {
-      console.error(`Baca sesi PPPoE router ${id} gagal, pencocokan lewat MAC dilewati:`, err);
+      console.error(
+        `Baca sesi PPPoE router ${id} gagal, pencocokan lewat MAC dilewati:`,
+        err,
+      );
       return null;
     }
   }
@@ -460,13 +624,18 @@ async function loadPppSessions() {
 
 const ONU_AUTOMATCH_INTERVAL_MS = 5 * 60_000;
 // Di globalThis: modul dimuat ulang saat hot reload dev, variabel modul akan memulai timer kedua.
-const onuAutoMatchState = globalThis as typeof globalThis & { nocOnuAutoMatch?: { timer: NodeJS.Timeout; busy: boolean } };
+const onuAutoMatchState = globalThis as typeof globalThis & {
+  nocOnuAutoMatch?: { timer: NodeJS.Timeout; busy: boolean };
+};
 
 // Pelanggan yang modemnya tidak bisa terdaftar di GenieACS tetap punya redaman dari OLT
 // (olt_onus, dibaca poller lewat telnet), asal ONU-nya terpetakan. Pemetaan jangan menunggu
 // petugas menekan tombol: dijalankan berkala untuk semua OLT aktif.
 export async function autoMatchAllOnus() {
-  const active = await db.select({ id: olts.id }).from(olts).where(eq(olts.status, "aktif"));
+  const active = await db
+    .select({ id: olts.id })
+    .from(olts)
+    .where(eq(olts.status, "aktif"));
   for (const { id } of active) {
     try {
       await autoMatchOnus(id, null, { skipOperatorUnmapped: true });
@@ -528,7 +697,10 @@ export async function getOnu(id: string) {
     .limit(1)
     .then((rows) => rows[0] ?? null);
   if (!row) return null;
-  const trouble = classifyOnuTrouble({ status: row.status, rxPowerDbm: row.rxPower });
+  const trouble = classifyOnuTrouble({
+    status: row.status,
+    rxPowerDbm: row.rxPower,
+  });
   return { ...row, trouble, isTroubled: trouble.isTroubled };
 }
 
@@ -542,18 +714,28 @@ export async function getCustomerOnu(customerId: string) {
     .limit(1)
     .then((rows) => rows[0] ?? null);
   if (!row) return null;
-  const trouble = classifyOnuTrouble({ status: row.status, rxPowerDbm: row.rxPower });
+  const trouble = classifyOnuTrouble({
+    status: row.status,
+    rxPowerDbm: row.rxPower,
+  });
   return { ...row, trouble, isTroubled: trouble.isTroubled };
 }
 
 export async function listOnus(params: ListOnusParams = {} as ListOnusParams) {
-  const limit = Math.min(ONU_MAX_LIMIT, Math.max(1, params.limit ?? ONU_DEFAULT_LIMIT));
+  const limit = Math.min(
+    ONU_MAX_LIMIT,
+    Math.max(1, params.limit ?? ONU_DEFAULT_LIMIT),
+  );
   const offset = Math.max(0, params.offset ?? 0);
   const conds: SQL[] = [];
   if (params.oltId) conds.push(eq(oltOnus.oltId, params.oltId));
   if (params.customerId) conds.push(eq(oltOnus.customerId, params.customerId));
   if (params.isMapped !== undefined) {
-    conds.push(params.isMapped ? isNotNull(oltOnus.customerId) : isNull(oltOnus.customerId));
+    conds.push(
+      params.isMapped
+        ? isNotNull(oltOnus.customerId)
+        : isNull(oltOnus.customerId),
+    );
   }
   if (params.status) conds.push(eq(oltOnus.status, params.status));
   if (params.isWeak !== undefined) {
@@ -598,7 +780,10 @@ export async function listOnus(params: ListOnusParams = {} as ListOnusParams) {
   ]);
   return {
     items: items.map((item) => {
-      const trouble = classifyOnuTrouble({ status: item.status, rxPowerDbm: item.rxPower });
+      const trouble = classifyOnuTrouble({
+        status: item.status,
+        rxPowerDbm: item.rxPower,
+      });
       return { ...item, trouble, isTroubled: trouble.isTroubled };
     }),
     total,
@@ -606,24 +791,46 @@ export async function listOnus(params: ListOnusParams = {} as ListOnusParams) {
 }
 
 /** null = ONU tidak ada. Pelanggan sudah punya ONU lain -> ApiError 409. */
-export async function mapOnuToCustomer(onuId: string, customerId: string | null, userId?: string | null) {
+export async function mapOnuToCustomer(
+  onuId: string,
+  customerId: string | null,
+  userId?: string | null,
+) {
   const updated = await db.transaction(async (tx) => {
     const [onuRow] = await tx
-      .select({ id: oltOnus.id, rxPower: oltOnus.rxPower, prevCustomerId: oltOnus.customerId })
+      .select({
+        id: oltOnus.id,
+        rxPower: oltOnus.rxPower,
+        prevCustomerId: oltOnus.customerId,
+      })
       .from(oltOnus)
       .where(eq(oltOnus.id, onuId))
       .limit(1);
     if (!onuRow) return false;
 
     if (customerId) {
-      const [c] = await tx.select({ id: customers.id }).from(customers).where(eq(customers.id, customerId)).limit(1);
-      if (!c) throw new ApiError(404, "CUSTOMER_NOT_FOUND", "Pelanggan tidak ditemukan.");
+      const [c] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, customerId))
+        .limit(1);
+      if (!c)
+        throw new ApiError(
+          404,
+          "CUSTOMER_NOT_FOUND",
+          "Pelanggan tidak ditemukan.",
+        );
       const [taken] = await tx
         .select({ id: oltOnus.id })
         .from(oltOnus)
         .where(and(eq(oltOnus.customerId, customerId), ne(oltOnus.id, onuId)))
         .limit(1);
-      if (taken) throw new ApiError(409, "CUSTOMER_ALREADY_MAPPED", "Pelanggan sudah dipetakan ke ONU lain.");
+      if (taken)
+        throw new ApiError(
+          409,
+          "CUSTOMER_ALREADY_MAPPED",
+          "Pelanggan sudah dipetakan ke ONU lain.",
+        );
     }
     const rows = await tx
       .update(oltOnus)
@@ -660,10 +867,16 @@ export async function mapOnuToCustomer(onuId: string, customerId: string | null,
  * Ringkasan semua port PON satu OLT. null = OLT tidak ada / ID tidak dikenal.
  * Urutan sumber: mock (ID `olt-*` atau mode demo) -> tabel olt_pon_ports -> klien HSGQ langsung.
  */
-export async function getOltPonPorts(oltId: string): Promise<PonPortSummary[] | null> {
+export async function getOltPonPorts(
+  oltId: string,
+): Promise<PonPortSummary[] | null> {
   if (oltId.startsWith("olt-") && env.DASHBOARD_DATA === "live") return null; // jangan sajikan mock saat live
   if (oltId.startsWith("olt-") || env.DASHBOARD_DATA === "demo") {
-    return getMockPonPorts(oltId, 8, oltId === "olt-1" ? "OLT Utama Kebon Jeruk" : "OLT Pasar Minggu");
+    return getMockPonPorts(
+      oltId,
+      8,
+      oltId === "olt-1" ? "OLT Utama Kebon Jeruk" : "OLT Pasar Minggu",
+    );
   }
   if (!oltIdSchema.safeParse(oltId).success) return null;
 
@@ -671,7 +884,11 @@ export async function getOltPonPorts(oltId: string): Promise<PonPortSummary[] | 
   if (!olt) return null;
 
   const [rows, onuCounts] = await Promise.all([
-    db.select().from(oltPonPorts).where(eq(oltPonPorts.oltId, oltId)).orderBy(asc(oltPonPorts.ponIndex)),
+    db
+      .select()
+      .from(oltPonPorts)
+      .where(eq(oltPonPorts.oltId, oltId))
+      .orderBy(asc(oltPonPorts.ponIndex)),
     db
       .select({ ponIndex: oltOnus.ponIndex, total: count() })
       .from(oltOnus)
@@ -743,7 +960,12 @@ function buildLiveOnuResult(
   const q = f.q?.toLowerCase();
   const items = onus.filter((o) => {
     if (f.status && o.status !== f.status) return false;
-    if (q && !o.serialNumber.toLowerCase().includes(q) && !o.macAddress.toLowerCase().includes(q)) return false;
+    if (
+      q &&
+      !o.serialNumber.toLowerCase().includes(q) &&
+      !o.macAddress.toLowerCase().includes(q)
+    )
+      return false;
     if (f.isWeak) {
       const weak = o.rxPowerDbm !== null && o.rxPowerDbm < WEAK_RX_DBM;
       if (weak !== (f.isWeak === "true")) return false;
@@ -756,20 +978,36 @@ function buildLiveOnuResult(
     offline: items.filter((o) => o.status === "offline").length,
     los: items.filter((o) => o.status === "los").length,
   };
-  return { oltId, oltName, source, syncedAt: Math.floor(Date.now() / 1000), summary, items };
+  return {
+    oltId,
+    oltName,
+    source,
+    syncedAt: Math.floor(Date.now() / 1000),
+    summary,
+    items,
+  };
 }
 
 /** null = ID tidak valid / OLT tidak ada. Mock (`olt-*`) dan mode demo memakai simulator. */
-export async function getOltLiveOnus(oltId: string, filters: LiveOnuFilterInput): Promise<LiveOnuResult | null> {
+export async function getOltLiveOnus(
+  oltId: string,
+  filters: LiveOnuFilterInput,
+): Promise<LiveOnuResult | null> {
   const mock = oltId.startsWith("olt-");
   if (mock && env.DASHBOARD_DATA === "live") return null; // jangan sajikan mock saat live
   if (!mock && !oltIdSchema.safeParse(oltId).success) return null;
 
   if (mock || env.DASHBOARD_DATA === "demo") {
     // Host simulator harus lolos sanitasi dan bukan berakhiran .0/.255 (itu memicu kegagalan simulasi).
-    const client = new HsgqClient({ host: "10.0.0.1", username: "sim", password: "sim", mode: "simulator" });
+    const client = new HsgqClient({
+      host: "10.0.0.1",
+      username: "sim",
+      password: "sim",
+      mode: "simulator",
+    });
     const onus = await client.getOnus(filters.ponIndex);
-    const name = oltId === "olt-1" ? "OLT Utama Kebon Jeruk" : "OLT Pasar Minggu";
+    const name =
+      oltId === "olt-1" ? "OLT Utama Kebon Jeruk" : "OLT Pasar Minggu";
     return buildLiveOnuResult(oltId, name, "simulator", onus, filters);
   }
 
@@ -778,9 +1016,18 @@ export async function getOltLiveOnus(oltId: string, filters: LiveOnuFilterInput)
   const creds = await getOltCredentials(oltId);
   if (!creds) return null;
   const live = env.DASHBOARD_DATA === "live";
-  const client = new HsgqClient({ ...creds, mode: live ? "real" : "simulator" });
+  const client = new HsgqClient({
+    ...creds,
+    mode: live ? "real" : "simulator",
+  });
   const onus = await client.getOnus(filters.ponIndex);
-  return buildLiveOnuResult(oltId, olt.name, live ? "live" : "simulator", onus, filters);
+  return buildLiveOnuResult(
+    oltId,
+    olt.name,
+    live ? "live" : "simulator",
+    onus,
+    filters,
+  );
 }
 
 // ---- Redaman optik ONU dari OLT ----
@@ -821,22 +1068,34 @@ function opticalCategory(o: HsgqOnu): OpticalCategory {
 }
 
 /** null = ID tidak valid / OLT tidak ada. */
-export async function getOltOpticalData(oltId: string, ponIndex?: number): Promise<OltOpticalData | null> {
+export async function getOltOpticalData(
+  oltId: string,
+  ponIndex?: number,
+): Promise<OltOpticalData | null> {
   const result = await getOltLiveOnus(oltId, { ponIndex });
   if (!result) return null;
   const items: OltOpticalOnu[] = result.items.map((o) => {
-    const trouble = classifyOnuTrouble({ status: o.status, rxPowerDbm: o.rxPowerDbm });
+    const trouble = classifyOnuTrouble({
+      status: o.status,
+      rxPowerDbm: o.rxPowerDbm,
+    });
     return {
       ...o,
-      lossDb: o.txPowerDbm !== null && o.rxPowerDbm !== null ? round(o.txPowerDbm - o.rxPowerDbm, 2) : null,
+      lossDb:
+        o.txPowerDbm !== null && o.rxPowerDbm !== null
+          ? round(o.txPowerDbm - o.rxPowerDbm, 2)
+          : null,
       category: opticalCategory(o),
       isWeak: o.rxPowerDbm !== null && o.rxPowerDbm < WEAK_RX_DBM,
       trouble,
       isTroubled: trouble.isTroubled,
     };
   });
-  const rxs = items.filter((o) => o.status === "online" && o.rxPowerDbm !== null).map((o) => o.rxPowerDbm as number);
-  const count = (c: OpticalCategory) => items.filter((o) => o.category === c).length;
+  const rxs = items
+    .filter((o) => o.status === "online" && o.rxPowerDbm !== null)
+    .map((o) => o.rxPowerDbm as number);
+  const count = (c: OpticalCategory) =>
+    items.filter((o) => o.category === c).length;
   return {
     oltId: result.oltId,
     oltName: result.oltName,
@@ -848,7 +1107,9 @@ export async function getOltOpticalData(oltId: string, ponIndex?: number): Promi
       normalCount: count("normal"),
       warningCount: count("warning"),
       criticalCount: count("critical"),
-      avgRxDbm: rxs.length ? round(rxs.reduce((a, b) => a + b, 0) / rxs.length, 1) : null,
+      avgRxDbm: rxs.length
+        ? round(rxs.reduce((a, b) => a + b, 0) / rxs.length, 1)
+        : null,
       minRxDbm: rxs.length ? Math.min(...rxs) : null,
       maxRxDbm: rxs.length ? Math.max(...rxs) : null,
     },
@@ -857,7 +1118,18 @@ export async function getOltOpticalData(oltId: string, ponIndex?: number): Promi
 }
 
 // ---- Data optik PON port ----
-export type OltPonPortOnu = Omit<PonOnuDetail, "rxPowerDbm" | "txPowerDbm" | "ontModel" | "customerName" | "pppoeUsername" | "address" | "serialNumber" | "macAddress" | "distanceMeters"> & {
+export type OltPonPortOnu = Omit<
+  PonOnuDetail,
+  | "rxPowerDbm"
+  | "txPowerDbm"
+  | "ontModel"
+  | "customerName"
+  | "pppoeUsername"
+  | "address"
+  | "serialNumber"
+  | "macAddress"
+  | "distanceMeters"
+> & {
   // DB belum menyimpan MAC dan jarak; null sampai kolomnya ada.
   serialNumber: string | null;
   macAddress: string | null;
@@ -872,7 +1144,10 @@ export type OltPonPortOnu = Omit<PonOnuDetail, "rxPowerDbm" | "txPowerDbm" | "on
   trouble: OnuTroubleEvaluation;
   isTroubled: boolean;
 };
-export type OltPonPort = Omit<PonPortDetail, "txPowerDbm" | "rxPowerDbm" | "attenuationDb" | "onus"> & {
+export type OltPonPort = Omit<
+  PonPortDetail,
+  "txPowerDbm" | "rxPowerDbm" | "attenuationDb" | "onus"
+> & {
   txPowerDbm: number | null;
   rxPowerDbm: number | null;
   attenuationDb: number | null;
@@ -887,7 +1162,10 @@ export type OltPonPort = Omit<PonPortDetail, "txPowerDbm" | "rxPowerDbm" | "atte
 const epoch = (d: Date) => Math.floor(d.getTime() / 1000);
 
 /** null = OLT tidak ada (dan bukan mode demo). Pada mode live, tidak pernah menyajikan mock. */
-export async function getOltPonPort(oltId: string, ponIndex: number): Promise<OltPonPort | null> {
+export async function getOltPonPort(
+  oltId: string,
+  ponIndex: number,
+): Promise<OltPonPort | null> {
   const olt = await getOlt(oltId);
   const live = env.DASHBOARD_DATA === "live";
   const demo = env.DASHBOARD_DATA === "demo" && !live;
@@ -897,7 +1175,8 @@ export async function getOltPonPort(oltId: string, ponIndex: number): Promise<Ol
     return {
       ...d,
       id: `${oltId}:${ponIndex}`,
-      ...(name !== undefined && host !== undefined && { oltName: name, oltHost: host }),
+      ...(name !== undefined &&
+        host !== undefined && { oltName: name, oltHost: host }),
       onus: d.onus.map((o) => {
         const trouble = o.trouble ?? classifyOnuTrouble(o);
         return { ...o, trouble, isTroubled: trouble.isTroubled };
@@ -912,7 +1191,13 @@ export async function getOltPonPort(oltId: string, ponIndex: number): Promise<Ol
   if (!olt) return demo ? mock() : null;
 
   const [[port], onuRows] = await Promise.all([
-    db.select().from(oltPonPorts).where(and(eq(oltPonPorts.oltId, oltId), eq(oltPonPorts.ponIndex, ponIndex))).limit(1),
+    db
+      .select()
+      .from(oltPonPorts)
+      .where(
+        and(eq(oltPonPorts.oltId, oltId), eq(oltPonPorts.ponIndex, ponIndex)),
+      )
+      .limit(1),
     db
       .select({
         onuIndex: oltOnus.onuIndex,
@@ -930,30 +1215,39 @@ export async function getOltPonPort(oltId: string, ponIndex: number): Promise<Ol
       .where(and(eq(oltOnus.oltId, oltId), eq(oltOnus.ponIndex, ponIndex)))
       .orderBy(asc(oltOnus.onuIndex)),
   ]);
-  if (!port && onuRows.length === 0) return demo ? mock(olt.name, olt.host) : null;
+  if (!port && onuRows.length === 0)
+    return demo ? mock(olt.name, olt.host) : null;
 
   const onus: OltPonPortOnu[] = onuRows.map((o) => {
-    const trouble = classifyOnuTrouble({ status: o.status, rxPowerDbm: o.rx, distanceMeters: null });
+    const trouble = classifyOnuTrouble({
+      status: o.status,
+      rxPowerDbm: o.rx,
+      distanceMeters: null,
+    });
     return {
-    onuIndex: o.onuIndex,
-    customerName: o.customerName,
-    pppoeUsername: o.pppoeUsername,
-    address: o.address,
-    ontModel: null,
-    serialNumber: o.serialNumber,
-    macAddress: null,
-    distanceMeters: null,
-    rxPowerDbm: o.rx,
-    txPowerDbm: o.tx,
-    status: o.status,
-    isWeak: o.rx !== null && o.rx < WEAK_RX_DBM,
-    lastSeenAt: epoch(o.capturedAt),
-    trouble,
-    isTroubled: trouble.isTroubled,
+      onuIndex: o.onuIndex,
+      customerName: o.customerName,
+      pppoeUsername: o.pppoeUsername,
+      address: o.address,
+      ontModel: null,
+      serialNumber: o.serialNumber,
+      macAddress: null,
+      distanceMeters: null,
+      rxPowerDbm: o.rx,
+      txPowerDbm: o.tx,
+      status: o.status,
+      isWeak: o.rx !== null && o.rx < WEAK_RX_DBM,
+      lastSeenAt: epoch(o.capturedAt),
+      trouble,
+      isTroubled: trouble.isTroubled,
     };
   });
   const troubleSummary = summarizeOnuTroubles(
-    onus.map((o) => ({ status: o.status, rxPowerDbm: o.rxPowerDbm, distanceMeters: o.distanceMeters })),
+    onus.map((o) => ({
+      status: o.status,
+      rxPowerDbm: o.rxPowerDbm,
+      distanceMeters: o.distanceMeters,
+    })),
   );
   return {
     id: `${oltId}:${ponIndex}`,
@@ -967,7 +1261,8 @@ export async function getOltPonPort(oltId: string, ponIndex: number): Promise<Ol
     rxPowerDbm: port?.rxPower ?? null,
     attenuationDb: port?.attenuation ?? null,
     totalOnu: onus.length,
-    onlineOnu: port?.onuOnlineCount ?? onus.filter((o) => o.status === "online").length,
+    onlineOnu:
+      port?.onuOnlineCount ?? onus.filter((o) => o.status === "online").length,
     syncedAt: epoch(port?.capturedAt ?? onuRows[0].capturedAt),
     onus,
     troubleSummary,
@@ -977,4 +1272,3 @@ export async function getOltPonPort(oltId: string, ponIndex: number): Promise<Ol
     source: "db",
   };
 }
-

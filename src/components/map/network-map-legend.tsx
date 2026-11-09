@@ -2,7 +2,15 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronUp, ChevronDown, Layers, MapPin, Cable, Eye, EyeOff } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  Layers,
+  MapPin,
+  Cable,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 export interface NetworkMapLegendProps {
   showCustomers: boolean;
@@ -35,7 +43,9 @@ export function NetworkMapLegend({
   defaultExpanded = false,
 }: NetworkMapLegendProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [activeTab, setActiveTab] = useState<"symbols" | "cables" | "layers">("symbols");
+  const [activeTab, setActiveTab] = useState<"symbols" | "cables" | "layers">(
+    "symbols",
+  );
 
   return (
     <div
@@ -59,7 +69,11 @@ export function NetworkMapLegend({
           title={isExpanded ? "Lipat Legenda" : "Buka Legenda Lengkap"}
           aria-label={isExpanded ? "Lipat Legenda" : "Buka Legenda Lengkap"}
         >
-          {isExpanded ? <ChevronDown className="size-4 sm:size-3.5" /> : <ChevronUp className="size-4 sm:size-3.5" />}
+          {isExpanded ? (
+            <ChevronDown className="size-4 sm:size-3.5" />
+          ) : (
+            <ChevronUp className="size-4 sm:size-3.5" />
+          )}
         </button>
       </div>
 
@@ -71,7 +85,10 @@ export function NetworkMapLegend({
             onClick={onToggleCustomers}
             data-testid="toggle-customers-dock"
             title="Klik untuk menyembunyikan/menampilkan pelanggan"
-            className={cn("flex items-center gap-1 hover:text-foreground", !showCustomers && "opacity-40 line-through")}
+            className={cn(
+              "flex items-center gap-1 hover:text-foreground",
+              !showCustomers && "opacity-40 line-through",
+            )}
           >
             <span className="size-2 rounded-full bg-emerald-500" />
             <span>Pelanggan ({customerCount})</span>
@@ -82,7 +99,10 @@ export function NetworkMapLegend({
             onClick={onToggleInfrastructure}
             data-testid="toggle-infrastructure-dock"
             title="Klik untuk menyembunyikan/menampilkan perangkat"
-            className={cn("flex items-center gap-1 hover:text-foreground", !showInfrastructure && "opacity-40 line-through")}
+            className={cn(
+              "flex items-center gap-1 hover:text-foreground",
+              !showInfrastructure && "opacity-40 line-through",
+            )}
           >
             <span className="size-2 rounded-full bg-purple-500" />
             <span>Perangkat ({infraCount})</span>
@@ -93,7 +113,10 @@ export function NetworkMapLegend({
             onClick={onToggleCables}
             data-testid="toggle-cables-dock"
             title="Klik untuk menyembunyikan/menampilkan kabel"
-            className={cn("flex items-center gap-1 hover:text-foreground", !showCables && "opacity-40 line-through")}
+            className={cn(
+              "flex items-center gap-1 hover:text-foreground",
+              !showCables && "opacity-40 line-through",
+            )}
           >
             <span className="w-2.5 h-0.5 bg-cyan-500 rounded" />
             <span>Kabel ({cableCount ?? 0})</span>
@@ -184,40 +207,65 @@ export function NetworkMapLegend({
                   Perangkat Infrastruktur Jaringan
                 </div>
                 <div className="space-y-1 text-[11px]">
-                  <div data-testid="infra-legend-router" className="flex items-center justify-between">
+                  <div
+                    data-testid="infra-legend-router"
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="size-2.5 rounded-full bg-purple-500 ring-2 ring-purple-300/30 shrink-0" />
                       <span>Core Router Gateway</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">Routing</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Routing
+                    </span>
                   </div>
-                  <div data-testid="infra-legend-olt" className="flex items-center justify-between">
+                  <div
+                    data-testid="infra-legend-olt"
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="size-2.5 rounded-full bg-cyan-500 ring-2 ring-cyan-300/30 shrink-0" />
                       <span>OLT Fiber Terminal</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">GPON/EPON</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      GPON/EPON
+                    </span>
                   </div>
-                  <div data-testid="infra-legend-odc" className="flex items-center justify-between">
+                  <div
+                    data-testid="infra-legend-odc"
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="size-2 rounded-sm bg-blue-500 shrink-0" />
                       <span>ODC Kabinet Feeder</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">Distribusi</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Distribusi
+                    </span>
                   </div>
-                  <div data-testid="infra-legend-odp" className="flex items-center justify-between">
+                  <div
+                    data-testid="infra-legend-odp"
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="size-2 rounded-sm bg-amber-500 shrink-0" />
                       <span>ODP Kotak Distribusi</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">Drop</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Drop
+                    </span>
                   </div>
-                  <div data-testid="infra-legend-pole" className="flex items-center justify-between">
+                  <div
+                    data-testid="infra-legend-pole"
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="size-2 rounded-full bg-slate-500 shrink-0" />
                       <span>Tiang Tumpu Fiber</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">Jalur</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Jalur
+                    </span>
                   </div>
                 </div>
               </div>
@@ -232,57 +280,89 @@ export function NetworkMapLegend({
               </div>
               <div className="space-y-1.5 text-[11px]">
                 {/* Tier 1: Backbone */}
-                <div data-testid="cable-legend-tier-backbone" className="flex items-center justify-between">
+                <div
+                  data-testid="cable-legend-tier-backbone"
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[5px] bg-purple-500 rounded-full shrink-0" />
                     <span>Backbone Optik (48 - 96 Core)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">5.0px</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    5.0px
+                  </span>
                 </div>
 
                 {/* Tier 2: Feeder Utama */}
-                <div data-testid="cable-legend-tier-feeder-main" className="flex items-center justify-between">
+                <div
+                  data-testid="cable-legend-tier-feeder-main"
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[4px] bg-indigo-500 rounded-full shrink-0" />
                     <span>Feeder Utama (24 Core)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">4.0px</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    4.0px
+                  </span>
                 </div>
 
                 {/* Tier 3: Feeder Distribusi */}
-                <div data-testid="cable-legend-tier-feeder-dist" className="flex items-center justify-between">
+                <div
+                  data-testid="cable-legend-tier-feeder-dist"
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[3px] bg-cyan-500 rounded-full shrink-0" />
                     <span>Feeder Distribusi (16 - 24 Core)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">3.2px</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    3.2px
+                  </span>
                 </div>
 
                 {/* Tier 4: Distribusi Cabang */}
-                <div data-testid="cable-legend-tier-branch" className="flex items-center justify-between">
+                <div
+                  data-testid="cable-legend-tier-branch"
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[2px] bg-amber-500 rounded-full shrink-0" />
                     <span>Distribusi Cabang (4 - 8 Core)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">2.5px</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    2.5px
+                  </span>
                 </div>
 
                 {/* Tier 5: Drop Optik */}
-                <div data-testid="cable-legend-tier-drop" className="flex items-center justify-between">
+                <div
+                  data-testid="cable-legend-tier-drop"
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[1.5px] bg-emerald-500 rounded-full shrink-0" />
                     <span>Drop Optik (1 - 2 Core)</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">1.8px</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    1.8px
+                  </span>
                 </div>
 
                 {/* Tier 6: Highlight */}
-                <div data-testid="cable-legend-tier-highlight" className="flex items-center justify-between pt-1 border-t border-border/40">
+                <div
+                  data-testid="cable-legend-tier-highlight"
+                  className="flex items-center justify-between pt-1 border-t border-border/40"
+                >
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-[3.5px] bg-cyan-400 ring-2 ring-cyan-300/60 animate-pulse rounded-full shrink-0" />
-                    <span className="font-medium text-cyan-500">Jalur Disorot (Highlight)</span>
+                    <span className="font-medium text-cyan-500">
+                      Jalur Disorot (Highlight)
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono text-cyan-500">+3.5px</span>
+                  <span className="text-[10px] font-mono text-cyan-500">
+                    +3.5px
+                  </span>
                 </div>
               </div>
             </div>
@@ -309,7 +389,11 @@ export function NetworkMapLegend({
                     <MapPin className="size-3.5 text-emerald-500" />
                     <span>Titik Pelanggan ({customerCount})</span>
                   </div>
-                  {showCustomers ? <Eye className="size-3.5 text-primary" /> : <EyeOff className="size-3.5" />}
+                  {showCustomers ? (
+                    <Eye className="size-3.5 text-primary" />
+                  ) : (
+                    <EyeOff className="size-3.5" />
+                  )}
                 </button>
 
                 <button
@@ -326,7 +410,11 @@ export function NetworkMapLegend({
                     <Layers className="size-3.5 text-purple-500" />
                     <span>Perangkat Jaringan ({infraCount})</span>
                   </div>
-                  {showInfrastructure ? <Eye className="size-3.5 text-primary" /> : <EyeOff className="size-3.5" />}
+                  {showInfrastructure ? (
+                    <Eye className="size-3.5 text-primary" />
+                  ) : (
+                    <EyeOff className="size-3.5" />
+                  )}
                 </button>
 
                 <button
@@ -343,7 +431,11 @@ export function NetworkMapLegend({
                     <Cable className="size-3.5 text-cyan-500" />
                     <span>Jalur Kabel Optik ({cableCount ?? 0})</span>
                   </div>
-                  {showCables ? <Eye className="size-3.5 text-primary" /> : <EyeOff className="size-3.5" />}
+                  {showCables ? (
+                    <Eye className="size-3.5 text-primary" />
+                  ) : (
+                    <EyeOff className="size-3.5" />
+                  )}
                 </button>
               </div>
             </div>

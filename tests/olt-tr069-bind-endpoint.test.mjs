@@ -27,14 +27,15 @@ globalThis.starterPostgresDb = {
 
 register();
 const { auth } = await import("../src/lib/auth.ts");
-const { POST: bindOnu } = await import(
-  "../src/app/api/olts/[id]/onus/[pon]/[onu]/tr069-bind/route.ts"
-);
+const { POST: bindOnu } =
+  await import("../src/app/api/olts/[id]/onus/[pon]/[onu]/tr069-bind/route.ts");
 
 let sessionOk = true;
 let permOk = true;
 auth.api.getSession = async () =>
-  sessionOk ? { user: { id: "u1", name: "Budi", email: "b@x.id" }, session: {} } : null;
+  sessionOk
+    ? { user: { id: "u1", name: "Budi", email: "b@x.id" }, session: {} }
+    : null;
 auth.api.userHasPermission = async () => ({ success: permOk });
 
 const OLT_ID = "11111111-1111-4111-8111-111111111111";
@@ -44,7 +45,9 @@ const req = () =>
     headers: { origin: "http://localhost:3101" },
   });
 const call = async (pon = "1", onu = "22") => {
-  const res = await bindOnu(req(), { params: Promise.resolve({ id: OLT_ID, pon, onu }) });
+  const res = await bindOnu(req(), {
+    params: Promise.resolve({ id: OLT_ID, pon, onu }),
+  });
   return { status: res.status, json: await res.json() };
 };
 
@@ -88,7 +91,9 @@ test("pon/onu bukan angka: ditolak (422, validasi zod) tanpa memanggil backend",
 
 test("oltId bukan uuid: ditolak (422, validasi zod) tanpa memanggil backend", async () => {
   stubFetch(200, { ok: true });
-  const res = await bindOnu(req(), { params: Promise.resolve({ id: "bukan-uuid", pon: "1", onu: "22" }) });
+  const res = await bindOnu(req(), {
+    params: Promise.resolve({ id: "bukan-uuid", pon: "1", onu: "22" }),
+  });
   assert.equal(res.status, 422);
   assert.equal(lastFetch, null);
 });
@@ -99,7 +104,10 @@ test("sukses: tiket terkirim dengan izin cpe:manage, path diteruskan apa adanya"
   assert.equal(status, 200);
   assert.equal(json.ok, true);
   assert.match(json.message, /diikat/);
-  assert.equal(lastFetch.url, `http://backend.local:8080/api/v1/olts/${OLT_ID}/onus/1/22/tr069-bind`);
+  assert.equal(
+    lastFetch.url,
+    `http://backend.local:8080/api/v1/olts/${OLT_ID}/onus/1/22/tr069-bind`,
+  );
   assert.equal(lastFetch.init.method, "POST");
   const auth64 = lastFetch.init.headers.Authorization.replace(/^Bearer /, "");
   const [payloadB64] = auth64.split(".");
@@ -123,7 +131,10 @@ test("backend 409 (profil belum ada) -> PROFILE_MISSING", async () => {
 });
 
 test("backend 502 (ditolak OLT) -> BIND_FAILED, pesan umum tanpa bocoran backend", async () => {
-  stubFetch(502, { error: "bind_rejected", message: "rahasia internal jangan bocor" });
+  stubFetch(502, {
+    error: "bind_rejected",
+    message: "rahasia internal jangan bocor",
+  });
   const { status, json } = await call();
   assert.equal(status, 502);
   assert.equal(json.error.code, "BIND_FAILED");
@@ -131,7 +142,10 @@ test("backend 502 (ditolak OLT) -> BIND_FAILED, pesan umum tanpa bocoran backend
 });
 
 test("backend 400 (mis. driver OLT tak dikenal) -> BAD_REQUEST, pesan backend diteruskan", async () => {
-  stubFetch(400, { error: "driver_unsupported", message: "olt: driver tidak terdaftar" });
+  stubFetch(400, {
+    error: "driver_unsupported",
+    message: "olt: driver tidak terdaftar",
+  });
   const { status, json } = await call();
   assert.equal(status, 400);
   assert.equal(json.error.code, "BAD_REQUEST");

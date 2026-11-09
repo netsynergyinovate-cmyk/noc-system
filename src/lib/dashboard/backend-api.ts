@@ -37,8 +37,15 @@ async function fetchTicket(): Promise<Ticket> {
   return { token: d.token, expiresAt: d.expiresAt, apiUrl: d.apiUrl };
 }
 
-async function getTicket(force = false, nowSec = Date.now() / 1000): Promise<Ticket> {
-  if (!force && cached && cached.expiresAt - nowSec > TICKET_MIN_REMAINING_SECONDS) {
+async function getTicket(
+  force = false,
+  nowSec = Date.now() / 1000,
+): Promise<Ticket> {
+  if (
+    !force &&
+    cached &&
+    cached.expiresAt - nowSec > TICKET_MIN_REMAINING_SECONDS
+  ) {
     return cached;
   }
   inflight ??= fetchTicket().finally(() => {
@@ -63,7 +70,10 @@ export async function backendGet<T>(
     const ticket = await getTicket(force);
     const url = `${ticket.apiUrl}${path}${query ? `?${query}` : ""}`;
     return fetch(url, {
-      headers: { Authorization: `Bearer ${ticket.token}`, Accept: "application/json" },
+      headers: {
+        Authorization: `Bearer ${ticket.token}`,
+        Accept: "application/json",
+      },
       signal,
     });
   };

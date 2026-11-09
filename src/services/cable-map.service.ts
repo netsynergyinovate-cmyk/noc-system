@@ -1,7 +1,11 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { networkInfrastructure, networkCables, networkDeviceRelations } from "@/db/schema";
+import {
+  networkInfrastructure,
+  networkCables,
+  networkDeviceRelations,
+} from "@/db/schema";
 import { getNetworkMapData, type NetworkMapData } from "./network-map.service";
 import {
   generateRoadBendedPolyline,
@@ -109,8 +113,8 @@ export async function getCableMapData(options?: {
   // 1. Ekstrak jalur kabel antar perangkat infrastruktur (Explicit Parent)
   for (const infra of infraList) {
     const parentId =
-      childToParentMap.get(infra.id) ||       // networkDeviceRelations (sumber utama)
-      infra.parentId ||                         // kolom parentId lama (fallback)
+      childToParentMap.get(infra.id) || // networkDeviceRelations (sumber utama)
+      infra.parentId || // kolom parentId lama (fallback)
       (infra.details?.parentId as string | undefined) ||
       (infra.details?.parentOdc as string | undefined) ||
       (infra.details?.parentRoot as string | undefined);
@@ -119,8 +123,7 @@ export async function getCableMapData(options?: {
 
     const parent = infraList.find(
       (p) =>
-        p.id === parentId ||
-        p.name.toLowerCase() === parentId.toLowerCase(),
+        p.id === parentId || p.name.toLowerCase() === parentId.toLowerCase(),
     );
 
     if (parent && parent.id !== infra.id) {
@@ -144,7 +147,8 @@ export async function getCableMapData(options?: {
         coreCapacity = 4;
       }
 
-      const customWaypoints = infra.details?.cableWaypoints as [number, number][] | undefined;
+      const customWaypoints = infra.details?.cableWaypoints as
+        [number, number][] | undefined;
       const path = generateRoadBendedPolyline(
         [parent.latitude, parent.longitude],
         [infra.latitude, infra.longitude],
@@ -295,7 +299,8 @@ export async function getCableMapData(options?: {
 
   // 3. Ekstrak kabel drop pelanggan nyata (ODP ➔ Pelanggan)
   for (const cust of custList) {
-    if (!cust.odpName || cust.latitude === null || cust.longitude === null) continue;
+    if (!cust.odpName || cust.latitude === null || cust.longitude === null)
+      continue;
 
     const odp = infraList.find(
       (i) =>
@@ -393,7 +398,9 @@ export async function getCableMapData(options?: {
 /**
  * Menyimpan konfigurasi titik belokan (waypoints) kustom jalur kabel ke database.
  */
-export async function saveCableWaypoints(input: SaveCableWaypointsInput): Promise<{
+export async function saveCableWaypoints(
+  input: SaveCableWaypointsInput,
+): Promise<{
   success: boolean;
   cableId: string;
   waypoints: [number, number][];
@@ -406,13 +413,17 @@ export async function saveCableWaypoints(input: SaveCableWaypointsInput): Promis
   if (targetId && !cableId.startsWith("cable-drop-")) {
     try {
       const rows = await db
-        .select({ id: networkInfrastructure.id, details: networkInfrastructure.details })
+        .select({
+          id: networkInfrastructure.id,
+          details: networkInfrastructure.details,
+        })
         .from(networkInfrastructure)
         .where(eq(networkInfrastructure.id, targetId))
         .limit(1);
 
       if (rows.length > 0) {
-        const currentDetails = (rows[0].details as Record<string, unknown>) || {};
+        const currentDetails =
+          (rows[0].details as Record<string, unknown>) || {};
         await db
           .update(networkInfrastructure)
           .set({
@@ -541,7 +552,9 @@ export function filterCablesByZoomAndLod(
 
   const backboneCount = filtered.filter((c) => c.type === "backbone").length;
   const feederCount = filtered.filter((c) => c.type === "feeder").length;
-  const distributionCount = filtered.filter((c) => c.type === "distribution").length;
+  const distributionCount = filtered.filter(
+    (c) => c.type === "distribution",
+  ).length;
   const dropCount = filtered.filter((c) => c.type === "drop").length;
 
   return {
@@ -610,9 +623,15 @@ export async function deleteCable(
   return { id, deleted: true };
 }
 
-export async function updateCableColor(id: string, color: string): Promise<{ id: string; color: string }> {
+export async function updateCableColor(
+  id: string,
+  color: string,
+): Promise<{ id: string; color: string }> {
   if (!id) throw new Error("ID kabel tidak valid.");
-  await db.update(networkCables).set({ color, updatedAt: new Date() }).where(eq(networkCables.id, id));
+  await db
+    .update(networkCables)
+    .set({ color, updatedAt: new Date() })
+    .where(eq(networkCables.id, id));
   return { id, color };
 }
 
@@ -626,17 +645,20 @@ export async function createCable(input: {
   polyline: [number, number][];
 }) {
   const lengthMeters = calculatePolylineTotalMeters(input.polyline);
-  const [row] = await db.insert(networkCables).values({
-    name: input.name,
-    sourceId: input.sourceId,
-    targetId: input.targetId,
-    targetType: "infrastructure",
-    cableType: input.cableType,
-    coreCapacity: input.coreCapacity,
-    color: input.color,
-    lengthMeters,
-    polyline: input.polyline,
-    status: "active",
-  }).returning();
+  const [row] = await db
+    .insert(networkCables)
+    .values({
+      name: input.name,
+      sourceId: input.sourceId,
+      targetId: input.targetId,
+      targetType: "infrastructure",
+      cableType: input.cableType,
+      coreCapacity: input.coreCapacity,
+      color: input.color,
+      lengthMeters,
+      polyline: input.polyline,
+      status: "active",
+    })
+    .returning();
   return row;
 }

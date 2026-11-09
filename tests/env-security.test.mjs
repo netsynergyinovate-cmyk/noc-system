@@ -9,10 +9,17 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // ponytail: `git check-ignore` memakai aturan git asli; keluar 0 = diabaikan, 1 = tidak.
 const ignored = (path) =>
-  spawnSync("git", ["check-ignore", "-q", "--no-index", path], { cwd: root }).status === 0;
+  spawnSync("git", ["check-ignore", "-q", "--no-index", path], { cwd: root })
+    .status === 0;
 
 test("berkas .env privat diabaikan git", () => {
-  for (const p of [".env", ".env.local", ".env.production", ".env.test.local", "sub/.env.local"]) {
+  for (const p of [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.test.local",
+    "sub/.env.local",
+  ]) {
     assert.ok(ignored(p), `${p} harus diabaikan`);
   }
 });
@@ -33,11 +40,16 @@ test(".env.example tidak berisi secret berisi nilai", () => {
   for (const line of text.split(/\r?\n/)) {
     const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$/.exec(line);
     if (!m) continue; // komentar dan baris kosong dilewati
-    if (/(_SECRET|_PASSWORD|_KEY|_TOKEN)$/.test(m[1]) && m[2].trim() !== "") bad.push(m[1]);
+    if (/(_SECRET|_PASSWORD|_KEY|_TOKEN)$/.test(m[1]) && m[2].trim() !== "")
+      bad.push(m[1]);
   }
   assert.deepEqual(bad, []);
   for (const k of ["DEVICE_SECRET", "PPP_WEBHOOK_TOKEN", "WHATSAPP_API_KEY"]) {
-    assert.match(text, new RegExp(`^${k}=$`, "m"), `${k}= harus ada dan kosong`);
+    assert.match(
+      text,
+      new RegExp(`^${k}=$`, "m"),
+      `${k}= harus ada dan kosong`,
+    );
   }
   assert.match(text.split(/\r?\n/)[0], /PERINGATAN KEAMANAN/);
 });

@@ -3,25 +3,45 @@ import assert from "node:assert/strict";
 import { register } from "tsx/esm/api";
 
 register();
-const { evaluateTrafficStaleness, TRAFFIC_STALENESS_THRESHOLD_SECONDS } = await import(
-  "../src/lib/dashboard/staleness.ts"
-);
+const { evaluateTrafficStaleness, TRAFFIC_STALENESS_THRESHOLD_SECONDS } =
+  await import("../src/lib/dashboard/staleness.ts");
 
 test("evaluateTrafficStaleness mengabaikan rentang non-live atau data belum ada", () => {
-  assert.deepEqual(evaluateTrafficStaleness({ isLive: false, lastDataReceivedAt: 100, nowSec: 200 }), {
-    isStale: false,
-    secondsSinceLastData: 0,
-  });
+  assert.deepEqual(
+    evaluateTrafficStaleness({
+      isLive: false,
+      lastDataReceivedAt: 100,
+      nowSec: 200,
+    }),
+    {
+      isStale: false,
+      secondsSinceLastData: 0,
+    },
+  );
 
-  assert.deepEqual(evaluateTrafficStaleness({ isLive: true, lastDataReceivedAt: null, nowSec: 200 }), {
-    isStale: false,
-    secondsSinceLastData: 0,
-  });
+  assert.deepEqual(
+    evaluateTrafficStaleness({
+      isLive: true,
+      lastDataReceivedAt: null,
+      nowSec: 200,
+    }),
+    {
+      isStale: false,
+      secondsSinceLastData: 0,
+    },
+  );
 
-  assert.deepEqual(evaluateTrafficStaleness({ isLive: true, lastDataReceivedAt: 0, nowSec: 200 }), {
-    isStale: false,
-    secondsSinceLastData: 0,
-  });
+  assert.deepEqual(
+    evaluateTrafficStaleness({
+      isLive: true,
+      lastDataReceivedAt: 0,
+      nowSec: 200,
+    }),
+    {
+      isStale: false,
+      secondsSinceLastData: 0,
+    },
+  );
 });
 
 test("evaluateTrafficStaleness toleran terhadap jeda normal di bawah ambang batas (5s)", () => {
@@ -34,7 +54,11 @@ test("evaluateTrafficStaleness toleran terhadap jeda normal di bawah ambang bata
       routerReachable: true,
       nowSec: now,
     });
-    assert.equal(res.isStale, false, `delta ${delta}s tidak boleh dianggap stale`);
+    assert.equal(
+      res.isStale,
+      false,
+      `delta ${delta}s tidak boleh dianggap stale`,
+    );
     assert.equal(res.secondsSinceLastData, delta);
   }
 });

@@ -4,11 +4,8 @@ import { register } from "tsx/esm/api";
 
 register();
 
-const {
-  isPathExempt,
-  enforceOnboardingGate,
-  withOnboardingGate,
-} = await import("../src/lib/onboarding-gate-middleware.ts");
+const { isPathExempt, enforceOnboardingGate, withOnboardingGate } =
+  await import("../src/lib/onboarding-gate-middleware.ts");
 
 test("isPathExempt mengidentifikasi rute pengecualian dengan benar", () => {
   assert.equal(isPathExempt("/setup"), true);

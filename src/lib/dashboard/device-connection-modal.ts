@@ -28,22 +28,38 @@ export const DEVICE_TYPE_LABEL: Record<TestableDeviceType, string> = {
   genieacs: "GenieACS NBI",
 };
 
-export function formatDeviceEndpoint(type: TestableDeviceType, host: string, port: number): string {
+export function formatDeviceEndpoint(
+  type: TestableDeviceType,
+  host: string,
+  port: number,
+): string {
   const h = host.trim();
-  return type === "mikrotik" ? `https://${h}:${port}/rest` : `http://${h}:${port}`;
+  return type === "mikrotik"
+    ? `https://${h}:${port}/rest`
+    : `http://${h}:${port}`;
 }
 
 // Ponytail: input sengaja `any`; bentuk hasil simulator dan real berbeda sedikit.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function evaluateConnectionTestOutcome(rawResult: any, type: TestableDeviceType): DeviceTestResultSummary {
+export function evaluateConnectionTestOutcome(
+  rawResult: any,
+  type: TestableDeviceType,
+): DeviceTestResultSummary {
   const r = rawResult ?? {};
   const code = String(r.code ?? "");
   const raw = String(r.status ?? "");
   const http = Number(r.statusCode);
   let status: DeviceTestResultSummary["status"];
   if (r.ok === true) status = "connected";
-  else if (raw === "unauthorized" || code === "AUTH_FAILED" || http === 401 || http === 403) status = "unauthorized";
-  else if (raw === "refused" || code === "CONNECTION_REFUSED") status = "refused";
+  else if (
+    raw === "unauthorized" ||
+    code === "AUTH_FAILED" ||
+    http === 401 ||
+    http === 403
+  )
+    status = "unauthorized";
+  else if (raw === "refused" || code === "CONNECTION_REFUSED")
+    status = "refused";
   else if (raw === "timeout" || code === "TIMEOUT") status = "timeout";
   else status = "error";
 
@@ -57,13 +73,19 @@ export function evaluateConnectionTestOutcome(rawResult: any, type: TestableDevi
     }
   }
 
-  const ts = typeof r.timestamp === "number" ? r.timestamp * 1000 : Date.parse(String(r.testedAt ?? ""));
+  const ts =
+    typeof r.timestamp === "number"
+      ? r.timestamp * 1000
+      : Date.parse(String(r.testedAt ?? ""));
   const latency = Number(r.latencyMs);
   return {
     ok: status === "connected",
     status,
-    message: String(r.message ?? (status === "connected" ? "Terhubung." : "Pengujian gagal.")),
-    latencyMs: r.latencyMs == null || !Number.isFinite(latency) ? null : latency,
+    message: String(
+      r.message ?? (status === "connected" ? "Terhubung." : "Pengujian gagal."),
+    ),
+    latencyMs:
+      r.latencyMs == null || !Number.isFinite(latency) ? null : latency,
     deviceType: type,
     details,
     testedAt: new Date(Number.isFinite(ts) ? ts : Date.now()).toISOString(),

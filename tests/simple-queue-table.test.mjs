@@ -59,9 +59,18 @@ test("summarizeSimpleQueues: total, aktif, nonaktif, trafik", () => {
 
 test("filterSimpleQueues: kata, status", () => {
   assert.equal(filterSimpleQueues(data, "").length, 3);
-  assert.deepEqual(filterSimpleQueues(data, "10.0.0.2").map((x) => x.name), ["dewi"]);
-  assert.deepEqual(filterSimpleQueues(data, "isolir").map((x) => x.name), ["andi"]);
-  assert.deepEqual(filterSimpleQueues(data, "", "disabled").map((x) => x.name), ["andi"]);
+  assert.deepEqual(
+    filterSimpleQueues(data, "10.0.0.2").map((x) => x.name),
+    ["dewi"],
+  );
+  assert.deepEqual(
+    filterSimpleQueues(data, "isolir").map((x) => x.name),
+    ["andi"],
+  );
+  assert.deepEqual(
+    filterSimpleQueues(data, "", "disabled").map((x) => x.name),
+    ["andi"],
+  );
   assert.equal(filterSimpleQueues(data, "", "active").length, 2);
   assert.equal(filterSimpleQueues(data, "zzz").length, 0);
 });

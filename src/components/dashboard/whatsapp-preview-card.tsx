@@ -4,7 +4,10 @@ import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { renderWhatsappMessage, templateVariables } from "@/lib/dashboard/whatsapp";
+import {
+  renderWhatsappMessage,
+  templateVariables,
+} from "@/lib/dashboard/whatsapp";
 import {
   parseWhatsappFormat,
   previewScenarios,
@@ -13,7 +16,8 @@ import {
 
 export function WhatsappPreviewCard({ template }: { template: string }) {
   const [scenarioId, setScenarioId] = useState(previewScenarios[0].id);
-  const scenario = previewScenarios.find((s) => s.id === scenarioId) ?? previewScenarios[0];
+  const scenario =
+    previewScenarios.find((s) => s.id === scenarioId) ?? previewScenarios[0];
   const text = renderWhatsappMessage(template, scenario.alert);
   const used = usedTemplateVariables(template, templateVariables);
 
@@ -27,7 +31,11 @@ export function WhatsappPreviewCard({ template }: { template: string }) {
         <Badge variant="secondary">Simulasi Pratinjau</Badge>
       </CardHeader>
       <CardContent className="space-y-3 px-4">
-        <div role="group" aria-label="Skenario gangguan" className="flex flex-wrap gap-1.5">
+        <div
+          role="group"
+          aria-label="Skenario gangguan"
+          className="flex flex-wrap gap-1.5"
+        >
           {previewScenarios.map((s) => (
             <button
               key={s.id}
@@ -61,7 +69,10 @@ export function WhatsappPreviewCard({ template }: { template: string }) {
             </p>
             <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
               <span>10:00</span>
-              <span aria-label="Terkirim dan dibaca" className="text-sky-600 dark:text-sky-300">
+              <span
+                aria-label="Terkirim dan dibaca"
+                className="text-sky-600 dark:text-sky-300"
+              >
                 ✓✓
               </span>
             </div>

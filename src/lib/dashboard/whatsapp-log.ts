@@ -46,10 +46,26 @@ const recipients = [
 ];
 
 const kinds = [
-  { kind: "Router offline", severity: "critical" as const, text: "Router tidak merespons REST API" },
-  { kind: "Pelanggan offline", severity: "critical" as const, text: "Sesi PPPoE pelanggan terputus" },
-  { kind: "CPU tinggi", severity: "warning" as const, text: "CPU router di atas ambang 85%" },
-  { kind: "Redaman optik", severity: "warning" as const, text: "Redaman ONU melewati -27 dBm" },
+  {
+    kind: "Router offline",
+    severity: "critical" as const,
+    text: "Router tidak merespons REST API",
+  },
+  {
+    kind: "Pelanggan offline",
+    severity: "critical" as const,
+    text: "Sesi PPPoE pelanggan terputus",
+  },
+  {
+    kind: "CPU tinggi",
+    severity: "warning" as const,
+    text: "CPU router di atas ambang 85%",
+  },
+  {
+    kind: "Redaman optik",
+    severity: "warning" as const,
+    text: "Redaman ONU melewati -27 dBm",
+  },
 ];
 
 const failReasons = [
@@ -65,10 +81,14 @@ export function mockWhatsappLogs(now: number): WhatsappNotificationLog[] {
     const r = recipients[i % recipients.length];
     const k = kinds[(i * 7 + 1) % kinds.length];
     // 1 dari 6 gagal, 1 dari 4 baru "terkirim"; sisanya diterima.
-    const status: WaDeliveryStatus = i % 6 === 2 ? "failed" : i % 4 === 1 ? "sent" : "delivered";
+    const status: WaDeliveryStatus =
+      i % 6 === 2 ? "failed" : i % 4 === 1 ? "sent" : "delivered";
     const sentAt = Math.floor(now) - 600 - i * step - ((i * 977) % 3000);
     const alertId = `alert-${1000 + i * 13}`;
-    const time = new Date(sentAt * 1000).toISOString().slice(0, 19).replace("T", " ");
+    const time = new Date(sentAt * 1000)
+      .toISOString()
+      .slice(0, 19)
+      .replace("T", " ");
     logs.push({
       id: `wa-${i + 1}`,
       recipientName: r.name,
@@ -80,7 +100,9 @@ export function mockWhatsappLogs(now: number): WhatsappNotificationLog[] {
       status,
       sentAt,
       latencyMs: status === "failed" ? null : 200 + ((i * 131) % 651),
-      ...(status === "failed" ? { errorReason: failReasons[i % failReasons.length] } : {}),
+      ...(status === "failed"
+        ? { errorReason: failReasons[i % failReasons.length] }
+        : {}),
     });
   }
   return logs;
@@ -116,7 +138,9 @@ export function createWhatsappLogStore(
       (o.severity === "critical" || o.severity === "warning") &&
       typeof o.kind === "string" &&
       typeof o.message === "string" &&
-      (o.status === "delivered" || o.status === "sent" || o.status === "failed") &&
+      (o.status === "delivered" ||
+        o.status === "sent" ||
+        o.status === "failed") &&
       typeof o.sentAt === "number" &&
       Number.isFinite(o.sentAt) &&
       (o.latencyMs === null || typeof o.latencyMs === "number")
@@ -146,8 +170,13 @@ export function createWhatsappLogStore(
     const list = read();
     const stamp = Date.now();
     let id = `wa-log-test-${stamp}`;
-    for (let n = 1; list.some((l) => l.id === id); n++) id = `wa-log-test-${stamp}-${n}`;
-    const created: WhatsappNotificationLog = { ...entry, id, sentAt: stamp / 1000 };
+    for (let n = 1; list.some((l) => l.id === id); n++)
+      id = `wa-log-test-${stamp}-${n}`;
+    const created: WhatsappNotificationLog = {
+      ...entry,
+      id,
+      sentAt: stamp / 1000,
+    };
     const next = [created, ...list].slice(0, MAX_RECORDED_LOGS);
     memory = next;
     if (!memoryOnly) {
@@ -163,7 +192,9 @@ export function createWhatsappLogStore(
   }
 
   function load(now: number): WhatsappNotificationLog[] {
-    return [...read(), ...mockWhatsappLogs(now)].sort((a, b) => b.sentAt - a.sentAt);
+    return [...read(), ...mockWhatsappLogs(now)].sort(
+      (a, b) => b.sentAt - a.sentAt,
+    );
   }
 
   return { record, load, read };
@@ -174,7 +205,11 @@ const logStore = createWhatsappLogStore();
 export const recordWhatsappLog = logStore.record;
 export const loadWhatsappLogs = logStore.load;
 
-export const WA_TIME_RANGE_SECONDS = { "1h": 3600, "24h": 86400, "7d": 604800 } as const;
+export const WA_TIME_RANGE_SECONDS = {
+  "1h": 3600,
+  "24h": 86400,
+  "7d": 604800,
+} as const;
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
@@ -188,7 +223,11 @@ function matchesWith(
 ): boolean {
   if (status !== "all" && l.status !== status) return false;
   if (severity !== "all" && l.severity !== severity) return false;
-  if (timeRange !== "all" && l.sentAt < nowSec - WA_TIME_RANGE_SECONDS[timeRange]) return false;
+  if (
+    timeRange !== "all" &&
+    l.sentAt < nowSec - WA_TIME_RANGE_SECONDS[timeRange]
+  )
+    return false;
   if (words.length === 0) return true;
   const hay =
     `${l.recipientName} ${l.recipientPhone} ${l.message} ${l.kind} ${l.errorReason ?? ""}`
@@ -223,7 +262,9 @@ export function getWhatsappLogFacetCounts(
 ): WhatsappLogFacetCounts {
   const words = toWords(filter.query);
   const count = (override: Partial<Omit<WhatsappLogFilter, "query">>) =>
-    logs.filter((l) => matchesWith(l, { ...filter, ...override }, words, nowSec)).length;
+    logs.filter((l) =>
+      matchesWith(l, { ...filter, ...override }, words, nowSec),
+    ).length;
   return {
     status: {
       all: count({ status: "all" }),
@@ -253,7 +294,19 @@ const csvCell = (v: string | number | null | undefined): string => {
 };
 
 export function whatsappLogsToCsv(logs: WhatsappNotificationLog[]): string {
-  const head = ["id", "waktu_utc", "penerima", "nomor", "alert_id", "keparahan", "jenis", "status", "latensi_ms", "alasan_gagal", "pesan"];
+  const head = [
+    "id",
+    "waktu_utc",
+    "penerima",
+    "nomor",
+    "alert_id",
+    "keparahan",
+    "jenis",
+    "status",
+    "latensi_ms",
+    "alasan_gagal",
+    "pesan",
+  ];
   const lines = logs.map((l) =>
     [
       l.id,
@@ -286,16 +339,25 @@ export const WHATSAPP_LOG_MOCK_ENTRY = {
     "Tiruan sementara log pengiriman pesan WhatsApp; wajib dialihkan ke tabel log database di Fase 5",
 };
 
-export function summarizeWhatsappLogs(logs: WhatsappNotificationLog[]): WhatsappLogSummary {
-  const count = (s: WaDeliveryStatus) => logs.filter((l) => l.status === s).length;
+export function summarizeWhatsappLogs(
+  logs: WhatsappNotificationLog[],
+): WhatsappLogSummary {
+  const count = (s: WaDeliveryStatus) =>
+    logs.filter((l) => l.status === s).length;
   const failed = count("failed");
-  const lat = logs.map((l) => l.latencyMs).filter((v): v is number => v !== null);
+  const lat = logs
+    .map((l) => l.latencyMs)
+    .filter((v): v is number => v !== null);
   return {
     total: logs.length,
     delivered: count("delivered"),
     sent: count("sent"),
     failed,
-    successRate: logs.length ? Math.round(((logs.length - failed) / logs.length) * 1000) / 10 : 0,
-    avgLatencyMs: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : null,
+    successRate: logs.length
+      ? Math.round(((logs.length - failed) / logs.length) * 1000) / 10
+      : 0,
+    avgLatencyMs: lat.length
+      ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length)
+      : null,
   };
 }

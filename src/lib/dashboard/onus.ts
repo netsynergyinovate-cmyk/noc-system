@@ -25,7 +25,8 @@ export interface DashboardOnu {
   lastSeenAt: number;
 }
 
-export type OnuStatusFilter = "all" | "online" | "offline" | "los" | "weak" | "out";
+export type OnuStatusFilter =
+  "all" | "online" | "offline" | "los" | "weak" | "out";
 
 /** Batas redaman lemah (dBm); sama dengan tab ONT. */
 export const WEAK_RX_DBM = -27;
@@ -34,18 +35,49 @@ export const WEAK_RX_DBM = -27;
 const BASE_EPOCH = 1_760_000_000;
 
 const OLTS = [
-  { id: "olt-gpon-core-01", name: "OLT-GPON-CORE-01", prefixes: ["ZTEGC", "HWTC"], models: ["Huawei HG8245H5", "ZTE F609 v3", "Huawei HG8145V5"] },
-  { id: "olt-epon-timur-02", name: "OLT-EPON-TIMUR-02", prefixes: ["FHTT", "ZTEGC"], models: ["ZTE F670L DualBand", "Fiberhome AN5506-04"] },
+  {
+    id: "olt-gpon-core-01",
+    name: "OLT-GPON-CORE-01",
+    prefixes: ["ZTEGC", "HWTC"],
+    models: ["Huawei HG8245H5", "ZTE F609 v3", "Huawei HG8145V5"],
+  },
+  {
+    id: "olt-epon-timur-02",
+    name: "OLT-EPON-TIMUR-02",
+    prefixes: ["FHTT", "ZTEGC"],
+    models: ["ZTE F670L DualBand", "Fiberhome AN5506-04"],
+  },
 ] as const;
 
 const NAMES = [
-  "Budi Santoso", "Dewi Lestari", "Agus Pratama", "Siti Rahma", "Rudi Hartono", "Ani Wijaya",
-  "Joko Susilo", "Maya Putri", "Hendra Gunawan", "Rina Marlina", "Dedi Kurniawan", "Lina Kusuma",
+  "Budi Santoso",
+  "Dewi Lestari",
+  "Agus Pratama",
+  "Siti Rahma",
+  "Rudi Hartono",
+  "Ani Wijaya",
+  "Joko Susilo",
+  "Maya Putri",
+  "Hendra Gunawan",
+  "Rina Marlina",
+  "Dedi Kurniawan",
+  "Lina Kusuma",
 ];
 
 // [status, rx, tx, jarak] per indeks; deterministik.
 const STATUS_CYCLE: readonly DashboardOnu["status"][] = [
-  "online", "online", "online", "offline", "online", "los", "online", "online", "online", "offline", "online", "online",
+  "online",
+  "online",
+  "online",
+  "offline",
+  "online",
+  "los",
+  "online",
+  "online",
+  "online",
+  "offline",
+  "online",
+  "online",
 ];
 
 function pad(n: number, len: number): string {
@@ -73,7 +105,9 @@ function build(i: number): DashboardOnu {
     model: olt.models[i % olt.models.length],
     customerId: hasCustomer ? `cust-${pad(i + 1, 3)}` : null,
     customerName: hasCustomer ? name : "Belum dipasangkan",
-    pppoeUsername: hasCustomer ? `${name.split(" ")[0].toLowerCase()}${pad(i + 1, 2)}@noc` : "-",
+    pppoeUsername: hasCustomer
+      ? `${name.split(" ")[0].toLowerCase()}${pad(i + 1, 2)}@noc`
+      : "-",
     rxPowerDbm: Math.round(rx * 10) / 10,
     txPowerDbm: Math.round((2 + (i % 4) * 0.3) * 10) / 10,
     distanceMeters,
@@ -82,7 +116,10 @@ function build(i: number): DashboardOnu {
   };
 }
 
-export const mockOnus: readonly DashboardOnu[] = Array.from({ length: 24 }, (_, i) => build(i));
+export const mockOnus: readonly DashboardOnu[] = Array.from(
+  { length: 24 },
+  (_, i) => build(i),
+);
 
 export interface CustomerOpticalInfo {
   rxPowerDbm: number | null;
@@ -112,7 +149,9 @@ export function getCustomerOpticalInfo(customer: {
   isOnline: boolean;
 }): CustomerOpticalInfo {
   const onu = mockOnus.find(
-    (o) => o.customerId === customer.id || (o.pppoeUsername !== "-" && o.pppoeUsername === customer.pppoeUsername),
+    (o) =>
+      o.customerId === customer.id ||
+      (o.pppoeUsername !== "-" && o.pppoeUsername === customer.pppoeUsername),
   );
   const isOnline = customer.isOnline;
   if (onu) {
@@ -120,7 +159,10 @@ export function getCustomerOpticalInfo(customer: {
     return {
       rxPowerDbm: rx,
       txPowerDbm: onu.txPowerDbm,
-      attenuationDb: rx == null || onu.txPowerDbm == null ? null : round1(onu.txPowerDbm - rx),
+      attenuationDb:
+        rx == null || onu.txPowerDbm == null
+          ? null
+          : round1(onu.txPowerDbm - rx),
       oltName: onu.oltName,
       ponPort: onu.ponPort,
       distanceMeters: onu.distanceMeters,
@@ -152,8 +194,18 @@ export function mapOnuToCustomer(
   customer: { id: string; name: string; pppoeUsername: string } | null,
 ): DashboardOnu {
   return customer
-    ? { ...onu, customerId: customer.id, customerName: customer.name, pppoeUsername: customer.pppoeUsername }
-    : { ...onu, customerId: null, customerName: "Belum dipasangkan", pppoeUsername: "-" };
+    ? {
+        ...onu,
+        customerId: customer.id,
+        customerName: customer.name,
+        pppoeUsername: customer.pppoeUsername,
+      }
+    : {
+        ...onu,
+        customerId: null,
+        customerName: "Belum dipasangkan",
+        pppoeUsername: "-",
+      };
 }
 
 export function filterOnus(
@@ -167,14 +219,22 @@ export function filterOnus(
     if (status === "online" && o.status !== "online") return false;
     if (status === "offline" && o.status !== "offline") return false;
     if (status === "los" && o.status !== "los") return false;
-    if (status === "weak" && (o.rxPowerDbm === null || o.rxPowerDbm >= WEAK_RX_DBM)) return false;
-    if (status === "out" && !getOpticalSignalStatus(o.status === "los" ? null : o.rxPowerDbm).isOutOfThreshold) {
+    if (
+      status === "weak" &&
+      (o.rxPowerDbm === null || o.rxPowerDbm >= WEAK_RX_DBM)
+    )
+      return false;
+    if (
+      status === "out" &&
+      !getOpticalSignalStatus(o.status === "los" ? null : o.rxPowerDbm)
+        .isOutOfThreshold
+    ) {
       return false;
     }
     if (oltId !== "all" && o.oltId !== oltId) return false;
     if (!q) return true;
-    return [o.serialNumber, o.customerName, o.pppoeUsername, o.ponPort].some((f) =>
-      f.toLowerCase().includes(q),
+    return [o.serialNumber, o.customerName, o.pppoeUsername, o.ponPort].some(
+      (f) => f.toLowerCase().includes(q),
     );
   });
 }
@@ -235,7 +295,10 @@ export function apiOnuToDashboard(o: LiveOnuItem): DashboardOnu {
   };
 }
 
-export function apiOnuToCustomerOptical(o: LiveOnuItem, isOnline: boolean): CustomerOpticalInfo {
+export function apiOnuToCustomerOptical(
+  o: LiveOnuItem,
+  isOnline: boolean,
+): CustomerOpticalInfo {
   const online = o.status === "online";
   return {
     rxPowerDbm: online ? o.rxPower : null,

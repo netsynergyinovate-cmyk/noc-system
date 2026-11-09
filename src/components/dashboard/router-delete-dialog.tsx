@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface RouterDeleteDialogProps {
   router: { id: string; name: string };
@@ -13,7 +20,11 @@ interface RouterDeleteDialogProps {
 
 // Percobaan pertama tanpa force. Bila router masih dipakai, server menjawab 409 berisi jumlah datanya; penghapusan
 // paksa baru terbuka setelah operator mengetik nama router. Hanya data aplikasi yang dihapus, bukan isi MikroTik.
-export function RouterDeleteDialog({ router, onClose, onDeleted }: RouterDeleteDialogProps) {
+export function RouterDeleteDialog({
+  router,
+  onClose,
+  onDeleted,
+}: RouterDeleteDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const [blocked, setBlocked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,18 +34,30 @@ export function RouterDeleteDialog({ router, onClose, onDeleted }: RouterDeleteD
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/routers/${router.id}${force ? "?force=true" : ""}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/routers/${router.id}${force ? "?force=true" : ""}`,
+        { method: "DELETE" },
+      );
       const json = await res.json().catch(() => null);
       if (res.status === 409 && json?.error?.code === "ROUTER_IN_USE") {
         setBlocked(json.error.message);
         return;
       }
       // 404: router sudah tidak ada di database (mis. baris basi di layar); anggap selesai dan bersihkan tampilan.
-      const alreadyGone = res.status === 404 && json?.error?.code === "ROUTER_NOT_FOUND";
-      if (!res.ok && !alreadyGone) throw new Error(json?.error?.message ?? `Gagal menghapus router (HTTP ${res.status}).`);
+      const alreadyGone =
+        res.status === 404 && json?.error?.code === "ROUTER_NOT_FOUND";
+      if (!res.ok && !alreadyGone)
+        throw new Error(
+          json?.error?.message ??
+            `Gagal menghapus router (HTTP ${res.status}).`,
+        );
       onDeleted();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Terjadi kesalahan saat menghapus router.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Terjadi kesalahan saat menghapus router.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -49,7 +72,8 @@ export function RouterDeleteDialog({ router, onClose, onDeleted }: RouterDeleteD
             Hapus router &quot;{router.name}&quot;?
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Hanya menghapus data di aplikasi ini. Pengaturan di MikroTik tidak diubah.
+            Hanya menghapus data di aplikasi ini. Pengaturan di MikroTik tidak
+            diubah.
           </DialogDescription>
         </DialogHeader>
 
@@ -58,10 +82,13 @@ export function RouterDeleteDialog({ router, onClose, onDeleted }: RouterDeleteD
           <div className="space-y-2 text-xs">
             <p className="text-rose-300">{blocked}</p>
             <p className="text-muted-foreground">
-              Menghapus paksa akan <b>menghapus permanen</b> semua pelanggan router ini beserta status tagihan, riwayat koneksi
-              dan trafik pelanggan, tugas CPE, serta alert, log jaringan, riwayat trafik dan syslog router. Tidak bisa
-              dibatalkan. Bila hanya ingin berhenti memantau, ubah Status Operasional menjadi Nonaktif di Konfigurasi
-              Router. Ketik nama router (<code>{router.name}</code>) untuk melanjutkan.
+              Menghapus paksa akan <b>menghapus permanen</b> semua pelanggan
+              router ini beserta status tagihan, riwayat koneksi dan trafik
+              pelanggan, tugas CPE, serta alert, log jaringan, riwayat trafik
+              dan syslog router. Tidak bisa dibatalkan. Bila hanya ingin
+              berhenti memantau, ubah Status Operasional menjadi Nonaktif di
+              Konfigurasi Router. Ketik nama router (<code>{router.name}</code>)
+              untuk melanjutkan.
             </p>
             <input
               value={confirmName}

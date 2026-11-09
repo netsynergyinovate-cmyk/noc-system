@@ -14,7 +14,11 @@ export const POST = (request: Request) =>
   withApiPermission(request, { router: ["manage"] }, async (session) => {
     const parsed = testOltSchema.safeParse(await readJson(request));
     if (!parsed.success) {
-      throw new ApiError(422, "VALIDATION_ERROR", "Periksa kembali data yang dikirim.");
+      throw new ApiError(
+        422,
+        "VALIDATION_ERROR",
+        "Periksa kembali data yang dikirim.",
+      );
     }
 
     // OLT yang hanya punya CLI telnet: uji login CLI, bukan HTTP.
@@ -26,7 +30,10 @@ export const POST = (request: Request) =>
       });
       const redacted = {
         ok: t.ok,
-        message: redactSecrets(t.message, { username: parsed.data.username, password: parsed.data.password }),
+        message: redactSecrets(t.message, {
+          username: parsed.data.username,
+          password: parsed.data.password,
+        }),
         code: t.code,
         latencyMs: t.latencyMs,
         endpointTested: `TELNET ${parsed.data.host}`,
@@ -43,7 +50,11 @@ export const POST = (request: Request) =>
       });
       return NextResponse.json({
         success: true,
-        data: { ...redacted, status: t.ok ? "connected" : "error", timestamp: Math.floor(Date.now() / 1000) },
+        data: {
+          ...redacted,
+          status: t.ok ? "connected" : "error",
+          timestamp: Math.floor(Date.now() / 1000),
+        },
         result: redacted,
       });
     }
@@ -63,7 +74,10 @@ export const POST = (request: Request) =>
     const raw = await client.testConnection();
     const result = {
       ...raw,
-      message: redactSecrets(raw.message, { username: parsed.data.username, password: parsed.data.password }),
+      message: redactSecrets(raw.message, {
+        username: parsed.data.username,
+        password: parsed.data.password,
+      }),
     };
 
     // Riwayat uji disimpan walau gagal; password sudah disaring (recordClientTestResult).
@@ -88,7 +102,8 @@ export const POST = (request: Request) =>
         message: result.message,
         latencyMs: result.latencyMs,
         endpointTested:
-          result.endpointTested ?? `GET http://${parsed.data.host}:${parsed.data.port}/api/v1/system`,
+          result.endpointTested ??
+          `GET http://${parsed.data.host}:${parsed.data.port}/api/v1/system`,
         timestamp: result.timestamp ?? Math.floor(Date.now() / 1000),
         model: result.data?.model ?? "HSGQ-XPON-8",
         firmware: result.data?.firmware ?? "V2.1.5",

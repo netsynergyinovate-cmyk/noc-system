@@ -5,7 +5,8 @@ import { effectiveBillingStatusSql } from "./customer-isolir";
 import { customers, olts, oltOnus, routers } from "@/db/schema";
 import { DEFAULT_MAP_CENTER } from "@/config/map";
 
-export type RealMarkerType = "customer" | "router" | "olt" | "odp" | "odc" | "pole";
+export type RealMarkerType =
+  "customer" | "router" | "olt" | "odp" | "odc" | "pole";
 
 export interface RealCustomerMarker {
   id: string;
@@ -180,7 +181,8 @@ export async function fetchRealDatabaseMarkers(): Promise<RealMarkersResult> {
     else offlineCount++;
 
     const optical = c.onuRxPower ?? c.opticalPower ?? null;
-    let opticalCategory: "normal" | "warning" | "critical" | "unknown" = "unknown";
+    let opticalCategory: "normal" | "warning" | "critical" | "unknown" =
+      "unknown";
     if (optical !== null && Number.isFinite(optical)) {
       if (optical <= -25.0) {
         opticalCategory = "critical";

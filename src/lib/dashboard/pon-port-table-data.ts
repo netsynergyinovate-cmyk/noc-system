@@ -31,7 +31,8 @@ export const PON_ONU_DATA_MOCK_ENTRY = {
   module: "Port PON & Daftar ONU",
   targetDevice: "OLT HSGQ / ZTE CLI & Web API",
   status: "dummy" as const,
-  readPath: "src/services/devices.service.ts (getOltPonPorts, getOltPonPort, listOnus)",
+  readPath:
+    "src/services/devices.service.ts (getOltPonPorts, getOltPonPort, listOnus)",
   writePath: "POST /api/onus/{id}/map",
   envKey: "OLT_HSGQ_HOST",
   notes:
@@ -60,8 +61,12 @@ export function generateMockPonPortOverview(): PonPortOverviewRow[] {
       // Beberapa port sengaja DOWN agar filter bisa diuji (oltNo + ponIndex = 9).
       const down = oltNo + ponIndex === 9;
       const total = d.totalOnu;
-      const weak = down ? 0 : d.onus.filter((o) => o.isWeak && o.status !== "los").length;
-      const los = down ? total : d.onus.filter((o) => o.status === "los").length;
+      const weak = down
+        ? 0
+        : d.onus.filter((o) => o.isWeak && o.status !== "los").length;
+      const los = down
+        ? total
+        : d.onus.filter((o) => o.status === "los").length;
       const rx = down ? null : d.rxPowerDbm;
       const tx = down ? null : d.txPowerDbm;
       const optical: PonPortOverviewRow["opticalStatus"] =
@@ -99,7 +104,11 @@ export function filterPonPorts(
   return ports.filter((p) => {
     if (filter.oltId !== "all" && p.oltId !== filter.oltId) return false;
     if (filter.status !== "all" && p.status !== filter.status) return false;
-    if (filter.opticalStatus !== "all" && p.opticalStatus !== filter.opticalStatus) return false;
+    if (
+      filter.opticalStatus !== "all" &&
+      p.opticalStatus !== filter.opticalStatus
+    )
+      return false;
     const hay = `${p.name} ${p.oltName} ${p.portId}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
@@ -122,6 +131,13 @@ export function computePonSummary(ports: PonPortOverviewRow[]): {
       weakOnu: s.weakOnu + p.weakOnuCount,
       losOnu: s.losOnu + p.losOnuCount,
     }),
-    { totalPorts: 0, upPorts: 0, totalOnu: 0, onlineOnu: 0, weakOnu: 0, losOnu: 0 },
+    {
+      totalPorts: 0,
+      upPorts: 0,
+      totalOnu: 0,
+      onlineOnu: 0,
+      weakOnu: 0,
+      losOnu: 0,
+    },
   );
 }

@@ -25,19 +25,52 @@
       "type": "container",
       "element": "span.inform",
       "parameter": "DATE_STRING(Events.Inform)",
-      "components": [{ "type": "parameter" }, { "type": "overview-dot", "chart": "online" }]
+      "components": [
+        { "type": "parameter" },
+        { "type": "overview-dot", "chart": "online" }
+      ]
     },
-    { "label": "Tags", "type": "tags", "parameter": "Tags", "unsortable": true, "writable": false }
+    {
+      "label": "Tags",
+      "type": "tags",
+      "parameter": "Tags",
+      "unsortable": true,
+      "writable": false
+    }
   ],
 
   "ui.filters": [
-    { "label": "ID PPPoE", "parameter": "VirtualParameters.pppoeUsername", "type": "string" },
-    { "label": "SN ONT", "parameter": "VirtualParameters.snOnt", "type": "string" },
+    {
+      "label": "ID PPPoE",
+      "parameter": "VirtualParameters.pppoeUsername",
+      "type": "string"
+    },
+    {
+      "label": "SN ONT",
+      "parameter": "VirtualParameters.snOnt",
+      "type": "string"
+    },
     { "label": "Mac", "parameter": "VirtualParameters.mac", "type": "string" },
-    { "label": "IP PPPoE", "parameter": "VirtualParameters.ipPppoe", "type": "string" },
-    { "label": "SSID", "parameter": "VirtualParameters.ssid", "type": "string" },
-    { "label": "Product class", "parameter": "DeviceID.ProductClass", "type": "string" },
-    { "label": "Serial number", "parameter": "DeviceID.SerialNumber", "type": "string" },
+    {
+      "label": "IP PPPoE",
+      "parameter": "VirtualParameters.ipPppoe",
+      "type": "string"
+    },
+    {
+      "label": "SSID",
+      "parameter": "VirtualParameters.ssid",
+      "type": "string"
+    },
+    {
+      "label": "Product class",
+      "parameter": "DeviceID.ProductClass",
+      "type": "string"
+    },
+    {
+      "label": "Serial number",
+      "parameter": "DeviceID.SerialNumber",
+      "type": "string"
+    },
     { "label": "Tag", "type": "tag" }
   ],
 
@@ -81,20 +114,41 @@
         { "label": "Product class", "parameter": "DeviceID.ProductClass" },
         { "label": "OUI", "parameter": "DeviceID.OUI" },
         { "label": "Manufacturer", "parameter": "DeviceID.Manufacturer" },
-        { "label": "Hardware version", "parameter": "InternetGatewayDevice.DeviceInfo.HardwareVersion" },
-        { "label": "Software version", "parameter": "InternetGatewayDevice.DeviceInfo.SoftwareVersion" },
+        {
+          "label": "Hardware version",
+          "parameter": "InternetGatewayDevice.DeviceInfo.HardwareVersion"
+        },
+        {
+          "label": "Software version",
+          "parameter": "InternetGatewayDevice.DeviceInfo.SoftwareVersion"
+        },
         { "label": "MAC", "parameter": "VirtualParameters.mac" },
         { "label": "IP PPPoE", "parameter": "VirtualParameters.ipPppoe" },
         { "label": "IP WAN/TR069", "parameter": "VirtualParameters.ipTr069" },
         { "label": "Uptime", "parameter": "VirtualParameters.uptime" },
         { "label": "RX (dBm)", "parameter": "VirtualParameters.rxPower" },
         { "label": "TX (dBm)", "parameter": "VirtualParameters.txPower" },
-        { "label": "Suhu modul optik (°C)", "parameter": "VirtualParameters.temperature" },
-        { "label": "CPU (%)", "parameter": "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage" },
+        {
+          "label": "Suhu modul optik (°C)",
+          "parameter": "VirtualParameters.temperature"
+        },
+        {
+          "label": "CPU (%)",
+          "parameter": "InternetGatewayDevice.DeviceInfo.ProcessStatus.CPUUsage"
+        },
         { "label": "SSID", "parameter": "VirtualParameters.ssid" },
-        { "label": "Perangkat aktif", "parameter": "VirtualParameters.activeDevices" },
-        { "label": "Periodic inform (detik)", "parameter": "InternetGatewayDevice.ManagementServer.PeriodicInformInterval" },
-        { "label": "URL ACS di modem", "parameter": "InternetGatewayDevice.ManagementServer.URL" }
+        {
+          "label": "Perangkat aktif",
+          "parameter": "VirtualParameters.activeDevices"
+        },
+        {
+          "label": "Periodic inform (detik)",
+          "parameter": "InternetGatewayDevice.ManagementServer.PeriodicInformInterval"
+        },
+        {
+          "label": "URL ACS di modem",
+          "parameter": "InternetGatewayDevice.ManagementServer.URL"
+        }
       ]
     },
     {
@@ -125,13 +179,20 @@
     {
       "type": "container",
       "element": "div",
-      "components": [{ "type": "container", "element": "h3", "components": ["Faults"] }, { "type": "device-faults" }]
+      "components": [
+        { "type": "container", "element": "h3", "components": ["Faults"] },
+        { "type": "device-faults" }
+      ]
     },
     {
       "type": "container",
       "element": "div.container-full-width",
       "components": [
-        { "type": "container", "element": "h3", "components": ["All parameters"] },
+        {
+          "type": "container",
+          "element": "h3",
+          "components": ["All parameters"]
+        },
         { "type": "all-parameters" }
       ]
     },

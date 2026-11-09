@@ -18,7 +18,8 @@ export const runtime = "nodejs";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-monitor-token",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, x-monitor-token",
 };
 
 export async function OPTIONS() {
@@ -64,7 +65,8 @@ export async function GET(request: NextRequest) {
     // Jika targetUrl diberikan, proxy ke remote server
     if (targetUrl) {
       try {
-        const cleanUrl = targetUrl.replace(/\/+$/, "") + "/api/deploy/feature-markers";
+        const cleanUrl =
+          targetUrl.replace(/\/+$/, "") + "/api/deploy/feature-markers";
         const forwardUrl = new URL(cleanUrl);
         searchParams.forEach((val, key) => {
           if (key !== "url" && key !== "token") {
@@ -99,7 +101,8 @@ export async function GET(request: NextRequest) {
         const data = await res.json();
         return NextResponse.json(data);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Kesalahan koneksi proxy";
+        const message =
+          err instanceof Error ? err.message : "Kesalahan koneksi proxy";
         return NextResponse.json(
           { error: `Tidak dapat menghubungi remote server: ${message}` },
           { status: 502 },
@@ -130,14 +133,20 @@ export async function PATCH(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
-      return NextResponse.json({ error: "Parameter id wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Parameter id wajib diisi." },
+        { status: 400 },
+      );
     }
     featureMarkerIdSchema.parse(id);
     const body = await request.json().catch(() => ({}));
     const input = updateFeatureMarkerSchema.parse(body);
     const updated = await updateFeatureMarker(id, input);
     if (!updated) {
-      return NextResponse.json({ error: "Tanda fitur tidak ditemukan." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tanda fitur tidak ditemukan." },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ data: updated }, { headers: CORS_HEADERS });
   }
@@ -149,7 +158,10 @@ export async function PATCH(request: NextRequest) {
     const token = searchParams.get("token") || "";
 
     if (!id) {
-      return NextResponse.json({ error: "Parameter id wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Parameter id wajib diisi." },
+        { status: 400 },
+      );
     }
     featureMarkerIdSchema.parse(id);
     const body = await request.json().catch(() => ({}));
@@ -182,7 +194,10 @@ export async function PATCH(request: NextRequest) {
 
     const updated = await updateFeatureMarker(id, input);
     if (!updated) {
-      return NextResponse.json({ error: "Tanda fitur tidak ditemukan." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tanda fitur tidak ditemukan." },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ data: updated });
   });
@@ -193,12 +208,18 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
-      return NextResponse.json({ error: "Parameter id wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Parameter id wajib diisi." },
+        { status: 400 },
+      );
     }
     featureMarkerIdSchema.parse(id);
     const deleted = await deleteFeatureMarker(id);
     if (!deleted) {
-      return NextResponse.json({ error: "Tanda fitur tidak ditemukan." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tanda fitur tidak ditemukan." },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ success: true }, { headers: CORS_HEADERS });
   }
@@ -210,7 +231,10 @@ export async function DELETE(request: NextRequest) {
     const token = searchParams.get("token") || "";
 
     if (!id) {
-      return NextResponse.json({ error: "Parameter id wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Parameter id wajib diisi." },
+        { status: 400 },
+      );
     }
     featureMarkerIdSchema.parse(id);
 
@@ -236,8 +260,14 @@ export async function DELETE(request: NextRequest) {
 
     const deleted = await deleteFeatureMarker(id);
     if (!deleted) {
-      return NextResponse.json({ error: "Tanda fitur tidak ditemukan." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tanda fitur tidak ditemukan." },
+        { status: 404 },
+      );
     }
-    return NextResponse.json({ success: true, message: "Tanda fitur berhasil dihapus." });
+    return NextResponse.json({
+      success: true,
+      message: "Tanda fitur berhasil dihapus.",
+    });
   });
 }

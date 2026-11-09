@@ -142,11 +142,16 @@ export function getMockTransferOverview(
   const failed = jobs.filter((j) => j.status === "failed").length;
   const inProgress = jobs.some((j) => j.status === "in_progress");
 
-  const totalTransferred = jobs.reduce((sum, j) => sum + j.recordsTransferred, 0);
+  const totalTransferred = jobs.reduce(
+    (sum, j) => sum + j.recordsTransferred,
+    0,
+  );
   const totalTarget = jobs.reduce((sum, j) => sum + j.recordsTotal, 0);
 
   const percent =
-    totalTarget > 0 ? Math.min(100, Math.round((totalTransferred / totalTarget) * 100)) : 100;
+    totalTarget > 0
+      ? Math.min(100, Math.round((totalTransferred / totalTarget) * 100))
+      : 100;
 
   const totalDuration = jobs.reduce((sum, j) => sum + j.durationSeconds, 0);
   const speed =
@@ -159,8 +164,10 @@ export function getMockTransferOverview(
     .pop();
 
   return {
-    sourceEnvironment: "Docker Lokal (postgres://postgres@localhost:5432/noc_dev)",
-    targetEnvironment: "Server Produksi (postgres://noc_admin@noc-srv.isp.net:5432/noc_prod)",
+    sourceEnvironment:
+      "Docker Lokal (postgres://postgres@localhost:5432/noc_dev)",
+    targetEnvironment:
+      "Server Produksi (postgres://noc_admin@noc-srv.isp.net:5432/noc_prod)",
     totalJobs: jobs.length,
     completedJobs: completed,
     failedJobs: failed,

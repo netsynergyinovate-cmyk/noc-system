@@ -143,7 +143,10 @@ test("evaluateFlows: perbandingan per paket (10 Mbps vs 50 Mbps status berbeda, 
   const dirUnknown = resUnknown.find((f) => f.metric === "netflow_direction");
   assert.ok(dirUnknown);
   assert.equal(dirUnknown.status, "warn");
-  assert.match(dirUnknown.detail, /belum dibandingkan dengan batas unggah paket/);
+  assert.match(
+    dirUnknown.detail,
+    /belum dibandingkan dengan batas unggah paket/,
+  );
   assert.equal(dirUnknown.threshold, "unggah < 50%");
 });
 
@@ -473,11 +476,20 @@ test("runSummaryText menghasilkan teks ringkasan deterministik dan lengkap", () 
   assert.match(text, /Sinyal optik redam \(-27 dBm\)/);
 
   // Periksa temuan bermasalah (non-ok)
-  assert.match(text, /\[FAIL\] Optik OLT\/ONU · Rx ONU: nilai=-27 dBm, ambang=-24 s\.d\. -8 dBm/);
-  assert.match(text, /\[WARN\] MikroTik \(PPPoE, queue, interface\) · Paket dibuang antrean/);
+  assert.match(
+    text,
+    /\[FAIL\] Optik OLT\/ONU · Rx ONU: nilai=-27 dBm, ambang=-24 s\.d\. -8 dBm/,
+  );
+  assert.match(
+    text,
+    /\[WARN\] MikroTik \(PPPoE, queue, interface\) · Paket dibuang antrean/,
+  );
 
   // Periksa temuan tidak dapat diperiksa (unchecked)
-  assert.match(text, /\[UNCHECKED\] Pengukuran aktif & baseline · Traceroute upstream: Traceroute tidak menghasilkan hop/);
+  assert.match(
+    text,
+    /\[UNCHECKED\] Pengukuran aktif & baseline · Traceroute upstream: Traceroute tidak menghasilkan hop/,
+  );
 
   // Memastikan temuan status ok tidak masuk ke daftar bermasalah
   assert.doesNotMatch(text, /\[OK\]/);

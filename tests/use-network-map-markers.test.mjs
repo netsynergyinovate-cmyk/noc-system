@@ -6,28 +6,34 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const hookPath = path.resolve(__dirname, "../src/hooks/use-network-map-markers.ts");
+const hookPath = path.resolve(
+  __dirname,
+  "../src/hooks/use-network-map-markers.ts",
+);
 
 test("Buat hook pemuatan penanda dengan mock lokal", async (t) => {
   const content = fs.readFileSync(hookPath, "utf8");
 
-  await t.test("verifies useNetworkMapMarkers hook export and interface", () => {
-    assert.match(
-      content,
-      /export function useNetworkMapMarkers/,
-      "Hook useNetworkMapMarkers must be exported",
-    );
-    assert.match(
-      content,
-      /export interface UseNetworkMapMarkersOptions/,
-      "Options interface must be exported",
-    );
-    assert.match(
-      content,
-      /export interface UseNetworkMapMarkersResult/,
-      "Result interface must be exported",
-    );
-  });
+  await t.test(
+    "verifies useNetworkMapMarkers hook export and interface",
+    () => {
+      assert.match(
+        content,
+        /export function useNetworkMapMarkers/,
+        "Hook useNetworkMapMarkers must be exported",
+      );
+      assert.match(
+        content,
+        /export interface UseNetworkMapMarkersOptions/,
+        "Options interface must be exported",
+      );
+      assert.match(
+        content,
+        /export interface UseNetworkMapMarkersResult/,
+        "Result interface must be exported",
+      );
+    },
+  );
 
   await t.test("verifies mock fallback support and transparency", () => {
     assert.match(

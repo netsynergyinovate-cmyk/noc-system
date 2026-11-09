@@ -170,7 +170,10 @@ class Checker {
 
   oneOf<T extends string>(path: string, value: Json, allowed: readonly T[]) {
     if (typeof value !== "string" || !allowed.includes(value as T)) {
-      this.fail(path, `bukan salah satu dari ${allowed.join("|")} (${JSON.stringify(value)})`);
+      this.fail(
+        path,
+        `bukan salah satu dari ${allowed.join("|")} (${JSON.stringify(value)})`,
+      );
     }
   }
 }
@@ -191,7 +194,8 @@ function checkSyncState(c: Checker, path: string, value: Json) {
     const running = c.object(`${path}.running`, sync.running, ["startedAt"]);
     if (running) {
       c.epoch(`${path}.running.startedAt`, running.startedAt);
-      if (typeof running.startedAt === "number") runningStart = running.startedAt;
+      if (typeof running.startedAt === "number")
+        runningStart = running.startedAt;
     }
   }
 
@@ -200,7 +204,10 @@ function checkSyncState(c: Checker, path: string, value: Json) {
     return;
   }
   if (sync.runs.length > BILLING_HISTORY_RUNS) {
-    c.fail(`${path}.runs`, `${sync.runs.length} sinkron, paling banyak ${BILLING_HISTORY_RUNS}`);
+    c.fail(
+      `${path}.runs`,
+      `${sync.runs.length} sinkron, paling banyak ${BILLING_HISTORY_RUNS}`,
+    );
   }
   let previousFinish = Infinity;
   let newestFinish = -Infinity;
@@ -223,11 +230,17 @@ function checkSyncState(c: Checker, path: string, value: Json) {
     }
     c.epoch(`${at}.startedAt`, run.startedAt);
     c.epoch(`${at}.finishedAt`, run.finishedAt);
-    if (typeof run.startedAt === "number" && typeof run.finishedAt === "number") {
+    if (
+      typeof run.startedAt === "number" &&
+      typeof run.finishedAt === "number"
+    ) {
       if (run.finishedAt < run.startedAt) c.fail(at, "selesai sebelum mulai");
       // Terbaru di atas: finishedAt menurun tegas.
       if (run.finishedAt >= previousFinish) {
-        c.fail(at, "tidak lebih lama dari sinkron di atasnya (urutan harus menurun)");
+        c.fail(
+          at,
+          "tidak lebih lama dari sinkron di atasnya (urutan harus menurun)",
+        );
       }
       previousFinish = run.finishedAt;
       newestFinish = Math.max(newestFinish, run.finishedAt);
@@ -241,7 +254,12 @@ function checkSyncState(c: Checker, path: string, value: Json) {
         "withoutInvoice",
       ]);
       if (result) {
-        for (const key of ["invoices", "matched", "unmatched", "withoutInvoice"]) {
+        for (const key of [
+          "invoices",
+          "matched",
+          "unmatched",
+          "withoutInvoice",
+        ]) {
           c.integer(`${at}.result.${key}`, result[key]);
         }
         if (
@@ -266,7 +284,10 @@ function checkSyncState(c: Checker, path: string, value: Json) {
   // nextRunAt selalu setelah semua yang sudah terjadi.
   if (typeof sync.nextRunAt === "number") {
     if (sync.nextRunAt <= newestFinish) {
-      c.fail(`${path}.nextRunAt`, "tidak setelah sinkron terakhir yang selesai");
+      c.fail(
+        `${path}.nextRunAt`,
+        "tidak setelah sinkron terakhir yang selesai",
+      );
     }
     if (runningStart !== null && sync.nextRunAt <= runningStart) {
       c.fail(`${path}.nextRunAt`, "tidak setelah sinkron yang sedang berjalan");
@@ -298,22 +319,38 @@ function checkRows(c: Checker, path: string, value: Json) {
       "billingName",
     ]);
     if (!row) return;
-    for (const key of ["customerId", "name", "pppoeUsername", "routerId", "routerName"]) {
+    for (const key of [
+      "customerId",
+      "name",
+      "pppoeUsername",
+      "routerId",
+      "routerName",
+    ]) {
       c.string(`${at}.${key}`, row[key], true);
     }
     if (typeof row.customerId === "string") {
-      if (ids.has(row.customerId)) c.fail(`${at}.customerId`, "kembar (satu baris per pelanggan)");
+      if (ids.has(row.customerId))
+        c.fail(`${at}.customerId`, "kembar (satu baris per pelanggan)");
       ids.add(row.customerId);
     }
-    if (typeof row.routerId === "string" && typeof row.routerName === "string") {
+    if (
+      typeof row.routerId === "string" &&
+      typeof row.routerName === "string"
+    ) {
       const knownName = routerNameById.get(row.routerId);
       if (knownName !== undefined && knownName !== row.routerName) {
-        c.fail(`${at}.routerName`, `router ${row.routerId} bernama "${knownName}" di baris lain`);
+        c.fail(
+          `${at}.routerName`,
+          `router ${row.routerId} bernama "${knownName}" di baris lain`,
+        );
       }
       routerNameById.set(row.routerId, row.routerName);
       const knownId = routerIdByName.get(row.routerName);
       if (knownId !== undefined && knownId !== row.routerId) {
-        c.fail(`${at}.routerId`, `nama router "${row.routerName}" dipakai router lain`);
+        c.fail(
+          `${at}.routerId`,
+          `nama router "${row.routerName}" dipakai router lain`,
+        );
       }
       routerIdByName.set(row.routerName, row.routerId);
     }
@@ -323,22 +360,31 @@ function checkRows(c: Checker, path: string, value: Json) {
     c.nullableString(`${at}.billingName`, row.billingName, true);
     if (row.match === "none") {
       // README: invoiceRef dan billingName null tepat bila match "none".
-      if (row.invoiceRef !== null) c.fail(`${at}.invoiceRef`, "harus null bila match none");
-      if (row.billingName !== null) c.fail(`${at}.billingName`, "harus null bila match none");
+      if (row.invoiceRef !== null)
+        c.fail(`${at}.invoiceRef`, "harus null bila match none");
+      if (row.billingName !== null)
+        c.fail(`${at}.billingName`, "harus null bila match none");
     } else if (row.match === "exact" || row.match === "normalized") {
       // invoiceRef boleh null hanya bila tagihannya memang tanpa kode.
       if (typeof row.billingName !== "string") {
         c.fail(`${at}.billingName`, "harus terisi bila ada tagihan yang cocok");
       } else if (typeof row.pppoeUsername === "string") {
         if (row.match === "exact" && row.billingName !== row.pppoeUsername) {
-          c.fail(`${at}.billingName`, "match exact harus sama persis dengan pppoeUsername");
+          c.fail(
+            `${at}.billingName`,
+            "match exact harus sama persis dengan pppoeUsername",
+          );
         }
         if (
           row.match === "normalized" &&
           (row.billingName === row.pppoeUsername ||
-            normalizePppoe(row.billingName) !== normalizePppoe(row.pppoeUsername))
+            normalizePppoe(row.billingName) !==
+              normalizePppoe(row.pppoeUsername))
         ) {
-          c.fail(`${at}.billingName`, "match normalized harus sama setelah dirapikan, bukan sebelumnya");
+          c.fail(
+            `${at}.billingName`,
+            "match normalized harus sama setelah dirapikan, bukan sebelumnya",
+          );
         }
       }
     }
@@ -349,15 +395,20 @@ function checkRows(c: Checker, path: string, value: Json) {
     const b = value[i] as Obj;
     if (!isObject(a) || !isObject(b)) continue;
     if (
-      typeof a.name !== "string" || typeof b.name !== "string" ||
-      typeof a.pppoeUsername !== "string" || typeof b.pppoeUsername !== "string" ||
-      typeof a.customerId !== "string" || typeof b.customerId !== "string"
-    ) continue;
+      typeof a.name !== "string" ||
+      typeof b.name !== "string" ||
+      typeof a.pppoeUsername !== "string" ||
+      typeof b.pppoeUsername !== "string" ||
+      typeof a.customerId !== "string" ||
+      typeof b.customerId !== "string"
+    )
+      continue;
     const order =
       collator.compare(a.name, b.name) ||
       collator.compare(a.pppoeUsername, b.pppoeUsername) ||
       collator.compare(a.customerId, b.customerId);
-    if (order > 0) c.fail(`${path}[${i}]`, "urutan salah (nama, username PPPoE, id)");
+    if (order > 0)
+      c.fail(`${path}[${i}]`, "urutan salah (nama, username PPPoE, id)");
   }
 }
 
@@ -386,14 +437,19 @@ function checkUnmatched(c: Checker, path: string, value: Json) {
     const a = value[i - 1] as Obj;
     const b = value[i] as Obj;
     if (
-      !isObject(a) || !isObject(b) ||
-      typeof a.invoiceRef !== "string" || typeof b.invoiceRef !== "string" ||
-      typeof a.pppoeUsername !== "string" || typeof b.pppoeUsername !== "string"
-    ) continue;
+      !isObject(a) ||
+      !isObject(b) ||
+      typeof a.invoiceRef !== "string" ||
+      typeof b.invoiceRef !== "string" ||
+      typeof a.pppoeUsername !== "string" ||
+      typeof b.pppoeUsername !== "string"
+    )
+      continue;
     const order =
       collator.compare(a.invoiceRef, b.invoiceRef) ||
       collator.compare(a.pppoeUsername, b.pppoeUsername);
-    if (order > 0) c.fail(`${path}[${i}]`, "urutan salah (kode tagihan, lalu nama)");
+    if (order > 0)
+      c.fail(`${path}[${i}]`, "urutan salah (kode tagihan, lalu nama)");
   }
 }
 
@@ -461,14 +517,24 @@ test.describe("bentuk jawaban terhadap tipe TypeScript", () => {
     expect(new Set(overview.unmatched.map((item) => item.reason))).toEqual(
       new Set(REASONS),
     );
-    expect(overview.rows.some((row) => row.invoiceRef === null && row.match !== "none")).toBe(true);
-    expect(overview.unmatched.some((item) => item.invoiceRef === "")).toBe(true);
-    expect(new Set(overview.rows.map((row) => row.routerId)).size).toBeGreaterThan(1);
+    expect(
+      overview.rows.some(
+        (row) => row.invoiceRef === null && row.match !== "none",
+      ),
+    ).toBe(true);
+    expect(overview.unmatched.some((item) => item.invoiceRef === "")).toBe(
+      true,
+    );
+    expect(
+      new Set(overview.rows.map((row) => row.routerId)).size,
+    ).toBeGreaterThan(1);
   });
 
   test("konstanta kontrak sama dengan golden", () => {
     expect(overview.sync.intervalSeconds).toBe(BILLING_SYNC_INTERVAL_SECONDS);
-    expect(describeSyncInterval(overview.sync.intervalSeconds)).toBe("tiap jam");
+    expect(describeSyncInterval(overview.sync.intervalSeconds)).toBe(
+      "tiap jam",
+    );
     expect(overview.sync.runs.length).toBeLessThanOrEqual(BILLING_HISTORY_RUNS);
   });
 
@@ -496,37 +562,201 @@ test.describe("validator menangkap perubahan satu bidang", () => {
     apply: (envelope: { data: BillingOverview }) => void;
   };
   const mutations: Mutation[] = [
-    { name: "waktu dalam milidetik", apply: (e) => { e.data.sync.nextRunAt *= 1000; } },
-    { name: "waktu pecahan", apply: (e) => { e.data.sync.runs[0].startedAt += 0.5; } },
-    { name: "waktu sebagai teks", apply: (e) => { (e.data.sync.runs[0] as unknown as Obj).finishedAt = "1777626311"; } },
-    { name: "nama bidang nextRunAt diganti", apply: (e) => { const s = e.data.sync as unknown as Obj; s.next_run_at = s.nextRunAt; delete s.nextRunAt; } },
-    { name: "bidang liar di sync", apply: (e) => { (e.data.sync as unknown as Obj).extra = 1; } },
-    { name: "running dihilangkan (bukan null)", apply: (e) => { delete (e.data.sync as unknown as Obj).running; } },
-    { name: "running tanpa startedAt", apply: (e) => { (e.data.sync as unknown as Obj).running = {}; } },
-    { name: "riwayat melebihi 24", apply: (e) => { e.data.sync.runs.push(clone(e.data.sync.runs[0])); } },
-    { name: "riwayat tidak menurun", apply: (e) => { e.data.sync.runs.reverse(); } },
-    { name: "hitungan tidak berjumlah", apply: (e) => { e.data.sync.runs.find((r) => r.result)!.result!.matched += 1; } },
-    { name: "sinkron berhasil tanpa result", apply: (e) => { e.data.sync.runs.find((r) => r.status === "success")!.result = null; } },
-    { name: "sinkron gagal dengan result", apply: (e) => { e.data.sync.runs.find((r) => r.status === "failed")!.result = { invoices: 0, matched: 0, unmatched: 0, withoutInvoice: 0 }; } },
-    { name: "sinkron gagal tanpa pesan", apply: (e) => { e.data.sync.runs.find((r) => r.status === "failed")!.error = null; } },
-    { name: "status sinkron di luar enum", apply: (e) => { (e.data.sync.runs[0] as unknown as Obj).status = "running"; } },
-    { name: "nextRunAt sebelum sinkron terakhir", apply: (e) => { e.data.sync.nextRunAt = e.data.sync.runs[0].finishedAt - 1; } },
-    { name: "id sinkron kembar", apply: (e) => { e.data.sync.runs[1].id = e.data.sync.runs[0].id; } },
-    { name: "baris diacak", apply: (e) => { [e.data.rows[0], e.data.rows[2]] = [e.data.rows[2], e.data.rows[0]]; } },
-    { name: "status baris di luar enum", apply: (e) => { (e.data.rows[0] as unknown as Obj).status = "Lunas"; } },
-    { name: "match di luar enum", apply: (e) => { (e.data.rows[0] as unknown as Obj).match = "fuzzy"; } },
-    { name: "invoiceRef dihilangkan (bukan null)", apply: (e) => { delete (e.data.rows[0] as unknown as Obj).invoiceRef; } },
-    { name: "match none tetapi invoiceRef terisi", apply: (e) => { const row = e.data.rows.find((r) => r.match === "none")!; row.invoiceRef = "INV-1"; } },
-    { name: "match exact tanpa billingName", apply: (e) => { e.data.rows.find((r) => r.match === "exact")!.billingName = null; } },
-    { name: "match exact tetapi nama beda", apply: (e) => { e.data.rows.find((r) => r.match === "exact")!.billingName = "lain"; } },
-    { name: "match normalized padahal sama persis", apply: (e) => { const row = e.data.rows.find((r) => r.match === "normalized")!; row.billingName = row.pppoeUsername; } },
-    { name: "nama router berbeda untuk router yang sama", apply: (e) => { e.data.rows[0].routerName = "RTR-Lain"; } },
-    { name: "satu pelanggan dua baris", apply: (e) => { e.data.rows.push(clone(e.data.rows[0])); } },
-    { name: "tagihan tak bertuan diacak", apply: (e) => { e.data.unmatched.reverse(); } },
-    { name: "alasan di luar enum", apply: (e) => { (e.data.unmatched[0] as unknown as Obj).reason = "orphan"; } },
-    { name: "invoiceRef tak bertuan null", apply: (e) => { (e.data.unmatched[0] as unknown as Obj).invoiceRef = null; } },
-    { name: "rows null", apply: (e) => { (e.data as unknown as Obj).rows = null; } },
-    { name: "unmatched hilang", apply: (e) => { delete (e.data as unknown as Obj).unmatched; } },
+    {
+      name: "waktu dalam milidetik",
+      apply: (e) => {
+        e.data.sync.nextRunAt *= 1000;
+      },
+    },
+    {
+      name: "waktu pecahan",
+      apply: (e) => {
+        e.data.sync.runs[0].startedAt += 0.5;
+      },
+    },
+    {
+      name: "waktu sebagai teks",
+      apply: (e) => {
+        (e.data.sync.runs[0] as unknown as Obj).finishedAt = "1777626311";
+      },
+    },
+    {
+      name: "nama bidang nextRunAt diganti",
+      apply: (e) => {
+        const s = e.data.sync as unknown as Obj;
+        s.next_run_at = s.nextRunAt;
+        delete s.nextRunAt;
+      },
+    },
+    {
+      name: "bidang liar di sync",
+      apply: (e) => {
+        (e.data.sync as unknown as Obj).extra = 1;
+      },
+    },
+    {
+      name: "running dihilangkan (bukan null)",
+      apply: (e) => {
+        delete (e.data.sync as unknown as Obj).running;
+      },
+    },
+    {
+      name: "running tanpa startedAt",
+      apply: (e) => {
+        (e.data.sync as unknown as Obj).running = {};
+      },
+    },
+    {
+      name: "riwayat melebihi 24",
+      apply: (e) => {
+        e.data.sync.runs.push(clone(e.data.sync.runs[0]));
+      },
+    },
+    {
+      name: "riwayat tidak menurun",
+      apply: (e) => {
+        e.data.sync.runs.reverse();
+      },
+    },
+    {
+      name: "hitungan tidak berjumlah",
+      apply: (e) => {
+        e.data.sync.runs.find((r) => r.result)!.result!.matched += 1;
+      },
+    },
+    {
+      name: "sinkron berhasil tanpa result",
+      apply: (e) => {
+        e.data.sync.runs.find((r) => r.status === "success")!.result = null;
+      },
+    },
+    {
+      name: "sinkron gagal dengan result",
+      apply: (e) => {
+        e.data.sync.runs.find((r) => r.status === "failed")!.result = {
+          invoices: 0,
+          matched: 0,
+          unmatched: 0,
+          withoutInvoice: 0,
+        };
+      },
+    },
+    {
+      name: "sinkron gagal tanpa pesan",
+      apply: (e) => {
+        e.data.sync.runs.find((r) => r.status === "failed")!.error = null;
+      },
+    },
+    {
+      name: "status sinkron di luar enum",
+      apply: (e) => {
+        (e.data.sync.runs[0] as unknown as Obj).status = "running";
+      },
+    },
+    {
+      name: "nextRunAt sebelum sinkron terakhir",
+      apply: (e) => {
+        e.data.sync.nextRunAt = e.data.sync.runs[0].finishedAt - 1;
+      },
+    },
+    {
+      name: "id sinkron kembar",
+      apply: (e) => {
+        e.data.sync.runs[1].id = e.data.sync.runs[0].id;
+      },
+    },
+    {
+      name: "baris diacak",
+      apply: (e) => {
+        [e.data.rows[0], e.data.rows[2]] = [e.data.rows[2], e.data.rows[0]];
+      },
+    },
+    {
+      name: "status baris di luar enum",
+      apply: (e) => {
+        (e.data.rows[0] as unknown as Obj).status = "Lunas";
+      },
+    },
+    {
+      name: "match di luar enum",
+      apply: (e) => {
+        (e.data.rows[0] as unknown as Obj).match = "fuzzy";
+      },
+    },
+    {
+      name: "invoiceRef dihilangkan (bukan null)",
+      apply: (e) => {
+        delete (e.data.rows[0] as unknown as Obj).invoiceRef;
+      },
+    },
+    {
+      name: "match none tetapi invoiceRef terisi",
+      apply: (e) => {
+        const row = e.data.rows.find((r) => r.match === "none")!;
+        row.invoiceRef = "INV-1";
+      },
+    },
+    {
+      name: "match exact tanpa billingName",
+      apply: (e) => {
+        e.data.rows.find((r) => r.match === "exact")!.billingName = null;
+      },
+    },
+    {
+      name: "match exact tetapi nama beda",
+      apply: (e) => {
+        e.data.rows.find((r) => r.match === "exact")!.billingName = "lain";
+      },
+    },
+    {
+      name: "match normalized padahal sama persis",
+      apply: (e) => {
+        const row = e.data.rows.find((r) => r.match === "normalized")!;
+        row.billingName = row.pppoeUsername;
+      },
+    },
+    {
+      name: "nama router berbeda untuk router yang sama",
+      apply: (e) => {
+        e.data.rows[0].routerName = "RTR-Lain";
+      },
+    },
+    {
+      name: "satu pelanggan dua baris",
+      apply: (e) => {
+        e.data.rows.push(clone(e.data.rows[0]));
+      },
+    },
+    {
+      name: "tagihan tak bertuan diacak",
+      apply: (e) => {
+        e.data.unmatched.reverse();
+      },
+    },
+    {
+      name: "alasan di luar enum",
+      apply: (e) => {
+        (e.data.unmatched[0] as unknown as Obj).reason = "orphan";
+      },
+    },
+    {
+      name: "invoiceRef tak bertuan null",
+      apply: (e) => {
+        (e.data.unmatched[0] as unknown as Obj).invoiceRef = null;
+      },
+    },
+    {
+      name: "rows null",
+      apply: (e) => {
+        (e.data as unknown as Obj).rows = null;
+      },
+    },
+    {
+      name: "unmatched hilang",
+      apply: (e) => {
+        delete (e.data as unknown as Obj).unmatched;
+      },
+    },
   ];
 
   for (const mutation of mutations) {
@@ -572,8 +802,14 @@ test("matchBilling menghasilkan ulang baris dan tagihan tak bertuan dari golden"
       status: item.status,
     })),
   ];
-  const routerNames = new Map(overview.rows.map((row) => [row.routerId, row.routerName]));
-  const result = matchBilling(customers, records, (id) => routerNames.get(id) ?? "?");
+  const routerNames = new Map(
+    overview.rows.map((row) => [row.routerId, row.routerName]),
+  );
+  const result = matchBilling(
+    customers,
+    records,
+    (id) => routerNames.get(id) ?? "?",
+  );
 
   // matchBilling memakai "" untuk tagihan tanpa kode; backend menulis null.
   const expectedRows: BillingRow[] = result.rows.map((row) => ({
@@ -615,7 +851,11 @@ test.describe("fungsi frontend memakai bentuk ini", () => {
     expect(sortRuns(overview.sync.runs)).toEqual(overview.sync.runs);
 
     const running = describeSyncState(overview.sync);
-    expect(running).toMatchObject({ phase: "running", tone: "neutral", failures: 2 });
+    expect(running).toMatchObject({
+      phase: "running",
+      tone: "neutral",
+      failures: 2,
+    });
     const idle = describeSyncState({ running: null, runs: overview.sync.runs });
     expect(idle).toMatchObject({
       phase: "failed",
@@ -627,7 +867,11 @@ test.describe("fungsi frontend memakai bentuk ini", () => {
       running: null,
       runs: overview.sync.runs.slice(2),
     });
-    expect(afterSuccess).toMatchObject({ phase: "ok", tone: "success", failures: 0 });
+    expect(afterSuccess).toMatchObject({
+      phase: "ok",
+      tone: "success",
+      failures: 0,
+    });
     expect(describeSyncResult(summary.lastSuccess!.result!)).toMatch(
       /tagihan terbaca, .* cocok, .* belum cocok/,
     );
@@ -665,17 +909,23 @@ test.describe("fungsi frontend memakai bentuk ini", () => {
     expect(withLiveStatuses(overview.rows, {})).toBe(overview.rows);
     const first = overview.rows.find((row) => row.match !== "none")!;
     const flipped = first.status === "lunas" ? "isolir" : "lunas";
-    const live = withLiveStatuses(overview.rows, { [first.customerId]: flipped });
-    expect(live.find((row) => row.customerId === first.customerId)?.status).toBe(flipped);
+    const live = withLiveStatuses(overview.rows, {
+      [first.customerId]: flipped,
+    });
+    expect(
+      live.find((row) => row.customerId === first.customerId)?.status,
+    ).toBe(flipped);
   });
 
   test("saringan dan hitungan per pilihan", () => {
     const counts = billingFacetCounts(overview.rows, defaultBillingFilters);
     expect(counts.total).toBe(overview.rows.length);
-    expect(counts.status.lunas + counts.status.isolir).toBe(overview.rows.length);
-    expect(counts.match.exact + counts.match.normalized + counts.match.none).toBe(
+    expect(counts.status.lunas + counts.status.isolir).toBe(
       overview.rows.length,
     );
+    expect(
+      counts.match.exact + counts.match.normalized + counts.match.none,
+    ).toBe(overview.rows.length);
     const routers = billingRouters(overview.rows);
     expect(routers.length).toBeGreaterThan(1);
     expect(
@@ -688,7 +938,10 @@ test.describe("fungsi frontend memakai bentuk ini", () => {
     }
     // Pencarian memakai teks yang ditampilkan, termasuk huruf beraksen.
     expect(
-      filterBillingRows(overview.rows, { ...defaultBillingFilters, query: "zoë" }),
+      filterBillingRows(overview.rows, {
+        ...defaultBillingFilters,
+        query: "zoë",
+      }),
     ).not.toHaveLength(0);
   });
 

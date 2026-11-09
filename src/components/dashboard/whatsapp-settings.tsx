@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { MessageSquare, Clock, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function WhatsappSettings() {
   return (
@@ -16,7 +22,8 @@ export function WhatsappSettings() {
               <span>Integrasi Gateway WhatsApp</span>
             </CardTitle>
             <CardDescription className="text-xs">
-              Konfigurasi broadcast alert insiden jaringan via WhatsApp ke nomor darurat teknisi NOC.
+              Konfigurasi broadcast alert insiden jaringan via WhatsApp ke nomor
+              darurat teknisi NOC.
             </CardDescription>
           </div>
           <Badge
@@ -31,10 +38,13 @@ export function WhatsappSettings() {
       <CardContent className="space-y-4 pt-1">
         <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground space-y-2">
           <p className="leading-relaxed">
-            Integrasi gateway WhatsApp otomatis (Fonnte, Wablas, Whacenter) sedang dalam tahap pengembangan (Coming Soon) dan akan langsung dihubungkan dengan background worker alert engine.
+            Integrasi gateway WhatsApp otomatis (Fonnte, Wablas, Whacenter)
+            sedang dalam tahap pengembangan (Coming Soon) dan akan langsung
+            dihubungkan dengan background worker alert engine.
           </p>
           <p className="leading-relaxed text-foreground/80">
-            Setelah aktif, setiap insiden berstatus kritis atau darurat akan otomatis diteruskan ke nomor ponsel tim lapangan secara instan.
+            Setelah aktif, setiap insiden berstatus kritis atau darurat akan
+            otomatis diteruskan ke nomor ponsel tim lapangan secara instan.
           </p>
         </div>
 

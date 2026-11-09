@@ -15,7 +15,10 @@ import { oltIdSchema } from "@/validators/devices";
 export const runtime = "nodejs";
 
 // Server menghubungi host OLT tersimpan: butuh router:manage.
-export const POST = (request: Request, { params }: { params: Promise<{ id: string }> }) =>
+export const POST = (
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) =>
   withApiPermission(request, { router: ["manage"] }, async (session) => {
     const { id } = await params;
     if (!oltIdSchema.safeParse(id).success) {
@@ -28,10 +31,18 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     try {
       password = decryptAES256GCM(olt.passwordEnc);
     } catch {
-      throw new ApiError(422, "DECRYPT_FAILED", "Gagal mendekripsi kata sandi OLT dari database.");
+      throw new ApiError(
+        422,
+        "DECRYPT_FAILED",
+        "Gagal mendekripsi kata sandi OLT dari database.",
+      );
     }
     if (!password) {
-      throw new ApiError(422, "NO_CREDENTIALS", "Kata sandi OLT tidak tersedia di database.");
+      throw new ApiError(
+        422,
+        "NO_CREDENTIALS",
+        "Kata sandi OLT tidak tersedia di database.",
+      );
     }
 
     const target = parseTarget(olt.host);
@@ -40,7 +51,11 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     let raw: Awaited<ReturnType<HsgqClient["testConnection"]>>;
     if (isTelnet) {
       // OLT yang hanya punya CLI telnet: uji login CLI.
-      const t = await testHsgqTelnetLogin({ host: olt.host, username: olt.username, password });
+      const t = await testHsgqTelnetLogin({
+        host: olt.host,
+        username: olt.username,
+        password,
+      });
       raw = {
         ok: t.ok,
         message: t.message,
@@ -51,9 +66,18 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     } else {
       let client: HsgqClient;
       try {
-        client = new HsgqClient({ host: olt.host, port, username: olt.username, password, mode: "real" });
+        client = new HsgqClient({
+          host: olt.host,
+          port,
+          username: olt.username,
+          password,
+          mode: "real",
+        });
       } catch (err) {
-        if (err instanceof DeviceConnectionError && err.code === "INVALID_HOST") {
+        if (
+          err instanceof DeviceConnectionError &&
+          err.code === "INVALID_HOST"
+        ) {
           throw new ApiError(422, "INVALID_HOST", err.message);
         }
         throw err;
@@ -74,13 +98,21 @@ export const POST = (request: Request, { params }: { params: Promise<{ id: strin
     });
 
     if (result.ok) {
-      await db.update(olts).set({ lastSeenAt: new Date() }).where(eq(olts.id, olt.id));
+      await db
+        .update(olts)
+        .set({ lastSeenAt: new Date() })
+        .where(eq(olts.id, olt.id));
     }
     await recordAudit({
       userId: session.user.id,
       action: "olt-connection-tested",
       target: `/api/olts/${olt.id}`,
-      detail: { oltId: olt.id, ok: result.ok, code: result.code, latencyMs: result.latencyMs },
+      detail: {
+        oltId: olt.id,
+        ok: result.ok,
+        code: result.code,
+        latencyMs: result.latencyMs,
+      },
     });
 
     return NextResponse.json({ success: true, data: result });

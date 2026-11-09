@@ -35,7 +35,12 @@ register();
 const { createRouterSchema } = await import("../src/validators/routers.ts");
 const { createRouter } = await import("../src/services/routers.service.ts");
 
-const valid = { name: "Core", host: "10.0.0.5", username: "admin", password: "x" };
+const valid = {
+  name: "Core",
+  host: "10.0.0.5",
+  username: "admin",
+  password: "x",
+};
 const ok = (o) => createRouterSchema.safeParse({ ...valid, ...o }).success;
 const fail = async (o) => {
   try {
@@ -48,7 +53,14 @@ const fail = async (o) => {
 
 test("skema: field opsional valid, host kosong/panjang ditolak", () => {
   assert.ok(ok({}));
-  assert.ok(ok({ port: 8728, useSsl: true, mode: "simulator", validateConnection: false }));
+  assert.ok(
+    ok({
+      port: 8728,
+      useSsl: true,
+      mode: "simulator",
+      validateConnection: false,
+    }),
+  );
   assert.ok(!ok({ host: "" }));
   assert.ok(!ok({ host: "a".repeat(256) }));
   assert.ok(!ok({ name: "a".repeat(101) }));
@@ -79,7 +91,11 @@ test("simulator host .0 -> 400 TIMEOUT, .255 -> 400 AUTH_FAILED", async () => {
 });
 
 test("simulator normal: pre-flight lulus dan host ternormalisasi disimpan", async () => {
-  const r = await createRouter({ ...valid, host: " http://10.0.0.5 ", mode: "simulator" });
+  const r = await createRouter({
+    ...valid,
+    host: " http://10.0.0.5 ",
+    mode: "simulator",
+  });
   assert.equal(r.host, "10.0.0.5");
   assert.equal(inserted.length, 1);
 });
@@ -91,16 +107,33 @@ test("skema: protokol hanya rest atau api", () => {
 });
 
 test("protokol API memakai port 8728/8729, bukan port layanan www", async () => {
-  const r = await createRouter({ ...valid, protocol: "api", port: 80, mode: "simulator" });
+  const r = await createRouter({
+    ...valid,
+    protocol: "api",
+    port: 80,
+    mode: "simulator",
+  });
   assert.equal(r.protocol, "api");
   assert.equal(r.host, "10.0.0.5:8728");
-  const tls = await createRouter({ ...valid, host: "10.0.0.6", protocol: "api", port: 8729, useSsl: true, mode: "simulator" });
+  const tls = await createRouter({
+    ...valid,
+    host: "10.0.0.6",
+    protocol: "api",
+    port: 8729,
+    useSsl: true,
+    mode: "simulator",
+  });
   assert.equal(tls.protocol, "api");
   assert.equal(tls.host, "https://10.0.0.6:8729");
 });
 
 test("protokol REST tidak disimpan dengan port API 8728/8729", async () => {
-  const r = await createRouter({ ...valid, protocol: "rest", port: 8728, mode: "simulator" });
+  const r = await createRouter({
+    ...valid,
+    protocol: "rest",
+    port: 8728,
+    mode: "simulator",
+  });
   assert.equal(r.protocol, "rest");
   assert.equal(r.host, "10.0.0.5");
 });
@@ -114,7 +147,12 @@ test("host duplikat -> 409 DUPLICATE_HOST", async () => {
 
 test("validateConnection:false melewati pre-flight", async () => {
   const before = inserted.length;
-  const r = await createRouter({ ...valid, host: "10.0.0.0", mode: "simulator", validateConnection: false });
+  const r = await createRouter({
+    ...valid,
+    host: "10.0.0.0",
+    mode: "simulator",
+    validateConnection: false,
+  });
   assert.equal(r.host, "10.0.0.0");
   assert.equal(inserted.length, before + 1);
 });

@@ -74,7 +74,10 @@ function CustomerPicker({
 
   return (
     <div className="relative flex flex-col gap-1">
-      <Label htmlFor="diagnostic-customer-search" className="text-[11px] text-muted-foreground">
+      <Label
+        htmlFor="diagnostic-customer-search"
+        className="text-[11px] text-muted-foreground"
+      >
         Cari pelanggan
       </Label>
       <Input
@@ -232,10 +235,15 @@ function PolicyForm() {
   }
 
   if (!policy) {
-    return <p className="text-xs text-muted-foreground">{error ?? "Memuat…"}</p>;
+    return (
+      <p className="text-xs text-muted-foreground">{error ?? "Memuat…"}</p>
+    );
   }
   return (
-    <form className="flex flex-col gap-2.5 text-xs" onSubmit={(e) => void save(e)}>
+    <form
+      className="flex flex-col gap-2.5 text-xs"
+      onSubmit={(e) => void save(e)}
+    >
       <fieldset className="flex flex-col gap-1.5" disabled={!canManage}>
         <legend className="mb-0.5 text-[11px] font-medium text-foreground">
           Jalankan otomatis saat:
@@ -246,7 +254,9 @@ function PolicyForm() {
               type="checkbox"
               className="size-3.5 rounded border-border"
               checked={policy[f.key]}
-              onChange={(e) => setPolicy({ ...policy, [f.key]: e.target.checked })}
+              onChange={(e) =>
+                setPolicy({ ...policy, [f.key]: e.target.checked })
+              }
             />
             <span className="text-xs text-foreground">{f.label}</span>
           </label>
@@ -254,7 +264,10 @@ function PolicyForm() {
       </fieldset>
       {policyFields.map((f) => (
         <div key={f.key} className="flex flex-col gap-0.5">
-          <Label htmlFor={`policy-${f.key}`} className="text-[11px] text-muted-foreground">
+          <Label
+            htmlFor={`policy-${f.key}`}
+            className="text-[11px] text-muted-foreground"
+          >
             {f.label}
           </Label>
           <Input
@@ -265,13 +278,16 @@ function PolicyForm() {
             required
             disabled={!canManage}
             value={policy[f.key]}
-            onChange={(e) => setPolicy({ ...policy, [f.key]: Number(e.target.value) })}
+            onChange={(e) =>
+              setPolicy({ ...policy, [f.key]: Number(e.target.value) })
+            }
             className="h-7 text-xs"
           />
         </div>
       ))}
       <p className="text-[11px] text-muted-foreground">
-        Diubah {formatWhen(policy.updatedAt)} oleh {policy.updatedBy ?? "bawaan sistem"}.
+        Diubah {formatWhen(policy.updatedAt)} oleh{" "}
+        {policy.updatedBy ?? "bawaan sistem"}.
       </p>
       {error && (
         <p className="text-xs text-destructive" role="alert">
@@ -284,7 +300,12 @@ function PolicyForm() {
         </p>
       )}
       {canManage ? (
-        <Button type="submit" size="sm" className="h-7 text-xs self-start" aria-disabled={saving}>
+        <Button
+          type="submit"
+          size="sm"
+          className="h-7 text-xs self-start"
+          aria-disabled={saving}
+        >
           {saving ? "Menyimpan…" : "Simpan kebijakan"}
         </Button>
       ) : (
@@ -307,7 +328,12 @@ export function DiagnosticPanel() {
 
   useEffect(() => {
     function handleOpenDiagnostic(e: Event) {
-      if ("detail" in e && typeof e.detail === "object" && e.detail !== null && "runId" in e.detail) {
+      if (
+        "detail" in e &&
+        typeof e.detail === "object" &&
+        e.detail !== null &&
+        "runId" in e.detail
+      ) {
         const detail = e.detail as { runId?: string };
         if (detail.runId) {
           setRunId(detail.runId);
@@ -351,7 +377,9 @@ export function DiagnosticPanel() {
         {customer && (
           <div className="flex items-center gap-1.5">
             <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 text-xs">
-              <span className="font-medium text-foreground">{customer.name}</span>
+              <span className="font-medium text-foreground">
+                {customer.name}
+              </span>
               <span className="font-mono text-[11px] text-muted-foreground">
                 {customer.pppoeUsername}
               </span>
@@ -364,7 +392,12 @@ export function DiagnosticPanel() {
                 <X aria-hidden="true" className="size-3" />
               </button>
             </div>
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1 text-xs"
+              asChild
+            >
               <Link href={`/app/pelanggan/${customer.id}#bukti`}>
                 Bukti 3 hari
               </Link>
@@ -405,7 +438,12 @@ export function DiagnosticPanel() {
           <Stethoscope aria-hidden="true" className="size-3.5" />
           {starting ? "Memulai…" : "Diagnosa"}
         </Button>
-        <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1 text-xs"
+          asChild
+        >
           <Link href="/app/anomali/riwayat">
             <History aria-hidden="true" className="size-3.5" />
             Riwayat

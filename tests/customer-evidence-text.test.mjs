@@ -178,7 +178,13 @@ test("formatEvidenceSummary: menghasilkan ringkasan teks lengkap dan determinist
       tidakTerbukti: 0,
       kedipan: 1,
       realDownSeconds: 7500,
-      realByWindow: { siang: 0, "pulang-sekolah": 0, "pulang-kerja": 1, "magrib-malam": 0, luar: 0 },
+      realByWindow: {
+        siang: 0,
+        "pulang-sekolah": 0,
+        "pulang-kerja": 1,
+        "magrib-malam": 0,
+        luar: 0,
+      },
       realMassal: 0,
       lastRealAt: 1761300000,
     },
@@ -194,7 +200,11 @@ test("formatEvidenceSummary: menghasilkan ringkasan teks lengkap dan determinist
   assert.ok(text.includes("Status saat ini: Online"));
   assert.ok(text.includes("Gangguan nyata: 1 kali"));
   assert.ok(text.includes("Total durasi down nyata: 2 j 5 m"));
-  assert.ok(text.includes("Status verifikasi lain: 0 belum terverifikasi, 0 tidak terbukti, 1 kedipan"));
+  assert.ok(
+    text.includes(
+      "Status verifikasi lain: 0 belum terverifikasi, 0 tidak terbukti, 1 kedipan",
+    ),
+  );
   assert.ok(text.includes("Kejadian putus tercatat: 2 kali"));
   assert.ok(text.includes("Uptime: 97.0%"));
   assert.ok(text.includes("Cakupan: Sendiri"));
@@ -248,14 +258,22 @@ test("formatEvidenceSummary: tanpa gangguan menampilkan teks ramah", () => {
       tidakTerbukti: 0,
       kedipan: 0,
       realDownSeconds: 0,
-      realByWindow: { siang: 0, "pulang-sekolah": 0, "pulang-kerja": 0, "magrib-malam": 0, luar: 0 },
+      realByWindow: {
+        siang: 0,
+        "pulang-sekolah": 0,
+        "pulang-kerja": 0,
+        "magrib-malam": 0,
+        luar: 0,
+      },
       realMassal: 0,
       lastRealAt: null,
     },
   };
 
   const text = formatEvidenceSummary(mockEvidence);
-  assert.ok(text.includes("Tidak ada gangguan nyata tercatat pada rentang ini."));
+  assert.ok(
+    text.includes("Tidak ada gangguan nyata tercatat pada rentang ini."),
+  );
   assert.ok(text.includes("Total durasi down nyata: 0 m"));
   assert.ok(text.includes("Uptime: 100.0%"));
 });

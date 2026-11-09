@@ -32,26 +32,43 @@ test("parseEnvExample: kasus kecil", () => {
 });
 
 test(".env.example lolos pemeriksaan keamanan", () => {
-  assert.deepEqual(validateEnvExampleSecurity(text), { ok: true, violations: [] });
+  assert.deepEqual(validateEnvExampleSecurity(text), {
+    ok: true,
+    violations: [],
+  });
 });
 
 test("validateEnvExampleSecurity menangkap pelanggaran", () => {
-  const bad = validateEnvExampleSecurity("A=1\nDEVICE_SECRET=abc\nX_TOKEN=t\nY_PASSWORD=\n");
+  const bad = validateEnvExampleSecurity(
+    "A=1\nDEVICE_SECRET=abc\nX_TOKEN=t\nY_PASSWORD=\n",
+  );
   assert.equal(bad.ok, false);
-  assert.deepEqual(bad.violations.slice(1), ["DEVICE_SECRET harus kosong", "X_TOKEN harus kosong"]);
+  assert.deepEqual(bad.violations.slice(1), [
+    "DEVICE_SECRET harus kosong",
+    "X_TOKEN harus kosong",
+  ]);
   assert.match(bad.violations[0], /header/);
 });
 
 test("checkEnvCoverage", () => {
-  assert.deepEqual(checkEnvCoverage(["A", "B"], ["A", "C"]), { covered: false, missing: ["C"] });
-  assert.deepEqual(checkEnvCoverage(["A"], ["A"]), { covered: true, missing: [] });
-});
-
-test(".env.example mencakup semua EXPECTED_ENV_KEYS", () => {
-  assert.deepEqual(checkEnvCoverage(parseEnvExample(text).keys, [...EXPECTED_ENV_KEYS]), {
+  assert.deepEqual(checkEnvCoverage(["A", "B"], ["A", "C"]), {
+    covered: false,
+    missing: ["C"],
+  });
+  assert.deepEqual(checkEnvCoverage(["A"], ["A"]), {
     covered: true,
     missing: [],
   });
+});
+
+test(".env.example mencakup semua EXPECTED_ENV_KEYS", () => {
+  assert.deepEqual(
+    checkEnvCoverage(parseEnvExample(text).keys, [...EXPECTED_ENV_KEYS]),
+    {
+      covered: true,
+      missing: [],
+    },
+  );
 });
 
 test("selaras dengan env-security.test.mjs", () => {

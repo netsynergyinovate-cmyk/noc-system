@@ -52,7 +52,8 @@ export const MOCK_ALIGNMENT_JOBS: readonly AutoAlignmentJobItem[] = [
     consecutiveSuccesses: 1420,
     consecutiveFailures: 0,
     averageLatencyMs: 42,
-    description: "Penyelarasan utilisasi CPU, memory, trafik port, dan sesi PPPoE aktif",
+    description:
+      "Penyelarasan utilisasi CPU, memory, trafik port, dan sesi PPPoE aktif",
   },
   {
     id: "align-olt-optical",
@@ -66,7 +67,8 @@ export const MOCK_ALIGNMENT_JOBS: readonly AutoAlignmentJobItem[] = [
     consecutiveSuccesses: 710,
     consecutiveFailures: 0,
     averageLatencyMs: 85,
-    description: "Penyelarasan status PON port, redaman Rx/Tx ONU, dan deteksi link loss",
+    description:
+      "Penyelarasan status PON port, redaman Rx/Tx ONU, dan deteksi link loss",
   },
   {
     id: "align-billing-status",
@@ -80,7 +82,8 @@ export const MOCK_ALIGNMENT_JOBS: readonly AutoAlignmentJobItem[] = [
     consecutiveSuccesses: 24,
     consecutiveFailures: 0,
     averageLatencyMs: 1420,
-    description: "Penyelarasan otomatis status lunas/isolir tagihan bulanan pelanggan",
+    description:
+      "Penyelarasan otomatis status lunas/isolir tagihan bulanan pelanggan",
   },
   {
     id: "align-anomaly-detector",
@@ -94,7 +97,8 @@ export const MOCK_ALIGNMENT_JOBS: readonly AutoAlignmentJobItem[] = [
     consecutiveSuccesses: 2130,
     consecutiveFailures: 0,
     averageLatencyMs: 18,
-    description: "Evaluasi ambang batas CPU, antrean, port error, dan pemetaan akar masalah",
+    description:
+      "Evaluasi ambang batas CPU, antrean, port error, dan pemetaan akar masalah",
   },
   {
     id: "align-log-cleanup",
@@ -108,7 +112,8 @@ export const MOCK_ALIGNMENT_JOBS: readonly AutoAlignmentJobItem[] = [
     consecutiveSuccesses: 7,
     consecutiveFailures: 0,
     averageLatencyMs: 310,
-    description: "Pembersihan berkala log telemetri dan audit yang melewati batas retensi 30 hari",
+    description:
+      "Pembersihan berkala log telemetri dan audit yang melewati batas retensi 30 hari",
   },
 ];
 
@@ -121,7 +126,9 @@ export function getMockAlignmentOverview(
 ): AutoAlignmentOverview {
   const enabled = jobs.filter((j) => j.enabled).length;
   const healthy = jobs.filter((j) => j.status === "healthy").length;
-  const failing = jobs.filter((j) => j.status === "failed" || j.status === "degraded").length;
+  const failing = jobs.filter(
+    (j) => j.status === "failed" || j.status === "degraded",
+  ).length;
 
   const lastTick = jobs
     .map((j) => j.lastRunAt)

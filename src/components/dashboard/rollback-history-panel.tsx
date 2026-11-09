@@ -46,8 +46,7 @@ export function RollbackHistoryPanel() {
       item.affectedTables.some((t) =>
         t.toLowerCase().includes(search.toLowerCase()),
       );
-    const matchStatus =
-      statusFilter === "all" || item.status === statusFilter;
+    const matchStatus = statusFilter === "all" || item.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
@@ -57,10 +56,7 @@ export function RollbackHistoryPanel() {
   ).length;
 
   return (
-    <div
-      data-testid="rollback-history-panel"
-      className="flex flex-col gap-6"
-    >
+    <div data-testid="rollback-history-panel" className="flex flex-col gap-6">
       {/* Kartu Ringkasan Riwayat Rollback */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 shadow-xs">
@@ -279,25 +275,35 @@ export function RollbackHistoryPanel() {
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
             <div>
-              <span className="font-medium text-muted-foreground">Alasan Kegagalan:</span>
+              <span className="font-medium text-muted-foreground">
+                Alasan Kegagalan:
+              </span>
               <p className="mt-0.5 text-foreground">{selectedEvent.reason}</p>
             </div>
             <div>
-              <span className="font-medium text-muted-foreground">Petunjuk Remedial:</span>
+              <span className="font-medium text-muted-foreground">
+                Petunjuk Remedial:
+              </span>
               <p className="mt-0.5 text-emerald-600 dark:text-emerald-400">
                 {selectedEvent.remediationHint}
               </p>
             </div>
             <div>
-              <span className="font-medium text-muted-foreground">Pernyataan Revert:</span>
+              <span className="font-medium text-muted-foreground">
+                Pernyataan Revert:
+              </span>
               <p className="mt-0.5 font-mono text-[11px]">
-                {selectedEvent.revertStatementsCount} operasi DDL / DROP diterapkan secara transaksional
+                {selectedEvent.revertStatementsCount} operasi DDL / DROP
+                diterapkan secara transaksional
               </p>
             </div>
             <div>
-              <span className="font-medium text-muted-foreground">Waktu Eksekusi:</span>
+              <span className="font-medium text-muted-foreground">
+                Waktu Eksekusi:
+              </span>
               <p className="mt-0.5 text-muted-foreground">
-                {new Date(selectedEvent.executedAt).toLocaleString("id-ID")} ({selectedEvent.durationMs} ms)
+                {new Date(selectedEvent.executedAt).toLocaleString("id-ID")} (
+                {selectedEvent.durationMs} ms)
               </p>
             </div>
           </div>

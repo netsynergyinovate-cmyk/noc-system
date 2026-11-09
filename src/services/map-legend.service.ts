@@ -65,7 +65,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "customer",
       color: "#10b981",
       badgeClass: "bg-emerald-500",
-      description: "Sesi PPPoE aktif di Router Mikrotik dengan redaman optik sehat (> -23.0 dBm).",
+      description:
+        "Sesi PPPoE aktif di Router Mikrotik dengan redaman optik sehat (> -23.0 dBm).",
       threshold: "> -23.0 dBm",
     },
     {
@@ -74,7 +75,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "customer",
       color: "#f59e0b",
       badgeClass: "bg-amber-500",
-      description: "Daya terima RX <= -24.5 dBm. Potensi koneksi lambat atau drop akibat tekukan serat optik.",
+      description:
+        "Daya terima RX <= -24.5 dBm. Potensi koneksi lambat atau drop akibat tekukan serat optik.",
       threshold: "<= -24.5 dBm",
     },
     {
@@ -83,7 +85,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "customer",
       color: "#f43f5e",
       badgeClass: "bg-rose-500",
-      description: "Tagihan bulanan belum diselesaikan; trafik dialihkan ke halaman isolir.",
+      description:
+        "Tagihan bulanan belum diselesaikan; trafik dialihkan ke halaman isolir.",
       threshold: "Unpaid / Past-due",
     },
     {
@@ -92,7 +95,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "customer",
       color: "#64748b",
       badgeClass: "bg-slate-500",
-      description: "Sesi PPPoE terputus atau ONU padam (Loss of Signal / Dying Gasp).",
+      description:
+        "Sesi PPPoE terputus atau ONU padam (Loss of Signal / Dying Gasp).",
       threshold: "No active session",
     },
   ];
@@ -112,7 +116,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "infrastructure",
       color: "#a855f7",
       badgeClass: "bg-purple-600",
-      description: "Perangkat pemancar optik sentral GPON menuju segmen distribusi lapangan.",
+      description:
+        "Perangkat pemancar optik sentral GPON menuju segmen distribusi lapangan.",
     },
     {
       id: "infra-odc",
@@ -128,7 +133,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "infrastructure",
       color: "#f59e0b",
       badgeClass: "bg-amber-500",
-      description: "Kotak pembagi pasif di tiang (splitter 1:8 atau 1:16) tempat sambungan roset rumah.",
+      description:
+        "Kotak pembagi pasif di tiang (splitter 1:8 atau 1:16) tempat sambungan roset rumah.",
     },
     {
       id: "infra-pole",
@@ -136,7 +142,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       category: "infrastructure",
       color: "#64748b",
       badgeClass: "bg-slate-500",
-      description: "Titik penahan bentangan kabel udara antar-jalan (pole span).",
+      description:
+        "Titik penahan bentangan kabel udara antar-jalan (pole span).",
     },
   ];
 
@@ -150,7 +157,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       color: "#8b5cf6",
       haloColor: "#c084fc",
       dashArray: "8, 6",
-      description: "Kabel backbone kapasitas tinggi penghubung Core Router ke OLT Sentral dan Kabinet ODC.",
+      description:
+        "Kabel backbone kapasitas tinggi penghubung Core Router ke OLT Sentral dan Kabinet ODC.",
     },
     {
       id: "cable-feeder-main",
@@ -161,7 +169,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       color: "#6366f1",
       haloColor: "#a5b4fc",
       dashArray: "7, 5",
-      description: "Kabel feeder utama penghubung OLT menuju kabinet pasif primer ODC di tiap pusat wilayah.",
+      description:
+        "Kabel feeder utama penghubung OLT menuju kabinet pasif primer ODC di tiap pusat wilayah.",
     },
     {
       id: "cable-feeder-dist",
@@ -171,7 +180,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       baseWeight: 3.2,
       color: "#06b6d4",
       haloColor: "#67e8f9",
-      description: "Kabel feeder distribusi penghubung dari ODC menuju kotak-kotak pembagi ODP di tiang jalan.",
+      description:
+        "Kabel feeder distribusi penghubung dari ODC menuju kotak-kotak pembagi ODP di tiang jalan.",
     },
     {
       id: "cable-branch",
@@ -182,7 +192,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       color: "#f59e0b",
       haloColor: "#fde68a",
       dashArray: "6, 4",
-      description: "Kabel distribusi percabangan loop antar-tiang dan ODP sekunder di tingkat gang/lorong.",
+      description:
+        "Kabel distribusi percabangan loop antar-tiang dan ODP sekunder di tingkat gang/lorong.",
     },
     {
       id: "cable-drop",
@@ -192,7 +203,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       baseWeight: 1.8,
       color: "#10b981",
       haloColor: "#6ee7b7",
-      description: "Kabel drop udara berpelindung kawat baja dari port ODP menuju roset rumah pelanggan.",
+      description:
+        "Kabel drop udara berpelindung kawat baja dari port ODP menuju roset rumah pelanggan.",
     },
     {
       id: "cable-highlight",
@@ -202,7 +214,8 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       baseWeight: 3.5,
       color: "#22d3ee",
       haloColor: "#a5f3fc",
-      description: "Menyala terang dengan pulsa biru kehijauan saat titik perangkat atau pelanggan diinspeksi.",
+      description:
+        "Menyala terang dengan pulsa biru kehijauan saat titik perangkat atau pelanggan diinspeksi.",
       isHighlighted: true,
     },
   ];
@@ -211,20 +224,37 @@ export function getMapLegendMetadata(): MapLegendMetadata {
     {
       level: "overview",
       zoomRange: "Zoom 1 - 11",
-      description: "Tampilan makro wilayah kabupaten/kecamatan. Mengutamakan performa rendering kanvas.",
-      visibleLayers: ["Backbone Utama (48-96C)", "Feeder Utama (24C)", "Kabel Status Gangguan"],
+      description:
+        "Tampilan makro wilayah kabupaten/kecamatan. Mengutamakan performa rendering kanvas.",
+      visibleLayers: [
+        "Backbone Utama (48-96C)",
+        "Feeder Utama (24C)",
+        "Kabel Status Gangguan",
+      ],
     },
     {
       level: "regional",
       zoomRange: "Zoom 12 - 14",
-      description: "Tampilan tingkat desa/kelurahan untuk pemantauan rute distribusi antar-kabinet ODC.",
-      visibleLayers: ["Backbone", "Feeder Primer", "Distribusi Cabang (4-8C)", "Kabel Offline"],
+      description:
+        "Tampilan tingkat desa/kelurahan untuk pemantauan rute distribusi antar-kabinet ODC.",
+      visibleLayers: [
+        "Backbone",
+        "Feeder Primer",
+        "Distribusi Cabang (4-8C)",
+        "Kabel Offline",
+      ],
     },
     {
       level: "detail",
       zoomRange: "Zoom 15 - 22",
-      description: "Tampilan mikro jalan raya dan gang. Menampilkan seluruh hierarki kabel hingga roset pelanggan.",
-      visibleLayers: ["Semua Kabel", "Drop Core Pelanggan (1-2C)", "Titik Rumah Pelanggan", "Tiang Span"],
+      description:
+        "Tampilan mikro jalan raya dan gang. Menampilkan seluruh hierarki kabel hingga roset pelanggan.",
+      visibleLayers: [
+        "Semua Kabel",
+        "Drop Core Pelanggan (1-2C)",
+        "Titik Rumah Pelanggan",
+        "Tiang Span",
+      ],
     },
   ];
 
@@ -245,13 +275,15 @@ export function getMapLegendMetadata(): MapLegendMetadata {
       id: "gesture-inspect",
       action: "Inspeksi Titik / Kabel",
       trigger: "Klik pada ikon titik pelanggan, ODP, atau segmen kabel",
-      description: "Membuka panel samping rincian redaman, OLT port, dan menyorot jalur transmisi.",
+      description:
+        "Membuka panel samping rincian redaman, OLT port, dan menyorot jalur transmisi.",
     },
     {
       id: "gesture-cull-toggle",
       action: "Optimasi Viewport & LOD",
       trigger: "Saklar switch pada kontrol mengambang kanan atas",
-      description: "Menyalakan atau mematikan penyembunyian titik dan kabel di luar layar.",
+      description:
+        "Menyalakan atau mematikan penyembunyian titik dan kabel di luar layar.",
     },
   ];
 

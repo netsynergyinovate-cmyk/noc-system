@@ -23,14 +23,16 @@ const META: Readonly<Record<OnuStatus, OnuStatusMeta>> = {
     variant: "warning",
     dotClass: "bg-warning",
     badgeClass: "border-warning/40 bg-warning/10 text-warning",
-    description: "ONU tidak merespons; kemungkinan listrik pelanggan mati atau perangkat dimatikan.",
+    description:
+      "ONU tidak merespons; kemungkinan listrik pelanggan mati atau perangkat dimatikan.",
   },
   los: {
     label: "Kabel Putus (LOS)",
     variant: "destructive",
     dotClass: "bg-destructive",
     badgeClass: "border-destructive/40 bg-destructive/10 text-destructive",
-    description: "Sinyal optik hilang (LOS); periksa kabel fiber atau konektor.",
+    description:
+      "Sinyal optik hilang (LOS); periksa kabel fiber atau konektor.",
   },
 };
 

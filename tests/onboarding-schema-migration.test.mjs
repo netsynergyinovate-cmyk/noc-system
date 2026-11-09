@@ -6,9 +6,8 @@ import { register } from "tsx/esm/api";
 
 register();
 
-const { onboardingSteps, onboardingProgress } = await import(
-  "../src/db/schema/onboarding.ts"
-);
+const { onboardingSteps, onboardingProgress } =
+  await import("../src/db/schema/onboarding.ts");
 
 test("onboardingSteps skema terdefinisi dengan kolom yang sesuai", () => {
   assert.ok(onboardingSteps);
@@ -43,16 +42,18 @@ test("Berkas migrasi SQL onboarding_steps dan onboarding_progress tersedia", () 
   const files = fs.readdirSync(drizzleDir).filter((f) => f.endsWith(".sql"));
   // Tabel onboarding dibuat oleh salah satu migrasi (bukan harus yang terakhir:
   // migrasi sesudahnya boleh mengubah tabel lain).
-  const sql = files.map((f) => fs.readFileSync(path.join(drizzleDir, f), "utf-8")).join("\n");
+  const sql = files
+    .map((f) => fs.readFileSync(path.join(drizzleDir, f), "utf-8"))
+    .join("\n");
 
   assert.ok(
-    sql.includes("CREATE TABLE \"onboarding_steps\"") ||
-      sql.includes("CREATE TABLE IF NOT EXISTS \"onboarding_steps\""),
+    sql.includes('CREATE TABLE "onboarding_steps"') ||
+      sql.includes('CREATE TABLE IF NOT EXISTS "onboarding_steps"'),
     "Harus membuat tabel onboarding_steps",
   );
   assert.ok(
-    sql.includes("CREATE TABLE \"onboarding_progress\"") ||
-      sql.includes("CREATE TABLE IF NOT EXISTS \"onboarding_progress\""),
+    sql.includes('CREATE TABLE "onboarding_progress"') ||
+      sql.includes('CREATE TABLE IF NOT EXISTS "onboarding_progress"'),
     "Harus membuat tabel onboarding_progress",
   );
   assert.ok(sql.includes("onboarding_progress_user_step_idx"));

@@ -6,7 +6,9 @@ const IV_LENGTH = 12;
 
 function normalizeKey(secret) {
   const raw = Buffer.from(secret, "utf-8");
-  return raw.length === 32 ? raw : crypto.createHash("sha256").update(raw).digest();
+  return raw.length === 32
+    ? raw
+    : crypto.createHash("sha256").update(raw).digest();
 }
 
 function decryptWithKey(data, key) {
@@ -14,7 +16,9 @@ function decryptWithKey(data, key) {
   const [iv, tag, enc] = parts.map((p) => Buffer.from(p, "base64"));
   const decipher = crypto.createDecipheriv(ALGORITHM, normalizeKey(key), iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+  return Buffer.concat([decipher.update(enc), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 const secretKey = "noc-device-secret-key-32chars-ok";
@@ -23,7 +27,8 @@ const password = decryptWithKey(enc, secretKey);
 
 async function testVlanPonMapping() {
   const pool = new pg.Pool({
-    connectionString: "postgresql://starter:starter_password@127.0.0.1:5432/starter"
+    connectionString:
+      "postgresql://starter:starter_password@127.0.0.1:5432/starter",
   });
 
   const ponRes = await pool.query(`
@@ -52,7 +57,7 @@ async function testVlanPonMapping() {
   for (let pon = 1; pon <= 8; pon++) {
     const vlanName = `vlan110${pon}`;
     const iface = vlanMap.get(vlanName);
-    const ponData = ponRes.rows.find(p => p.pon_index === pon);
+    const ponData = ponRes.rows.find((p) => p.pon_index === pon);
     console.log(`PON ${pon}:`, {
       vlanName,
       vlanId: 1100 + pon,
@@ -69,4 +74,3 @@ async function testVlanPonMapping() {
 }
 
 testVlanPonMapping().catch(console.error);
-

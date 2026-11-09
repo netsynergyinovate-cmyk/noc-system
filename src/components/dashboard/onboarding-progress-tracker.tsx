@@ -11,7 +11,10 @@ import {
   PlayCircle,
   Layers,
 } from "lucide-react";
-import type { OnboardingOverview, OnboardingStep } from "@/lib/dashboard/onboarding-data";
+import type {
+  OnboardingOverview,
+  OnboardingStep,
+} from "@/lib/dashboard/onboarding-data";
 
 export interface OnboardingProgressTrackerProps {
   overview: OnboardingOverview;
@@ -80,7 +83,8 @@ export function OnboardingProgressTracker({
               {overview.completionPercentage}%
             </span>
             <span className="text-xs text-muted-foreground">
-              ({overview.completedSteps} dari {overview.totalSteps} langkah selesai)
+              ({overview.completedSteps} dari {overview.totalSteps} langkah
+              selesai)
             </span>
           </div>
           <span className="text-xs font-medium text-muted-foreground">
@@ -183,8 +187,12 @@ export function OnboardingProgressTracker({
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="text-xs">
-            <span className="font-semibold">Selamat! Seluruh langkah onboarding telah selesai.</span>
-            <p className="text-muted-foreground">Sistem siap diverifikasi untuk tahap go-live produksi.</p>
+            <span className="font-semibold">
+              Selamat! Seluruh langkah onboarding telah selesai.
+            </span>
+            <p className="text-muted-foreground">
+              Sistem siap diverifikasi untuk tahap go-live produksi.
+            </p>
           </div>
         </div>
       )}
@@ -199,9 +207,12 @@ export function OnboardingProgressTracker({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {categories.map((cat) => {
             const catSteps = steps.filter((s) => s.category === cat.key);
-            const catDone = catSteps.filter((s) => s.status === "selesai").length;
+            const catDone = catSteps.filter(
+              (s) => s.status === "selesai",
+            ).length;
             const catTotal = catSteps.length;
-            const pct = catTotal === 0 ? 0 : Math.round((catDone / catTotal) * 100);
+            const pct =
+              catTotal === 0 ? 0 : Math.round((catDone / catTotal) * 100);
 
             return (
               <div
@@ -212,7 +223,9 @@ export function OnboardingProgressTracker({
                   {cat.label}
                 </span>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>{catDone}/{catTotal} selesai</span>
+                  <span>
+                    {catDone}/{catTotal} selesai
+                  </span>
                   <span className="font-semibold">{pct}%</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">

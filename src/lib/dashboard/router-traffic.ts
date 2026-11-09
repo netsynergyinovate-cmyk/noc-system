@@ -22,7 +22,10 @@ function unit(seed: string): number {
   return ((h >>> 0) % 100000) / 100000;
 }
 
-export function getMockRouterTraffic(routerId: string, active = true): RouterTrafficStats {
+export function getMockRouterTraffic(
+  routerId: string,
+  active = true,
+): RouterTrafficStats {
   if (!active) {
     return {
       hasData: false,
@@ -63,5 +66,8 @@ export function getMockRouterTraffic(routerId: string, active = true): RouterTra
 }
 
 export function isTrafficEmpty(stats: RouterTrafficStats): boolean {
-  return !stats.hasData || (stats.rxBps === 0 && stats.txBps === 0 && stats.peakRxBps === 0);
+  return (
+    !stats.hasData ||
+    (stats.rxBps === 0 && stats.txBps === 0 && stats.peakRxBps === 0)
+  );
 }

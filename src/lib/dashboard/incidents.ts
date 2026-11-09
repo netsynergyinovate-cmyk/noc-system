@@ -42,7 +42,10 @@ export function sortIncidents(incidents: Incident[]) {
 
 // "offline" tanpa pelanggan adalah gangguan tingkat router: backend tidak bisa
 // membaca routernya. Label "Pelanggan offline" akan menyesatkan.
-export function alertKindLabel(alert: { kind: IncidentKind; customerId: string | null }): string {
+export function alertKindLabel(alert: {
+  kind: IncidentKind;
+  customerId: string | null;
+}): string {
   return alert.kind === "offline" && alert.customerId === null
     ? "Router tidak terjangkau"
     : incidentLabels[alert.kind];

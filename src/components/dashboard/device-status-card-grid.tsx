@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Router as RouterIcon, Server, Thermometer } from "lucide-react";
+import {
+  Activity,
+  Router as RouterIcon,
+  Server,
+  Thermometer,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,17 +40,19 @@ const LABEL: Record<DeviceHardwareStatus["status"], string> = {
 };
 
 // Ponytail: data OLT masih tiruan dari device-config; ganti dengan API OLT nyata.
-const MOCK_OLTS = MOCK_DEVICE_CONFIGS.filter((d) => d.type === "olt").map((d) => ({
-  id: d.id,
-  name: d.name,
-  host: d.host,
-  brand: String(d.metadata.brand ?? "OLT"),
-  ponPorts: d.metadata.ponPorts,
-  activeOnus: d.metadata.activeOnus,
-  temperature: 41,
-  uptime: "35 hari",
-  online: d.status === "connected",
-}));
+const MOCK_OLTS = MOCK_DEVICE_CONFIGS.filter((d) => d.type === "olt").map(
+  (d) => ({
+    id: d.id,
+    name: d.name,
+    host: d.host,
+    brand: String(d.metadata.brand ?? "OLT"),
+    ponPorts: d.metadata.ponPorts,
+    activeOnus: d.metadata.activeOnus,
+    temperature: 41,
+    uptime: "35 hari",
+    online: d.status === "connected",
+  }),
+);
 
 function isHot(card: DeviceHardwareStatus): boolean {
   const n = Number(/(\d+)/.exec(card.cpuOrTemp)?.[1]);
@@ -57,13 +64,19 @@ function DeviceCard({ card }: { card: DeviceHardwareStatus }) {
   const [open, setOpen] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
   // Ponytail: port/username router belum ada di kartu; pakai bawaan REST MikroTik.
-  const cfg = MOCK_DEVICE_CONFIGS.find((d) => d.id === card.id && d.type === card.type);
+  const cfg = MOCK_DEVICE_CONFIGS.find(
+    (d) => d.id === card.id && d.type === card.type,
+  );
 
   const Icon = card.type === "router" ? RouterIcon : Server;
   const hot = isHot(card);
 
   return (
-    <Card data-testid="device-card" data-type={card.type} data-status={card.status}>
+    <Card
+      data-testid="device-card"
+      data-type={card.type}
+      data-status={card.status}
+    >
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -81,7 +94,9 @@ function DeviceCard({ card }: { card: DeviceHardwareStatus }) {
           </div>
           <Badge variant="secondary" className="shrink-0 gap-1">
             <Icon className="size-3" aria-hidden="true" />
-            {card.type === "router" ? `Router ${card.brand}` : `OLT ${card.brand}`}
+            {card.type === "router"
+              ? `Router ${card.brand}`
+              : `OLT ${card.brand}`}
           </Badge>
         </div>
 
@@ -100,9 +115,15 @@ function DeviceCard({ card }: { card: DeviceHardwareStatus }) {
               }`}
               data-hot={hot}
             >
-              {card.type === "olt" && <Thermometer className="size-3" aria-hidden="true" />}
+              {card.type === "olt" && (
+                <Thermometer className="size-3" aria-hidden="true" />
+              )}
               {card.cpuOrTemp}
-              {hot && <span className="font-sans text-[10px] font-normal">(tinggi)</span>}
+              {hot && (
+                <span className="font-sans text-[10px] font-normal">
+                  (tinggi)
+                </span>
+              )}
             </dd>
           </div>
           <div className="col-span-2">
@@ -185,31 +206,47 @@ export function DeviceStatusCardGrid() {
     let active = true;
     fetch("/api/olts")
       .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}: Gagal memuat data OLT`);
+        if (!res.ok)
+          throw new Error(`HTTP ${res.status}: Gagal memuat data OLT`);
         return res.json();
       })
-      .then((json: { data?: Array<{ id: string; name: string; host: string; brand?: string; lastSeenAt?: string | null; ponPortCount?: number; onuOnline?: number }> }) => {
-        if (!active || !Array.isArray(json?.data)) return;
-        const mapped = json.data.map((o) => {
-          const isFresh = o.lastSeenAt
-            ? Date.now() - new Date(o.lastSeenAt).getTime() < 5 * 60 * 1000
-            : false;
-          return {
-            id: o.id,
-            name: o.name,
-            host: o.host,
-            brand: o.brand || "OLT",
-            ponPorts: o.ponPortCount ?? 0,
-            activeOnus: o.onuOnline ?? 0,
-            temperature: null,
-            uptime: null,
-            online: isFresh,
-          };
-        });
-        setRealOlts(mapped);
-      })
+      .then(
+        (json: {
+          data?: Array<{
+            id: string;
+            name: string;
+            host: string;
+            brand?: string;
+            lastSeenAt?: string | null;
+            ponPortCount?: number;
+            onuOnline?: number;
+          }>;
+        }) => {
+          if (!active || !Array.isArray(json?.data)) return;
+          const mapped = json.data.map((o) => {
+            const isFresh = o.lastSeenAt
+              ? Date.now() - new Date(o.lastSeenAt).getTime() < 5 * 60 * 1000
+              : false;
+            return {
+              id: o.id,
+              name: o.name,
+              host: o.host,
+              brand: o.brand || "OLT",
+              ponPorts: o.ponPortCount ?? 0,
+              activeOnus: o.onuOnline ?? 0,
+              temperature: null,
+              uptime: null,
+              online: isFresh,
+            };
+          });
+          setRealOlts(mapped);
+        },
+      )
       .catch((err: unknown) => {
-        console.error("Gagal memuat OLT:", err instanceof Error ? err.message : err);
+        console.error(
+          "Gagal memuat OLT:",
+          err instanceof Error ? err.message : err,
+        );
       });
     return () => {
       active = false;
@@ -219,10 +256,17 @@ export function DeviceStatusCardGrid() {
   const currentOlts = isDemo ? MOCK_OLTS : realOlts;
   const routerCards = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const c of customers) counts[c.routerId] = (counts[c.routerId] ?? 0) + 1;
-    return transformRoutersToStatusCards(buildRouterDetails(routers, counts), customers);
+    for (const c of customers)
+      counts[c.routerId] = (counts[c.routerId] ?? 0) + 1;
+    return transformRoutersToStatusCards(
+      buildRouterDetails(routers, counts),
+      customers,
+    );
   }, [routers, customers]);
-  const oltCards = useMemo(() => transformOltsToStatusCards(currentOlts), [currentOlts]);
+  const oltCards = useMemo(
+    () => transformOltsToStatusCards(currentOlts),
+    [currentOlts],
+  );
   const agg = useMemo(
     () => computeAggregateDeviceStatus(routers, currentOlts, customers),
     [routers, customers, currentOlts],
@@ -235,8 +279,13 @@ export function DeviceStatusCardGrid() {
   if (cards.length === 0) {
     return (
       <Card className="border-dashed p-6 text-center text-muted-foreground">
-        <p className="text-sm font-medium">Belum ada perangkat Router atau OLT fisik yang terhubung.</p>
-        <p className="mt-1 text-xs">Tambahkan router MikroTik baru lewat tombol &ldquo;Tambah Router&rdquo; di atas.</p>
+        <p className="text-sm font-medium">
+          Belum ada perangkat Router atau OLT fisik yang terhubung.
+        </p>
+        <p className="mt-1 text-xs">
+          Tambahkan router MikroTik baru lewat tombol &ldquo;Tambah
+          Router&rdquo; di atas.
+        </p>
       </Card>
     );
   }

@@ -25,4 +25,3 @@ export default async function CpePage() {
     </div>
   );
 }
-

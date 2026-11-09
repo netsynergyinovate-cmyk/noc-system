@@ -10,10 +10,22 @@ import { formatDbm } from "@/lib/dashboard/format";
 /** Nilai RX + badge status sinyal. Teks dan ikon membedakan level, bukan hanya warna. */
 export function OpticalRx({ dbm }: { dbm: number | null | undefined }) {
   const s = getOpticalSignalStatus(dbm);
-  const Icon = s.tone === "success" ? CheckCircle2 : s.tone === "danger" ? XOctagon : AlertTriangle;
+  const Icon =
+    s.tone === "success"
+      ? CheckCircle2
+      : s.tone === "danger"
+        ? XOctagon
+        : AlertTriangle;
   return (
-    <div className="flex items-center gap-2" data-testid="optical-rx" data-level={s.level} data-out={s.isOutOfThreshold}>
-      <span className={`font-mono text-sm font-semibold tabular-nums ${OPTICAL_TEXT_CLASS[s.tone]}`}>
+    <div
+      className="flex items-center gap-2"
+      data-testid="optical-rx"
+      data-level={s.level}
+      data-out={s.isOutOfThreshold}
+    >
+      <span
+        className={`font-mono text-sm font-semibold tabular-nums ${OPTICAL_TEXT_CLASS[s.tone]}`}
+      >
         {dbm == null ? "—" : formatDbm(dbm)}
       </span>
       <span

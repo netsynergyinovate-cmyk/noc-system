@@ -53,12 +53,22 @@ export async function postBillingSync(userId: string) {
     });
   if (res.status === 409)
     return Response.json(
-      { error: { code: "SYNC_IN_PROGRESS", message: "sinkronisasi sedang berjalan" } },
+      {
+        error: {
+          code: "SYNC_IN_PROGRESS",
+          message: "sinkronisasi sedang berjalan",
+        },
+      },
       { status: 409 },
     );
   if (res.status === 503)
     return Response.json(
-      { error: { code: "BILLING_DISABLED", message: "Sinkron billing tidak aktif." } },
+      {
+        error: {
+          code: "BILLING_DISABLED",
+          message: "Sinkron billing tidak aktif.",
+        },
+      },
       { status: 503 },
     );
   return Response.json(
@@ -92,7 +102,8 @@ export function proxyBilling<T>(
       return Response.json(mark(mock(nowSec), "mock"));
     };
 
-    if (env.DASHBOARD_DATA !== "live" || !env.BACKEND_INTERNAL_URL) return fallback();
+    if (env.DASHBOARD_DATA !== "live" || !env.BACKEND_INTERNAL_URL)
+      return fallback();
     if (!env.REALTIME_TOKEN_SECRET) return fallback();
     try {
       const { token } = issueRealtimeTicket({

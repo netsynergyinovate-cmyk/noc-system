@@ -3,13 +3,37 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, CheckCircle2, Cpu, Network, Radio, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Activity,
+  CheckCircle2,
+  Cpu,
+  Network,
+  Radio,
+  Trash2,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getOltStats, oltLinkState, type DashboardOlt } from "@/lib/dashboard/olts";
+import {
+  getOltStats,
+  oltLinkState,
+  type DashboardOlt,
+} from "@/lib/dashboard/olts";
 import { ConnectionErrorNotice } from "./connection-error-notice";
 import { CpeInventory } from "./cpe-inventory";
 import { OnuCustomerMappingPanel } from "./onu-customer-mapping-panel";
@@ -32,7 +56,8 @@ type CpeTab = (typeof VALID_TABS)[number];
 export function CpeBoard() {
   const searchParams = useSearchParams();
   const queryTab = searchParams.get("tab") as CpeTab | null;
-  const initialTab: CpeTab = queryTab && VALID_TABS.includes(queryTab) ? queryTab : "olt";
+  const initialTab: CpeTab =
+    queryTab && VALID_TABS.includes(queryTab) ? queryTab : "olt";
   const [tab, setTab] = useState<CpeTab>(initialTab);
 
   useEffect(() => {
@@ -53,32 +78,51 @@ export function CpeBoard() {
   };
   const [olts, setOlts] = useState<readonly DashboardOlt[]>([]);
   const [oltsFailed, setOltsFailed] = useState(false);
-  const [selectedOltForPon, setSelectedOltForPon] = useState<DashboardOlt | null>(null);
+  const [selectedOltForPon, setSelectedOltForPon] =
+    useState<DashboardOlt | null>(null);
   const [oltToDelete, setOltToDelete] = useState<DashboardOlt | null>(null);
   const [pingStatus, setPingStatus] = useState<
-    Record<string, { loading: boolean; ok?: boolean; latencyMs?: number; error?: string }>
+    Record<
+      string,
+      { loading: boolean; ok?: boolean; latencyMs?: number; error?: string }
+    >
   >({});
 
   const handlePing = async (oltId: string) => {
     setPingStatus((prev) => ({ ...prev, [oltId]: { loading: true } }));
     try {
-      const res = await fetch(`/api/olts/${encodeURIComponent(oltId)}/ping`, { method: "POST" });
+      const res = await fetch(`/api/olts/${encodeURIComponent(oltId)}/ping`, {
+        method: "POST",
+      });
       const json = await res.json();
       if (res.ok && json.data) {
         setPingStatus((prev) => ({
           ...prev,
-          [oltId]: { loading: false, ok: json.data.ok, latencyMs: json.data.latencyMs, error: json.data.error },
+          [oltId]: {
+            loading: false,
+            ok: json.data.ok,
+            latencyMs: json.data.latencyMs,
+            error: json.data.error,
+          },
         }));
       } else {
         setPingStatus((prev) => ({
           ...prev,
-          [oltId]: { loading: false, ok: false, error: json.error?.message || "Gagal ping" },
+          [oltId]: {
+            loading: false,
+            ok: false,
+            error: json.error?.message || "Gagal ping",
+          },
         }));
       }
     } catch (e) {
       setPingStatus((prev) => ({
         ...prev,
-        [oltId]: { loading: false, ok: false, error: e instanceof Error ? e.message : "Gagal koneksi" },
+        [oltId]: {
+          loading: false,
+          ok: false,
+          error: e instanceof Error ? e.message : "Gagal koneksi",
+        },
       }));
     }
   };
@@ -113,7 +157,9 @@ export function CpeBoard() {
   const oltStats = getOltStats(olts);
   // Demo: data tiruan punya last_seen_at tetap, jadi jangan dinilai basi terhadap jam sungguhan.
   const nowSec = Math.floor(now / 1000);
-  const oltTerputus = olts.find((o) => ["down", "stale"].includes(oltLinkState(o, nowSec)));
+  const oltTerputus = olts.find((o) =>
+    ["down", "stale"].includes(oltLinkState(o, nowSec)),
+  );
 
   return (
     <Tabs value={tab} onValueChange={handleTabChange} className="gap-6">
@@ -121,7 +167,9 @@ export function CpeBoard() {
         <TabsTrigger value="olt">Daftar OLT</TabsTrigger>
         <TabsTrigger value="onus">Perangkat CPE/ONT</TabsTrigger>
         <TabsTrigger value="mapping">Kelola Pemetaan ONU</TabsTrigger>
-        <TabsTrigger value="diagnostics">Tugas Diagnostik &amp; Riwayat</TabsTrigger>
+        <TabsTrigger value="diagnostics">
+          Tugas Diagnostik &amp; Riwayat
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="diagnostics" className="flex flex-col gap-6">
@@ -129,9 +177,10 @@ export function CpeBoard() {
           data-testid="diagnostics-live-note"
           className="rounded-md border border-dashed p-6 text-sm text-muted-foreground"
         >
-          Panel diagnostik massal (ping, traceroute) belum memakai data modem nyata, jadi tidak ditampilkan di mode
-          live. Reboot dan ubah Wi-Fi modem satu pelanggan sudah nyata: buka ikon pengaturan (roda gigi) pada baris
-          pelanggan di halaman Pelanggan.
+          Panel diagnostik massal (ping, traceroute) belum memakai data modem
+          nyata, jadi tidak ditampilkan di mode live. Reboot dan ubah Wi-Fi
+          modem satu pelanggan sudah nyata: buka ikon pengaturan (roda gigi)
+          pada baris pelanggan di halaman Pelanggan.
         </p>
       </TabsContent>
 
@@ -180,7 +229,8 @@ export function CpeBoard() {
             <div className="flex flex-col gap-1.5">
               <CardTitle className="text-lg">Daftar OLT</CardTitle>
               <CardDescription>
-                Data dari database; jumlah port dan ONU dari hasil polling OLT oleh backend.
+                Data dari database; jumlah port dan ONU dari hasil polling OLT
+                oleh backend.
               </CardDescription>
             </div>
             <OltWizardDialog onSaved={() => setReloadKey((k) => k + 1)} />
@@ -212,7 +262,11 @@ export function CpeBoard() {
                 <TableBody>
                   {olts.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-28 text-center text-muted-foreground" data-testid="olt-empty">
+                      <TableCell
+                        colSpan={9}
+                        className="h-28 text-center text-muted-foreground"
+                        data-testid="olt-empty"
+                      >
                         {oltsFailed
                           ? "Daftar OLT belum bisa dimuat dari server."
                           : "Belum ada OLT terdaftar. Klik Tambah OLT untuk mendaftarkan OLT pertama."}
@@ -222,17 +276,25 @@ export function CpeBoard() {
                   {olts.map((olt) => (
                     <TableRow key={olt.id}>
                       <TableCell>
-                        <div className="font-medium text-foreground">{olt.name}</div>
+                        <div className="font-medium text-foreground">
+                          {olt.name}
+                        </div>
                         <Link
                           href={`/app/cpe/pon/${olt.id}:1`}
                           className="text-xs text-primary underline-offset-2 hover:underline"
                         >
                           Lihat detail PON 1
                         </Link>
-                        <div className="text-xs text-muted-foreground">{olt.brand}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {olt.brand}
+                        </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{olt.host}</TableCell>
-                      <TableCell className="font-mono text-xs">{olt.driver}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {olt.host}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {olt.driver}
+                      </TableCell>
                       <TableCell className="tabular-nums">
                         <Button
                           type="button"
@@ -244,30 +306,51 @@ export function CpeBoard() {
                           Lihat Port ({olt.totalPonPorts})
                         </Button>
                       </TableCell>
-                      <TableCell className="tabular-nums">{formatInteger(olt.activeOnus)}</TableCell>
-                      <TableCell className="tabular-nums">{olt.temperatureC}°C</TableCell>
+                      <TableCell className="tabular-nums">
+                        {formatInteger(olt.activeOnus)}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {olt.temperatureC}°C
+                      </TableCell>
                       <TableCell>
                         {oltLinkState(olt, nowSec) === "online" ? (
                           <Badge
                             variant="outline"
                             className="border-success/40 bg-success/10 text-success"
                           >
-                            <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full bg-success" />
+                            <span
+                              aria-hidden="true"
+                              className="mr-1.5 inline-block size-2 rounded-full bg-success"
+                            />
                             Terhubung
                           </Badge>
                         ) : oltLinkState(olt, nowSec) === "waiting" ? (
                           // OLT baru disimpan: backend belum selesai polling pertama (beberapa detik sampai semenit).
-                          <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning" title="Backend sedang menghubungi OLT untuk pertama kali; daftar disegarkan otomatis.">
-                            <span aria-hidden="true" className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-warning" />
+                          <Badge
+                            variant="outline"
+                            className="border-warning/40 bg-warning/10 text-warning"
+                            title="Backend sedang menghubungi OLT untuk pertama kali; daftar disegarkan otomatis."
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mr-1.5 inline-block size-2 animate-pulse rounded-full bg-warning"
+                            />
                             Menunggu polling pertama
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
                             className="border-destructive/40 bg-destructive/10 text-destructive"
-                            title={olt.status === "aktif" ? "Backend tidak berhasil memoll OLT ini beberapa menit terakhir." : undefined}
+                            title={
+                              olt.status === "aktif"
+                                ? "Backend tidak berhasil memoll OLT ini beberapa menit terakhir."
+                                : undefined
+                            }
                           >
-                            <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full bg-destructive" />
+                            <span
+                              aria-hidden="true"
+                              className="mr-1.5 inline-block size-2 rounded-full bg-destructive"
+                            />
                             Terputus
                           </Badge>
                         )}
@@ -277,25 +360,40 @@ export function CpeBoard() {
                           "Belum pernah"
                         ) : (
                           <time
-                            dateTime={new Date(olt.lastSeenAt * 1000).toISOString()}
+                            dateTime={new Date(
+                              olt.lastSeenAt * 1000,
+                            ).toISOString()}
                             title="Terakhir berhasil dihubungi"
                           >
-                            {oltTimeFormat.format(new Date(olt.lastSeenAt * 1000))} WIB
+                            {oltTimeFormat.format(
+                              new Date(olt.lastSeenAt * 1000),
+                            )}{" "}
+                            WIB
                           </time>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {pingStatus[olt.id]?.loading ? (
-                            <Badge variant="outline" className="border-muted font-mono text-[10px] animate-pulse">
+                            <Badge
+                              variant="outline"
+                              className="border-muted font-mono text-[10px] animate-pulse"
+                            >
                               Ping...
                             </Badge>
                           ) : pingStatus[olt.id]?.ok ? (
-                            <Badge variant="outline" className="border-success/40 bg-success/10 text-success font-mono text-[10px]">
+                            <Badge
+                              variant="outline"
+                              className="border-success/40 bg-success/10 text-success font-mono text-[10px]"
+                            >
                               {pingStatus[olt.id].latencyMs} ms
                             </Badge>
                           ) : pingStatus[olt.id]?.ok === false ? (
-                            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive font-mono text-[10px]" title={pingStatus[olt.id].error}>
+                            <Badge
+                              variant="outline"
+                              className="border-destructive/40 bg-destructive/10 text-destructive font-mono text-[10px]"
+                              title={pingStatus[olt.id].error}
+                            >
                               RTO
                             </Badge>
                           ) : null}
@@ -348,7 +446,6 @@ export function CpeBoard() {
           />
         )}
       </TabsContent>
-
     </Tabs>
   );
 }

@@ -283,7 +283,9 @@ export function TrafficChart({
               warning: token("--warning"),
               critical: token("--destructive"),
             }),
-            tooltipPlugin(rangeSeconds, getIncidents, (p) => onInspectRef.current?.(p)),
+            tooltipPlugin(rangeSeconds, getIncidents, (p) =>
+              onInspectRef.current?.(p),
+            ),
           ],
           scales: {
             x: {

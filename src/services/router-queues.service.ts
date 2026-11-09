@@ -4,7 +4,10 @@ import { db } from "@/db";
 import { routers as routersTable } from "@/db/schema";
 import { env } from "@/lib/env";
 import { decryptAES256GCM } from "@/lib/encryption";
-import { MikrotikRestClient, type MikrotikSimpleQueue } from "@/lib/mikrotik/client";
+import {
+  MikrotikRestClient,
+  type MikrotikSimpleQueue,
+} from "@/lib/mikrotik/client";
 import {
   filterSimpleQueues,
   generateMockSimpleQueues,
@@ -18,7 +21,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function parseBps(v: string): number {
   const m = /^(\d+(?:\.\d+)?)([kKmMgG]?)$/.exec(v.trim());
   if (!m) return 0;
-  const mult = { "": 1, k: 1e3, m: 1e6, g: 1e9 }[m[2].toLowerCase() as "" | "k" | "m" | "g"];
+  const mult = { "": 1, k: 1e3, m: 1e6, g: 1e9 }[
+    m[2].toLowerCase() as "" | "k" | "m" | "g"
+  ];
   return Math.round(Number(m[1]) * mult);
 }
 
@@ -49,7 +54,11 @@ export async function getRouterQueues(
   status: QueueStatusFilter = "all",
 ): Promise<MockSimpleQueue[]> {
   if (routerId.startsWith("router-") || env.DASHBOARD_DATA === "demo") {
-    return filterSimpleQueues(generateMockSimpleQueues(routerId, []), query, status);
+    return filterSimpleQueues(
+      generateMockSimpleQueues(routerId, []),
+      query,
+      status,
+    );
   }
   if (!UUID.test(routerId)) return [];
 

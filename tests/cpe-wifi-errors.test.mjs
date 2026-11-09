@@ -10,14 +10,22 @@ test("409 -> TASK_CONFLICT dengan saran antrean", () => {
 });
 
 test("504 dan code CPE_OFFLINE -> CPE_OFFLINE dengan saran periksa modem", () => {
-  for (const v of [parseCpeWifiError(504), parseCpeWifiError(500, { code: "CPE_OFFLINE" }), parseCpeWifiError(502, { error: { code: "DEVICE_UNREACHABLE" } })]) {
+  for (const v of [
+    parseCpeWifiError(504),
+    parseCpeWifiError(500, { code: "CPE_OFFLINE" }),
+    parseCpeWifiError(502, { error: { code: "DEVICE_UNREACHABLE" } }),
+  ]) {
     assert.equal(v.code, "CPE_OFFLINE");
     assert.match(v.hint, /modem menyala/);
   }
 });
 
 test("422 dan FAULT_9003/9005 -> PARAMETER_FAULT dengan saran karakter", () => {
-  for (const v of [parseCpeWifiError(422), parseCpeWifiError(500, { code: "FAULT_9003" }), parseCpeWifiError(500, { code: "FAULT_9005" })]) {
+  for (const v of [
+    parseCpeWifiError(422),
+    parseCpeWifiError(500, { code: "FAULT_9003" }),
+    parseCpeWifiError(500, { code: "FAULT_9005" }),
+  ]) {
     assert.equal(v.code, "PARAMETER_FAULT");
     assert.match(v.hint, /karakter/);
     assert.equal(v.canRetry, false);

@@ -329,7 +329,7 @@ function layerRank(layer: DiagnosticLayer, status: FindingStatus): number {
   }
   switch (layer) {
     case "hulu":
-       return 1;
+      return 1;
     case "optik":
       return 2;
     case "ont":
@@ -1260,7 +1260,8 @@ export function evaluateOnt(
           threshold: null,
           comparator: null,
           status: "ok",
-          detail: "Konteks: semua perangkat aktif berbagi kecepatan paket yang sama.",
+          detail:
+            "Konteks: semua perangkat aktif berbagi kecepatan paket yang sama.",
         },
   );
   if (ont.rxDbm === null) {
@@ -2853,9 +2854,7 @@ export function evaluateTrafficTrend(
   const ratio = base ? t.windowDown / base : null;
   // Penurunan hanya bermakna bila jam ini biasanya ramai.
   const meaningfulDrop =
-    ratio !== null &&
-    ratio < TRAFFIC_DROP_RATIO &&
-    (base ?? 0) >= minBaseline;
+    ratio !== null && ratio < TRAFFIC_DROP_RATIO && (base ?? 0) >= minBaseline;
   const spike = ratio !== null && ratio > TRAFFIC_SPIKE_RATIO;
   const status: FindingStatus = meaningfulDrop || spike ? "warn" : "ok";
   const planStr =
@@ -2959,7 +2958,8 @@ export function evaluateFlows(
   if (hasPlanUp) {
     if (peakUp != null) {
       const nearLimit = peakUp >= (planUp * UPLOAD_NEAR_PLAN_PCT) / 100;
-      directionStatus = upShare >= UPLOAD_DOMINANT_PCT && nearLimit ? "warn" : "ok";
+      directionStatus =
+        upShare >= UPLOAD_DOMINANT_PCT && nearLimit ? "warn" : "ok";
       directionThreshold = `puncak unggah < ${UPLOAD_NEAR_PLAN_PCT}% paket (${((planUp * UPLOAD_NEAR_PLAN_PCT) / 100).toFixed(1)} Mbps)`;
       directionValue = `unggah ${fmtBytes(up)} (${upShare}%), unduh ${fmtBytes(total - up)} (${100 - upShare}%); puncak unggah ${peakUp.toFixed(1)} Mbps; ${planStr}`;
       directionDetail =
@@ -3345,7 +3345,8 @@ export function evaluateRateBaseline(
   } else if (downUtilPct !== null) {
     detail = `Pemakaian pelanggan berada di bawah batas paket (${downUtilPct}% dari ${i.limitDown} Mbps).`;
   } else {
-    detail = "Pemakaian berada dalam batas wajar terhadap riwayat mandiri pelanggan.";
+    detail =
+      "Pemakaian berada dalam batas wajar terhadap riwayat mandiri pelanggan.";
   }
 
   const findings: Finding[] = [
@@ -3363,11 +3364,7 @@ export function evaluateRateBaseline(
     },
   ];
 
-  if (
-    i.limitDown !== null &&
-    i.limitDown > 0 &&
-    i.p95Down !== null
-  ) {
+  if (i.limitDown !== null && i.limitDown > 0 && i.p95Down !== null) {
     const p95Pct = Math.round((i.p95Down / i.limitDown) * 100);
     if (p95Pct < RATE_UNUSED_PCT) {
       findings.push({
@@ -3408,12 +3405,7 @@ export function trafficMinBaselineMbps(plan?: PlanLimits | null): number {
 export const UPLOAD_NEAR_PLAN_PCT = 90;
 
 export type FindingChangeKind =
-  | "worse"
-  | "better"
-  | "changed"
-  | "new"
-  | "gone"
-  | "same";
+  "worse" | "better" | "changed" | "new" | "gone" | "same";
 
 export interface FindingSnapshot {
   status: FindingStatus;
@@ -3564,7 +3556,9 @@ export function runSummaryText(run: DiagnosticRunDto): string {
 
   // Header: pelanggan, waktu, asal manual/otomatis + pemicu
   const cust =
-    run.customerName && run.pppoeUsername && run.customerName !== run.pppoeUsername
+    run.customerName &&
+    run.pppoeUsername &&
+    run.customerName !== run.pppoeUsername
       ? `${run.customerName} (${run.pppoeUsername})`
       : run.customerName || run.pppoeUsername || run.customerId || "—";
   const waktu = run.finishedAt ?? run.startedAt ?? run.createdAt ?? "—";
@@ -3594,7 +3588,9 @@ export function runSummaryText(run: DiagnosticRunDto): string {
     `Lapisan   : ${run.verdictLayer ? layerLabel(run.verdictLayer) : "Normal (semua lapisan aman)"}`,
   );
   lines.push(`Cakupan   : ${scopeLabel}`);
-  lines.push(`Rincian   : ${run.verdictDetail || "Tidak ada rincian kesimpulan."}`);
+  lines.push(
+    `Rincian   : ${run.verdictDetail || "Tidak ada rincian kesimpulan."}`,
+  );
   lines.push("");
 
   // Temuan non-ok per lapisan dengan nilai + ambang

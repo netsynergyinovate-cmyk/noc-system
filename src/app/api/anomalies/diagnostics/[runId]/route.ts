@@ -1,9 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  firewallRuleHits,
-  firewallSnapshots,
-} from "@/db/schema";
+import { firewallRuleHits, firewallSnapshots } from "@/db/schema";
 import { ApiError, withApiSession } from "@/lib/api";
 import {
   goDiagnostics,

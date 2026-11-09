@@ -39,6 +39,18 @@ if (t === null) {
     if (isFinite(raw) && raw !== 0) t = raw / 256;
   }
 }
+if (t === null) {
+  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.TransceiverTemperature", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw) && raw !== 0) t = raw / 256;
+  }
+}
+if (t === null) {
+  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.TransceiverTemperature", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw) && raw !== 0) t = raw / 256;
+  }
+}
 // GenieACS hanya menerima xsd:int/unsignedInt/boolean/string/dateTime untuk virtual
 // parameter (tanpa double), jadi desimal ditulis sebagai teks dua angka di belakang koma.
 return {writable: false, value: [t === null ? "" : String(Math.round(t * 100) / 100), "xsd:string"]};

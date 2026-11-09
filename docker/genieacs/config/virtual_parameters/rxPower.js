@@ -30,6 +30,18 @@ if (dbm === null) {
   }
 }
 if (dbm === null) {
+  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.RXPower", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
+  }
+}
+if (dbm === null) {
+  for (const p of declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.RXPower", {value: 1})) {
+    const raw = Number(p.value && p.value[0]);
+    if (isFinite(raw) && raw > 0) dbm = 10 * Math.log10(raw * 0.0001);
+  }
+}
+if (dbm === null) {
   for (const p of declare("Device.Optical.Interface.*.OpticalSignalLevel", {value: 1})) {
     const raw = Number(p.value && p.value[0]);
     if (isFinite(raw)) {

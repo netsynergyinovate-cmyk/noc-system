@@ -252,7 +252,14 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
 
   const epon = `${IGD}.WANDevice.1.X_CT-COM_EponInterfaceConfig`;
   const gpon = `${IGD}.WANDevice.1.X_CT-COM_GponInterfaceConfig`;
-  const ponType = readParam(r, `${epon}.Status`) !== undefined ? "EPON" : readParam(r, `${gpon}.Status`) !== undefined ? "GPON" : "";
+  const cmccEpon = `${IGD}.WANDevice.1.X_CMCC_EponInterfaceConfig`;
+  const cmccGpon = `${IGD}.WANDevice.1.X_CMCC_GponInterfaceConfig`;
+  const ponType =
+    readParam(r, `${epon}.Status`) !== undefined || readParam(r, `${cmccEpon}.Status`) !== undefined
+      ? "EPON"
+      : readParam(r, `${gpon}.Status`) !== undefined || readParam(r, `${cmccGpon}.Status`) !== undefined
+        ? "GPON"
+        : "";
 
   const alu = `${IGD}.X_ALU_OntOpticalParam`;
   const xpon = `${IGD}.DeviceInfo.XponInterface`;
@@ -260,9 +267,21 @@ export function parseDeviceDetail(raw: unknown): CpeDetail {
     const v = num(readParam(r, path));
     return v !== null && v > 0 ? Math.round(10 * Math.log10(v * 0.0001) * 100) / 100 : null;
   };
-  const rx = dbm(readParam(r, `${alu}.RXPower`)) ?? dbm(readParam(r, `${xpon}.RXPower`)) ?? rawDbm(`${epon}.RXPower`) ?? rawDbm(`${gpon}.RXPower`);
-  const tx = dbm(readParam(r, `${alu}.TXPower`)) ?? dbm(readParam(r, `${xpon}.TXPower`)) ?? rawDbm(`${epon}.TXPower`) ?? rawDbm(`${gpon}.TXPower`);
-  const rawTemp = num(readParam(r, `${epon}.TransceiverTemperature`));
+  const rx =
+    dbm(readParam(r, `${alu}.RXPower`)) ??
+    dbm(readParam(r, `${xpon}.RXPower`)) ??
+    rawDbm(`${epon}.RXPower`) ??
+    rawDbm(`${gpon}.RXPower`) ??
+    rawDbm(`${cmccEpon}.RXPower`) ??
+    rawDbm(`${cmccGpon}.RXPower`);
+  const tx =
+    dbm(readParam(r, `${alu}.TXPower`)) ??
+    dbm(readParam(r, `${xpon}.TXPower`)) ??
+    rawDbm(`${epon}.TXPower`) ??
+    rawDbm(`${gpon}.TXPower`) ??
+    rawDbm(`${cmccEpon}.TXPower`) ??
+    rawDbm(`${cmccGpon}.TXPower`);
+  const rawTemp = num(readParam(r, `${epon}.TransceiverTemperature`)) ?? num(readParam(r, `${cmccEpon}.TransceiverTemperature`));
   const aluTemp = dbm(readParam(r, `${alu}.TransceiverTemperature`));
   const temp = aluTemp ?? num(readParam(r, `${xpon}.TransceiverTemperature`)) ?? (rawTemp !== null && rawTemp !== 0 ? Math.round((rawTemp / 256) * 100) / 100 : null);
   const aluBias = num(readParam(r, `${alu}.BiasCurrent`));

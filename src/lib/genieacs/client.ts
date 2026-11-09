@@ -339,6 +339,24 @@ function parseOptical(raw: Raw): CpeOptical {
       temperatureC: temp === null || temp === 0 ? null : round2(temp / 256),
     };
   }
+  // ZTE F609 & Huawei HG8245H (China Mobile / CMCC): satuan MENTAH di X_CMCC_EponInterfaceConfig / GponInterfaceConfig
+  for (const root of ROOTS) {
+    for (const type of ["Epon", "Gpon"]) {
+      const p = `${root}.WANDevice.1.X_CMCC_${type}InterfaceConfig`;
+      const rx = dbmFromTenthsOfMicrowatt(read(raw, `${p}.RXPower`));
+      if (rx === null) continue;
+      const temp = num(read(raw, `${p}.TransceiverTemperature`));
+      const bias = num(read(raw, `${p}.BiasCurrent`));
+      const volt = num(read(raw, `${p}.SupplyVottage`));
+      return {
+        rxDbm: rx,
+        txDbm: dbmFromTenthsOfMicrowatt(read(raw, `${p}.TXPower`)),
+        biasMa: bias === null ? null : round2(bias / 1000),
+        voltageV: volt === null ? null : round2(volt / 10000),
+        temperatureC: temp === null || temp === 0 ? null : round2(temp / 256),
+      };
+    }
+  }
   for (const root of ROOTS) {
     const p = `${root}.Optical.Interface.1`;
     const rawSignal = num(read(raw, `${p}.OpticalSignalLevel`));
@@ -350,6 +368,16 @@ function parseOptical(raw: Raw): CpeOptical {
       ...empty,
       rxDbm: rx,
       txDbm: tx,
+    };
+  }
+  // Fallback ke VirtualParameters.rxPower jika tersedia dari skrip GenieACS
+  const vpRx = num(readAny(raw, "VirtualParameters.rxPower"));
+  const vpTx = num(readAny(raw, "VirtualParameters.txPower"));
+  if (vpRx !== null) {
+    return {
+      ...empty,
+      rxDbm: round2(vpRx),
+      txDbm: vpTx !== null ? round2(vpTx) : null,
     };
   }
   return empty;

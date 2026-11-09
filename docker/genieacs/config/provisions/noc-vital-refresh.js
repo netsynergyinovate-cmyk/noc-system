@@ -8,6 +8,12 @@ declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_GponInterfaceConfig.Transcei
 declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.RXPower", {value: now});
 declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.TXPower", {value: now});
 declare("InternetGatewayDevice.WANDevice.*.X_CT-COM_EponInterfaceConfig.TransceiverTemperature", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.RXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.TXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_GponInterfaceConfig.TransceiverTemperature", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.RXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.TXPower", {value: now});
+declare("InternetGatewayDevice.WANDevice.*.X_CMCC_EponInterfaceConfig.TransceiverTemperature", {value: now});
 declare("InternetGatewayDevice.DeviceInfo.XponInterface.RXPower", {value: now});
 declare("InternetGatewayDevice.DeviceInfo.XponInterface.TXPower", {value: now});
 declare("InternetGatewayDevice.DeviceInfo.XponInterface.TransceiverTemperature", {value: now});

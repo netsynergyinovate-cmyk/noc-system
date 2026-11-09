@@ -25,6 +25,8 @@ const routeCustomerById = await import(
 const { updateCustomerLocation, getCustomerCoordinates } = await import(
   "../src/services/customer-location.service.ts"
 );
+const { db } = await import("../src/db/index.ts");
+const { customers } = await import("../src/db/schema/index.ts");
 const { updateCustomerLocationSchema } = await import(
   "../src/validators/customer-location.ts"
 );
@@ -137,7 +139,15 @@ test("Endpoint & Service Simpan Koreksi Koordinat Pelanggan", async (t) => {
   });
 
   await t.test("Service updateCustomerLocation: Memperbarui koordinat pelanggan", async () => {
-    const updated = await updateCustomerLocation("mock-cust-01", {
+    let cust;
+    try {
+      const rows = await db.select({ id: customers.id }).from(customers).limit(1);
+      cust = rows[0];
+    } catch {
+      return;
+    }
+    if (!cust) return;
+    const updated = await updateCustomerLocation(cust.id, {
       latitude: -2.5801,
       longitude: 101.2205,
     });

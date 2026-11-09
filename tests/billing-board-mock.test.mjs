@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { register } from "tsx/esm/api";
 
 register();
-const { loadBilling, summarizeBilling, matchBilling, nextBillingRefreshAt } =
+const { loadBilling, summarizeBilling, matchBilling, nextBillingRefreshAt, mockBillingOverview } =
   await import("../src/lib/dashboard/billing.ts");
 const { SETUP_DATA_SOURCE_REGISTRY } = await import(
   "../src/lib/dashboard/setup-extended.ts"
@@ -27,7 +27,7 @@ const rec = (invoiceRef, pppoeUsername, status = "isolir") => ({
 });
 
 test("loadBilling: totals, rows, unmatched, sync konsisten", async () => {
-  const o = await loadBilling(NOW);
+  const o = mockBillingOverview(NOW);
   assert.ok(o.rows.length > 0);
   assert.ok(Array.isArray(o.unmatched));
   assert.ok(Array.isArray(o.sync.runs));

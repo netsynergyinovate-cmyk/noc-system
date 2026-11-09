@@ -272,6 +272,7 @@ export async function resolveAnomaly(
   id: string,
   endedAt = new Date(),
 ): Promise<AnomalyItem | null> {
+  if (!UUID_REGEX.test(id)) return null;
   const [updated] = await db
     .update(alerts)
     .set({

@@ -143,7 +143,15 @@ export function ExportBoard() {
 
   return (
     <div className="flex flex-col gap-6" data-testid="export-board">
-
+      {isDemo && (
+        <Badge
+          variant="outline"
+          className="gap-1.5 py-1 text-xs font-normal"
+          data-testid="export-mock-badge"
+        >
+          Data Tiruan Ekspor (Fase 2) · Wajib beralih ke generator laporan nyata di Fase 5
+        </Badge>
+      )}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Kolom 1: Pilih Dataset */}
         <Card>

@@ -204,12 +204,9 @@ export function TrafficTrendBoard({ nowSec }: { nowSec?: number }) {
   const [now] = useState(() => nowSec ?? Math.floor(Date.now() / 1000));
   const isDemo = useSession(selectPreviewEnabled);
   const live = useLiveTrend(range, !isDemo);
-  const mockSeries = useMemo(() => generateTrafficTrendSeries(range, now), [range, now]);
-  const mockStats = useMemo(() => loadTrafficTrendOverview(range, now), [range, now]);
-  const mockInterfaces = useMemo(() => getMockInterfaceSamples(), []);
-  const series = isDemo ? mockSeries : (live.data?.series ?? []);
-  const stats = isDemo ? mockStats : (live.data?.overview ?? emptyStats(range));
-  const interfaces = isDemo ? mockInterfaces : (live.data?.interfaces ?? []);
+  const series = live.data?.series ?? [];
+  const stats = live.data?.overview ?? emptyStats(range);
+  const interfaces = live.data?.interfaces ?? [];
   const [query, setQuery] = useState("");
   const visible = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);

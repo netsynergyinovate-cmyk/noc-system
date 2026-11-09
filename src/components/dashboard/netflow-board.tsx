@@ -126,7 +126,7 @@ export function NetflowBoard() {
   const storeRouters = useDashboardStore((state) => state.routers);
   const storeCustomers = useDashboardStore((state) => state.customers);
   const [selectedCaptureCustomer, setSelectedCaptureCustomer] = useState<{ id: string; name: string; pppoeUsername: string } | null>(null);
-  const routersList = isDemoMode ? mockRouters : storeRouters;
+  const routersList = storeRouters;
 
   const loadFn = useCallback((now: number) => loadNetflow(now, isDemoMode), [isDemoMode]);
   const { state, failed, retry } = usePolled(loadFn, REFRESH_MS);

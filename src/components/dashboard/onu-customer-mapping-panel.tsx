@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockOnus } from "@/lib/dashboard/onus";
 import { autoMatchAllLive, mapOnuLive, renameOnuLive, syncAllOnuNamesLive } from "@/lib/dashboard/olt-live";
 import { useLiveOnus } from "@/lib/dashboard/use-live-onus";
 import { selectPreviewEnabled } from "@/lib/session-store";
@@ -49,8 +48,8 @@ export function OnuCustomerMappingPanel() {
 
   const onuCandidates = useMemo<OnuMappingCandidate[]>(
     () =>
-      (isDemo ? mockOnus : (live.onus ?? [])).map((o) => {
-        const cid = isDemo && o.id in overrides ? overrides[o.id] : o.customerId;
+      (live.onus ?? []).map((o) => {
+        const cid = o.customerId;
         return {
           onuId: o.id,
           serialNumber: o.serialNumber,

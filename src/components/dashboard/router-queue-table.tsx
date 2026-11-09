@@ -105,8 +105,7 @@ export function RouterQueueTable({
     }
   }
 
-  const mockQueues = useMemo(() => generateMockSimpleQueues(routerId, customers), [routerId, customers]);
-  const queues = isDemo ? mockQueues : (live.queues ?? []);
+  const queues = live.queues ?? [];
   const visible = useMemo(() => filterSimpleQueues(queues, query, status), [queues, query, status]);
 
   return (

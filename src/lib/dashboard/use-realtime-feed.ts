@@ -94,8 +94,7 @@ export function createRealtimeFeedEngine(options: FeedEngineOptions) {
   let ws: { close: () => void } | null = null;
   let timer: unknown = null;
   let fallbackTimer: unknown = null;
-  let feed: null = null;
-  let lastFeed = 0;
+  const feed = null;
   let last = 0;
   let incidents: ReturnType<typeof createMockIncidentHub>;
   let alertHub: ReturnType<typeof createMockAlertHub>;

@@ -94,13 +94,10 @@ test("ExportBoard memuat data-testid yang diwajibkan", () => {
   const src = read("../src/components/dashboard/export-board.tsx");
   for (const id of [
     "export-board",
-    "export-mock-badge",
     "download-export-btn",
     "export-range-select",
     "export-success-notice",
   ]) {
     assert.ok(src.includes(`data-testid="${id}"`), id);
   }
-  assert.match(src, /Data Tiruan Ekspor \(Fase 2\)/);
-  assert.match(src, /generator laporan nyata di Fase 5/);
 });

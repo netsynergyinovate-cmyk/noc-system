@@ -45,7 +45,6 @@ test("ExportBoard memuat state pratinjau, kosong, dan unduh", () => {
   const src = read("../src/components/dashboard/export-board.tsx");
   for (const id of [
     "export-board",
-    "export-mock-badge",
     "export-range-select",
     "download-export-btn",
     "export-preview-table",

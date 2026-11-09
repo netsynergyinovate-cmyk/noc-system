@@ -144,9 +144,13 @@ test("Endpoint & Service Simpan Koreksi Koordinat Pelanggan", async (t) => {
       const rows = await db.select({ id: customers.id }).from(customers).limit(1);
       cust = rows[0];
     } catch {
+      if (typeof t.skip === "function") t.skip("tidak ada koneksi DB pada standalone test");
       return;
     }
-    if (!cust) return;
+    if (!cust) {
+      if (typeof t.skip === "function") t.skip("tabel customers kosong");
+      return;
+    }
     const updated = await updateCustomerLocation(cust.id, {
       latitude: -2.5801,
       longitude: 101.2205,

@@ -131,13 +131,18 @@ const schema = z.object({
 });
 
 // Kosong dianggap tidak diisi, supaya baris kosong di .env.example tidak gagal.
-const blankToUndefined = (value: unknown) =>
-  typeof value === "string" && value.trim() === "" ? undefined : value;
+const blankToUndefined = (value: unknown) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }
+  return value;
+};
 
 const parsedEnv = schema.parse({
-  DATABASE_URL: process.env.DATABASE_URL,
-  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  DATABASE_URL: blankToUndefined(process.env.DATABASE_URL),
+  BETTER_AUTH_SECRET: blankToUndefined(process.env.BETTER_AUTH_SECRET),
+  BETTER_AUTH_URL: blankToUndefined(process.env.BETTER_AUTH_URL),
   REALTIME_TOKEN_SECRET: blankToUndefined(process.env.REALTIME_TOKEN_SECRET),
   DEVICE_SECRET: blankToUndefined(process.env.DEVICE_SECRET),
   BACKEND_URL: blankToUndefined(process.env.BACKEND_URL),

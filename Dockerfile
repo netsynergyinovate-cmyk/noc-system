@@ -37,6 +37,9 @@ ENV NODE_ENV=production \
 # request arrives. Supply real values to the running container, not the build.
 RUN DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build \
     BETTER_AUTH_SECRET=placeholder-for-build-only-replaced-at-runtime \
+    BETTER_AUTH_URL=http://localhost:3000 \
+    DASHBOARD_DATA=demo \
+    DATA_MODE=demo \
     NODE_OPTIONS="--max-old-space-size=2048" \
     npm run build
 

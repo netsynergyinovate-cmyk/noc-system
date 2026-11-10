@@ -42,6 +42,12 @@ test("perintah allow-list menambah ke daftar lama (tidak menimpa) dan memakai la
   assert.equal(noIp.command, '/ip service print where name~"www"');
   assert.doesNotMatch(noIp.command, /DAFTAR-LAMA|<IP-SERVER>/);
 });
+test("formatAllowListEntry memakai /24 untuk IP privat agar tahan terhadap reboot DHCP", () => {
+  assert.equal(h.formatAllowListEntry("192.168.0.182"), "192.168.0.0/24");
+  assert.equal(h.formatAllowListEntry("10.167.80.2"), "10.167.80.0/24");
+  assert.equal(h.formatAllowListEntry("172.16.5.10"), "172.16.5.0/24");
+  assert.equal(h.formatAllowListEntry("203.0.113.5"), "203.0.113.5/32");
+});
 
 test("penyebab lain dipetakan ke sebab yang tepat", () => {
   const c = (e) => h.diagnoseUnreachable(e).cause;

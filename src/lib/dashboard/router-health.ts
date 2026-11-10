@@ -46,17 +46,37 @@ export interface UnreachableContext {
  * entri lama dipertahankan dan IP baru ditambahkan. Bila tidak, daftar diganti
  * dengan IP server (akses Winbox/SSH tidak terpengaruh).
  */
+export function formatAllowListEntry(ip: string): string {
+  const clean = ip.trim();
+  if (clean.includes("/")) return clean;
+  const parts = clean.split(".");
+  if (parts.length === 4) {
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    // Subnet privat RFC 1918 (10.x, 192.168.x, 172.16-31.x): gunakan /24
+    // agar IP dinamis DHCP modem/server pasca-reboot tidak memutuskan koneksi.
+    if (
+      p0 === 10 ||
+      (p0 === 192 && p1 === 168) ||
+      (p0 === 172 && p1 >= 16 && p1 <= 31)
+    ) {
+      return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+    }
+    return `${clean}/32`;
+  }
+  return clean.includes(":") ? `${clean}/128` : `${clean}/32`;
+}
+
 export function allowListCommand(
   service: "www" | "api",
   sourceIp?: string | null,
   localSourceIp?: string | null,
   existingAddress?: string | null,
 ): string | undefined {
-  const newEntries = [
-    ...new Set(
-      [sourceIp, localSourceIp].map((v) => (v ?? "").trim()).filter(Boolean),
-    ),
-  ].map((ip) => `${ip}${ip.includes(":") ? "/128" : "/32"}`);
+  const rawList = [sourceIp, localSourceIp]
+    .map((v) => (v ?? "").trim())
+    .filter(Boolean);
+  const newEntries = [...new Set(rawList.map(formatAllowListEntry))];
   const existing = (existingAddress ?? "")
     .split(",")
     .map((v) => v.trim())

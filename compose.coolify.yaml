@@ -47,7 +47,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Wajib isi JWT_SECRET min 32 karakter}
       DASHBOARD_DATA: live
       DATA_MODE: nyata
-      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8090}
       BACKEND_INTERNAL_URL: http://backend:8080
       GENIEACS_NBI_URL: http://genieacs:7557
       GENIEACS_URL: http://genieacs:7557
@@ -62,7 +62,7 @@ services:
       context: ./backend
     restart: always
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8090}:8080"
       - "5514:5514/udp"
       - "2055:2055/udp"
     environment:

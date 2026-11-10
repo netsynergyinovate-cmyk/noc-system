@@ -103,3 +103,34 @@ func TestAuthAPILoginLogoutMe(t *testing.T) {
 		t.Fatalf("expected 401 on /me without token, got %d", recMeBad.Code)
 	}
 }
+
+func TestAuthAPIRateLimiter(t *testing.T) {
+	os.Setenv("JWT_SECRET", "test_jwt_secret_for_rate_limiter_123456")
+	defer os.Unsetenv("JWT_SECRET")
+
+	authAPI := NewAuthAPI(nil)
+	mux := http.NewServeMux()
+	authAPI.Register(mux)
+
+	for range 5 {
+		body, _ := json.Marshal(map[string]string{"username": "spam@noc.local", "password": "wrong"})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
+		req.RemoteAddr = "192.168.1.100:1234"
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+	}
+
+	// 6th attempt should be blocked by rate limiter
+	body, _ := json.Marshal(map[string]string{"username": "spam@noc.local", "password": "wrong"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
+	req.RemoteAddr = "192.168.1.100:1234"
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 Too Many Requests, got %d", rec.Code)
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Errorf("expected Retry-After header to be set")
+	}
+}

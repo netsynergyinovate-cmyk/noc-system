@@ -192,3 +192,33 @@ func (s *UserStore) CreateUser(ctx context.Context, u *User) error {
 
 	return tx.Commit(ctx)
 }
+
+// SetPassword memperbarui hash kata sandi pengguna di tabel account.
+func (s *UserStore) SetPassword(ctx context.Context, userID, passwordHash string) error {
+	if s.pool == nil {
+		return errors.New("database pool nil")
+	}
+	now := time.Now()
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE account
+		SET password = $2, updated_at = $3
+		WHERE user_id = $1 AND provider_id = 'credential'
+	`, userID, passwordHash, now)
+	if err != nil {
+		return fmt.Errorf("update account password: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		accIDBytes := make([]byte, 16)
+		_, _ = rand.Read(accIDBytes)
+		accID := hex.EncodeToString(accIDBytes)
+		_, err := s.pool.Exec(ctx, `
+			INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
+			SELECT $1, coalesce(u.email, u.id), 'credential', u.id, $2, $3, $3
+			FROM "user" u WHERE u.id = $4
+		`, accID, passwordHash, now, userID)
+		if err != nil {
+			return fmt.Errorf("insert account password: %w", err)
+		}
+	}
+	return nil
+}

@@ -54,7 +54,7 @@ import {
   previewableRoles,
   type AppRole,
 } from "@/lib/roles";
-import { authClient } from "@/lib/auth-client";
+import { apiRequest } from "@/lib/api-client";
 import { selectClassName } from "./select-class";
 
 interface AdminListedUser {
@@ -125,26 +125,22 @@ export function AccountManagementBoard() {
     setResettingPassword(true);
     setPasswordResetMsg(null);
     try {
-      const res = await authClient.admin.setUserPassword({
-        userId: resetTargetUser.id,
-        newPassword: newPasswordInput,
+      await apiRequest("/auth/admin/set-user-password", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: resetTargetUser.id,
+          newPassword: newPasswordInput,
+        }),
       });
-      if (res.error) {
-        setPasswordResetMsg({
-          type: "error",
-          text: res.error.message || "Gagal mereset kata sandi.",
-        });
-      } else {
-        setPasswordResetMsg({
-          type: "success",
-          text: `Kata sandi untuk ${resetTargetUser.email} berhasil diperbarui.`,
-        });
-        setNewPasswordInput("");
-        setTimeout(() => {
-          setResetTargetUser(null);
-          setPasswordResetMsg(null);
-        }, 2000);
-      }
+      setPasswordResetMsg({
+        type: "success",
+        text: `Kata sandi untuk ${resetTargetUser.email} berhasil diperbarui.`,
+      });
+      setNewPasswordInput("");
+      setTimeout(() => {
+        setResetTargetUser(null);
+        setPasswordResetMsg(null);
+      }, 2000);
     } catch (err) {
       setPasswordResetMsg({
         type: "error",
@@ -306,25 +302,24 @@ export function AccountManagementBoard() {
     setCreateError(null);
     setCreateSuccess(null);
     try {
-      const res = await authClient.admin.createUser({
-        name: createName.trim(),
-        email: createEmail.trim(),
-        password: createPassword,
-        role: createRole,
+      await apiRequest("/auth/admin/create-user", {
+        method: "POST",
+        body: JSON.stringify({
+          name: createName.trim(),
+          email: createEmail.trim(),
+          password: createPassword,
+          role: createRole,
+        }),
       });
-      if (res.error) {
-        setCreateError(res.error.message || "Gagal membuat akun.");
-      } else {
-        setCreateSuccess(
-          `Akun ${createEmail} berhasil dibuat dengan peran ${roleLabel(createRole)}.`,
-        );
-        setCreateName("");
-        setCreateEmail("");
-        setCreatePassword("");
-        setCreateRole("user");
-        setShowCreateForm(false);
-        await fetchUsers();
-      }
+      setCreateSuccess(
+        `Akun ${createEmail} berhasil dibuat dengan peran ${roleLabel(createRole)}.`,
+      );
+      setCreateName("");
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateRole("user");
+      setShowCreateForm(false);
+      await fetchUsers();
     } catch (err) {
       setCreateError(
         err instanceof Error

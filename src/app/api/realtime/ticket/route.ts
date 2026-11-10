@@ -1,5 +1,5 @@
 import { ApiError, withApiSession } from "@/lib/api";
-import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/session";
 import { env } from "@/lib/env";
 import { issueRealtimeTicket, REALTIME_PERMS } from "@/lib/realtime-ticket";
 
@@ -25,10 +25,8 @@ export function POST(request: Request) {
       );
     const granted = await Promise.all(
       Object.entries(REALTIME_PERMS).map(async ([perm, permissions]) => {
-        const { success } = await auth.api.userHasPermission({
-          body: { userId: session.user.id, permissions },
-        });
-        return success ? perm : null;
+        const ok = await hasPermission(session.user.id, permissions);
+        return ok ? perm : null;
       }),
     );
     const { token, expiresAt } = issueRealtimeTicket({

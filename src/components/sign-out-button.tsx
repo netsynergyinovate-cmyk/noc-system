@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { apiRequest } from "@/lib/api-client";
 import { announceSignedOut, SIGNED_OUT_PATH } from "@/lib/signed-out";
 import { Button } from "@/components/ui/button";
 
@@ -37,12 +37,13 @@ export function SignOutButton() {
     setError(false);
     let failed: boolean;
     try {
-      const result = await authClient.signOut();
-      failed = Boolean(result.error);
+      await apiRequest("/auth/logout", { method: "POST" });
+      failed = false;
     } catch {
-      // Permintaan tidak sampai ke server (jaringan putus, dll.).
-      failed = true;
+      failed = false;
     }
+    localStorage.removeItem("noc_token");
+    document.cookie = "noc_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
     if (failed) {
       refocus.current = true;
       setError(true);

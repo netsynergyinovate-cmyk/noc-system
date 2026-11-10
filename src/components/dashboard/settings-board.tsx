@@ -46,7 +46,7 @@ import { ThresholdSettings } from "./threshold-settings";
 import { WhatsappSettings } from "./whatsapp-settings";
 import { useSessionUser } from "@/components/session-provider";
 import { isSuperAdmin, isAdmin, isDeveloper, isUser } from "@/lib/roles";
-import { authClient } from "@/lib/auth-client";
+import { apiRequest } from "@/lib/api-client";
 import { soundEngine, type SoundSnapshot } from "@/lib/dashboard/sound-engine";
 import { cn } from "cn";
 
@@ -176,29 +176,21 @@ export function SettingsBoard() {
     setChangingPassword(true);
     setChangePasswordMsg(null);
     try {
-      const res = await authClient.changePassword({
-        currentPassword,
-        newPassword,
-        revokeOtherSessions: true,
+      await apiRequest("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
-      if (res.error) {
-        setChangePasswordMsg({
-          type: "error",
-          text: res.error.message || "Gagal mengubah kata sandi.",
-        });
-      } else {
-        setChangePasswordMsg({
-          type: "success",
-          text: "Kata sandi Anda berhasil diperbarui.",
-        });
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-        setTimeout(() => {
-          setShowChangePassword(false);
-          setChangePasswordMsg(null);
-        }, 2000);
-      }
+      setChangePasswordMsg({
+        type: "success",
+        text: "Kata sandi Anda berhasil diperbarui.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setChangePasswordMsg(null);
+      }, 2000);
     } catch (err) {
       setChangePasswordMsg({
         type: "error",

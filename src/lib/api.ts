@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { user as userTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getSession, hasPermission, type SessionData } from "@/lib/session";
 import { env } from "@/lib/env";
 import type { Permissions } from "@/lib/permissions";
 import { roleCan } from "@/lib/roles";
@@ -21,7 +21,7 @@ export class ApiError extends Error {
 
 // `apiKeyId` is set when the caller authenticated with an API key instead of a
 // cookie session. Such requests act as the key's owner.
-type Session = NonNullable<Awaited<ReturnType<typeof auth.api.getSession>>> & {
+type Session = SessionData & {
   apiKeyId?: string;
 };
 
@@ -76,10 +76,7 @@ export async function withApiSession(
   try {
     const session: Session | null =
       (await apiKeySession(request, readsOnly)) ??
-      (await auth.api.getSession({
-        headers: request.headers,
-        query: { disableCookieCache: true },
-      }));
+      (await getSession());
     if (!session)
       throw new ApiError(401, "UNAUTHORIZED", "Sign in to continue.");
 
@@ -161,20 +158,10 @@ export function withApiPermission(
   handler: (session: Session) => Promise<Response>,
 ) {
   return withApiSession(request, async (session) => {
-    let allowed = false;
-    try {
-      const { success } = await auth.api.userHasPermission({
-        body: { userId: session.user.id, permissions },
-      });
-      allowed = success;
-    } catch {
-      // fallback ke evaluasi peran langsung
+    let allowed = session.user.role ? roleCan(session.user.role, permissions) : false;
+    if (!allowed) {
+      allowed = await hasPermission(session.user.id, permissions);
     }
-
-    if (!allowed && session.user.role) {
-      allowed = roleCan(session.user.role, permissions);
-    }
-
     if (!allowed)
       throw new ApiError(
         403,

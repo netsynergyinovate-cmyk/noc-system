@@ -15,6 +15,7 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, "Run npm run setup to generate a secret."),
+  JWT_SECRET: z.string().min(32, "Set JWT_SECRET to at least 32 characters.").optional(),
   BETTER_AUTH_URL: z
     .url()
     .refine((value) => {

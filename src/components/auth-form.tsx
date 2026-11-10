@@ -13,7 +13,7 @@ import {
   LoaderCircle,
   TimerOff,
 } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { apiRequest } from "@/lib/api-client";
 import {
   authFailureFocus,
   authFailureMessage,
@@ -43,38 +43,41 @@ async function send(
   signingUp: boolean,
   data: FormData,
 ): Promise<AuthFailure | null> {
-  const credentials = {
-    email: String(data.get("email")).trim(),
-    password: String(data.get("password")),
-  };
-  const seen: { retryAfter: string | null } = { retryAfter: null };
-  const options = {
-    onError(context: { response: Response }) {
-      seen.retryAfter = context.response.headers.get(RETRY_AFTER_HEADER);
-    },
-  };
+  const username = String(data.get("email")).trim();
+  const password = String(data.get("password"));
+  const name = String(data.get("name") || "").trim();
+
   try {
-    const result = signingUp
-      ? await authClient.signUp.email(
-          { ...credentials, name: String(data.get("name")).trim() },
-          options,
-        )
-      : await authClient.signIn.email(credentials, options);
-    return result.error
-      ? {
-          kind: "response",
-          status: result.error.status,
-          code: result.error.code,
-          // Dibersihkan di sini (1..60 detik); tanpa header tidak diisi, dan
-          // lama bawaan dipilih oleh authFailureWait.
-          retryAfter:
-            seen.retryAfter === null
-              ? undefined
-              : retryDelaySeconds(seen.retryAfter),
-        }
-      : null;
-  } catch {
-    return { kind: "network" };
+    const endpoint = signingUp ? "/auth/register" : "/auth/login";
+    const body = signingUp
+      ? JSON.stringify({ name: name || username, email: username, password })
+      : JSON.stringify({ username, password });
+
+    const res = await apiRequest<{ token: string; user: unknown }>(endpoint, {
+      method: "POST",
+      body,
+    });
+
+    if (res?.token) {
+      localStorage.setItem("noc_token", res.token);
+      document.cookie = `noc_token=${encodeURIComponent(res.token)}; Path=/; Max-Age=604800; SameSite=Lax`;
+      return null;
+    }
+    return { kind: "response", status: 401, code: "INVALID_CREDENTIALS" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("429") || msg.includes("too_many_requests")) {
+      return {
+        kind: "response",
+        status: 429,
+        code: "TOO_MANY_REQUESTS",
+        retryAfter: 60,
+      };
+    }
+    if (msg.includes("user_banned") || msg.includes("Akun ini telah ditangguhkan")) {
+      return { kind: "response", status: 403, code: "USER_BANNED" };
+    }
+    return { kind: "response", status: 401, code: "INVALID_CREDENTIALS" };
   }
 }
 
@@ -445,26 +448,12 @@ export function AuthForm({
                 type="button"
                 variant="outline"
                 className="w-full h-10 text-xs font-medium gap-2.5 border-border bg-card text-foreground hover:bg-accent shadow-xs"
-                onClick={async () => {
-                  try {
-                    const res = await authClient.signIn.social({
-                      provider: "logto-github" as unknown as "github",
-                      callbackURL: destination ?? siteConfig.homePath,
-                    });
-                    if (res?.error) {
-                      setFailure({
-                        message:
-                          "Gagal menghubungkan ke GitHub via Logto. Pastikan konektor GitHub aktif di Logto Console.",
-                        target: "submit",
-                      });
-                    }
-                  } catch {
-                    setFailure({
-                      message:
-                        "Layanan Logto SSO belum aktif. Pastikan kontainer Logto menyala via npm run logto:up.",
-                      target: "submit",
-                    });
-                  }
+                onClick={() => {
+                  setFailure({
+                    message:
+                      "Layanan SSO sedang dimigrasi. Silakan masuk menggunakan akun email dan kata sandi.",
+                    target: "submit",
+                  });
                 }}
               >
                 <svg

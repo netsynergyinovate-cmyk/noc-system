@@ -323,15 +323,21 @@ if [ -n "${NOC_DOMAIN:-}" ] && [ -d "${COOLIFY_DYNAMIC_DIR}" ]; then
   cat <<EOF > "${COOLIFY_CFG}"
 http:
   routers:
-    noc-web:
+    noc-web-http:
       rule: "Host(\`${NOC_DOMAIN}\`)"
       service: noc-web-service
-      entryPoints: ["web", "websecure"]
+      entryPoints: ["web"]
+    noc-web-https:
+      rule: "Host(\`${NOC_DOMAIN}\`)"
+      service: noc-web-service
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: "letsencrypt"
   services:
     noc-web-service:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:3000"
+          - url: "http://172.17.0.1:3000"
 EOF
   echo -e "${GREEN}✓ Konfigurasi Traefik Coolify disimpan di ${COOLIFY_CFG}${NC}"
 fi

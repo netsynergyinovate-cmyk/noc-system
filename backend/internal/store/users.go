@@ -20,13 +20,23 @@ var (
 
 // User merepresentasikan data akun pengguna di sistem.
 type User struct {
-	ID        string    `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID         string     `json:"id"`
+	Username   string     `json:"username"`
+	Email      string     `json:"email"`
+	Password   string     `json:"-"`
+	Role       string     `json:"role"`
+	Banned     bool       `json:"banned"`
+	BanExpires *time.Time `json:"banExpires,omitempty"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+}
+
+// IsBanned memeriksa apakah akun pengguna sedang dalam masa penangguhan (banned).
+func (u *User) IsBanned() bool {
+	if !u.Banned {
+		return false
+	}
+	return u.BanExpires == nil || u.BanExpires.After(time.Now())
 }
 
 // UserStore mengelola akses data pengguna menggunakan pool pgx/v5.
@@ -58,19 +68,15 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (*Us
 		ORDER BY (a.password IS NOT NULL AND a.password != '') DESC, u.created_at ASC
 		LIMIT 1
 	`
-	var (
-		u          User
-		banned     bool
-		banExpires *time.Time
-	)
+	var u User
 	err := s.pool.QueryRow(ctx, query, email).Scan(
 		&u.ID,
 		&u.Username,
 		&u.Email,
 		&u.Password,
 		&u.Role,
-		&banned,
-		&banExpires,
+		&u.Banned,
+		&u.BanExpires,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
@@ -79,10 +85,6 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (*Us
 			return nil, ErrNoRows
 		}
 		return nil, fmt.Errorf("query user: %w", err)
-	}
-
-	if banned && (banExpires == nil || banExpires.After(time.Now())) {
-		return nil, ErrUserBanned
 	}
 
 	return &u, nil
@@ -105,19 +107,15 @@ func (s *UserStore) GetUserByID(ctx context.Context, id string) (*User, error) {
 		WHERE u.id = $1
 		LIMIT 1
 	`
-	var (
-		u          User
-		banned     bool
-		banExpires *time.Time
-	)
+	var u User
 	err := s.pool.QueryRow(ctx, query, id).Scan(
 		&u.ID,
 		&u.Username,
 		&u.Email,
 		&u.Password,
 		&u.Role,
-		&banned,
-		&banExpires,
+		&u.Banned,
+		&u.BanExpires,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
@@ -126,10 +124,6 @@ func (s *UserStore) GetUserByID(ctx context.Context, id string) (*User, error) {
 			return nil, ErrNoRows
 		}
 		return nil, fmt.Errorf("query user by id: %w", err)
-	}
-
-	if banned && (banExpires == nil || banExpires.After(time.Now())) {
-		return nil, ErrUserBanned
 	}
 
 	return &u, nil
@@ -167,14 +161,15 @@ func (s *UserStore) CreateUser(ctx context.Context, u *User) error {
 	defer tx.Rollback(ctx)
 
 	insertUser := `
-		INSERT INTO "user" (id, name, email, email_verified, role, created_at, updated_at)
-		VALUES ($1, $2, $3, false, $4, $5, $6)
+		INSERT INTO "user" (id, name, email, email_verified, role, banned, created_at, updated_at)
+		VALUES ($1, $2, $3, false, $4, $5, $6, $7)
 		ON CONFLICT (email) DO UPDATE SET
 			name = EXCLUDED.name,
 			role = EXCLUDED.role,
+			banned = EXCLUDED.banned,
 			updated_at = EXCLUDED.updated_at
 	`
-	if _, err := tx.Exec(ctx, insertUser, u.ID, u.Username, u.Email, u.Role, u.CreatedAt, u.UpdatedAt); err != nil {
+	if _, err := tx.Exec(ctx, insertUser, u.ID, u.Username, u.Email, u.Role, u.Banned, u.CreatedAt, u.UpdatedAt); err != nil {
 		return fmt.Errorf("insert user: %w", err)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"net"
 	"net/http"
@@ -17,15 +18,14 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"noc-isp/backend/internal/archive"
 	"noc-isp/backend/internal/auth"
 	"noc-isp/backend/internal/billing"
 	"noc-isp/backend/internal/collector"
+	"noc-isp/backend/internal/config"
 	"noc-isp/backend/internal/cpe"
 	"noc-isp/backend/internal/customers"
-	"noc-isp/backend/internal/config"
 	"noc-isp/backend/internal/diagnostics"
 	"noc-isp/backend/internal/engine"
 	"noc-isp/backend/internal/httpapi"
@@ -83,7 +83,7 @@ func run() error {
 
 	// Data jaringan di memori; collector mengisinya pada task berikutnya.
 	manager := state.NewManager()
-	apiOptions := httpapi.Options{Logger: logger, Version: version}
+	apiOptions := httpapi.Options{Logger: logger, Version: version, AllowedOrigins: cfg.AllowedOrigins}
 	// notify memberi tahu hub bila status pelanggan berubah; tanpa hub (WebSocket
 	// mati) perubahan tetap tersimpan di state.
 	notify := func(state.Change) {}

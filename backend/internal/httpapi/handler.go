@@ -196,7 +196,6 @@ func NewHandler(opts Options) http.Handler {
 		mux.Handle("/api/v1/auth/", withCORSMethods(opts.AllowedOrigins, "GET, HEAD, POST, OPTIONS", authMux))
 	}
 
-
 	if opts.Data != nil && opts.Verifier != nil {
 		// Rute billing didaftarkan lebih dulu pada mux induk; sisanya (dan semua
 		// 404 di bawah /api/v1/) dilayani mux dashboard.

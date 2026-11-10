@@ -2,8 +2,8 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -67,16 +67,17 @@ func (a *AuthAPI) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	u, err := a.users.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
-		if errors.Is(err, store.ErrUserBanned) {
-			writeJSON(w, http.StatusForbidden, errorResponse{Error: "user_banned", Message: "Akun ini telah ditangguhkan"})
-			return
-		}
 		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "invalid_credentials", Message: "Username atau password salah"})
 		return
 	}
 
 	if err := auth.ComparePassword(u.Password, req.Password); err != nil {
 		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "invalid_credentials", Message: "Username atau password salah"})
+		return
+	}
+
+	if u.IsBanned() {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "user_banned", Message: "Akun ini telah ditangguhkan"})
 		return
 	}
 
@@ -129,21 +130,28 @@ func (a *AuthAPI) handleMe(w http.ResponseWriter, r *http.Request) {
 
 	if a.users != nil {
 		u, err := a.users.GetUserByID(r.Context(), userID)
-		if err == nil {
-			writeJSON(w, http.StatusOK, map[string]any{
-				"user": userInfoDTO{
-					ID:       u.ID,
-					Username: u.Username,
-					Email:    u.Email,
-					Role:     u.Role,
-				},
-			})
+		if err != nil {
+			if errors.Is(err, store.ErrNoRows) {
+				unauthorized(w)
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "database_error", Message: "Gagal mengambil data user"})
 			return
 		}
-		if errors.Is(err, store.ErrUserBanned) {
+		if u.IsBanned() {
 			writeJSON(w, http.StatusForbidden, errorResponse{Error: "user_banned", Message: "Akun ini telah ditangguhkan"})
 			return
 		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"user": userInfoDTO{
+				ID:       u.ID,
+				Username: u.Username,
+				Email:    u.Email,
+				Role:     u.Role,
+			},
+		})
+		return
 	}
 
 	// Fallback ke data dari klaim token

@@ -43,13 +43,15 @@ Saat menjalankan `install.sh`, sistem otomatis membuat akun superadmin pertama:
   ```
 
 **Jika lupa kata sandi atau terminal terlanjur tertutup:**
-Jalankan perintah ini di terminal server untuk mereset dan mencetak kata sandi acak baru:
+Jalankan perintah ini di terminal server untuk mereset kata sandi acak baru:
 ```bash
-sudo noc-system admin create --reset-password
+sudo noc-system admin create --reset-password --email <email-superadmin-anda>
 ```
+*Catatan: Jika memakai email default `admin@noc.local`, flag `--email` boleh diabaikan.*
+
 Atau jika ingin menentukan kata sandi sendiri:
 ```bash
-sudo NOC_ADMIN_PASSWORD="KataSandiBaruAnda123!" noc-system admin create --reset-password --email admin@noc.local
+sudo NOC_ADMIN_PASSWORD="KataSandiBaruAnda123!" noc-system admin create --reset-password --email <email-superadmin-anda>
 ```
 Panduan lengkap: [Instalasi di Server Produksi](#instalasi-di-server-produksi-ubuntu-native).
 > **Status pengujian:** alur instal bersih (`install.sh` → `noc-system deploy` → sign-in superadmin → tiket realtime + WebSocket) diuji di server **Ubuntu 26.04** (2 vCPU, 3 GB RAM). Ubuntu 20.04/22.04/24.04 dan mesin tanpa Docker/Node/Go sebelumnya belum diuji. `noc-system features up` baru diuji di Windows. Coba di satu VPS kosong sebelum dipakai untuk klien.
@@ -197,7 +199,8 @@ Buka peramban web dan arahkan ke alamat **IP LAN** server (bukan IP publik, kecu
 http://<IP_LAN_SERVER>:3000
 ```
 - Masuk dengan akun superadmin dari installer (default `admin@noc.local`). Pendaftaran mandiri tertutup (`ALLOW_SIGN_UP=false`), akun operator/teknisi tambahan dibuat oleh superadmin di **Pengaturan → Akun** atau via CLI: `noc-system admin create --email teknisi@domain.com`.
-- Autentikasi menggunakan **Native Go JWT** dengan resolusi origin dinamis, sehingga Anda bisa login dari IP server maupun domain tanpa konfigurasi origin manual. Jika lupa password superadmin, jalankan: `sudo noc-system admin create --reset-password`.
+- **Origin URL:** Login web memvalidasi origin terhadap `BETTER_AUTH_URL` di `.env` (galat 403 / `Invalid origin` jika alamat browser berbeda). Jika mengakses lewat IP lain atau domain baru, sesuaikan `BETTER_AUTH_URL=http://<IP>:3000` (atau tambahkan `BETTER_AUTH_TRUSTED_ORIGINS=http://<IP>:3000`) di `/srv/noc/shared/.env` lalu jalankan `sudo systemctl restart noc-web`.
+- Jika lupa kata sandi superadmin, reset kapan saja via: `sudo noc-system admin create --reset-password --email <email-superadmin>`.
 - Masuk ke dashboard `/app/deploy` tab **CLI noc-system**.
 - Masukkan **Alamat Server** (`http://<IP_SERVER>:3000`) dan **Token Monitor** (diambil dari output installer atau `noc-system status`).
 - Panel akan menampilkan spesifikasi server real-time, live terminal stream 50 baris journalctl, status proses aktif, dan matriks fitur secara langsung.

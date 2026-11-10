@@ -46,7 +46,7 @@ export function POST(request: Request) {
           taskName: string;
           parameterValues?: [string, unknown, string?][];
         };
-        const nbiUrl = process.env.GENIEACS_URL || "http://localhost:7557";
+        const nbiUrl = process.env.GENIEACS_NBI_URL || process.env.GENIEACS_URL || "http://localhost:7557";
         const res = await fetch(
           `${nbiUrl}/devices/${encodeURIComponent(deviceId)}/tasks?timeout=5000&connection_request`,
           {

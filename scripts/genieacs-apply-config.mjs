@@ -175,9 +175,8 @@ async function applyUiJson() {
   `;
   let run = spawnSync(
     "docker",
-    ["exec", "-i", mongo, "mongosh", "--quiet", "genieacs"],
+    ["exec", "-i", mongo, "mongosh", "--quiet", "genieacs", "--eval", script],
     {
-      input: script,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -185,9 +184,8 @@ async function applyUiJson() {
   if (run.error || run.status !== 0) {
     const runFallback = spawnSync(
       "docker",
-      ["exec", "-i", mongo, "mongo", "--quiet", "genieacs"],
+      ["exec", "-i", mongo, "mongo", "--quiet", "genieacs", "--eval", script],
       {
-        input: script,
         encoding: "utf8",
         maxBuffer: 64 * 1024 * 1024,
       },
@@ -198,22 +196,27 @@ async function applyUiJson() {
   }
   if (run.error || run.status !== 0) {
     const detail = run.error?.message || run.stderr?.trim() || `exit code ${run.status}`;
-    console.warn(
-      `Catatan: ui.json dilewati di MongoDB (${mongo}): ${detail}`,
+    console.error(
+      `Gagal menjalankan mongosh/mongo di kontainer ${mongo}: ${detail}`,
     );
-    return;
+    process.exit(1);
   }
   const pick = (marker) => {
-    const line = run.stdout.split("\n").find((l) => l.includes(marker));
-    return line ? line.slice(line.indexOf(marker)) : null;
+    for (const rawLine of run.stdout.split("\n")) {
+      const line = rawLine.trim();
+      if (line.startsWith(marker)) {
+        return line.slice(marker.length).trim();
+      }
+    }
+    return null;
   };
-  const backupLine = pick("BACKUP:");
-  const countLine = pick("COUNT:");
-  if (!backupLine || !countLine) {
-    console.warn(
+  const backupContent = pick("BACKUP:");
+  const countContent = pick("COUNT:");
+  if (!backupContent || !countContent) {
+    console.error(
       "Jawaban mongosh/mongo tidak dikenali:\n" + run.stdout.slice(0, 500),
     );
-    return;
+    process.exit(1);
   }
   const dir = path.join(root, ".backup");
   await mkdir(dir, { recursive: true });
@@ -222,12 +225,11 @@ async function applyUiJson() {
     .replace(/[-:]/g, "")
     .replace(/\..+/, "");
   const file = path.join(dir, `ui-${stamp}.json`);
-  await writeFile(file, backupLine.slice("BACKUP:".length) + "\n");
-  const countMatch = countLine ? countLine.match(/\bCOUNT:\s*(\d+)/) : null;
-  const actualCount = countMatch ? parseInt(countMatch[1], 10) : NaN;
-  const isOk = !isNaN(actualCount) && actualCount >= docs.length;
-  console.log(
-    `${isOk ? "OK    " : "WARN  "} ui.json -> ${docs.length} kunci config (terbaca: ${actualCount}, cadangan: ${path.relative(process.cwd(), file)})`,
+  await writeFile(file, backupContent + "\n");
+  const count = Number(countContent);
+  report(
+    count === docs.length,
+    `ui.json -> ${docs.length} kunci config (cadangan lama: ${path.relative(process.cwd(), file)})`,
   );
 }
 

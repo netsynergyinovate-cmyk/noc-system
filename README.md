@@ -33,21 +33,24 @@ sudo NOC_ADMIN_EMAIL=anda@domain.com bash /tmp/noc-install.sh   # periksa skrip 
 sudo noc-system deploy              # rilis pertama (build ±6 menit di 2 vCPU)
 sudo noc-system features up all     # opsional: Logto, GenieACS, OSRM, 9router
 ```
-### 🔑 Kredensial Akun Superadmin
+### 🔑 Cara Mendapatkan Akun & Password Superadmin
 Saat menjalankan `install.sh`, sistem otomatis membuat akun superadmin pertama:
-- **Email Default:** `admin@noc.local` (atau sesuai `NOC_ADMIN_EMAIL=...` saat instalasi).
-- **Kata Sandi:** Dicetak **SATU KALI** di terminal pada kotak `AKUN NOC (SUPERADMIN)`.
+- **Email Bawaan:** `admin@noc.local` (atau sesuai `NOC_ADMIN_EMAIL=...` saat menjalankan installer).
+- **Kata Sandi:** Dibuat acak 24 karakter dan dicetak **SATU KALI** di terminal dengan format:
+  ```text
+  Akun superadmin berhasil dibuat: admin@noc.local
+  Kata sandi: xxxxxxxxxxxxxxxxxxxxxxxx
+  ```
 
 **Jika lupa kata sandi atau terminal terlanjur tertutup:**
-Jalankan perintah ini di terminal server untuk mereset dan mencetak kata sandi baru:
+Jalankan perintah ini di terminal server untuk mereset dan mencetak kata sandi acak baru:
 ```bash
 sudo noc-system admin create --reset-password
 ```
 Atau jika ingin menentukan kata sandi sendiri:
 ```bash
-NOC_ADMIN_PASSWORD="KataSandiBaruAnda123!" sudo noc-system admin create --reset-password --email admin@noc.local
+sudo NOC_ADMIN_PASSWORD="KataSandiBaruAnda123!" noc-system admin create --reset-password --email admin@noc.local
 ```
-
 Panduan lengkap: [Instalasi di Server Produksi](#instalasi-di-server-produksi-ubuntu-native).
 > **Status pengujian:** alur instal bersih (`install.sh` → `noc-system deploy` → sign-in superadmin → tiket realtime + WebSocket) diuji di server **Ubuntu 26.04** (2 vCPU, 3 GB RAM). Ubuntu 20.04/22.04/24.04 dan mesin tanpa Docker/Node/Go sebelumnya belum diuji. `noc-system features up` baru diuji di Windows. Coba di satu VPS kosong sebelum dipakai untuk klien.
 

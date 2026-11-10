@@ -3,14 +3,11 @@ name: noc-system
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: noc-postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-starter}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-starter_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Wajib isi POSTGRES_PASSWORD di Coolify}
       POSTGRES_DB: ${POSTGRES_DB:-starter}
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - noc-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +21,7 @@ services:
       context: .
       target: migrator
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,7 +31,6 @@ services:
     build:
       context: .
       target: runner
-    container_name: noc-web
     restart: always
     ports:
       - "3000:3000"
@@ -42,12 +38,13 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-noc-auth-secret-min-32-chars-long}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Wajib isi BETTER_AUTH_SECRET min 32 karakter}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
-      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-noc-realtime-token-secret-32-chars}
+      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET min 32 karakter}
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?Wajib isi REALTIME_TOKEN_SECRET min 32 karakter}
+      JWT_SECRET: ${JWT_SECRET:?Wajib isi JWT_SECRET min 32 karakter}
       DASHBOARD_DATA: live
       DATA_MODE: nyata
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
@@ -63,7 +60,6 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: noc-backend
     restart: always
     ports:
       - "8080:8080"
@@ -72,9 +68,10 @@ services:
     environment:
       PORT: 8080
       BACKEND_ADDR: 0.0.0.0:8080
-      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
-      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-noc-realtime-token-secret-32-chars}
-      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
+      JWT_SECRET: ${JWT_SECRET:?Wajib isi JWT_SECRET min 32 karakter}
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?Wajib isi REALTIME_TOKEN_SECRET min 32 karakter}
+      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET min 32 karakter}
       DASHBOARD_DATA: live
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       SYSLOG_ADDR: 0.0.0.0:5514
@@ -87,7 +84,6 @@ services:
 
   genieacs-mongo:
     image: ${GENIEACS_MONGO_IMAGE:-mongo:6.0}
-    container_name: noc-genieacs-mongo
     restart: always
     volumes:
       - noc-genieacs-mongo-data:/data/db
@@ -96,14 +92,11 @@ services:
     build:
       context: ./docker/genieacs
       dockerfile: Dockerfile
-    container_name: noc-genieacs
     restart: always
     depends_on:
       - genieacs-mongo
     ports:
       - "7547:7547"
-      - "127.0.0.1:7557:7557"
-      - "127.0.0.1:7558:7558"
     environment:
       GENIEACS_MONGODB_CONNECTION_URL: "mongodb://genieacs-mongo:27017/genieacs"
       GENIEACS_CWMP_PORT: "7547"
@@ -112,8 +105,8 @@ services:
       GENIEACS_UI_PORT: "7558"
       GENIEACS_MAX_COMMIT_ITERATIONS: "256"
       GENIEACS_GPV_BATCH_SIZE: "32"
-      GENIEACS_UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:-noc-genieacs-jwt-secret-32-chars-ok}
-      UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:-noc-genieacs-jwt-secret-32-chars-ok}
+      GENIEACS_UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?Wajib isi GENIEACS_JWT_SECRET}
+      UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:?Wajib isi GENIEACS_JWT_SECRET}
     volumes:
       - noc-genieacs-ext-data:/opt/genieacs/ext
 

@@ -13,7 +13,7 @@
 // Hanya menyentuh yang ada di repo. "default", "bootstrap" dan "inform" bawaan
 // GenieACS tidak diubah. ui.json MENGGANTI seluruh kunci ui.index, ui.filters dan
 // ui.device; isi lamanya dicadangkan dulu ke docker/genieacs/config/.backup/.
-import { spawnSync } from "node:child_process";
+import { spawnSync, execSync } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -30,8 +30,21 @@ const nbi = (process.env.GENIEACS_NBI_URL || "http://127.0.0.1:7557").replace(
   /\/$/,
   "",
 );
-const mongo =
-  process.env.GENIEACS_MONGO_CONTAINER || "noc-genieacs-genieacs-mongo-1";
+let mongo = process.env.GENIEACS_MONGO_CONTAINER;
+if (!mongo) {
+  try {
+    const ps = execSync(
+      'docker ps --filter "name=genieacs-mongo" --format "{{.Names}}"',
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    if (ps) {
+      mongo = ps.split("\n")[0].trim();
+    }
+  } catch {}
+}
+if (!mongo) {
+  mongo = "noc-genieacs-genieacs-mongo-1";
+}
 const NAME = /^[A-Za-z0-9._-]{1,64}$/;
 
 async function listFiles(dir, ext) {
@@ -46,18 +59,29 @@ async function listFiles(dir, ext) {
 }
 
 async function call(method, url, body, contentType) {
-  const res = await fetch(nbi + url, {
-    method,
-    body,
-    headers: contentType ? { "Content-Type": contentType } : undefined,
-    signal: AbortSignal.timeout(10_000),
-  });
-  const text = await res.text();
-  if (!res.ok)
-    throw new Error(
-      `${method} ${url} -> HTTP ${res.status} ${text.slice(0, 200)}`,
-    );
-  return text;
+  let lastErr;
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    try {
+      const res = await fetch(nbi + url, {
+        method,
+        body,
+        headers: contentType ? { "Content-Type": contentType } : undefined,
+        signal: AbortSignal.timeout(10_000),
+      });
+      const text = await res.text();
+      if (!res.ok)
+        throw new Error(
+          `${method} ${url} -> HTTP ${res.status} ${text.slice(0, 200)}`,
+        );
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 6) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 const q = (id) => `?query=${encodeURIComponent(JSON.stringify({ _id: id }))}`;
@@ -127,16 +151,17 @@ for (const file of await listFiles("presets", ".json")) {
 }
 
 // --- ui.json -> MongoDB (koleksi config) ---
-let uiJson = null;
-try {
-  uiJson = JSON.parse(await readFile(path.join(root, "ui.json"), "utf8"));
-} catch (err) {
-  if (err.code !== "ENOENT") throw err;
-}
-if (uiJson) {
+async function applyUiJson() {
+  let uiJson = null;
+  try {
+    uiJson = JSON.parse(await readFile(path.join(root, "ui.json"), "utf8"));
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  if (!uiJson) return;
+
   const { docs, prefixes } = flattenUi(uiJson);
   const patterns = prefixes.map((p) => "^" + p.replace(/\./g, "\\.") + "\\.");
-  // Skrip mongosh lewat stdin; data disisipkan sebagai literal JSON (tanpa interpolasi).
   const script = `
     const docs = ${JSON.stringify(docs)};
     const patterns = ${JSON.stringify(patterns)};
@@ -148,7 +173,7 @@ if (uiJson) {
     const now = db.config.find({ _id: re }).toArray();
     print("COUNT:" + now.length);
   `;
-  const run = spawnSync(
+  let run = spawnSync(
     "docker",
     ["exec", "-i", mongo, "mongosh", "--quiet", "genieacs"],
     {
@@ -158,13 +183,25 @@ if (uiJson) {
     },
   );
   if (run.error || run.status !== 0) {
-    console.error(
-      `Gagal menjalankan mongosh di kontainer ${mongo}: ${run.error?.message ?? run.stderr}`,
+    const runFallback = spawnSync(
+      "docker",
+      ["exec", "-i", mongo, "mongo", "--quiet", "genieacs"],
+      {
+        input: script,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      },
     );
-    process.exit(1);
+    if (!runFallback.error && runFallback.status === 0) {
+      run = runFallback;
+    }
   }
-  // mongosh lewat stdin mencetak prompt ("genieacs> ") di depan keluaran; ambil
-  // mulai dari penanda masing-masing.
+  if (run.error || run.status !== 0) {
+    console.warn(
+      `Catatan: ui.json dilewati di MongoDB (${mongo}): ${run.error?.message ?? run.stderr?.trim() ?? "mongosh/mongo tidak merespons"}`,
+    );
+    return;
+  }
   const pick = (marker) => {
     const line = run.stdout.split("\n").find((l) => l.includes(marker));
     return line ? line.slice(line.indexOf(marker)) : null;
@@ -172,10 +209,10 @@ if (uiJson) {
   const backupLine = pick("BACKUP:");
   const countLine = pick("COUNT:");
   if (!backupLine || !countLine) {
-    console.error(
-      "Jawaban mongosh tidak dikenali:\n" + run.stdout.slice(0, 500),
+    console.warn(
+      "Jawaban mongosh/mongo tidak dikenali:\n" + run.stdout.slice(0, 500),
     );
-    process.exit(1);
+    return;
   }
   const dir = path.join(root, ".backup");
   await mkdir(dir, { recursive: true });
@@ -190,6 +227,8 @@ if (uiJson) {
     `ui.json -> ${docs.length} kunci config (cadangan lama: ${path.relative(process.cwd(), file)})`,
   );
 }
+
+await applyUiJson();
 
 if (failed) {
   console.error(`${failed} item tidak sama sesudah dibaca ulang.`);

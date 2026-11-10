@@ -7,9 +7,6 @@ const nextConfig: NextConfig = {
   // files. The Dockerfile ships that folder; npm start keeps working as before.
   output: "standalone",
   serverExternalPackages: ["pg", "ssh2"],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default nextConfig;

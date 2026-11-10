@@ -135,6 +135,8 @@ type Options struct {
 	Diagnostics DiagnosticsService
 	// RouterPreflight menguji koneksi router sebelum disimpan.
 	RouterPreflight RouterPreflight
+	// Auth melayani endpoint autentikasi native JWT (/api/v1/auth/login, logout, me).
+	Auth *AuthAPI
 	// Now adalah jam untuk jawaban yang memuat waktu (nextRunAt pada endpoint
 	// billing). Bawaannya time.Now; tes mengisinya agar jawabannya tetap. Pemeriksaan
 	// tiket tetap memakai jam sistem.
@@ -188,6 +190,12 @@ func NewHandler(opts Options) http.Handler {
 	if opts.PPPWebhook != nil {
 		mux.Handle("/hooks/ppp", opts.PPPWebhook)
 	}
+	if opts.Auth != nil {
+		authMux := http.NewServeMux()
+		opts.Auth.Register(authMux)
+		mux.Handle("/api/v1/auth/", withCORSMethods(opts.AllowedOrigins, "GET, HEAD, POST, OPTIONS", authMux))
+	}
+
 
 	if opts.Data != nil && opts.Verifier != nil {
 		// Rute billing didaftarkan lebih dulu pada mux induk; sisanya (dan semua

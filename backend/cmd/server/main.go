@@ -35,6 +35,7 @@ import (
 	"noc-isp/backend/internal/ontweb"
 	"noc-isp/backend/internal/routerproxy"
 	"noc-isp/backend/internal/state"
+	"noc-isp/backend/internal/store"
 	"noc-isp/backend/internal/telemetry"
 	"noc-isp/backend/internal/wire"
 )
@@ -136,6 +137,7 @@ func run() error {
 	)
 	if cfg.DatabaseURL == "" {
 		logger.Info("histori traffic dimatikan: isi DATABASE_URL untuk mengaktifkan /api/v1/traffic/history")
+		apiOptions.Auth = httpapi.NewAuthAPI(nil)
 	} else {
 		var err error
 		pool, err = openArchivePool(ctx, cfg.DatabaseURL)
@@ -198,6 +200,8 @@ func run() error {
 		custSvc := customers.NewService(pool, sessions, cpeClient, logger)
 		apiOptions.Customers = httpapi.NewCustomersAPI(custSvc)
 		logger.Info("customers live status Go API aktif", "genieacs", cpeClient != nil)
+		userStore := store.NewUserStore(pool)
+		apiOptions.Auth = httpapi.NewAuthAPI(userStore)
 		// Diagnosa pelanggan 100% Go: worker, trigger otomatis, dan API. Next.js
 		// hanya menampilkan hasil dari tabel diagnostic_runs/diagnostic_findings.
 		if apiOptions.Routers != nil {

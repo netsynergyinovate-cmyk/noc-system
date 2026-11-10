@@ -11,6 +11,10 @@ import (
 // ditolak, termasuk preflight-nya, sehingga permintaan sungguhannya tidak
 // pernah dikirim.
 func withCORS(allowedOrigins []string, next http.Handler) http.Handler {
+	return withCORSMethods(allowedOrigins, "GET, HEAD, OPTIONS", next)
+}
+
+func withCORSMethods(allowedOrigins []string, methods string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin == "" {
@@ -26,7 +30,7 @@ func withCORS(allowedOrigins []string, next http.Handler) http.Handler {
 		header.Set("Access-Control-Allow-Origin", origin)
 		header.Add("Vary", "Origin")
 		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
-			header.Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+			header.Set("Access-Control-Allow-Methods", methods)
 			header.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			header.Set("Access-Control-Max-Age", "600")
 			w.WriteHeader(http.StatusNoContent)

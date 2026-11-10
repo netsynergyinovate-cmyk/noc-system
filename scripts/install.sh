@@ -261,69 +261,72 @@ else
   sudo -u "${DEPLOY_USER}" --preserve-env=NOC_DEVICE_SECRET,NOC_PUBLIC_URL,NOC_ROUTER_SECRET_KEY,NOC_ADMIN_EMAIL,NOC_ADMIN_NAME,NOC_ADMIN_PASSWORD,GITHUB_TOKEN sg docker -c "node bin/noc-system.mjs install"
 fi
 
-# 8. Siapkan Docker network bersama untuk kontainer NOC
-docker network create nocsystem_default 2>/dev/null || true
+# 8. Helper untuk memastikan nilai .env terpasang (mengganti jika sudah ada, menambahkan jika belum)
+set_env_val() {
+  local k="$1"
+  local v="$2"
+  local f="$3"
+  if grep -q "^${k}=" "${f}" 2>/dev/null; then
+    sed -i "s|^${k}=.*|${k}=${v}|" "${f}"
+  else
+    echo "${k}=${v}" >> "${f}"
+  fi
+}
 
-# 9. Pastikan konfigurasi GenieACS, OSRM & Live Dashboard di shared .env
+# 9. Pastikan konfigurasi Live Dashboard, GenieACS, dan OSRM di shared .env
 if [ -f "${SHARED_ENV}" ]; then
-  if ! grep -q "^GENIEACS_JWT_SECRET=" "${SHARED_ENV}" 2>/dev/null; then
+  set_env_val "DASHBOARD_DATA" "live" "${SHARED_ENV}"
+  set_env_val "DATA_MODE" "nyata" "${SHARED_ENV}"
+  set_env_val "GENIEACS_MODE" "real" "${SHARED_ENV}"
+  set_env_val "GENIEACS_NBI_URL" "http://127.0.0.1:7557" "${SHARED_ENV}"
+  set_env_val "GENIEACS_URL" "http://127.0.0.1:7557" "${SHARED_ENV}"
+  set_env_val "OSRM_BASE_URL" "http://127.0.0.1:5000" "${SHARED_ENV}"
+
+  if ! grep -q "^GENIEACS_JWT_SECRET=\S\+" "${SHARED_ENV}" 2>/dev/null; then
     RAND_JWT=$(openssl rand -hex 32 2>/dev/null || date +%s | sha256sum | head -c 64)
-    echo "GENIEACS_JWT_SECRET=${RAND_JWT}" >> "${SHARED_ENV}"
+    set_env_val "GENIEACS_JWT_SECRET" "${RAND_JWT}" "${SHARED_ENV}"
   fi
-  if ! grep -q "^GENIEACS_MONGO_IMAGE=" "${SHARED_ENV}" 2>/dev/null; then
-    if ! grep -E -q 'avx|avx2' /proc/cpuinfo 2>/dev/null; then
-      echo "GENIEACS_MONGO_IMAGE=mongo:4.4" >> "${SHARED_ENV}"
-    fi
-  fi
-  grep -q "^GENIEACS_NBI_URL=" "${SHARED_ENV}" 2>/dev/null || echo "GENIEACS_NBI_URL=http://127.0.0.1:7557" >> "${SHARED_ENV}"
-  grep -q "^GENIEACS_URL=" "${SHARED_ENV}" 2>/dev/null || echo "GENIEACS_URL=http://127.0.0.1:7557" >> "${SHARED_ENV}"
-  grep -q "^OSRM_BASE_URL=" "${SHARED_ENV}" 2>/dev/null || echo "OSRM_BASE_URL=http://127.0.0.1:5000" >> "${SHARED_ENV}"
-  grep -q "^DASHBOARD_DATA=" "${SHARED_ENV}" 2>/dev/null || echo "DASHBOARD_DATA=live" >> "${SHARED_ENV}"
-fi
-
-# 10. Jalankan kontainer pendukung di Docker (GenieACS TR-069 & OSRM Engine)
-echo -e "\n${CYAN}Menyalakan kontainer Docker GenieACS TR-069 (CWMP 7547 & NBI 7557)...${NC}"
-docker compose --env-file "${SHARED_ENV}" -f "${SRC_DIR}/compose.genieacs.yaml" up -d --build 2>/dev/null || true
-
-echo -e "\n${CYAN}Menyiapkan kontainer Docker OSRM Routing Engine (Port 5000)...${NC}"
-mkdir -p "${SRC_DIR}/docker/osrm/data"
-chown -R "${DEPLOY_USER}:${DEPLOY_GROUP}" "${SRC_DIR}/docker/osrm/data" 2>/dev/null || true
-if [ ! -f "${SRC_DIR}/docker/osrm/data/sumatra-latest.osrm" ]; then
-  echo -e "${YELLOW}Mengunduh data peta OSM Sumatra untuk OSRM (~80MB)...${NC}"
-  if [ ! -f "${SRC_DIR}/docker/osrm/data/sumatra-latest.osm.pbf" ]; then
-    curl -fL --create-dirs -o "${SRC_DIR}/docker/osrm/data/sumatra-latest.osm.pbf" https://download.geofabrik.de/asia/indonesia/sumatra-latest.osm.pbf 2>/dev/null || true
-  fi
-  if [ -f "${SRC_DIR}/docker/osrm/data/sumatra-latest.osm.pbf" ]; then
-    echo -e "${YELLOW}Mengekstrak dan mempartisi peta OSRM (osrm-prepare)...${NC}"
-    docker compose -f "${SRC_DIR}/compose.osrm.yaml" run --rm osrm-prepare 2>/dev/null || true
+  if ! grep -E -q 'avx|avx2' /proc/cpuinfo 2>/dev/null; then
+    set_env_val "GENIEACS_MONGO_IMAGE" "mongo:4.4" "${SHARED_ENV}"
   fi
 fi
-docker compose -f "${SRC_DIR}/compose.osrm.yaml" up -d osrm 2>/dev/null || true
 
-# 11. Terapkan virtual parameters & presets NOC ke GenieACS NBI
-echo -e "${CYAN}Menerapkan virtual parameters & presets NOC ke GenieACS...${NC}"
+# 10. Jalankan kontainer GenieACS TR-069 via fitur standar noc-system
+echo -e "\n${CYAN}Menyalakan kontainer Docker GenieACS TR-069 (CWMP:7547 & NBI:7557)...${NC}"
+cd "${SRC_DIR}"
+node bin/noc-system.mjs features up genieacs || echo -e "${YELLOW}Peringatan: Gagal menyalakan GenieACS otomatis.${NC}"
+
+# Terapkan virtual parameters & presets NOC ke GenieACS NBI
+echo -e "${CYAN}Menerapkan virtual parameters & presets NOC ke GenieACS NBI...${NC}"
 for i in $(seq 1 15); do
   if curl -s -m 2 http://127.0.0.1:7557/ >/dev/null 2>&1; then
-    node "${SRC_DIR}/scripts/genieacs-apply-config.mjs" 2>/dev/null || true
+    node "${SRC_DIR}/scripts/genieacs-apply-config.mjs" || echo -e "${YELLOW}Peringatan: Gagal menerapkan konfigurasi GenieACS.${NC}"
     break
   fi
   sleep 2
 done
 
-# 12. Integrasi Otomatis Coolify Traefik Proxy (jika Coolify terpasang di server)
+# 11. Penanganan OSRM Routing Engine (Opsional via NOC_ENABLE_OSRM=1)
+if [ "${NOC_ENABLE_OSRM:-0}" = "1" ]; then
+  echo -e "\n${CYAN}Menyiapkan kontainer Docker OSRM Routing Engine...${NC}"
+  node bin/noc-system.mjs features up osrm || echo -e "${YELLOW}Peringatan: Gagal menyalakan OSRM.${NC}"
+else
+  echo -e "\n${CYAN}Catatan OSRM (Peta Snapping):${NC} Dilewati saat instalasi awal untuk menghemat RAM dan bandwidth."
+  echo -e "Jalankan kapan saja via terminal: ${BOLD}noc-system features up osrm${NC}"
+fi
+
+# 12. Integrasi Domain Coolify Traefik (hanya jika NOC_DOMAIN diisi dan Coolify terpasang)
 COOLIFY_DYNAMIC_DIR="/data/coolify/proxy/dynamic"
-if [ -d "${COOLIFY_DYNAMIC_DIR}" ]; then
-  echo -e "\n${GREEN}✓ Coolify terdeteksi di server! Menghubungkan Traefik Coolify ke NOC System...${NC}"
-  COOLIFY_CFG="${COOLIFY_DYNAMIC_DIR}/noc-system.yaml"
+if [ -n "${NOC_DOMAIN:-}" ] && [ -d "${COOLIFY_DYNAMIC_DIR}" ]; then
+  echo -e "\n${GREEN}✓ Coolify terdeteksi! Mengonfigurasi domain ${NOC_DOMAIN} pada Traefik Coolify...${NC}"
+  COOLIFY_CFG="${COOLIFY_DYNAMIC_DIR}/noc-${NOC_DOMAIN}.yaml"
   cat <<EOF > "${COOLIFY_CFG}"
-# Konfigurasi routing dinamis Coolify Traefik untuk NOC System
 http:
   routers:
     noc-web:
-      rule: "HostRegexp(\`{host:.+}\`)"
+      rule: "Host(\`${NOC_DOMAIN}\`)"
       service: noc-web-service
       entryPoints: ["web", "websecure"]
-      priority: 1
   services:
     noc-web-service:
       loadBalancer:
@@ -373,8 +376,13 @@ if [ -n "${CURRENT_TOKEN}" ]; then
 fi
 if [ -d "/data/coolify" ]; then
   echo -e "\n${CYAN}${BOLD}PEMANTAUAN DI DASHBOARD COOLIFY:${NC}"
-  echo -e "  - Kontainer Docker NOC (${BOLD}noc-postgres, noc-genieacs, genieacs-mongo, nocsystem-osrm${NC}) otomatis terpantau di menu: ${GREEN}Coolify -> Servers -> [Server Anda] -> Docker Containers${NC}."
-  echo -e "  - Traefik Coolify telah otomatis disiapkan untuk meneruskan request ke web native di ${GREEN}http://host.docker.internal:3000${NC}."
+  echo -e "  - Kontainer Docker NOC terpantau di menu: ${GREEN}Coolify -> Servers -> [Pilih Server] -> Docker Containers${NC}."
+  if [ -n "${NOC_DOMAIN:-}" ]; then
+    echo -e "  - Domain ${BOLD}${NOC_DOMAIN}${NC} telah otomatis diarahkan lewat Traefik Coolify ke port 3000."
+  else
+    echo -e "  - Untuk menghubungkan domain Coolify ke aplikasi, jalankan dengan variabel domain:"
+    echo -e "      ${CYAN}NOC_DOMAIN=noc.domainanda.com sudo bash scripts/install.sh${NC}"
+  fi
 fi
 echo -e "\n${YELLOW}${BOLD}LOGIN SUPERADMIN:${NC} ${GREEN}${NOC_ADMIN_EMAIL:-admin@noc.local}${NC}"
 echo -e "Kata sandi dicetak SEKALI di bagian 'Akun NOC' di atas (jika tidak terlihat, buat ulang: ${CYAN}noc-system admin create --reset-password${NC})."

@@ -1,0 +1,123 @@
+name: noc-system
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: noc-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-starter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-starter_password}
+      POSTGRES_DB: ${POSTGRES_DB:-starter}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - noc-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-starter} -d ${POSTGRES_DB:-starter}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrator:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+    container_name: noc-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-noc-auth-secret-min-32-chars-long}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-noc-realtime-token-secret-32-chars}
+      DASHBOARD_DATA: live
+      DATA_MODE: nyata
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
+      BACKEND_INTERNAL_URL: http://backend:8080
+      GENIEACS_NBI_URL: http://genieacs:7557
+      GENIEACS_URL: http://genieacs:7557
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  backend:
+    build:
+      context: ./backend
+    container_name: noc-backend
+    restart: always
+    ports:
+      - "8080:8080"
+      - "5514:5514/udp"
+      - "2055:2055/udp"
+    environment:
+      PORT: 8080
+      BACKEND_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD:-starter_password}@postgres:5432/${POSTGRES_DB:-starter}
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-noc-realtime-token-secret-32-chars}
+      DEVICE_SECRET: ${DEVICE_SECRET:-noc-device-secret-key-32chars-ok}
+      DASHBOARD_DATA: live
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      SYSLOG_ADDR: 0.0.0.0:5514
+      NETFLOW_ADDR: :2055
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+
+  genieacs-mongo:
+    image: ${GENIEACS_MONGO_IMAGE:-mongo:6.0}
+    container_name: noc-genieacs-mongo
+    restart: always
+    volumes:
+      - noc-genieacs-mongo-data:/data/db
+
+  genieacs:
+    build:
+      context: ./docker/genieacs
+      dockerfile: Dockerfile
+    container_name: noc-genieacs
+    restart: always
+    depends_on:
+      - genieacs-mongo
+    ports:
+      - "7547:7547"
+      - "127.0.0.1:7557:7557"
+      - "127.0.0.1:7558:7558"
+    environment:
+      GENIEACS_MONGODB_CONNECTION_URL: "mongodb://genieacs-mongo:27017/genieacs"
+      GENIEACS_CWMP_PORT: "7547"
+      GENIEACS_NBI_PORT: "7557"
+      GENIEACS_FS_PORT: "7567"
+      GENIEACS_UI_PORT: "7558"
+      GENIEACS_MAX_COMMIT_ITERATIONS: "256"
+      GENIEACS_GPV_BATCH_SIZE: "32"
+      GENIEACS_UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:-noc-genieacs-jwt-secret-32-chars-ok}
+      UI_JWT_SECRET: ${GENIEACS_JWT_SECRET:-noc-genieacs-jwt-secret-32-chars-ok}
+    volumes:
+      - noc-genieacs-ext-data:/opt/genieacs/ext
+
+volumes:
+  noc-postgres-data:
+  noc-genieacs-mongo-data:
+  noc-genieacs-ext-data:

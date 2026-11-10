@@ -37,7 +37,7 @@ ENV NODE_ENV=production \
 # request arrives. Supply real values to the running container, not the build.
 RUN DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build \
     BETTER_AUTH_SECRET=placeholder-for-build-only-replaced-at-runtime \
-    NODE_OPTIONS="--max-old-space-size=4096" \
+    NODE_OPTIONS="--max-old-space-size=2048" \
     npm run build
 
 # --- Shared runtime: only the files the standalone server traced --------------

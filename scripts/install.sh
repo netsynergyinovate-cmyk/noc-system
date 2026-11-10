@@ -296,15 +296,6 @@ echo -e "\n${CYAN}Menyalakan kontainer Docker GenieACS TR-069 (CWMP:7547 & NBI:7
 cd "${SRC_DIR}"
 node bin/noc-system.mjs features up genieacs || echo -e "${YELLOW}Peringatan: Gagal menyalakan GenieACS otomatis.${NC}"
 
-# Terapkan virtual parameters & presets NOC ke GenieACS NBI
-echo -e "${CYAN}Menerapkan virtual parameters & presets NOC ke GenieACS NBI...${NC}"
-for i in $(seq 1 15); do
-  if curl -s -m 2 http://127.0.0.1:7557/ >/dev/null 2>&1; then
-    node "${SRC_DIR}/scripts/genieacs-apply-config.mjs" || echo -e "${YELLOW}Peringatan: Gagal menerapkan konfigurasi GenieACS.${NC}"
-    break
-  fi
-  sleep 2
-done
 
 # 11. Penanganan OSRM Routing Engine (Opsional via NOC_ENABLE_OSRM=1)
 if [ "${NOC_ENABLE_OSRM:-0}" = "1" ]; then

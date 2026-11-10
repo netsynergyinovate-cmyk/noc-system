@@ -197,8 +197,9 @@ async function applyUiJson() {
     }
   }
   if (run.error || run.status !== 0) {
+    const detail = run.error?.message || run.stderr?.trim() || `exit code ${run.status}`;
     console.warn(
-      `Catatan: ui.json dilewati di MongoDB (${mongo}): ${run.error?.message ?? run.stderr?.trim() ?? "mongosh/mongo tidak merespons"}`,
+      `Catatan: ui.json dilewati di MongoDB (${mongo}): ${detail}`,
     );
     return;
   }

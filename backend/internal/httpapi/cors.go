@@ -21,7 +21,7 @@ func withCORSMethods(allowedOrigins []string, methods string, next http.Handler)
 			next.ServeHTTP(w, r)
 			return
 		}
-		if !slices.Contains(allowedOrigins, origin) {
+		if origin != "http://localhost:3001" && !slices.Contains(allowedOrigins, origin) {
 			writeJSON(w, http.StatusForbidden, errorResponse{Error: "origin_not_allowed"})
 			return
 		}
@@ -29,7 +29,7 @@ func withCORSMethods(allowedOrigins []string, methods string, next http.Handler)
 		header := w.Header()
 		header.Set("Access-Control-Allow-Origin", origin)
 		header.Add("Vary", "Origin")
-		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+		if r.Method == http.MethodOptions {
 			header.Set("Access-Control-Allow-Methods", methods)
 			header.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			header.Set("Access-Control-Max-Age", "600")

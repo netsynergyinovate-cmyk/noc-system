@@ -43,7 +43,7 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Wajib isi BETTER_AUTH_SECRET min 32 karakter}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET min 32 karakter}
+      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET persis 32 karakter (openssl rand -hex 16)}
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?Wajib isi REALTIME_TOKEN_SECRET min 32 karakter}
       JWT_SECRET: ${JWT_SECRET:?Wajib isi JWT_SECRET min 32 karakter}
       DASHBOARD_DATA: live
@@ -72,7 +72,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
       JWT_SECRET: ${JWT_SECRET:?Wajib isi JWT_SECRET min 32 karakter}
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?Wajib isi REALTIME_TOKEN_SECRET min 32 karakter}
-      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET min 32 karakter}
+      DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET persis 32 karakter (openssl rand -hex 16)}
       DASHBOARD_DATA: live
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       SYSLOG_ADDR: 0.0.0.0:5514

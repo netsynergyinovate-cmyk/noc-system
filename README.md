@@ -33,11 +33,22 @@ sudo NOC_ADMIN_EMAIL=anda@domain.com bash /tmp/noc-install.sh   # periksa skrip 
 sudo noc-system deploy              # rilis pertama (build ±6 menit di 2 vCPU)
 sudo noc-system features up all     # opsional: Logto, GenieACS, OSRM, 9router
 ```
+### 🔑 Kredensial Akun Superadmin
+Saat menjalankan `install.sh`, sistem otomatis membuat akun superadmin pertama:
+- **Email Default:** `admin@noc.local` (atau sesuai `NOC_ADMIN_EMAIL=...` saat instalasi).
+- **Kata Sandi:** Dicetak **SATU KALI** di terminal pada kotak `AKUN NOC (SUPERADMIN)`.
 
-Installer mencetak **kata sandi superadmin sekali** di bagian `Akun NOC` (jangan ditutup sebelum disalin). Setelah `deploy`, buka `http://<IP_LAN_SERVER>:3000` dan masuk dengan email tadi. Tanpa `NOC_ADMIN_EMAIL`, akun bawaan adalah `admin@noc.local`; ganti kata sandinya setelah masuk. Lupa kata sandi: `sudo noc-system admin create --reset-password`.
+**Jika lupa kata sandi atau terminal terlanjur tertutup:**
+Jalankan perintah ini di terminal server untuk mereset dan mencetak kata sandi baru:
+```bash
+sudo noc-system admin create --reset-password
+```
+Atau jika ingin menentukan kata sandi sendiri:
+```bash
+NOC_ADMIN_PASSWORD="KataSandiBaruAnda123!" sudo noc-system admin create --reset-password --email admin@noc.local
+```
 
 Panduan lengkap: [Instalasi di Server Produksi](#instalasi-di-server-produksi-ubuntu-native).
-
 > **Status pengujian:** alur instal bersih (`install.sh` → `noc-system deploy` → sign-in superadmin → tiket realtime + WebSocket) diuji di server **Ubuntu 26.04** (2 vCPU, 3 GB RAM). Ubuntu 20.04/22.04/24.04 dan mesin tanpa Docker/Node/Go sebelumnya belum diuji. `noc-system features up` baru diuji di Windows. Coba di satu VPS kosong sebelum dipakai untuk klien.
 
 | Tahap | Perintah | Hasil |
@@ -182,8 +193,8 @@ Buka peramban web dan arahkan ke alamat **IP LAN** server (bukan IP publik, kecu
 ```
 http://<IP_LAN_SERVER>:3000
 ```
-- Masuk dengan akun superadmin dari installer. Pendaftaran mandiri (`/sign-up`) tertutup secara bawaan (`ALLOW_SIGN_UP=false`; API membalas `EMAIL_PASSWORD_SIGN_UP_DISABLED`), jadi akun tambahan dibuat oleh superadmin di **Pengaturan → Akun**, atau lewat `noc-system admin create --email ...`.
-- Login hanya diterima dari origin yang sama dengan `BETTER_AUTH_URL` (galat `Invalid origin` / 403 bila diakses dari alamat lain). Untuk akses lewat IP padahal URL aplikasi memakai domain, isi `BETTER_AUTH_TRUSTED_ORIGINS=http://<IP>:3000` di `/srv/noc/shared/.env` lalu `sudo systemctl restart noc-web`.
+- Masuk dengan akun superadmin dari installer (default `admin@noc.local`). Pendaftaran mandiri tertutup (`ALLOW_SIGN_UP=false`), akun operator/teknisi tambahan dibuat oleh superadmin di **Pengaturan → Akun** atau via CLI: `noc-system admin create --email teknisi@domain.com`.
+- Autentikasi menggunakan **Native Go JWT** dengan resolusi origin dinamis, sehingga Anda bisa login dari IP server maupun domain tanpa konfigurasi origin manual. Jika lupa password superadmin, jalankan: `sudo noc-system admin create --reset-password`.
 - Masuk ke dashboard `/app/deploy` tab **CLI noc-system**.
 - Masukkan **Alamat Server** (`http://<IP_SERVER>:3000`) dan **Token Monitor** (diambil dari output installer atau `noc-system status`).
 - Panel akan menampilkan spesifikasi server real-time, live terminal stream 50 baris journalctl, status proses aktif, dan matriks fitur secara langsung.

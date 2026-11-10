@@ -515,6 +515,15 @@ func (a *AuthAPI) handleGithubLogin(w http.ResponseWriter, r *http.Request) {
 	q.Set("state", state)
 	u.RawQuery = q.Encode()
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		Path:     "/api/v1/auth/github",
+		MaxAge:   600,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
 }
 
@@ -533,6 +542,19 @@ func (a *AuthAPI) handleGithubCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
 		return
 	}
+
+	stateCookie, err := r.Cookie("oauth_state")
+	if err != nil || stateCookie.Value == "" || stateCookie.Value != state {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		Path:     "/api/v1/auth/github",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
 
 	dataBytes, err := hex.DecodeString(parts[0])
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -220,4 +221,126 @@ func (s *UserStore) SetPassword(ctx context.Context, userID, passwordHash string
 		}
 	}
 	return nil
+}
+
+// FindOrCreateOAuthUser mencari pengguna berdasarkan OAuth account atau email terverifikasi,
+// dan menautkan akun penyedia OAuth (misal: github/logto) dengan aman.
+func (s *UserStore) FindOrCreateOAuthUser(ctx context.Context, provider, accountID, email, name string, emailVerified bool) (*User, error) {
+	if s.pool == nil {
+		return nil, errors.New("database pool nil")
+	}
+	email = strings.TrimSpace(email)
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" {
+		return nil, errors.New("OAuth account ID kosong")
+	}
+
+	now := time.Now()
+
+	// 1. Cari berdasarkan identitas akun yang spesifik (provider_id & account_id)
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		SELECT u.id, coalesce(u.name, u.email), u.email, coalesce(a.password, ''), coalesce(u.role, 'user'),
+		       coalesce(u.banned, false), u.ban_expires, u.created_at, u.updated_at
+		FROM account a
+		JOIN "user" u ON u.id = a.user_id
+		WHERE a.provider_id = $1 AND a.account_id = $2
+		LIMIT 1
+	`, provider, accountID).Scan(
+		&u.ID, &u.Username, &u.Email, &u.Password, &u.Role,
+		&u.Banned, &u.BanExpires, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err == nil {
+		return &u, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("query oauth account: %w", err)
+	}
+
+	// 2. Bila belum tertaut ke account_id, hanya boleh ditautkan ke akun yang ada jika email diverifikasi oleh provider
+	if email != "" && emailVerified {
+		err = s.pool.QueryRow(ctx, `
+			SELECT u.id, coalesce(u.name, u.email), u.email, coalesce(a.password, ''), coalesce(u.role, 'user'),
+			       coalesce(u.banned, false), u.ban_expires, u.created_at, u.updated_at
+			FROM "user" u
+			LEFT JOIN account a ON a.user_id = u.id AND a.provider_id = 'credential'
+			WHERE lower(u.email) = lower($1)
+			LIMIT 1
+		`, email).Scan(
+			&u.ID, &u.Username, &u.Email, &u.Password, &u.Role,
+			&u.Banned, &u.BanExpires, &u.CreatedAt, &u.UpdatedAt,
+		)
+		if err == nil {
+			accIDBytes := make([]byte, 16)
+			_, _ = rand.Read(accIDBytes)
+			accID := hex.EncodeToString(accIDBytes)
+			_, err = s.pool.Exec(ctx, `
+				INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, $5)
+				ON CONFLICT (id) DO NOTHING
+			`, accID, accountID, provider, u.ID, now)
+			if err != nil {
+				return nil, fmt.Errorf("link oauth account: %w", err)
+			}
+			return &u, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("query user by email: %w", err)
+		}
+	}
+
+	// 3. Pengguna baru: Wajib ada email dan pendaftaran mandiri harus diizinkan
+	if email == "" {
+		return nil, errors.New("email tidak disediakan atau tidak terverifikasi oleh penyedia OAuth")
+	}
+	if strings.ToLower(strings.TrimSpace(os.Getenv("ALLOW_SIGN_UP"))) != "true" {
+		return nil, errors.New("pendaftaran akun publik dimatikan")
+	}
+
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	newUserID := hex.EncodeToString(b)
+
+	if name == "" {
+		name = email
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO "user" (id, name, email, email_verified, role, banned, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, 'user', false, $5, $5)
+	`, newUserID, name, email, emailVerified, now)
+	if err != nil {
+		return nil, fmt.Errorf("insert user: %w", err)
+	}
+
+	accIDBytes := make([]byte, 16)
+	_, _ = rand.Read(accIDBytes)
+	accID := hex.EncodeToString(accIDBytes)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $5)
+	`, accID, accountID, provider, newUserID, now)
+	if err != nil {
+		return nil, fmt.Errorf("insert account: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return &User{
+		ID:        newUserID,
+		Username:  name,
+		Email:     email,
+		Role:      "user",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
 }

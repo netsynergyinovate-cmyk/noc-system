@@ -2,11 +2,15 @@ package httpapi
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -80,6 +84,8 @@ func (a *AuthAPI) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/change-password", a.handleChangePassword)
 	mux.HandleFunc("POST /api/v1/auth/admin/set-user-password", a.handleAdminSetUserPassword)
 	mux.HandleFunc("POST /api/v1/auth/admin/create-user", a.handleAdminCreateUser)
+	mux.HandleFunc("GET /api/v1/auth/github", a.handleGithubLogin)
+	mux.HandleFunc("GET /api/v1/auth/github/callback", a.handleGithubCallback)
 }
 
 type loginRequest struct {
@@ -438,6 +444,254 @@ func (a *AuthAPI) getUserAndRoleFromReq(r *http.Request) (string, string, bool) 
 		}
 	}
 	return "", "", false
+}
+
+type oauthState struct {
+	Timestamp int64  `json:"ts"`
+	Frontend  string `json:"frontend"`
+}
+
+func (a *AuthAPI) getFrontendURL(r *http.Request) string {
+	for _, envKey := range []string{"APP_URL", "NEXT_PUBLIC_APP_URL", "BETTER_AUTH_URL"} {
+		if val := strings.TrimSpace(os.Getenv(envKey)); val != "" {
+			return strings.TrimRight(val, "/")
+		}
+	}
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	if host := r.Header.Get("X-Forwarded-Host"); host != "" {
+		return fmt.Sprintf("%s://%s", scheme, host)
+	}
+	if r.Host != "" {
+		return fmt.Sprintf("%s://%s", scheme, r.Host)
+	}
+	return "http://localhost:3001"
+}
+
+func (a *AuthAPI) getBackendURL(r *http.Request) string {
+	if val := strings.TrimSpace(os.Getenv("BACKEND_URL")); val != "" {
+		return strings.TrimRight(val, "/")
+	}
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	host := r.Host
+	if fHost := r.Header.Get("X-Forwarded-Host"); fHost != "" {
+		host = fHost
+	}
+	return fmt.Sprintf("%s://%s", scheme, host)
+}
+
+func (a *AuthAPI) handleGithubLogin(w http.ResponseWriter, r *http.Request) {
+	clientID := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_ID"))
+	frontendURL := a.getFrontendURL(r)
+	if clientID == "" {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_not_configured", http.StatusTemporaryRedirect)
+		return
+	}
+
+	redirectURI := strings.TrimSpace(os.Getenv("GITHUB_REDIRECT_URI"))
+	if redirectURI == "" {
+		redirectURI = a.getBackendURL(r) + "/api/v1/auth/github/callback"
+	}
+	stateData, _ := json.Marshal(oauthState{
+		Timestamp: time.Now().Unix(),
+		Frontend:  frontendURL,
+	})
+	secret := os.Getenv("JWT_SECRET")
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(stateData)
+	sig := hex.EncodeToString(mac.Sum(nil))
+	state := hex.EncodeToString(stateData) + "." + sig
+
+	u, _ := url.Parse("https://github.com/login/oauth/authorize")
+	q := u.Query()
+	q.Set("client_id", clientID)
+	q.Set("redirect_uri", redirectURI)
+	q.Set("scope", "read:user,user:email")
+	q.Set("state", state)
+	u.RawQuery = q.Encode()
+
+	http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
+}
+
+func (a *AuthAPI) handleGithubCallback(w http.ResponseWriter, r *http.Request) {
+	fallbackURL := a.getFrontendURL(r)
+	state := r.URL.Query().Get("state")
+	code := r.URL.Query().Get("code")
+
+	if code == "" || state == "" {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=github_cancelled", http.StatusTemporaryRedirect)
+		return
+	}
+
+	parts := strings.Split(state, ".")
+	if len(parts) != 2 {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
+		return
+	}
+
+	dataBytes, err := hex.DecodeString(parts[0])
+	if err != nil {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
+		return
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(dataBytes)
+	expectedSig := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(parts[1]), []byte(expectedSig)) {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
+		return
+	}
+
+	var st oauthState
+	if err := json.Unmarshal(dataBytes, &st); err != nil {
+		http.Redirect(w, r, fallbackURL+"/sign-in?error=invalid_state", http.StatusTemporaryRedirect)
+		return
+	}
+	frontendURL := st.Frontend
+	if frontendURL == "" {
+		frontendURL = fallbackURL
+	}
+
+	if time.Since(time.Unix(st.Timestamp, 0)) > 10*time.Minute {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=state_expired", http.StatusTemporaryRedirect)
+		return
+	}
+
+	clientID := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_ID"))
+	clientSecret := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_SECRET"))
+	redirectURI := strings.TrimSpace(os.Getenv("GITHUB_REDIRECT_URI"))
+	if redirectURI == "" {
+		redirectURI = a.getBackendURL(r) + "/api/v1/auth/github/callback"
+	}
+
+	tokenForm := url.Values{
+		"client_id":     {clientID},
+		"client_secret": {clientSecret},
+		"code":          {code},
+		"redirect_uri":  {redirectURI},
+	}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, "https://github.com/login/oauth/access_token", strings.NewReader(tokenForm.Encode()))
+	if err != nil {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_exchange_failed", http.StatusTemporaryRedirect)
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_exchange_failed", http.StatusTemporaryRedirect)
+		return
+	}
+	defer resp.Body.Close()
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+		Error       string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil || tokenResp.AccessToken == "" {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_token_empty", http.StatusTemporaryRedirect)
+		return
+	}
+
+	userReq, err := http.NewRequestWithContext(r.Context(), http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_user_failed", http.StatusTemporaryRedirect)
+		return
+	}
+	userReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+	userReq.Header.Set("User-Agent", "NOC-System")
+
+	userResp, err := client.Do(userReq)
+	if err != nil || userResp.StatusCode != http.StatusOK {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_user_failed", http.StatusTemporaryRedirect)
+		return
+	}
+	defer userResp.Body.Close()
+
+	var ghUser struct {
+		ID    int64  `json:"id"`
+		Login string `json:"login"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(userResp.Body).Decode(&ghUser); err != nil || ghUser.ID == 0 {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=github_profile_invalid", http.StatusTemporaryRedirect)
+		return
+	}
+
+	email := strings.TrimSpace(ghUser.Email)
+	emailVerified := false
+
+	emailsReq, err := http.NewRequestWithContext(r.Context(), http.MethodGet, "https://api.github.com/user/emails", nil)
+	if err == nil {
+		emailsReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+		emailsReq.Header.Set("User-Agent", "NOC-System")
+		if emailsResp, err := client.Do(emailsReq); err == nil && emailsResp.StatusCode == http.StatusOK {
+			defer emailsResp.Body.Close()
+			var emails []struct {
+				Email    string `json:"email"`
+				Primary  bool   `json:"primary"`
+				Verified bool   `json:"verified"`
+			}
+			if err := json.NewDecoder(emailsResp.Body).Decode(&emails); err == nil {
+				for _, e := range emails {
+					if e.Verified && (e.Primary || email == "") {
+						email = strings.TrimSpace(e.Email)
+						emailVerified = true
+						if e.Primary {
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	name := strings.TrimSpace(ghUser.Name)
+	if name == "" {
+		name = ghUser.Login
+	}
+
+	if a.users == nil {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=database_unavailable", http.StatusTemporaryRedirect)
+		return
+	}
+
+	u, err := a.users.FindOrCreateOAuthUser(r.Context(), "github", strconv.FormatInt(ghUser.ID, 10), email, name, emailVerified)
+	if err != nil {
+		http.Redirect(w, r, frontendURL+"/sign-in?error="+url.QueryEscape(err.Error()), http.StatusTemporaryRedirect)
+		return
+	}
+
+	if u.IsBanned() {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=user_banned", http.StatusTemporaryRedirect)
+		return
+	}
+
+	token, err := auth.GenerateJWT(u.ID, u.Role)
+	if err != nil {
+		http.Redirect(w, r, frontendURL+"/sign-in?error=internal_error", http.StatusTemporaryRedirect)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "noc_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   604800,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.Redirect(w, r, frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
 
 // requireTicket menolak permintaan tanpa tiket login yang sah di header

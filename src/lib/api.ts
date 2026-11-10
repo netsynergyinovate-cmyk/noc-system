@@ -34,7 +34,9 @@ async function apiKeySession(
 ): Promise<Session | null> {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return null;
-  const found = await findApiKeyOwner(header.slice(7).trim());
+  const key = header.slice(7).trim();
+  if (!key.startsWith("noc_")) return null;
+  const found = await findApiKeyOwner(key);
   if (!found)
     throw new ApiError(
       401,

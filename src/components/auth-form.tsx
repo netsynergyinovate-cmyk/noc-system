@@ -39,6 +39,11 @@ const RETRY_AFTER_HEADER = "X-Retry-After";
 // Mengirim isian ke Better Auth (autentikasi yang asli, tanpa jalan pintas).
 // Mengembalikan null bila berhasil. Permintaan yang tidak sampai ke server
 // (fetch melempar) dibedakan dari jawaban galat server.
+const rawApiBase = process.env.NEXT_PUBLIC_GO_API_URL || "http://localhost:8080/api/v1";
+const AUTH_API_BASE = rawApiBase.replace(/\/+$/, "").endsWith("/api/v1")
+  ? rawApiBase.replace(/\/+$/, "")
+  : `${rawApiBase.replace(/\/+$/, "")}/api/v1`;
+
 async function send(
   signingUp: boolean,
   data: FormData,
@@ -47,37 +52,53 @@ async function send(
   const password = String(data.get("password"));
   const name = String(data.get("name") || "").trim();
 
-  try {
-    const endpoint = signingUp ? "/auth/register" : "/auth/login";
-    const body = signingUp
-      ? JSON.stringify({ name: name || username, email: username, password })
-      : JSON.stringify({ username, password });
+  const endpoint = signingUp ? `${AUTH_API_BASE}/auth/register` : `${AUTH_API_BASE}/auth/login`;
+  const body = signingUp
+    ? JSON.stringify({ name: name || username, email: username, password })
+    : JSON.stringify({ username, password });
 
-    const res = await apiRequest<{ token: string; user: unknown }>(endpoint, {
+  try {
+    const res = await fetch(endpoint, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body,
     });
 
-    if (res?.token) {
-      localStorage.setItem("noc_token", res.token);
-      document.cookie = `noc_token=${encodeURIComponent(res.token)}; Path=/; Max-Age=604800; SameSite=Lax`;
-      return null;
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data?.token) {
+        localStorage.setItem("noc_token", data.token);
+        document.cookie = `noc_token=${encodeURIComponent(data.token)}; Path=/; Max-Age=604800; SameSite=Lax`;
+        return null;
+      }
+      return { kind: "response", status: 500, code: "SERVER_ERROR" };
     }
-    return { kind: "response", status: 401, code: "INVALID_CREDENTIALS" };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("429") || msg.includes("too_many_requests")) {
+
+    if (res.status === 429) {
+      const retryHeader = res.headers.get("X-Retry-After") || res.headers.get("Retry-After");
       return {
         kind: "response",
         status: 429,
         code: "TOO_MANY_REQUESTS",
-        retryAfter: 60,
+        retryAfter: retryDelaySeconds(retryHeader),
       };
     }
-    if (msg.includes("user_banned") || msg.includes("Akun ini telah ditangguhkan")) {
-      return { kind: "response", status: 403, code: "USER_BANNED" };
+
+    if (res.status === 403) {
+      return { kind: "response", status: 403, code: "BANNED_USER" };
     }
-    return { kind: "response", status: 401, code: "INVALID_CREDENTIALS" };
+
+    if (res.status === 409) {
+      return { kind: "response", status: 409, code: "USER_ALREADY_EXISTS" };
+    }
+
+    if (res.status === 401) {
+      return { kind: "response", status: 401, code: "INVALID_CREDENTIALS" };
+    }
+
+    return { kind: "response", status: res.status, code: "SERVER_ERROR" };
+  } catch {
+    return { kind: "network" };
   }
 }
 
@@ -433,46 +454,6 @@ export function AuthForm({
                   </span>
                 </>
               )}
-            </div>
-          </div>
-          <div className="pt-1">
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-border"></div>
-              <span className="flex-shrink mx-2 text-xs text-muted-foreground">
-                atau {signingUp ? "daftar" : "masuk"} dengan
-              </span>
-              <div className="flex-grow border-t border-border"></div>
-            </div>
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-10 text-xs font-medium gap-2.5 border-border bg-card text-foreground hover:bg-accent shadow-xs"
-                onClick={() => {
-                  setFailure({
-                    message:
-                      "Layanan SSO sedang dimigrasi. Silakan masuk menggunakan akun email dan kata sandi.",
-                    target: "submit",
-                  });
-                }}
-              >
-                <svg
-                  className="size-4 shrink-0 fill-current"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-                  />
-                </svg>
-                <span>
-                  {signingUp
-                    ? "Daftar dengan GitHub (via Logto SSO)"
-                    : "Masuk dengan GitHub (via Logto SSO)"}
-                </span>
-              </Button>
             </div>
           </div>
           {/* Selalu terpasang (kosong dulu) supaya isinya diumumkan ketika

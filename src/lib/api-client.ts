@@ -15,9 +15,11 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
   const url = `${GO_API_BASE}${cleanEndpoint}`;
   const response = await fetch(url, { ...options, headers });
 
-  if (response.status === 401 && typeof window !== "undefined") {
+  const isAuthEndpoint = cleanEndpoint.startsWith("/auth/login") || cleanEndpoint.startsWith("/auth/register");
+  if (response.status === 401 && typeof window !== "undefined" && !isAuthEndpoint) {
     localStorage.removeItem("noc_token");
-    window.location.href = "/login";
+    document.cookie = "noc_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    window.location.href = "/sign-in";
     throw new Error("Sesi berakhir");
   }
   if (!response.ok) {

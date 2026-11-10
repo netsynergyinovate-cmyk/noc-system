@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	ErrNoRows     = errors.New("user tidak ditemukan")
-	ErrUserBanned = errors.New("akun ditangguhkan")
+	ErrNoRows      = errors.New("user tidak ditemukan")
+	ErrUserBanned  = errors.New("akun ditangguhkan")
+	ErrEmailExists = errors.New("email sudah terdaftar")
 )
 
 // User merepresentasikan data akun pengguna di sistem.
@@ -163,13 +164,11 @@ func (s *UserStore) CreateUser(ctx context.Context, u *User) error {
 	insertUser := `
 		INSERT INTO "user" (id, name, email, email_verified, role, banned, created_at, updated_at)
 		VALUES ($1, $2, $3, false, $4, $5, $6, $7)
-		ON CONFLICT (email) DO UPDATE SET
-			name = EXCLUDED.name,
-			role = EXCLUDED.role,
-			banned = EXCLUDED.banned,
-			updated_at = EXCLUDED.updated_at
 	`
 	if _, err := tx.Exec(ctx, insertUser, u.ID, u.Username, u.Email, u.Role, u.Banned, u.CreatedAt, u.UpdatedAt); err != nil {
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
+			return ErrEmailExists
+		}
 		return fmt.Errorf("insert user: %w", err)
 	}
 

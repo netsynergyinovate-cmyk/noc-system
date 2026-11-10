@@ -299,7 +299,17 @@ func (a *AuthAPI) handleAdminSetUserPassword(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	targetUser, err := a.users.GetUserByID(r.Context(), req.UserID)
-	if err == nil && targetUser.Role == "superadmin" && role != "superadmin" {
+	if err != nil {
+		if errors.Is(err, store.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found", Message: "Pengguna tidak ditemukan"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "database_error", Message: "Gagal memeriksa pengguna"})
+		return
+	}
+	callerIsSuper := strings.Contains(role, "superadmin")
+	targetIsSuper := strings.Contains(targetUser.Role, "superadmin")
+	if targetIsSuper && !callerIsSuper {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "forbidden", Message: "Hanya Super Admin yang dapat mengubah sandi Super Admin"})
 		return
 	}
@@ -342,12 +352,13 @@ func (a *AuthAPI) handleAdminCreateUser(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error", Message: "Gagal memproses kata sandi"})
 		return
 	}
-	if req.Role == "superadmin" && role != "superadmin" {
-		writeJSON(w, http.StatusForbidden, errorResponse{Error: "forbidden", Message: "Hanya Super Admin yang dapat membuat akun Super Admin"})
-		return
-	}
+	callerIsSuper := strings.Contains(role, "superadmin")
 	if req.Role == "" {
 		req.Role = "user"
+	}
+	if req.Role != "user" && !callerIsSuper {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "forbidden", Message: "Hanya Super Admin yang dapat menentukan peran selain Petugas"})
+		return
 	}
 	u := &store.User{
 		Username: req.Name,
@@ -356,7 +367,11 @@ func (a *AuthAPI) handleAdminCreateUser(w http.ResponseWriter, r *http.Request) 
 		Role:     req.Role,
 	}
 	if err := a.users.CreateUser(r.Context(), u); err != nil {
-		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error", Message: "Gagal membuat akun: " + err.Error()})
+		if errors.Is(err, store.ErrEmailExists) {
+			writeJSON(w, http.StatusConflict, errorResponse{Error: "email_exists", Message: "Email sudah terdaftar"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error", Message: "Gagal membuat akun"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": u})
@@ -394,6 +409,10 @@ func (a *AuthAPI) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Role:     "user",
 	}
 	if err := a.users.CreateUser(r.Context(), u); err != nil {
+		if errors.Is(err, store.ErrEmailExists) {
+			writeJSON(w, http.StatusConflict, errorResponse{Error: "email_exists", Message: "Email sudah terdaftar, gunakan email lain"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal_error", Message: "Gagal mendaftar"})
 		return
 	}

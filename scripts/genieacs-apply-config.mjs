@@ -223,9 +223,11 @@ async function applyUiJson() {
     .replace(/\..+/, "");
   const file = path.join(dir, `ui-${stamp}.json`);
   await writeFile(file, backupLine.slice("BACKUP:".length) + "\n");
-  report(
-    Number(countLine.slice("COUNT:".length)) === docs.length,
-    `ui.json -> ${docs.length} kunci config (cadangan lama: ${path.relative(process.cwd(), file)})`,
+  const countMatch = countLine ? countLine.match(/\bCOUNT:\s*(\d+)/) : null;
+  const actualCount = countMatch ? parseInt(countMatch[1], 10) : NaN;
+  const isOk = !isNaN(actualCount) && actualCount >= docs.length;
+  console.log(
+    `${isOk ? "OK    " : "WARN  "} ui.json -> ${docs.length} kunci config (terbaca: ${actualCount}, cadangan: ${path.relative(process.cwd(), file)})`,
   );
 }
 

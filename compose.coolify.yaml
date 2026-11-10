@@ -22,6 +22,7 @@ services:
       target: migrator
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
+      NOC_BOOTSTRAP_ADMIN: "1"
     depends_on:
       postgres:
         condition: service_healthy

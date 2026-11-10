@@ -20,14 +20,16 @@ try {
   );
   await migrate(drizzle(pool), { migrationsFolder: resolve(root, "drizzle") });
   console.log("PostgreSQL migrations applied.");
-  try {
-    const { spawnSync } = await import("node:child_process");
-    spawnSync(process.execPath, [resolve(root, "scripts", "create-superadmin.mjs")], {
-      stdio: "inherit",
-      env: process.env,
-    });
-  } catch (err) {
-    console.warn("Inisialisasi superadmin:", err?.message || err);
+  if (process.env.NOC_BOOTSTRAP_ADMIN === "1") {
+    try {
+      const { spawnSync } = await import("node:child_process");
+      spawnSync(process.execPath, [resolve(root, "scripts", "create-superadmin.mjs")], {
+        stdio: "inherit",
+        env: process.env,
+      });
+    } catch (err) {
+      console.warn("Inisialisasi superadmin:", err?.message || err);
+    }
   }
 } catch (error) {
   console.error(databaseError(error));

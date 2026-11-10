@@ -57,12 +57,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/systemd ./systemd
 COPY --from=go-builder --chown=nextjs:nodejs /noc-backend ./noc-backend
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/better-auth ./node_modules/better-auth
 # --- Migrator: apply committed SQL once per release --------------------------
 # Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has
 # no runtime dependencies, and the standalone bundle already carries pg.
 FROM runtime AS migrator
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --chown=nextjs:nodejs drizzle ./drizzle
 COPY --chown=nextjs:nodejs scripts ./scripts
 USER nextjs

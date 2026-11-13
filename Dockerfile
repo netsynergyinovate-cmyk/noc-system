@@ -35,14 +35,20 @@ ENV NODE_ENV=production \
 # data, so both must parse. These placeholders stay on this one command: they
 # are not stored in image metadata, and server code reads process.env when a
 # request arrives. Supply real values to the running container, not the build.
-# Platforms such as Coolify inject every env var as a build ARG; the blanks
-# below keep runtime secrets (validated at start, not at build) out of the build.
-RUN DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build \
+# Coolify turns every env var into an ARG in each stage, so runtime values
+# (DEVICE_SECRET, OSRM_BASE_URL, GENIEACS_NBI_URL, ...) leak into this RUN and
+# src/lib/env.ts rejects them while collecting page data. env -i starts the
+# build from an empty environment so only the placeholders below are seen.
+RUN env -i \
+    PATH="$PATH" \
+    HOME=/root \
+    NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build \
     BETTER_AUTH_SECRET=placeholder-for-build-only-replaced-at-runtime \
     BETTER_AUTH_URL=http://localhost:3000 \
     DASHBOARD_DATA=demo \
     DATA_MODE=demo \
-    DEVICE_SECRET= REALTIME_TOKEN_SECRET= JWT_SECRET= \
     NODE_OPTIONS="--max-old-space-size=4096" \
     npm run build
 

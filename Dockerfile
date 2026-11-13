@@ -39,7 +39,13 @@ ENV NODE_ENV=production \
 # (DEVICE_SECRET, OSRM_BASE_URL, GENIEACS_NBI_URL, ...) leak into this RUN and
 # src/lib/env.ts rejects them while collecting page data. env -i starts the
 # build from an empty environment so only the placeholders below are seen.
+# NEXT_PUBLIC_GO_* are inlined into the browser bundle at build time, so they
+# must pass through; empty falls back to localhost in api-client/auth-form.
+ARG NEXT_PUBLIC_GO_API_URL=""
+ARG NEXT_PUBLIC_GO_WS_URL=""
 RUN env -i \
+    NEXT_PUBLIC_GO_API_URL="$NEXT_PUBLIC_GO_API_URL" \
+    NEXT_PUBLIC_GO_WS_URL="$NEXT_PUBLIC_GO_WS_URL" \
     PATH="$PATH" \
     HOME=/root \
     NODE_ENV=production \

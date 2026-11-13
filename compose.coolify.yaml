@@ -23,6 +23,9 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-starter}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-starter}
       NOC_BOOTSTRAP_ADMIN: "1"
+      # Filled = create the superadmin with this password, or reset it on the next deploy.
+      NOC_ADMIN_EMAIL: ${NOC_ADMIN_EMAIL:-}
+      NOC_ADMIN_PASSWORD: ${NOC_ADMIN_PASSWORD:-}
     depends_on:
       postgres:
         condition: service_healthy

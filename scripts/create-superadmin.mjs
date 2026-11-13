@@ -67,12 +67,20 @@ try {
       );
       if (resetPassword || supplied) {
         const hash = await hashPassword(password);
-        await client.query(
-          `INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
-           VALUES ($1, $2, 'credential', $2, $3, $4, $4)
-           ON CONFLICT (account_id, provider_id) DO UPDATE SET password = $3, updated_at = $4`,
-          [randomUUID(), existing.id, hash, now],
+        // account has no unique (account_id, provider_id), so no ON CONFLICT:
+        // update the credential row like the Go UserStore.SetPassword, insert if missing.
+        const updated = await client.query(
+          `UPDATE account SET password = $2, updated_at = $3
+           WHERE user_id = $1 AND provider_id = 'credential'`,
+          [existing.id, hash, now],
         );
+        if (updated.rowCount === 0) {
+          await client.query(
+            `INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at)
+             VALUES ($1, $2, 'credential', $2, $3, $4, $4)`,
+            [randomUUID(), existing.id, hash, now],
+          );
+        }
         await client.query("DELETE FROM session WHERE user_id = $1", [
           existing.id,
         ]);

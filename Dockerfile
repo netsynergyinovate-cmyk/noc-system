@@ -12,9 +12,10 @@ ARG NODE_VERSION=22-alpine
 FROM golang:1.25-alpine AS go-builder
 WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY backend/ .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /noc-backend ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /noc-backend ./cmd/server
 # --- Build dependencies ------------------------------------------------------
 FROM node:${NODE_VERSION} AS deps
 RUN apk add --no-cache libc6-compat
@@ -43,7 +44,8 @@ ENV NODE_ENV=production \
 # must pass through; empty falls back to localhost in api-client/auth-form.
 ARG NEXT_PUBLIC_GO_API_URL=""
 ARG NEXT_PUBLIC_GO_WS_URL=""
-RUN env -i \
+# The cache mount keeps Turbopack's .next/cache between deploys (warm build).
+RUN --mount=type=cache,target=/app/.next/cache env -i \
     NEXT_PUBLIC_GO_API_URL="$NEXT_PUBLIC_GO_API_URL" \
     NEXT_PUBLIC_GO_WS_URL="$NEXT_PUBLIC_GO_WS_URL" \
     PATH="$PATH" \
@@ -76,13 +78,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/systemd ./systemd
 COPY --from=go-builder --chown=nextjs:nodejs /noc-backend ./noc-backend
 # --- Migrator: apply committed SQL once per release --------------------------
-# Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. drizzle-orm has
-# no runtime dependencies, and the standalone bundle already carries pg.
-FROM runtime AS migrator
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --chown=nextjs:nodejs drizzle ./drizzle
-COPY --chown=nextjs:nodejs scripts ./scripts
-USER nextjs
+# Uses MIGRATION_DATABASE_URL when set, otherwise DATABASE_URL. Built on deps,
+# not runtime: it needs only node_modules + SQL + scripts, so a code change no
+# longer re-copies node_modules or waits for next build.
+FROM deps AS migrator
+COPY --chown=node:node drizzle ./drizzle
+COPY --chown=node:node scripts ./scripts
+USER node
 CMD ["node", "scripts/migrate.mjs"]
 
 # --- Studio: Drizzle Studio container ----------------------------------------

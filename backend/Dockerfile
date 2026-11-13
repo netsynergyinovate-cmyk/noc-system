@@ -1,9 +1,10 @@
 FROM golang:alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates tzdata

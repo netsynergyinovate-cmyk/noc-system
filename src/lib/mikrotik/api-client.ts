@@ -8,6 +8,7 @@ export type RouterOsApiErrorCode =
   | "TIMEOUT"
   | "CONNECTION_REFUSED"
   | "NETWORK_ERROR"
+  | "CONNECTION_RESET"
   | "AUTH_FAILED"
   | "TRAP"
   | "TLS_ERROR"
@@ -130,7 +131,10 @@ export class RouterOsApi {
       this.wake();
     });
     socket.on("close", () => {
-      this.failure ??= new RouterOsApiError("NETWORK_ERROR", REJECTED);
+      this.failure ??= new RouterOsApiError(
+        "CONNECTION_RESET",
+        `${REJECTED} (koneksi ditutup router).`,
+      );
       this.wake();
     });
   }
@@ -182,14 +186,14 @@ export class RouterOsApi {
   }
 }
 
-// TCP tersambung lalu router memutus sebelum menjawab: perilaku RouterOS bila IP sumber tidak ada di allow-list layanan api.
-const REJECTED =
-  "Router memutus koneksi API tepat setelah tersambung, sebelum login dijawab. Penyebab paling umum: alamat server aplikasi tidak ada di daftar izin layanan api (/ip service print where name=api, kolom ADDRESS). Server yang berada di belakang router yang sama (PPPoE/LAN) terlihat dengan alamat PPPoE/LAN-nya, bukan IP publik. Penyebab lain: sesi API penuh (MAX-SESSIONS; cek /user active print count-only where via=api) atau rule firewall input reject tcp-reset.";
+// Router memutus soket: paling sering IP sumber tidak ada di allow-list layanan api (RouterOS menerima TCP lalu reset).
+// Penyebab + perintah cek ditampilkan panel bootstrap untuk kode CONNECTION_RESET.
+const REJECTED = "Router memutus koneksi API";
 
 function mapSocketError(e: Error): RouterOsApiError {
   const code = (e as NodeJS.ErrnoException).code;
   if (code === "ECONNRESET" || code === "EPIPE")
-    return new RouterOsApiError("NETWORK_ERROR", `${REJECTED} (${code})`);
+    return new RouterOsApiError("CONNECTION_RESET", `${REJECTED} (${code}).`);
   if (code === "ECONNREFUSED")
     return new RouterOsApiError(
       "CONNECTION_REFUSED",

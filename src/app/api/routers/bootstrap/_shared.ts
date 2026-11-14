@@ -52,6 +52,7 @@ export async function failure(
   }
   const network =
     err.code === "NETWORK_ERROR" ||
+    err.code === "CONNECTION_RESET" ||
     err.code === "TIMEOUT" ||
     err.code === "CONNECTION_REFUSED";
   const sourceIp = network

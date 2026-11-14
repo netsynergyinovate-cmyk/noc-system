@@ -129,6 +129,7 @@ export function RouterBootstrapPanel({
   const [info, setInfo] = useState<Inspection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [sourceIp, setSourceIp] = useState<string | null>(null);
   const [cand, setCand] = useState<Detect | null>(null);
   const [detecting, setDetecting] = useState(false);
@@ -197,6 +198,7 @@ export function RouterBootstrapPanel({
   async function inspect() {
     setBusy(true);
     setError(null);
+    setErrorCode(null);
     setPlan(null);
     setResult(null);
     const r = await post<Inspection>(
@@ -207,6 +209,7 @@ export function RouterBootstrapPanel({
     if (!r.ok) {
       setInfo(null);
       setSourceIp(r.sourceIp ?? null);
+      setErrorCode(r.code);
       return setError(r.message);
     }
     setInfo(r);
@@ -221,6 +224,7 @@ export function RouterBootstrapPanel({
   async function preview() {
     setBusy(true);
     setError(null);
+    setErrorCode(null);
     setPlan(null);
     const r = await post<{
       plan: Array<{ label: string; display: string; terminal: string }>;
@@ -231,7 +235,10 @@ export function RouterBootstrapPanel({
       dryRun: true,
     });
     setBusy(false);
-    if ("ok" in r && r.ok === false) return setError(r.message);
+    if ("ok" in r && r.ok === false) {
+      setErrorCode(r.code);
+      return setError(r.message);
+    }
     setPlan(
       r as {
         plan: Array<{ label: string; display: string; terminal: string }>;
@@ -252,12 +259,16 @@ export function RouterBootstrapPanel({
       return;
     setBusy(true);
     setError(null);
+    setErrorCode(null);
     const r = await post<ApplyResult>("/api/routers/bootstrap/apply", {
       connection: connection(),
       options: options(),
     });
     setBusy(false);
-    if ("ok" in r && r.ok === false) return setError(r.message);
+    if ("ok" in r && r.ok === false) {
+      setErrorCode(r.code);
+      return setError(r.message);
+    }
     const res = r as ApplyResult;
     setResult(res);
     if (res.verify?.ok && res.rest) {
@@ -505,7 +516,7 @@ export function RouterBootstrapPanel({
             Sintaks array belum diuji di semua versi; periksa dengan{" "}
             <code>/ip service print where name=api</code>.
           </p>
-          {error && sourceIp && (
+          {error && sourceIp && errorCode !== "CONNECTION_RESET" && (
             <div>
               <p>
                 Perkiraan alamat server aplikasi yang dilihat router:{" "}
@@ -514,7 +525,7 @@ export function RouterBootstrapPanel({
               <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">{`/ip service set [find name=api dynamic=no] disabled=no address=([/ip service get [find name=api dynamic=no] address],${sourceIp}/32)`}</pre>
             </div>
           )}
-          {error && (
+          {error && errorCode !== "CONNECTION_RESET" && (
             <div>
               <p>
                 Alamat pasti: catat koneksi masuk, klik &quot;Masuk &amp;
@@ -571,6 +582,12 @@ export function RouterBootstrapPanel({
             &amp; periksa
           </Button>
           {error && <p className="text-sm text-destructive">{error}</p>}
+          {errorCode === "CONNECTION_RESET" && (
+            <ResetHelp
+              port={Number(apiPort) || (apiTls ? 8729 : 8728)}
+              sourceIp={sourceIp}
+            />
+          )}
           {info && (
             <div className="space-y-2 text-sm">
               <p>
@@ -859,6 +876,89 @@ export function RouterBootstrapPanel({
             </p>
           </>,
         )}
+    </div>
+  );
+}
+
+function Cmd({ lines }: { lines: string[] }) {
+  return (
+    <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">
+      {lines.join("\n")}
+    </pre>
+  );
+}
+
+// Router menerima TCP lalu me-reset: penyebab urut kemungkinan, masing-masing dengan perintah terminal MikroTik.
+function ResetHelp({
+  port,
+  sourceIp,
+}: {
+  port: number;
+  sourceIp: string | null;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-destructive/40 p-3 text-sm">
+      <p className="font-medium">
+        Router menerima koneksi lalu langsung memutusnya. Jalankan di terminal
+        MikroTik:
+      </p>
+      <ol className="list-decimal space-y-3 pl-5">
+        <li>
+          <b>Alamat server aplikasi belum diizinkan</b> (paling sering). Lihat
+          kolom <code>ADDRESS</code>:
+          <Cmd lines={["/ip service print where name=api"]} />
+          <p className="mt-2">
+            Cari alamat yang dipakai server: pasang rule pencatat (tidak
+            memblokir), klik &quot;Masuk &amp; periksa&quot; lagi, baca alamat
+            sebelum <code>-&gt;</code> di log, lalu hapus rule:
+          </p>
+          <Cmd
+            lines={[
+              `/ip firewall filter add chain=input protocol=tcp dst-port=${port} action=log log-prefix=APP-API place-before=0 comment=tmp-api-log`,
+              `/log print where message~"APP-API"`,
+              `/ip firewall filter remove [find comment=tmp-api-log]`,
+            ]}
+          />
+          <p className="mt-2">
+            Tambahkan alamat itu (ganti <code>IP_SERVER</code>; alamat lama
+            tetap):
+          </p>
+          <Cmd
+            lines={[
+              `/ip service set [find name=api dynamic=no] address=([/ip service get [find name=api dynamic=no] address],IP_SERVER/32)`,
+            ]}
+          />
+          <p className="mt-2 text-muted-foreground">
+            Server di belakang router ini (PPPoE/LAN) terlihat dengan alamat
+            PPPoE/LAN-nya, bukan IP publik.
+            {sourceIp && (
+              <>
+                {" "}
+                Perkiraan dari server: <code>{sourceIp}</code> (belum
+                terverifikasi).
+              </>
+            )}
+          </p>
+        </li>
+        <li>
+          <b>Sesi API penuh</b>. Bandingkan jumlah sesi dengan{" "}
+          <code>MAX-SESSIONS</code>:
+          <Cmd
+            lines={[
+              "/user active print where via=api",
+              "/ip service print where name=api",
+            ]}
+          />
+        </li>
+        <li>
+          <b>Firewall menolak</b>. Cari rule reject di chain input:
+          <Cmd
+            lines={[
+              `/ip firewall filter print where chain=input action=reject`,
+            ]}
+          />
+        </li>
+      </ol>
     </div>
   );
 }

@@ -1,27 +1,31 @@
-name: noc-genieacs-tunnel
+name: noc-tunnel-server
 
-# Pengganti GenieACS lokal (compose.genieacs.yaml): NBI GenieACS di SERVER lewat SSH tunnel.
-# Aplikasi Docker tetap memakai http://genieacs:7557 (alias jaringan), `npm run dev` memakai
-# http://localhost:7557. Hentikan GenieACS lokal dulu (port dan alias yang sama):
+# SSH tunnel ke SERVER: GenieACS NBI (localhost:7557) dan DB server hanya-baca (localhost:15432).
+# Pengganti GenieACS lokal (compose.genieacs.yaml). Aplikasi Docker memakai http://genieacs:7557
+# (alias jaringan), `npm run dev` memakai http://localhost:7557. `npm run all` menyalakannya sendiri;
+# manual (-p wajib: COMPOSE_PROJECT_NAME di .env.local menimpa `name:` di atas):
 #   docker compose -f compose.genieacs.yaml stop
-#   docker compose -f compose.genieacs-tunnel.yaml up -d
+#   docker compose -p noc-tunnel-server -f compose.tunnel-server.yaml up -d
 # Kunci: ssh-keygen -t ed25519 -N "" -f ~/.ssh/noc_genieacs_tunnel, lalu pasang di server dengan
 # awalan restrict,port-forwarding,permitopen="127.0.0.1:7557",command="/bin/false"
 # (kunci hanya bisa meneruskan ke NBI, tidak bisa menjalankan perintah).
 # Host server harus sudah ada di ~/.ssh/known_hosts (login SSH sekali secara manual).
 #
-# Tunnel yang sama juga membuka DB server (hanya-baca) di localhost:15432. Syarat: akun dari
-# scripts/dev-readonly-role.sql, dan kunci di server ditambah permitopen="127.0.0.1:15432".
+# Tunnel yang sama juga membuka UI GenieACS (localhost:7558) dan DB server hanya-baca (localhost:15432).
+# Syarat: akun dari scripts/dev-readonly-role.sql, dan kunci di server ditambah
+# permitopen="127.0.0.1:7558",permitopen="127.0.0.1:15432".
 #   psql "postgresql://noc_dev_ro@localhost:15432/starter"
-# Aplikasi lokal tetap memakai DB lokal: jangan arahkan DATABASE_URL ke sini.
+# Aplikasi lokal membaca DB server lewat `npm run all:server` (isi .env.server-db.local); `npm run all`
+# tetap memakai DB lokal. Jangan isi DATABASE_URL di .env.local dengan alamat ini.
 
 services:
-  genieacs-tunnel:
+  tunnel:
+    container_name: noc-tunnel-server
     build:
       dockerfile_inline: |
         FROM alpine:3.20
         RUN apk add --no-cache openssh-client
-    image: nocsystem-genieacs-tunnel:latest
+    image: noc-tunnel-server:latest
     restart: unless-stopped
     environment:
       # user@host server, dari .env (tidak di-commit).
@@ -39,10 +43,13 @@ services:
         exec ssh -N -i /tmp/key
         -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=yes
         -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3
-        -L 0.0.0.0:7557:127.0.0.1:7557 -L 0.0.0.0:15432:127.0.0.1:15432 "$$TUNNEL_TARGET"
+        -L 0.0.0.0:7557:127.0.0.1:7557 -L 0.0.0.0:7558:127.0.0.1:7558
+        -L 0.0.0.0:15432:127.0.0.1:15432 "$$TUNNEL_TARGET"
     ports:
       # NBI tanpa login: hanya loopback komputer ini.
       - "127.0.0.1:7557:7557"
+      # UI web GenieACS (GENIEACS_UI_URL=http://localhost:7558).
+      - "127.0.0.1:7558:7558"
       - "127.0.0.1:15432:15432"
     networks:
       nocsystem_default:

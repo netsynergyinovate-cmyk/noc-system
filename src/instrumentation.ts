@@ -15,6 +15,15 @@ export async function register() {
       process.exit(1);
     }
 
+    // `npm run all:server`: DB server hanya-baca. Semua di bawah menulis ke DB (migrasi, seed, versi, pekerja
+    // latar) dan sudah dijalankan oleh instance server sendiri.
+    if (process.env.NOC_READONLY_DB === "1") {
+      console.log(
+        "DB server hanya-baca: migrasi, seed, dan pekerja latar dilewati.",
+      );
+      return;
+    }
+
     // Jalankan migrasi skema dan seed awal sebelum aplikasi melayani permintaan
     if (report.canBoot) {
       const { runStartupMigrations } =

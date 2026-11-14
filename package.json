@@ -13,6 +13,8 @@
     "setup": "node scripts/setup.mjs",
     "predev": "node scripts/prepare.mjs",
     "dev": "next dev -p 3001",
+    "all": "node scripts/run-all.mjs",
+    "all:server": "node scripts/run-all.mjs --server",
     "dev:all": "node scripts/run-all.mjs",
     "dev:combo": "node scripts/dev-combo.mjs",
     "app": "node scripts/run-all.mjs",

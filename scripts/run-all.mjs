@@ -3,11 +3,40 @@
 // Backend Go bersifat tambahan: kalau gagal atau Go belum terpasang, dashboard
 // tetap jalan dengan data mock.
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { parseEnv } from "node:util";
 import { assertNode, loadEnvironment, root } from "./lib.mjs";
 import { managesLocalDatabase } from "./postgres.mjs";
 
 assertNode();
 await loadEnvironment();
+
+// `npm run all:server`: baca DB server lewat tunnel dengan akun hanya-baca (scripts/dev-readonly-role.sql).
+// Nilai di .env.server-db.local menimpa .env.local; proses anak mewarisinya dan @next/env tidak menimpa ulang.
+const serverMode = process.argv.includes("--server");
+if (serverMode) {
+  const file = path.join(root, ".env.server-db.local");
+  const values = fs.existsSync(file)
+    ? parseEnv(fs.readFileSync(file, "utf8"))
+    : {};
+  const missing = ["DATABASE_URL", "DEVICE_SECRET"].filter(
+    (k) => !values[k] || values[k].includes("ISI_"),
+  );
+  if (missing.length || !process.env.GENIEACS_TUNNEL_TARGET) {
+    console.error(
+      `Mode DB server butuh ${missing.join(", ") || "GENIEACS_TUNNEL_TARGET (.env)"} di .env.server-db.local. Lihat komentar di berkas itu.`,
+    );
+    process.exit(1);
+  }
+  Object.assign(process.env, values, {
+    NOC_READONLY_DB: "1",
+    SKIP_STARTUP_MIGRATION: "true",
+  });
+  console.log(
+    "[run-all] Mode DB server (hanya-baca): menulis data akan gagal; migrasi dan pekerja latar Next dilewati.",
+  );
+}
 
 const dockerReady = () =>
   spawnSync("docker", ["info"], { stdio: "ignore" }).status === 0;
@@ -17,7 +46,12 @@ const dockerReady = () =>
 async function ensureDocker() {
   // DATABASE_URL buatan sendiri (bukan database Docker bawaan starter) tidak
   // butuh Docker sama sekali.
-  if (!managesLocalDatabase() || dockerReady()) return;
+  // Tunnel ke server juga butuh Docker.
+  if (
+    (!managesLocalDatabase() && !process.env.GENIEACS_TUNNEL_TARGET) ||
+    dockerReady()
+  )
+    return;
 
   let launch;
   if (process.platform === "win32") {
@@ -65,6 +99,45 @@ const prepared = spawnSync(process.execPath, ["scripts/prepare.mjs"], {
   stdio: "inherit",
 });
 if (prepared.status !== 0) process.exit(prepared.status ?? 1);
+
+// Container app/backend dari compose.yaml memegang port 3001/8080 dan ikut polling router yang sama.
+const docker = (args) =>
+  spawnSync("docker", args, { cwd: root, encoding: "utf8" });
+const running = docker([
+  "compose",
+  "ps",
+  "--status",
+  "running",
+  "--services",
+  "app",
+  "backend",
+]).stdout?.trim();
+if (running) {
+  console.log(
+    `[run-all] Menghentikan container Docker ${running.split(/\s+/).join(", ")} (diganti proses lokal).`,
+  );
+  docker(["compose", "stop", "app", "backend"]);
+}
+
+// GenieACS (localhost:7557) dan DB server hanya-baca (localhost:15432) lewat SSH tunnel ke server.
+if (process.env.GENIEACS_TUNNEL_TARGET) {
+  // -p wajib: COMPOSE_PROJECT_NAME dari .env.local menimpa `name:` di berkas.
+  const tunnel = docker([
+    "compose",
+    "-p",
+    "noc-tunnel-server",
+    "-f",
+    "compose.tunnel-server.yaml",
+    "up",
+    "-d",
+  ]);
+  console.log(
+    tunnel.status === 0
+      ? `[run-all] Tunnel ke ${process.env.GENIEACS_TUNNEL_TARGET} aktif: GenieACS localhost:7557, DB server (hanya-baca) localhost:15432.`
+      : `[run-all] Tunnel gagal dinyalakan, GenieACS tidak terbaca:\n${tunnel.stderr}`,
+  );
+  if (tunnel.status !== 0 && serverMode) process.exit(1); // tanpa tunnel tidak ada DB
+}
 
 const children = new Set();
 

@@ -137,3 +137,24 @@ test("!trap lalu soket ditutup tanpa !done -> AUTH_FAILED dengan pesan trap; kat
     (e) => e.code === "PROTOCOL",
   );
 });
+
+test("router memutus koneksi setelah tersambung -> NETWORK_ERROR dengan penyebab allow-list, bukan 'read ECONNRESET' mentah", async () => {
+  const server = net.createServer((sock) => sock.resetAndDestroy());
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const { port } = server.address();
+  try {
+    await assert.rejects(
+      withRouterOsApi(
+        { host: "127.0.0.1", port, username: "u", password: "p" },
+        async () => {},
+      ),
+      (e) =>
+        e instanceof RouterOsApiError &&
+        e.code === "NETWORK_ERROR" &&
+        /daftar izin layanan api/.test(e.message) &&
+        !/^read ECONNRESET$/.test(e.message),
+    );
+  } finally {
+    server.close();
+  }
+});

@@ -545,7 +545,9 @@ export function RouterBootstrapPanel({
               </li>
               <li>
                 <b>Koneksi ditutup</b>: IP server aplikasi belum ada di{" "}
-                <code>address</code> layanan <code>api</code>, atau firewall
+                <code>address</code> layanan <code>api</code> (server di
+                belakang router yang sama lewat PPPoE/LAN terlihat dengan alamat
+                PPPoE/LAN-nya, bukan IP publik), sesi API penuh, atau firewall
                 memblokir.
               </li>
               <li>

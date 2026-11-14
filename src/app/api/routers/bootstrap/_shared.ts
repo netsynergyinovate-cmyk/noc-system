@@ -57,5 +57,7 @@ export async function failure(
   const sourceIp = network
     ? await routerSourceIp(conn.host, conn.port ?? 8728)
     : null;
+  if (network)
+    message = `${message} Tujuan: ${conn.host}:${conn.port ?? 8728}.`;
   return { ok: false as const, code: err.code, message, sourceIp };
 }

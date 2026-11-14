@@ -9,6 +9,11 @@ name: noc-genieacs-tunnel
 # awalan restrict,port-forwarding,permitopen="127.0.0.1:7557",command="/bin/false"
 # (kunci hanya bisa meneruskan ke NBI, tidak bisa menjalankan perintah).
 # Host server harus sudah ada di ~/.ssh/known_hosts (login SSH sekali secara manual).
+#
+# Tunnel yang sama juga membuka DB server (hanya-baca) di localhost:15432. Syarat: akun dari
+# scripts/dev-readonly-role.sql, dan kunci di server ditambah permitopen="127.0.0.1:15432".
+#   psql "postgresql://noc_dev_ro@localhost:15432/starter"
+# Aplikasi lokal tetap memakai DB lokal: jangan arahkan DATABASE_URL ke sini.
 
 services:
   genieacs-tunnel:
@@ -34,10 +39,11 @@ services:
         exec ssh -N -i /tmp/key
         -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=yes
         -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3
-        -L 0.0.0.0:7557:127.0.0.1:7557 "$$TUNNEL_TARGET"
+        -L 0.0.0.0:7557:127.0.0.1:7557 -L 0.0.0.0:15432:127.0.0.1:15432 "$$TUNNEL_TARGET"
     ports:
       # NBI tanpa login: hanya loopback komputer ini.
       - "127.0.0.1:7557:7557"
+      - "127.0.0.1:15432:15432"
     networks:
       nocsystem_default:
         aliases:

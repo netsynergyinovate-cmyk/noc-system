@@ -81,6 +81,8 @@ services:
       DEVICE_SECRET: ${DEVICE_SECRET:?Wajib isi DEVICE_SECRET persis 32 karakter (openssl rand -hex 16)}
       DASHBOARD_DATA: live
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      # Fitur CPE di backend Go membaca GenieACS lewat NBI (antar-kontainer).
+      GENIEACS_NBI_URL: http://genieacs:7557
       SYSLOG_ADDR: 0.0.0.0:5514
       NETFLOW_ADDR: :2055
     depends_on:
@@ -104,6 +106,8 @@ services:
       - genieacs-mongo
     ports:
       - "7547:7547"
+      # NBI tanpa login: hanya untuk host ini; developer memakai SSH tunnel, jangan dibuka ke LAN.
+      - "127.0.0.1:7557:7557"
     environment:
       GENIEACS_MONGODB_CONNECTION_URL: "mongodb://genieacs-mongo:27017/genieacs"
       GENIEACS_CWMP_PORT: "7547"

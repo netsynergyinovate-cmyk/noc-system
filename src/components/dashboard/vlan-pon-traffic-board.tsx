@@ -15,7 +15,11 @@ import {
 } from "@/lib/dashboard/vlan-live";
 import { backendGet } from "@/lib/dashboard/backend-api";
 import type { VlanHistory } from "@/lib/dashboard/telemetry";
-import { evaluateTrafficStaleness } from "@/lib/dashboard/staleness";
+import {
+  evaluateTrafficStaleness,
+  staleMessage,
+  staleShortLabel,
+} from "@/lib/dashboard/staleness";
 interface VlanPonTrafficBoardProps {
   onSelectPon?: (vlan: VlanPonTrafficItem) => void;
   selectedVlanName?: string;
@@ -37,6 +41,7 @@ export function VlanPonTrafficBoard({
     Record<string, { time: string; dl: number; ul: number } | null>
   >({});
   const router = useDashboardStore((s) => s.telemetry?.routers[0]);
+  const connection = useDashboardStore((s) => s.connection);
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const [lastVlanReceivedAt, setLastVlanReceivedAt] = useState<number | null>(
     null,
@@ -66,9 +71,18 @@ export function VlanPonTrafficBoard({
     isLive: range === "live",
     lastDataReceivedAt: lastVlanReceivedAt,
     routerReachable: router?.reachable ?? true,
+    feedLive: connection === "live",
     nowSec,
   });
   const isTrafficDown = staleness.isStale;
+  const downLabel = staleness.cause ? staleShortLabel[staleness.cause] : "";
+  const downMessage = staleness.cause
+    ? staleMessage(
+        staleness.cause,
+        staleness.secondsSinceLastData,
+        router?.lastError,
+      )
+    : "";
   const secondsSinceLastSample = staleness.secondsSinceLastData;
   useEffect(() => {
     const buffer = new Map<
@@ -140,12 +154,10 @@ export function VlanPonTrafficBoard({
                   <span
                     data-testid="vlan-rto-badge"
                     className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/50 text-[9px] font-mono text-rose-300 font-semibold animate-pulse"
-                    title={
-                      router?.lastError || "MikroTik tidak merespons (RTO)"
-                    }
+                    title={downMessage}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
-                    RTO • TIDAK ADA RESPON ({secondsSinceLastSample}s)
+                    {downLabel} ({secondsSinceLastSample}s)
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-500/40 text-[9px] font-mono text-emerald-400 font-semibold">
@@ -170,14 +182,7 @@ export function VlanPonTrafficBoard({
           {isTrafficDown ? (
             <div className="flex items-center gap-1.5 text-rose-400 font-medium">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
-              <span>
-                Trafik terhenti: Tidak ada respon dari MikroTik Core CIARA (
-                {secondsSinceLastSample}s lalu
-                {router?.lastError
-                  ? ` • ${router.lastError}`
-                  : " • RTO / Timeout"}
-                ).
-              </span>
+              <span>Trafik terhenti: {downMessage}</span>
             </div>
           ) : (
             <p className="text-muted-foreground text-[10px]">
@@ -250,6 +255,7 @@ export function VlanPonTrafficBoard({
                 range={range}
                 isSelected={isSelected}
                 isTrafficDown={isTrafficDown}
+                downLabel={downLabel}
                 inspectedPoint={inspected}
                 onInspectPoint={(pt) =>
                   setHoveredPointMap((prev) => ({
@@ -272,6 +278,7 @@ interface VlanPonCardProps {
   range: TrafficRangeId;
   isSelected?: boolean;
   isTrafficDown?: boolean;
+  downLabel?: string;
   inspectedPoint?: { time: string; dl: number; ul: number } | null;
   onInspectPoint?: (
     pt: { time: string; dl: number; ul: number } | null,
@@ -283,6 +290,7 @@ function VlanPonCard({
   item,
   isSelected,
   isTrafficDown = false,
+  downLabel = "RTO",
   inspectedPoint,
   onInspectPoint,
   onClick,
@@ -308,7 +316,7 @@ function VlanPonCard({
           {isTrafficDown ? (
             <span
               className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"
-              title="MikroTik RTO / Tidak ada respon"
+              title={downLabel}
             />
           ) : isOnline ? (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
@@ -323,7 +331,7 @@ function VlanPonCard({
           </span>
           {isTrafficDown && (
             <span className="px-1.5 py-0.2 rounded bg-rose-950/80 border border-rose-500/50 text-[8.5px] font-mono text-rose-300 font-semibold animate-pulse">
-              RTO
+              {downLabel}
             </span>
           )}
           {isSelected && (
@@ -364,7 +372,7 @@ function VlanPonCard({
               {inspectedPoint
                 ? "Unduh titik"
                 : isTrafficDown
-                  ? "Unduh (RTO)"
+                  ? `Unduh (${downLabel})`
                   : "Unduh sekarang"}
             </span>
             <span className="font-mono text-muted-foreground text-[8.5px]">
@@ -410,7 +418,7 @@ function VlanPonCard({
               {inspectedPoint
                 ? "Unggah titik"
                 : isTrafficDown
-                  ? "Unggah (RTO)"
+                  ? `Unggah (${downLabel})`
                   : "Unggah sekarang"}
             </span>
             <span className="font-mono text-muted-foreground text-[8.5px]">
@@ -446,7 +454,7 @@ function VlanPonCard({
         {isTrafficDown && (
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <span className="px-2 py-0.5 rounded bg-rose-950/85 border border-rose-500/50 text-[8.5px] font-mono text-rose-300 font-semibold animate-pulse">
-              RTO / Tidak Ada Respon
+              {downLabel}
             </span>
           </div>
         )}

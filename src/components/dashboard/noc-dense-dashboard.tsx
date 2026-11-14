@@ -43,7 +43,10 @@ import {
   getRange,
   type TrafficRangeId,
 } from "@/lib/dashboard/ranges";
-import { evaluateTrafficStaleness } from "@/lib/dashboard/staleness";
+import {
+  evaluateTrafficStaleness,
+  staleMessage,
+} from "@/lib/dashboard/staleness";
 import { VlanPonTrafficBoard } from "@/components/dashboard/vlan-pon-traffic-board";
 
 // Peta Leaflet interaktif asli untuk sebaran pelanggan & ODP riil
@@ -113,6 +116,7 @@ export function NocDenseDashboard() {
   const incidents = isLive ? live.incidents : (history.data?.incidents ?? []);
   const now = isLive ? live.now : (history.data?.to ?? 0);
   const lastTrafficTime = useDashboardStore((s) => s.traffic.times.at(-1));
+  const connection = useDashboardStore((s) => s.connection);
   const [lastTrafficReceivedAt, setLastTrafficReceivedAt] = useState<
     number | null
   >(null);
@@ -144,6 +148,7 @@ export function NocDenseDashboard() {
     isLive,
     lastDataReceivedAt: lastTrafficReceivedAt,
     routerReachable: router?.reachable ?? true,
+    feedLive: connection === "live",
     nowSec,
   });
   const isTrafficStale = staleness.isStale;
@@ -448,7 +453,12 @@ export function NocDenseDashboard() {
                 >
                   <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 animate-ping" />
                   <span className="font-semibold">
-                    MikroTik Tidak Merespons (RTO • {secondsSinceTraffic}s)
+                    {staleness.cause &&
+                      staleMessage(
+                        staleness.cause,
+                        secondsSinceTraffic,
+                        router?.lastError,
+                      )}
                   </span>
                 </div>
               )}

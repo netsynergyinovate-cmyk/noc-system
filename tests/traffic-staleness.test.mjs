@@ -16,6 +16,7 @@ test("evaluateTrafficStaleness mengabaikan rentang non-live atau data belum ada"
     {
       isStale: false,
       secondsSinceLastData: 0,
+      cause: null,
     },
   );
 
@@ -28,6 +29,7 @@ test("evaluateTrafficStaleness mengabaikan rentang non-live atau data belum ada"
     {
       isStale: false,
       secondsSinceLastData: 0,
+      cause: null,
     },
   );
 
@@ -40,6 +42,7 @@ test("evaluateTrafficStaleness mengabaikan rentang non-live atau data belum ada"
     {
       isStale: false,
       secondsSinceLastData: 0,
+      cause: null,
     },
   );
 });
@@ -94,4 +97,26 @@ test("evaluateTrafficStaleness langsung stale jika router dilaporkan unreachable
   });
   assert.equal(res.isStale, true);
   assert.equal(res.secondsSinceLastData, 1);
+});
+
+test("evaluateTrafficStaleness memisahkan penyebab: koneksi aplikasi putus bukan RTO MikroTik", () => {
+  const base = { isLive: true, lastDataReceivedAt: 990, nowSec: 1000 };
+  assert.equal(
+    evaluateTrafficStaleness({
+      ...base,
+      feedLive: false,
+      routerReachable: false,
+    }).cause,
+    "feed",
+    "WebSocket putus: status router dari backend basi, jangan salahkan MikroTik",
+  );
+  assert.equal(
+    evaluateTrafficStaleness({ ...base, routerReachable: false }).cause,
+    "router",
+  );
+  assert.equal(evaluateTrafficStaleness(base).cause, "nodata");
+  assert.equal(
+    evaluateTrafficStaleness({ ...base, lastDataReceivedAt: 999 }).cause,
+    null,
+  );
 });

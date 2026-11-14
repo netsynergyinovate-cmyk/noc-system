@@ -44,6 +44,7 @@ services:
       # Rahasia tiket realtime: sama dengan backend (disimpan di .env, bukan di git).
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
       DEPLOY_PAGE_ROLE: ${DEPLOY_PAGE_ROLE:-local}
+      # GenieACS server lewat SSH tunnel di host: GENIEACS_NBI_URL=http://host.docker.internal:7558 di .env.
       GENIEACS_NBI_URL: ${GENIEACS_NBI_URL:-http://genieacs:7557}
       # Alamat backend yang dibuka BROWSER (bukan alamat antar-kontainer).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
@@ -58,6 +59,8 @@ services:
       LOGTO_CLIENT_ID: ${LOGTO_CLIENT_ID:-}
       LOGTO_CLIENT_SECRET: ${LOGTO_CLIENT_SECRET:-}
       PORT: 3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,6 +109,10 @@ services:
       # (tabel ont_web_settings, terenkripsi). Env hanya membatasi jaringan modem yang boleh
       # dibuka (bawaan: alamat pribadi RFC 1918 + 100.64.0.0/10).
       ONT_WEB_ALLOWED_CIDRS: ${ONT_WEB_ALLOWED_CIDRS:-}
+      # Fitur CPE backend membaca GenieACS yang sama dengan aplikasi.
+      GENIEACS_NBI_URL: ${GENIEACS_NBI_URL:-http://genieacs:7557}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test:
         [

@@ -1,0 +1,48 @@
+name: noc-genieacs-tunnel
+
+# Pengganti GenieACS lokal (compose.genieacs.yaml): NBI GenieACS di SERVER lewat SSH tunnel.
+# Aplikasi Docker tetap memakai http://genieacs:7557 (alias jaringan), `npm run dev` memakai
+# http://localhost:7557. Hentikan GenieACS lokal dulu (port dan alias yang sama):
+#   docker compose -f compose.genieacs.yaml stop
+#   docker compose -f compose.genieacs-tunnel.yaml up -d
+# Kunci: ssh-keygen -t ed25519 -N "" -f ~/.ssh/noc_genieacs_tunnel, lalu pasang di server dengan
+# awalan restrict,port-forwarding,permitopen="127.0.0.1:7557",command="/bin/false"
+# (kunci hanya bisa meneruskan ke NBI, tidak bisa menjalankan perintah).
+# Host server harus sudah ada di ~/.ssh/known_hosts (login SSH sekali secara manual).
+
+services:
+  genieacs-tunnel:
+    build:
+      dockerfile_inline: |
+        FROM alpine:3.20
+        RUN apk add --no-cache openssh-client
+    image: nocsystem-genieacs-tunnel:latest
+    restart: unless-stopped
+    environment:
+      # user@host server, dari .env (tidak di-commit).
+      TUNNEL_TARGET: ${GENIEACS_TUNNEL_TARGET:?isi GENIEACS_TUNNEL_TARGET=user@host di file .env}
+    volumes:
+      # Kunci dan known_hosts dibaca dari folder .ssh pengguna, hanya-baca.
+      - ${GENIEACS_TUNNEL_SSH_DIR:-~/.ssh}:/ssh-src:ro
+    # Bind mount Windows terlihat 0777; ssh menolak kunci seperti itu, jadi disalin dengan izin 600.
+    command:
+      - sh
+      - -c
+      - >-
+        install -m 600 /ssh-src/noc_genieacs_tunnel /tmp/key &&
+        install -m 600 /ssh-src/known_hosts /tmp/known_hosts &&
+        exec ssh -N -i /tmp/key
+        -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=yes
+        -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3
+        -L 0.0.0.0:7557:127.0.0.1:7557 "$$TUNNEL_TARGET"
+    ports:
+      # NBI tanpa login: hanya loopback komputer ini.
+      - "127.0.0.1:7557:7557"
+    networks:
+      nocsystem_default:
+        aliases:
+          - genieacs
+
+networks:
+  nocsystem_default:
+    external: true

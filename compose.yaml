@@ -44,7 +44,7 @@ services:
       # Rahasia tiket realtime: sama dengan backend (disimpan di .env, bukan di git).
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:?isi REALTIME_TOKEN_SECRET di file .env}
       DEPLOY_PAGE_ROLE: ${DEPLOY_PAGE_ROLE:-local}
-      # GenieACS server lewat SSH tunnel di host: GENIEACS_NBI_URL=http://host.docker.internal:7558 di .env.
+      # genieacs:7557 = GenieACS lokal (compose.genieacs.yaml) atau tunnel ke server (compose.genieacs-tunnel.yaml).
       GENIEACS_NBI_URL: ${GENIEACS_NBI_URL:-http://genieacs:7557}
       # Alamat backend yang dibuka BROWSER (bukan alamat antar-kontainer).
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}

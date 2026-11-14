@@ -1,14 +1,16 @@
 import "server-only";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { deployRuns } from "@/db/schema/deploy-runs";
 import { nextDeployVersion } from "@/lib/app-version";
 
-// Deploy lewat Docker/Coolify tidak memakai CLI native yang menaikkan versi. Setiap build Next.js punya
-// BUILD_ID baru; build yang belum tercatat di deploy_runs mendapat versi berikutnya. Restart dengan build
-// yang sama memakai versi yang sudah tercatat. Hasilnya dipasang ke APP_VERSION (dibaca getAppDisplayVersion).
+// Deploy lewat Docker/Coolify tidak memakai CLI native yang menaikkan versi. Penanda deploy = BUILD_ID +
+// hostname (di Docker = ID container): Coolify memakai cache build, jadi redeploy commit yang sama punya
+// BUILD_ID sama, tetapi container-nya baru. Penanda yang belum tercatat di deploy_runs mendapat versi
+// berikutnya; restart container yang sama memakai versi yang sudah tercatat. Hasilnya dipasang ke APP_VERSION (dibaca getAppDisplayVersion).
 // shortcut: dua instance yang start bersamaan bisa mencatat build yang sama dua kali; satu instance saja saat ini.
 export async function ensureBuildVersion(): Promise<string | null> {
   if (process.env.APP_VERSION?.trim()) return null; // diisi operator: dihormati
@@ -24,7 +26,7 @@ export async function ensureBuildVersion(): Promise<string | null> {
   }
   if (!buildId || buildId === "development") return null;
 
-  const marker = `build ${buildId}`;
+  const marker = `build ${buildId} ${os.hostname()}`;
   const [same] = await db
     .select({ versi: deployRuns.versi })
     .from(deployRuns)

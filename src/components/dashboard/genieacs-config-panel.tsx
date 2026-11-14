@@ -6,6 +6,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  ExternalLink,
   Server,
   Router,
   Info,
@@ -21,6 +22,10 @@ import { summarizeFleet } from "@/lib/dashboard/genieacs-fleet";
 export interface GenieacsConfigView {
   mode: "real" | "simulator";
   nbiUrl: string;
+  // Host server di balik tunnel SSH developer (noc-tunnel-server); null = NBI langsung.
+  tunnelHost: string | null;
+  // GENIEACS_UI_URL: antarmuka web GenieACS untuk tombol "Buka GenieACS UI".
+  uiUrl: string | null;
   acsConfigured: boolean;
   acsUrl: string;
   informInterval: number | null;
@@ -118,6 +123,32 @@ export function GenieacsConfigPanel({
                 <span className="font-mono text-xs">
                   {config?.nbiUrl ?? "—"}
                 </span>
+                {config?.tunnelHost && (
+                  <span
+                    className="block whitespace-normal text-[11px] font-normal text-muted-foreground"
+                    data-testid="genieacs-tunnel"
+                  >
+                    lewat tunnel SSH ke server {config.tunnelHost}
+                  </span>
+                )}
+              </Row>
+              <Row label="Antarmuka web GenieACS">
+                <a
+                  href={config?.uiUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                  data-testid="genieacs-ui-link"
+                  onClick={(e) => {
+                    // Tanpa GENIEACS_UI_URL: host halaman ini + port UI 7558 (server: 192.168.0.25:7558,
+                    // developer: localhost:7558 lewat noc-tunnel-server). Dibaca saat klik, bukan saat render (SSR).
+                    if (!config?.uiUrl)
+                      e.currentTarget.href = `${window.location.protocol}//${window.location.hostname}:7558`;
+                  }}
+                >
+                  Buka GenieACS UI
+                  <ExternalLink className="size-3.5" aria-hidden />
+                </a>
               </Row>
               <Row label="Koneksi NBI">
                 {nbi === null ? (
@@ -191,7 +222,7 @@ export function GenieacsConfigPanel({
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
                 {configError
                   ? "Konfigurasi tidak bisa dimuat dari server."
-                  : 'ACS URL belum diatur. Isi di Pengaturan "Pasang GenieACS" (butuh admin) supaya modem bisa dicek sudah mengarah ke server yang benar.'}
+                  : "ACS URL belum diatur. Isi lewat ikon ⚙ Pengaturan di kanan atas halaman (butuh admin) supaya modem bisa dicek sudah mengarah ke server yang benar."}
               </p>
             )}
             <p className="pt-2 text-xs text-muted-foreground">

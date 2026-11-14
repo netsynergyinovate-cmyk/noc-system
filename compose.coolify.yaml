@@ -112,6 +112,9 @@ services:
       - "7547:7547"
       # NBI tanpa login: hanya untuk host ini; developer memakai SSH tunnel, jangan dibuka ke LAN.
       - "127.0.0.1:7557:7557"
+      # UI web GenieACS (punya login sendiri; ganti sandi admin bawaan): dibuka ke LAN untuk tombol
+      # "Buka GenieACS UI" di tab Konfigurasi (http://<host-server>:7558).
+      - "7558:7558"
     environment:
       GENIEACS_MONGODB_CONNECTION_URL: "mongodb://genieacs-mongo:27017/genieacs"
       GENIEACS_CWMP_PORT: "7547"

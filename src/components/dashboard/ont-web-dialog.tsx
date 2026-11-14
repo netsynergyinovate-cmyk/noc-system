@@ -12,10 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
-import {
-  OntWebSettingsPanel,
-  type OntWebSettings,
-} from "./ont-web-settings-panel";
+import type { OntWebSettings } from "./ont-web-settings-panel";
 
 type Phase =
   | { kind: "idle" }
@@ -53,7 +50,8 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
     blockReason = "Hanya admin (izin kelola CPE) yang boleh memasang GenieACS.";
   else if (settings === null) blockReason = "Memuat pengaturan…";
   else if (settings !== "error" && !settings.configured)
-    blockReason = "Isi dan simpan Pengaturan GenieACS dulu.";
+    blockReason =
+      "Pengaturan GenieACS belum diisi: buka ikon ⚙ Pengaturan di kanan atas halaman GenieACS.";
   else if (!hostOk) blockReason = "IP manual harus IPv4, mis. 172.16.15.248.";
   const canSubmit = !saving && blockReason === null;
 
@@ -161,8 +159,12 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
           yang tersimpan di server.
         </p>
       )}
-      {settings !== null && settings !== "error" && (
-        <OntWebSettingsPanel settings={settings} onSaved={setSettings} />
+      {settings !== null && settings !== "error" && settings.configured && (
+        <p className="text-xs text-muted-foreground" data-testid="ont-web-acs">
+          ACS yang dipasang:{" "}
+          <span className="font-mono">{settings.acsUrl}</span> (ubah lewat ikon
+          ⚙ Pengaturan di halaman GenieACS)
+        </p>
       )}
 
       <form onSubmit={submit} noValidate className="space-y-4">

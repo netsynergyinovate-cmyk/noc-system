@@ -29,6 +29,8 @@ import { formatDbm } from "@/lib/dashboard/format";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GenieacsDeviceDialog } from "@/components/dashboard/genieacs-device-dialog";
 import { GenieacsOltMatch } from "@/components/dashboard/genieacs-olt-match";
+import { OntWebSettingsDialog } from "@/components/dashboard/ont-web-settings-panel";
+import { Can } from "@/components/access";
 import {
   GenieacsConfigPanel,
   type GenieacsConfigView,
@@ -185,17 +187,22 @@ export function GenieacsBoard() {
                 : `NBI tidak terhubung: ${nbi.message ?? ""}`}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Segarkan"
-          title="Segarkan"
-          onClick={() => void loadAll()}
-          disabled={loading}
-        >
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Can to="manageCpe">
+            <OntWebSettingsDialog onSaved={() => void loadAll()} />
+          </Can>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Segarkan"
+            title="Segarkan"
+            onClick={() => void loadAll()}
+            disabled={loading}
+          >
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="devices" className="w-full">
@@ -397,7 +404,7 @@ export function GenieacsBoard() {
                   <span className="text-warning">
                     {configError
                       ? "Konfigurasi ACS belum bisa dibaca."
-                      : 'ACS URL belum diatur. Isi dulu di Pengaturan "Pasang GenieACS" (butuh admin); tanpa itu ONT tidak tahu harus melapor ke mana.'}
+                      : "ACS URL belum diatur. Isi dulu lewat ikon ⚙ Pengaturan di kanan atas (butuh admin); tanpa itu ONT tidak tahu harus melapor ke mana."}
                   </span>
                 )}
               </div>

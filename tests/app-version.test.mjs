@@ -120,3 +120,13 @@ test("Simulasi auto-bump build: menaikkan build berdasarkan rilis sebelumnya", (
     "1.1.0.1",
   );
 });
+
+test("nextDeployVersion: build baru +1, package.json yang lebih tinggi menang", async () => {
+  const { nextDeployVersion } = await import("../src/lib/app-version.ts");
+  assert.equal(nextDeployVersion(null, "1.0.0.0"), "1.0.0.0");
+  assert.equal(nextDeployVersion("1.0.0.4", "1.0.0.0"), "1.0.0.5");
+  assert.equal(nextDeployVersion("1.0.0.4", "1.0.0.4"), "1.0.0.5");
+  assert.equal(nextDeployVersion("1.0.0.4", "1.1.0.0"), "1.1.0.0");
+  assert.equal(nextDeployVersion("1.2.0.3", "1.1.0.0"), "1.2.0.4");
+  assert.equal(nextDeployVersion("", null), "1.0.0.0");
+});

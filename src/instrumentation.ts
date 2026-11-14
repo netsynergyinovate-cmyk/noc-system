@@ -25,6 +25,15 @@ export async function register() {
         const { runStartupSeed } =
           await import("@/services/startup-seed.service");
         await runStartupSeed();
+
+        try {
+          const { ensureBuildVersion } =
+            await import("@/services/build-version.service");
+          const versi = await ensureBuildVersion();
+          if (versi) console.log(`Versi aplikasi: ${versi}`);
+        } catch (err) {
+          console.error("Gagal mencatat versi build:", err);
+        }
       }
 
       try {

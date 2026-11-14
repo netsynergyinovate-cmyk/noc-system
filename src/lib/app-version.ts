@@ -116,3 +116,24 @@ export function getAppDisplayVersion(): string {
 
   return DEFAULT_APP_VERSION;
 }
+
+/**
+ * Versi untuk build baru: package.json bila lebih tinggi dari versi tercatat terakhir
+ * (rilis yang dinaikkan manual), selain itu build terakhir +1.
+ * Contoh: (null, "1.0.0.0") -> "1.0.0.0"; ("1.0.0.4", "1.0.0.0") -> "1.0.0.5"; ("1.0.0.4", "1.1.0.0") -> "1.1.0.0".
+ */
+export function nextDeployVersion(
+  last: string | null | undefined,
+  pkg: string | null | undefined,
+): string {
+  const base = parseFourPartVersion(pkg);
+  if (!last?.trim()) return formatFourPartVersion(base);
+  const prev = parseFourPartVersion(last);
+  for (let i = 0; i < 4; i++) {
+    if (base[i] !== prev[i])
+      return base[i] > prev[i]
+        ? formatFourPartVersion(base)
+        : bumpBuildVersion(last);
+  }
+  return bumpBuildVersion(last);
+}

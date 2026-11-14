@@ -288,12 +288,21 @@ export function RouterBootstrapPanel({
 
   const trustedCerts =
     info?.certificates.filter((c) => c.trusted && !c.invalid) ?? [];
-  const canApply =
-    !!info?.isV7 &&
-    (enableWww || enableWwwSsl) &&
-    !!allowed &&
-    restPass.length >= 8 &&
-    (!enableWwwSsl || !!cert);
+  // Alasan tombol Pratinjau/Terapkan nonaktif, ditampilkan di bawah tombol.
+  const applyBlocked = !info
+    ? "Jalankan langkah 3 (Masuk & periksa) dulu."
+    : !info.isV7
+      ? "Router harus RouterOS v7."
+      : !enableWww && !enableWwwSsl
+        ? "Centang www atau www-ssl."
+        : !allowed
+          ? "Isi alamat server yang diizinkan."
+          : restPass.length < 8
+            ? `Password REST minimal 8 karakter (sekarang ${restPass.length}). Klik "Buat acak" untuk password kuat.`
+            : enableWwwSsl && !cert
+              ? "Pilih sertifikat untuk www-ssl."
+              : null;
+  const canApply = !applyBlocked;
 
   const field = (label: string, hint: string, node: React.ReactNode) => (
     <div className="space-y-1">
@@ -653,18 +662,20 @@ export function RouterBootstrapPanel({
               />
               Aktifkan www-ssl (HTTPS)
             </label>
-            <select
-              className={selectClass}
-              value={cert}
-              onChange={(e) => setCert(e.target.value)}
-              disabled={!enableWwwSsl || trustedCerts.length === 0}
-            >
-              {trustedCerts.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            {trustedCerts.length > 0 && (
+              <select
+                className={selectClass}
+                value={cert}
+                onChange={(e) => setCert(e.target.value)}
+                disabled={!enableWwwSsl || trustedCerts.length === 0}
+              >
+                {trustedCerts.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               {field(
                 "Alamat server yang diizinkan",
@@ -728,6 +739,9 @@ export function RouterBootstrapPanel({
                 Terapkan ke router
               </Button>
             </div>
+            {applyBlocked && (
+              <p className="text-xs text-amber-600">{applyBlocked}</p>
+            )}
             {plan && (
               <div className="space-y-1">
                 {plan.warnings.map((w) => (

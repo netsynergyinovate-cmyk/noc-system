@@ -45,7 +45,7 @@ export async function failure(
   let message = redactSecrets(err.message, c);
   if (err.code === "AUTH_FAILED") {
     message = /radius/i.test(message)
-      ? "Login ditolak: login router memakai RADIUS; pakai akun lokal admin."
+      ? `Login ditolak lewat RADIUS. Pesan router: "${message}". Username ini tidak dicocokkan ke akun lokal; pakai akun lokal router grup full (cek /user print).`
       : `Login ditolak: ${message}`;
   } else if (err.code === "TRAP" && /permission/i.test(message)) {
     message = `${message}. Pakai akun dari grup full.`;

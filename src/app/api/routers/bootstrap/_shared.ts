@@ -3,7 +3,7 @@ import { ApiError } from "@/lib/api";
 import { DeviceConnectionError, sanitizeHost } from "@/lib/device-connection";
 import { RouterOsApiError, type RouterOsConn } from "@/lib/mikrotik/api-client";
 import { redactSecrets } from "@/services/device-connection-tester";
-import { outboundSourceIp } from "@/services/outbound-source-ip";
+import { routerSourceIp } from "@/services/outbound-source-ip";
 
 export const connectionSchema = z.object({
   host: z.string().min(1).max(255),
@@ -34,8 +34,8 @@ export function toConn(c: ConnectionInput): RouterOsConn {
   }
 }
 
-// Galat API router -> hasil ok:false. Untuk kegagalan jaringan, sertakan alamat sumber server
-// (sisi server; NAT di jalur bisa membuat router melihat alamat lain) agar allow-list api bisa diisi tanpa menebak.
+// Galat API router -> hasil ok:false. Untuk kegagalan jaringan, sertakan perkiraan alamat server yang dilihat router
+// (IP publik untuk router publik; null di container untuk router privat) agar allow-list api tidak diisi IP container.
 export async function failure(
   err: unknown,
   c: ConnectionInput,
@@ -55,7 +55,7 @@ export async function failure(
     err.code === "TIMEOUT" ||
     err.code === "CONNECTION_REFUSED";
   const sourceIp = network
-    ? await outboundSourceIp(conn.host, conn.port ?? 8728)
+    ? await routerSourceIp(conn.host, conn.port ?? 8728)
     : null;
   return { ok: false as const, code: err.code, message, sourceIp };
 }

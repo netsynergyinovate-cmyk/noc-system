@@ -12,7 +12,7 @@ import {
   type RouterInspection,
 } from "@/lib/mikrotik/provision-plan";
 import { redactSecrets } from "@/services/device-connection-tester";
-import { outboundSourceIp } from "@/services/outbound-source-ip";
+import { routerSourceIp } from "@/services/outbound-source-ip";
 
 export { buildProvisionPlan } from "@/lib/mikrotik/provision-plan";
 export type { ProvisionOptions, RouterInspection };
@@ -41,7 +41,7 @@ async function resolveServerIp(
 ): Promise<Pick<RouterInspection, "serverIp" | "serverIpSource">> {
   const fromRouter = pickSourceIp(active, conn.username);
   if (fromRouter) return { serverIp: fromRouter, serverIpSource: "router" };
-  const guess = await outboundSourceIp(
+  const guess = await routerSourceIp(
     conn.host,
     conn.port ?? (conn.tls ? 8729 : 8728),
   );

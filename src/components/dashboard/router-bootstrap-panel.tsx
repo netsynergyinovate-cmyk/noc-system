@@ -59,6 +59,7 @@ type Detect = {
   host: string;
   ports: Array<{ port: number; open: boolean; localIp: string | null }>;
   publicIp: string | null;
+  inContainer?: boolean;
 };
 
 // Izin grup akun REST dibaca dari router setelah apply; write wajib agar aplikasi bisa menjalankan perintah ke router.
@@ -445,8 +446,12 @@ export function RouterBootstrapPanel({
           <>
             <p className="text-xs text-muted-foreground">
               Kandidat IP server aplikasi (belum terverifikasi): lokal{" "}
-              <code>{detected.ports.find((p) => p.open)?.localIp ?? "-"}</code>,
-              publik <code>{detected.publicIp ?? "-"}</code>.
+              <code>
+                {detected.inContainer
+                  ? "tidak diketahui (aplikasi di container Docker)"
+                  : (detected.ports.find((p) => p.open)?.localIp ?? "-")}
+              </code>
+              , publik <code>{detected.publicIp ?? "-"}</code>.
             </p>
             {field(
               "IP server aplikasi (sisi router)",
@@ -475,7 +480,7 @@ export function RouterBootstrapPanel({
                   {[
                     `/ip service set [find name=api dynamic=no] disabled=no address=([/ip service get [find name=api dynamic=no] address],${serverIp.trim()}/32)`,
                     `# bila masih ditolak: jalankan tepat setelah klik "Masuk & periksa"; src-address = IP yang benar`,
-                    `/ip firewall connection print where dst-port=${Number(apiPort) || 8728}`,
+                    `/ip firewall connection print where protocol=tcp dst-port=${Number(apiPort) || 8728}`,
                   ].join("\n")}
                 </pre>
               </>
@@ -503,10 +508,26 @@ export function RouterBootstrapPanel({
           {error && sourceIp && (
             <div>
               <p>
-                Alamat server aplikasi ke router: <code>{sourceIp}</code> (sisi
-                server):
+                Perkiraan alamat server aplikasi yang dilihat router:{" "}
+                <code>{sourceIp}</code> (belum terverifikasi):
               </p>
               <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">{`/ip service set [find name=api dynamic=no] disabled=no address=([/ip service get [find name=api dynamic=no] address],${sourceIp}/32)`}</pre>
+            </div>
+          )}
+          {error && (
+            <div>
+              <p>
+                Alamat pasti: catat koneksi masuk, klik &quot;Masuk &amp;
+                periksa&quot;, lalu baca <code>src-address</code> di log (rule
+                hanya mencatat; hapus setelahnya):
+              </p>
+              <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">
+                {[
+                  `/ip firewall filter add chain=input protocol=tcp dst-port=${Number(apiPort) || 8728} action=log log-prefix=APP-API place-before=0 comment=tmp-api-log`,
+                  `/log print where message~"APP-API"`,
+                  `/ip firewall filter remove [find comment=tmp-api-log]`,
+                ].join("\n")}
+              </pre>
             </div>
           )}
           <details open={!!error}>

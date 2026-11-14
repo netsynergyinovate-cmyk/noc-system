@@ -93,3 +93,44 @@ test("tcpConnectedTimeoutMessage menyebut port, host, kemungkinan Winbox/API, da
   assert.match(m, /Winbox/);
   assert.match(m, /\/ip service print/);
 });
+
+test("pickRouterSourceIp: router publik melihat IP publik (NAT), bukan IP lokal/container", async () => {
+  const { pickRouterSourceIp: pick } =
+    await import("../src/services/outbound-source-ip.ts");
+  const base = { local: "10.0.5.6", publicIp: "203.0.113.9" };
+  assert.equal(
+    pick({ ...base, host: "198.51.100.1", inContainer: true }),
+    "203.0.113.9",
+  );
+  assert.equal(
+    pick({ ...base, host: "router.example.net", inContainer: false }),
+    "203.0.113.9",
+  );
+  // IP publik tak terbaca: di container jangan menebak IP container.
+  assert.equal(
+    pick({ ...base, publicIp: null, host: "198.51.100.1", inContainer: true }),
+    null,
+  );
+  assert.equal(
+    pick({ ...base, publicIp: null, host: "198.51.100.1", inContainer: false }),
+    "10.0.5.6",
+  );
+});
+
+test("pickRouterSourceIp: router privat memakai IP lokal, kecuali di container (tidak diketahui)", async () => {
+  const { pickRouterSourceIp: pick, isPrivateHost } =
+    await import("../src/services/outbound-source-ip.ts");
+  const base = { local: "192.168.1.10", publicIp: "203.0.113.9" };
+  for (const host of [
+    "192.168.1.1",
+    "10.1.1.1",
+    "172.16.15.1",
+    "100.64.0.1",
+    "[fd00::1]",
+  ]) {
+    assert.ok(isPrivateHost(host), host);
+    assert.equal(pick({ ...base, host, inContainer: false }), "192.168.1.10");
+    assert.equal(pick({ ...base, host, inContainer: true }), null);
+  }
+  assert.ok(!isPrivateHost("172.32.0.1"));
+});

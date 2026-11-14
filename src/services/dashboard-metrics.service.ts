@@ -52,7 +52,7 @@ export function emptyDashboardKpiMetrics(
 import { getRouterResourcesSummary } from "@/services/router-resources.service";
 
 // Sama dengan WEAK_DBM / CRITICAL_DBM di metric-board-data.ts.
-const WEAK_DBM = -25;
+const WEAK_DBM = -26; // sama dengan WEAK_OPTICAL_DBM dan titik buka alert optik
 const CRITICAL_DBM = -28;
 // Sampel traffic lebih tua dari ini dianggap router sudah tidak melapor.
 const TRAFFIC_FRESH_MS = 5 * 60 * 1000;
@@ -121,7 +121,7 @@ async function loadAggregates(now: Date): Promise<DashboardAggregates> {
       .select({
         total: sql<number>`count(*)::int`,
         online: sql<number>`(count(*) filter (where ${customers.isOnline}))::int`,
-        weak: sql<number>`(count(*) filter (where ${customers.isOnline} and ${customers.opticalPower} < ${WEAK_DBM}))::int`,
+        weak: sql<number>`(count(*) filter (where ${customers.isOnline} and ${customers.opticalPower} <= ${WEAK_DBM}))::int`,
         critical: sql<number>`(count(*) filter (where ${customers.isOnline} and ${customers.opticalPower} < ${CRITICAL_DBM}))::int`,
         paid: sql<number>`(count(*) filter (where not ${isolirSql}))::int`,
         isolated: sql<number>`(count(*) filter (where ${isolirSql}))::int`,

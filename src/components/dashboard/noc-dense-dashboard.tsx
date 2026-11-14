@@ -262,7 +262,7 @@ export function NocDenseDashboard() {
               {kpi(weakSignalCount)}
             </div>
             <div className="text-[10px] text-muted-foreground font-mono">
-              Rx &lt; -25 dBm
+              Rx ≤ -26 dBm
             </div>
           </div>
           <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
@@ -729,7 +729,7 @@ export function NocDenseDashboard() {
               </div>
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                <span>Lemah (-25~-28)</span>
+                <span>Lemah (≤ -26)</span>
                 <span className="font-mono font-bold text-foreground">
                   {hasData ? weakSignalCount : "—"}
                 </span>

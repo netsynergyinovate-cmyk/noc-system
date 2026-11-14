@@ -90,7 +90,8 @@ func TestHealth(t *testing.T) {
 		{"online normal", Customer{IsOnline: true, HasOptical: true, OpticalPowerDbm: -20}, HealthOK},
 		{"online tanpa data optik", Customer{IsOnline: true}, HealthOK},
 		{"online sinyal lemah", Customer{IsOnline: true, HasOptical: true, OpticalPowerDbm: -26.5}, HealthWarning},
-		{"tepat di ambang bukan lemah", Customer{IsOnline: true, HasOptical: true, OpticalPowerDbm: WeakOpticalDbm}, HealthOK},
+		{"tepat di ambang sudah lemah (sama dengan alert)", Customer{IsOnline: true, HasOptical: true, OpticalPowerDbm: WeakOpticalDbm}, HealthWarning},
+		{"-25,99 belum lemah (alert juga belum)", Customer{IsOnline: true, HasOptical: true, OpticalPowerDbm: -25.99}, HealthOK},
 		{"offline dengan sinyal lemah tetap merah", Customer{IsOnline: false, HasOptical: true, OpticalPowerDbm: -30}, HealthCritical},
 	}
 	for _, tt := range tests {

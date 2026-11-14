@@ -17,6 +17,7 @@ import { formatInteger, formatMbps } from "@/lib/dashboard/format";
 
 import { useAlertStore } from "@/lib/dashboard/alert-store";
 import { useDashboardStore } from "@/lib/dashboard/store";
+import { WEAK_OPTICAL_DBM } from "@/lib/dashboard/health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MetricCard } from "./metric-card";
@@ -73,7 +74,7 @@ export function DashboardMetricBoard() {
     for (const c of customers) {
       if (c.isOnline) {
         onlineCount += 1;
-        if (c.opticalPowerDbm < -25) weakSignalCount += 1;
+        if (c.opticalPowerDbm <= WEAK_OPTICAL_DBM) weakSignalCount += 1;
         if (c.opticalPowerDbm < -28) criticalSignalCount += 1;
       }
       if (c.billingStatus === "lunas") billingPaidCount += 1;
@@ -148,7 +149,7 @@ export function DashboardMetricBoard() {
         <MetricCard
           label="Sinyal optik lemah"
           value={formatInteger(m.weakSignalCount)}
-          hint="Pelanggan online dengan Rx di bawah -25 dBm"
+          hint="Pelanggan online dengan Rx ≤ -26 dBm (sama dengan alert)"
           Icon={TriangleAlert}
           tone="warning"
         />

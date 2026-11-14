@@ -6,9 +6,11 @@ import "time"
 // 1 sampel per detik = 5 menit terakhir. Harus sama dengan di frontend.
 const TrafficWindow = 300
 
-// WeakOpticalDbm: Rx power ONU di bawah nilai ini dianggap lemah. Harus sama
-// dengan WEAK_OPTICAL_DBM di frontend.
-const WeakOpticalDbm = -25.0
+// WeakOpticalDbm: Rx power ONU pada/di bawah nilai ini dianggap lemah. Sama dengan titik buka alert
+// OpticalRule bawaan (batas -25, naik per 1 dBm: alert pada <= -26) agar kartu "Sinyal Lemah" = alert.
+// Harus sama dengan WEAK_OPTICAL_DBM di frontend.
+// shortcut: tidak mengikuti ambang optik yang diubah di alert_thresholds; baca ambang itu bila perlu.
+const WeakOpticalDbm = -26.0
 
 // Health adalah warna titik pelanggan di peta.
 type Health string
@@ -101,7 +103,7 @@ func (c Customer) Health() Health {
 	switch {
 	case !c.IsOnline:
 		return HealthCritical
-	case c.HasOptical && c.OpticalPowerDbm < WeakOpticalDbm:
+	case c.HasOptical && c.OpticalPowerDbm <= WeakOpticalDbm:
 		return HealthWarning
 	default:
 		return HealthOK

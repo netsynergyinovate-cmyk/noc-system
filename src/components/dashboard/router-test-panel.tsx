@@ -93,7 +93,8 @@ export function RouterTestPanel({
           type: "mikrotik",
           mode: "real",
           message:
-            res.status === 422
+            // INVALID_HOST membawa alasan spesifik (path, spasi, port) dari server.
+            res.status === 422 && json?.error?.code !== "INVALID_HOST"
               ? "Data uji belum lengkap atau tidak valid. Periksa Host, Port (1-65535), Username, dan Password."
               : json?.error?.message ||
                 (res.status === 403

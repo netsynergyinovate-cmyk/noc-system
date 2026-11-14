@@ -28,6 +28,7 @@ import { formatAgo } from "@/lib/dashboard/customer-live";
 import { formatDbm } from "@/lib/dashboard/format";
 import { useDashboardStore } from "@/lib/dashboard/store";
 import { GenieacsDeviceDialog } from "@/components/dashboard/genieacs-device-dialog";
+import { GenieacsOltMatch } from "@/components/dashboard/genieacs-olt-match";
 import {
   GenieacsConfigPanel,
   type GenieacsConfigView,
@@ -200,6 +201,7 @@ export function GenieacsBoard() {
       <Tabs defaultValue="devices" className="w-full">
         <TabsList>
           <TabsTrigger value="devices">Perangkat</TabsTrigger>
+          <TabsTrigger value="cpe">CPE/ONT</TabsTrigger>
           <TabsTrigger value="config">Konfigurasi</TabsTrigger>
         </TabsList>
 
@@ -362,6 +364,67 @@ export function GenieacsBoard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cpe" className="mt-4 space-y-4">
+          <Card data-testid="genieacs-cpe-guide">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Cara memasangkan ONT ke GenieACS
+              </CardTitle>
+              <CardDescription>
+                ONT terpasang bila di modem TR-069 aktif dan ACS URL mengarah ke
+                server ini. Setelah inform pertama, modem muncul di tab
+                Perangkat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="rounded-md border bg-muted/40 px-3 py-2">
+                {config?.acsConfigured ? (
+                  <>
+                    ACS URL:{" "}
+                    <span className="select-all font-mono text-xs">
+                      {config.acsUrl}
+                    </span>
+                    {config.informInterval != null && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · Periodic Inform {config.informInterval} detik
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-warning">
+                    {configError
+                      ? "Konfigurasi ACS belum bisa dibaca."
+                      : 'ACS URL belum diatur. Isi dulu di Pengaturan "Pasang GenieACS" (butuh admin); tanpa itu ONT tidak tahu harus melapor ke mana.'}
+                  </span>
+                )}
+              </div>
+              <ol className="list-decimal space-y-1.5 pl-5">
+                <li>
+                  <b>Lewat web ONT</b>: tombol <i>Pasang GenieACS</i> pada ONU
+                  yang belum terdaftar di tabel bawah. Server login ke halaman
+                  admin modem lalu mengisi ACS URL. Bila WAN TR-069 perlu
+                  dibuat, sesi PPPoE pelanggan bisa tersambung ulang sebentar.
+                </li>
+                <li>
+                  <b>Lewat OLT</b>: tautan <i>atau via OLT</i> mengikat profil
+                  TR-069 ke ONU lewat telnet OLT, tanpa membuka web modem.
+                </li>
+                <li>
+                  <b>Banyak sekaligus</b>: centang beberapa ONU lalu{" "}
+                  <i>Daftarkan ke GenieACS</i>.
+                </li>
+                <li>
+                  <b>Manual di modem</b>: menu TR-069 / Remote Management,
+                  aktifkan, isi ACS URL di atas, nyalakan Periodic Inform, lalu
+                  simpan. Modem harus bisa menjangkau alamat ACS itu.
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+          <GenieacsOltMatch />
         </TabsContent>
 
         <TabsContent value="config" className="mt-4">

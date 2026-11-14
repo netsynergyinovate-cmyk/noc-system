@@ -160,9 +160,12 @@ export function GenieacsOltMatch() {
             </CardDescription>
           </div>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             className="h-8"
+            aria-label="Segarkan daftar ONU"
+            title="Segarkan daftar ONU"
             onClick={() => {
               void registry.reload();
               void live.reload();

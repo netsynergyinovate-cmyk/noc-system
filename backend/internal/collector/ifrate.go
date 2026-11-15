@@ -110,6 +110,18 @@ type ifSample struct {
 // selama lubang bukan laju "saat ini").
 const maxIfGap = 15 * time.Second
 
+// counterTick: RouterOS memperbarui counter byte interface kira-kira sekali per detik (diukur di
+// RouterOS 7.21: polling 0,5 dtk mendapat counter identik pada separuh pembacaan, polling 1 dtk ~4%).
+const counterTick = 2 * time.Second
+
+// staleCounters: cur belum membawa counter baru dibanding prev (dua pembacaan dalam satu periode
+// pembaruan router), jadi bukan trafik 0. Pemanggil membuang cur dan mempertahankan prev supaya
+// selisih berikutnya mencakup selang yang benar; tanpa ini grafik turun ke 0 lalu melonjak.
+// Counter yang tetap sama selama counterTick atau lebih = interface memang diam (laju 0 sah).
+func staleCounters(prev, cur ifSample) bool {
+	return cur.Rx == prev.Rx && cur.Tx == prev.Tx && cur.At.Sub(prev.At) < counterTick
+}
+
 // CalculateRateSafe menghitung laju bit per detik dari dua counter byte dan
 // menolak counter yang turun. Router yang reboot atau interface yang dibuat
 // ulang mengulang counter dari nol; tanpa pemeriksaan ini selisihnya menjadi

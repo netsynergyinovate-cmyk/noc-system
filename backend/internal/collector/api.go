@@ -396,7 +396,8 @@ func isSingletonPath(segments []string) bool {
 }
 
 // MonitorTraffic menjalankan /interface/monitor-traffic secara streaming pada
-// soket khusus. RouterOS mengirim satu baris per detik berisi rx-bps/tx-bps,
+// soket khusus. RouterOS mengirim satu baris per detik berisi rx-bits-per-second/
+// tx-bits-per-second (nama kolom asli RouterOS 7.21; "fp-*" = fast-path saja),
 // jadi tidak perlu membaca counter dua kali dan menghitung selisih.
 func (c *Client) MonitorTraffic(ctx context.Context, iface string, onSample func(rxMbps, txMbps float64)) error {
 	if c.apiHost == "" {
@@ -414,8 +415,8 @@ func (c *Client) MonitorTraffic(ctx context.Context, iface string, onSample func
 		"/interface/monitor-traffic",
 		"=interface=" + iface,
 	}, func(row map[string]string) bool {
-		rx, errRx := strconv.ParseFloat(row["rx-bps"], 64)
-		tx, errTx := strconv.ParseFloat(row["tx-bps"], 64)
+		rx, errRx := strconv.ParseFloat(row["rx-bits-per-second"], 64)
+		tx, errTx := strconv.ParseFloat(row["tx-bits-per-second"], 64)
 		if errRx != nil || errTx != nil {
 			return true // baris tanpa laju dilewati, bukan dianggap nol
 		}

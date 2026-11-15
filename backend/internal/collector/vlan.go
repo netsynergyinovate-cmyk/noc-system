@@ -68,8 +68,14 @@ func parseVlans(body []byte) ([]rawVlan, error) {
 	return out, nil
 }
 
+// vlanLast: pembacaan counter terakhir yang dipakai sebagai pembanding, dan laju yang dihitung darinya.
+type vlanLast struct {
+	sample ifSample
+	rate   VlanRate
+}
+
 // vlanRates menghitung laju tiap VLAN terhadap pembacaan sebelumnya (prev diperbarui).
-func vlanRates(prev map[string]ifSample, rows []rawVlan, at time.Time) []VlanRate {
+func vlanRates(prev map[string]vlanLast, rows []rawVlan, at time.Time) []VlanRate {
 	out := make([]VlanRate, 0, len(rows))
 	for _, r := range rows {
 		rx, errRx := strconv.ParseUint(r.RxByte, 10, 64)
@@ -77,12 +83,19 @@ func vlanRates(prev map[string]ifSample, rows []rawVlan, at time.Time) []VlanRat
 		v := VlanRate{Name: r.Name, Running: r.Running == "true", Disabled: r.Disabled == "true"}
 		if errRx == nil && errTx == nil {
 			cur := ifSample{At: at, Rx: rx, Tx: tx}
-			if p, ok := prev[r.Name]; ok {
-				if rxMbps, txMbps, ok := ifRate(p, cur); ok {
-					v.RateOK, v.DownMbps, v.UpMbps, v.At = true, txMbps, rxMbps, at
+			last, has := prev[r.Name]
+			if has && staleCounters(last.sample, cur) {
+				// Counter belum diperbarui router: pengukuran terakhir apa adanya (At lama, jadi riwayat
+				// telemetry tidak bertambah), pembanding tetap.
+				v.RateOK, v.DownMbps, v.UpMbps, v.At = last.rate.RateOK, last.rate.DownMbps, last.rate.UpMbps, last.rate.At
+			} else {
+				if has {
+					if rxMbps, txMbps, ok := ifRate(last.sample, cur); ok {
+						v.RateOK, v.DownMbps, v.UpMbps, v.At = true, txMbps, rxMbps, at
+					}
 				}
+				prev[r.Name] = vlanLast{sample: cur, rate: v}
 			}
-			prev[r.Name] = cur
 		}
 		out = append(out, v)
 	}
@@ -98,7 +111,7 @@ func (p *Poller) runVlans(ctx context.Context, w *worker, _ time.Time) (int, err
 		return 0, err
 	}
 	if w.vlanPrev == nil {
-		w.vlanPrev = make(map[string]ifSample)
+		w.vlanPrev = make(map[string]vlanLast)
 	}
 	// Router membaca counter di tengah permintaan; pakai titik tengahnya.
 	rates := vlanRates(w.vlanPrev, rows, t0.Add(t1.Sub(t0)/2))

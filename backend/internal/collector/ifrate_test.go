@@ -143,7 +143,7 @@ func TestInterfaceTrafficUsesUplinkCountersLikeWinbox(t *testing.T) {
 	p, w, now := pollerWithClock(t, f, nil)
 	ctx := context.Background()
 
-	if _, _, ok := p.interfaceTraffic(ctx, w); ok {
+	if _, _, ok, _ := p.interfaceTraffic(ctx, w); ok {
 		t.Fatal("sampel pertama belum punya pembanding")
 	}
 	*now = now.Add(time.Second)
@@ -151,7 +151,7 @@ func TestInterfaceTrafficUsesUplinkCountersLikeWinbox(t *testing.T) {
 	f.rx += 25_000_000 // 25 MB dalam 1 detik di uplink = 200 Mbps download
 	f.tx += 1_500_000  // 12 Mbps upload
 	f.mu.Unlock()
-	down, up, ok := p.interfaceTraffic(ctx, w)
+	down, up, ok, _ := p.interfaceTraffic(ctx, w)
 	if !ok || !near(down, 200) || !near(up, 12) {
 		t.Fatalf("down=%v up=%v ok=%v, want 200 dan 12 Mbps", down, up, ok)
 	}
@@ -169,7 +169,7 @@ func TestInterfaceTrafficFollowsTheClockNotTheTick(t *testing.T) {
 	f.mu.Lock()
 	f.rx = 50_000_000 // 50 MB dalam 2 detik = 200 Mbps
 	f.mu.Unlock()
-	down, _, ok := p.interfaceTraffic(ctx, w)
+	down, _, ok, _ := p.interfaceTraffic(ctx, w)
 	if !ok || !near(down, 200) {
 		t.Fatalf("down=%v ok=%v", down, ok)
 	}
@@ -184,7 +184,7 @@ func TestInterfaceTrafficCustomerSideSwapsDirection(t *testing.T) {
 	f.mu.Lock()
 	f.rx, f.tx = 1_500_000, 25_000_000 // menghadap pelanggan: Tx = download
 	f.mu.Unlock()
-	down, up, ok := p.interfaceTraffic(ctx, w)
+	down, up, ok, _ := p.interfaceTraffic(ctx, w)
 	if !ok || !near(down, 200) || !near(up, 12) {
 		t.Fatalf("down=%v up=%v ok=%v", down, up, ok)
 	}
@@ -198,7 +198,7 @@ func TestInterfaceTrafficFallsBackWithoutGuessing(t *testing.T) {
 	p, w, now := pollerWithClock(t, f, nil)
 	for i := 0; i < 5; i++ {
 		*now = now.Add(time.Second)
-		if _, _, ok := p.interfaceTraffic(ctx, w); ok {
+		if _, _, ok, _ := p.interfaceTraffic(ctx, w); ok {
 			t.Fatal("harus jatuh ke queue")
 		}
 	}
@@ -219,14 +219,14 @@ func TestInterfaceTrafficFallsBackWithoutGuessing(t *testing.T) {
 	f2.mu.Lock()
 	f2.rx, f2.tx = 1000, 1000
 	f2.mu.Unlock()
-	if _, _, ok := p2.interfaceTraffic(ctx, w2); ok {
+	if _, _, ok, _ := p2.interfaceTraffic(ctx, w2); ok {
 		t.Fatal("counter turun tidak boleh menghasilkan laju")
 	}
 	*now2 = now2.Add(time.Second)
 	f2.mu.Lock()
 	f2.rx += 25_000_000
 	f2.mu.Unlock()
-	if down, _, ok := p2.interfaceTraffic(ctx, w2); !ok || !near(down, 200) {
+	if down, _, ok, _ := p2.interfaceTraffic(ctx, w2); !ok || !near(down, 200) {
 		t.Fatalf("sesudah pulih: down=%v ok=%v", down, ok)
 	}
 
@@ -238,14 +238,14 @@ func TestInterfaceTrafficFallsBackWithoutGuessing(t *testing.T) {
 	f3.gone = true
 	f3.mu.Unlock()
 	*now3 = now3.Add(time.Second)
-	if _, _, ok := p3.interfaceTraffic(ctx, w3); ok {
+	if _, _, ok, _ := p3.interfaceTraffic(ctx, w3); ok {
 		t.Fatal("interface hilang tidak boleh menghasilkan laju")
 	}
 
 	// opt-out ke jumlah queue
 	f4 := &fakeIfRouter{comment: "UPLINK"}
 	p4, w4, _ := pollerWithClock(t, f4, func(o *PollerOptions) { o.TrafficFromQueues = true })
-	if _, _, ok := p4.interfaceTraffic(ctx, w4); ok || f4.hitsList+f4.hitsOne != 0 {
+	if _, _, ok, _ := p4.interfaceTraffic(ctx, w4); ok || f4.hitsList+f4.hitsOne != 0 {
 		t.Fatal("TrafficFromQueues tidak boleh menyentuh /rest/interface")
 	}
 }
@@ -259,7 +259,7 @@ func TestInterfaceTrafficExplicitInterfaceSkipsTheCommentLookup(t *testing.T) {
 	f.mu.Lock()
 	f.rx += 12_500_000
 	f.mu.Unlock()
-	down, _, ok := p.interfaceTraffic(ctx, w)
+	down, _, ok, _ := p.interfaceTraffic(ctx, w)
 	if !ok || !near(down, 100) || f.hitsList != 0 {
 		t.Fatalf("down=%v ok=%v pencarian=%d", down, ok, f.hitsList)
 	}
@@ -314,5 +314,39 @@ func TestPollerRecordsInterfaceRateInsteadOfQueueSum(t *testing.T) {
 	// sampel pertama (belum ada pembanding) memakai jumlah queue sebagai cadangan
 	if first := rec.snapshot()[0].point; first.RxMbps != 10.5 || first.TxMbps != 1.5 {
 		t.Errorf("sampel pertama = %+v, want cadangan queue 10,5/1,5", first)
+	}
+}
+
+// RouterOS memperbarui counter interface ~1x per detik: dua pembacaan dalam satu periode itu
+// mendapat counter identik. Itu bukan trafik 0 (dulu grafik turun ke 0 lalu melonjak).
+func TestInterfaceTrafficSkipsStaleCountersInsteadOfZero(t *testing.T) {
+	f := &fakeIfRouter{comment: "UPLINK", rx: 1_000_000_000}
+	p, w, now := pollerWithClock(t, f, nil)
+	ctx := context.Background()
+	p.interfaceTraffic(ctx, w)
+	*now = now.Add(time.Second)
+	f.mu.Lock()
+	f.rx += 25_000_000
+	f.mu.Unlock()
+	if down, _, ok, _ := p.interfaceTraffic(ctx, w); !ok || !near(down, 200) {
+		t.Fatalf("down=%v ok=%v", down, ok)
+	}
+
+	*now = now.Add(time.Second) // counter belum diperbarui router
+	if _, _, ok, stale := p.interfaceTraffic(ctx, w); ok || !stale {
+		t.Fatalf("counter identik dalam 1 dtk: ok=%v stale=%v, harus dilewati", ok, stale)
+	}
+
+	*now = now.Add(time.Second) // pembaruan berikutnya membawa 2 detik data
+	f.mu.Lock()
+	f.rx += 50_000_000
+	f.mu.Unlock()
+	if down, _, ok, stale := p.interfaceTraffic(ctx, w); !ok || stale || !near(down, 200) {
+		t.Fatalf("pembanding lama harus dipertahankan: down=%v ok=%v stale=%v (bukan lonjakan 400)", down, ok, stale)
+	}
+
+	*now = now.Add(counterTick) // interface benar-benar diam selama >= counterTick: 0 sah
+	if down, up, ok, stale := p.interfaceTraffic(ctx, w); !ok || stale || down != 0 || up != 0 {
+		t.Fatalf("interface diam: down=%v up=%v ok=%v stale=%v", down, up, ok, stale)
 	}
 }

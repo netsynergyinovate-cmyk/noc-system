@@ -425,6 +425,18 @@ export function NocDenseDashboard() {
                     <span className="text-orange-400 font-bold">
                       Unggah {formatMbps(inspectedTraffic.tx)}
                     </span>
+                    {inspectedTraffic.note && (
+                      <>
+                        <span className="text-zinc-600">•</span>
+                        <span
+                          className="max-w-72 truncate font-sans text-warning"
+                          title={inspectedTraffic.note}
+                          data-testid="traffic-point-note"
+                        >
+                          {inspectedTraffic.note}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ) : null}
                 <RangePicker value={range} onChange={handleRangeChange} />

@@ -154,7 +154,7 @@ type worker struct {
 	isolirErrLogged bool
 
 	// Pembacaan counter VLAN sebelumnya (hanya disentuh goroutine job VLAN).
-	vlanPrev map[string]ifSample
+	vlanPrev map[string]vlanLast
 
 	// Aliran monitor-traffic (hanya protokol API biner). Menyimpan laju terakhir
 	// yang dikirim router, dalam Mbps, beserta waktunya.
@@ -547,12 +547,14 @@ func (p *Poller) runQueues(ctx context.Context, w *worker, started time.Time) (i
 	down, up, counted := Totals(samples)
 	// Trafik dashboard dari counter interface (sama dengan Winbox, tanpa jeda); jumlah queue hanya
 	// cadangan bila interface tidak tersedia.
-	if rx, tx, ok := p.interfaceTraffic(ctx, w); ok {
+	rx, tx, ok, stale := p.interfaceTraffic(ctx, w)
+	if ok {
 		down, up = rx, tx
 	}
 	// Hot path API biner sudah mencatat sampelnya sendiri. Putaran queue hanya
-	// mencatat saat aliran sedang tidak segar (putus/ belum mulai).
-	if _, _, streaming := w.streamRate(started); !streaming {
+	// mencatat saat aliran sedang tidak segar (putus/ belum mulai). Counter router
+	// yang belum diperbarui: detik ini dilewati (celah 1 dtk), bukan dicatat 0.
+	if _, _, streaming := w.streamRate(started); !streaming && !stale {
 		point := state.TrafficPoint{Time: started.Unix(), RxMbps: down, TxMbps: up}
 		if _, err := p.rec.RecordTraffic(w.routerID, point); err != nil {
 			return 0, fmt.Errorf("simpan sampel traffic: %w", err)
@@ -603,17 +605,19 @@ const ifLookupEvery = 5 * time.Minute
 
 // interfaceTraffic mengembalikan laju download/upload (Mbps) dari counter interface. ok=false bila
 // belum ada pembanding, interface tidak ditemukan, atau pembacaan gagal: pemanggil memakai cadangan.
-func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upMbps float64, ok bool) {
+// stale=true: counter router belum diperbarui sejak pembacaan lalu (staleCounters); pemanggil tidak
+// mencatat sampel detik ini sama sekali.
+func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upMbps float64, ok, stale bool) {
 	if p.opts.TrafficFromQueues {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	now := p.opts.Now()
 	// Jalur API biner: laju sudah dikirim router lewat monitor-traffic.
 	if rx, tx, ok := w.streamRate(now); ok {
 		if p.opts.TrafficCustomerSide {
-			return tx, rx, true
+			return tx, rx, true, false
 		}
-		return rx, tx, true
+		return rx, tx, true, false
 	}
 	if w.ifName == "" {
 		if p.opts.TrafficInterface != "" {
@@ -630,7 +634,7 @@ func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upM
 			}
 		}
 		if w.ifName == "" {
-			return 0, 0, false
+			return 0, 0, false, false
 		}
 	}
 	t0 := p.opts.Now()
@@ -640,7 +644,7 @@ func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upM
 		if w.ifPrev != nil && t0.Sub(w.ifPrev.At) > maxIfGap {
 			w.ifPrev = nil
 		}
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if !w.ifLogged {
 		w.ifLogged = true
@@ -649,18 +653,21 @@ func (p *Poller) interfaceTraffic(ctx context.Context, w *worker) (downMbps, upM
 	// Router membaca counter di tengah permintaan; pakai titik tengahnya sebagai saat pembacaan.
 	sample := ifSample{At: t0.Add(t1.Sub(t0) / 2), Rx: cur.RxBytes, Tx: cur.TxBytes}
 	prev := w.ifPrev
+	if prev != nil && staleCounters(*prev, sample) {
+		return 0, 0, false, true // prev dipertahankan
+	}
 	w.ifPrev = &sample
 	if prev == nil {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	rx, tx, ok := ifRate(*prev, sample)
 	if !ok {
-		return 0, 0, false
+		return 0, 0, false, false
 	}
 	if p.opts.TrafficCustomerSide {
-		return tx, rx, true
+		return tx, rx, true, false
 	}
-	return rx, tx, true
+	return rx, tx, true, false
 }
 
 // runPPPActive: menyamakan status pelanggan dengan sesi PPPoE yang aktif.

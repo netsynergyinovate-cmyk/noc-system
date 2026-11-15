@@ -172,8 +172,9 @@ func TestMonitorTrafficStreamsRouterRates(t *testing.T) {
 			if attr(words, "once") != "" {
 				t.Error("monitor-traffic tidak boleh memakai =once=")
 			}
-			send([]string{"!re", "=rx-bps=200000000", "=tx-bps=12000000"})
-			send([]string{"!re", "=rx-bps=250000000", "=tx-bps=15000000"})
+			// Bentuk baris asli RouterOS 7.21 (dibaca dari router sungguhan).
+			send([]string{"!re", "=name=ether2-lan0", "=rx-bits-per-second=200000000", "=fp-rx-bits-per-second=0", "=tx-bits-per-second=12000000", "=fp-tx-bits-per-second=0"})
+			send([]string{"!re", "=name=ether2-lan0", "=rx-bits-per-second=250000000", "=fp-rx-bits-per-second=0", "=tx-bits-per-second=15000000", "=fp-tx-bits-per-second=0"})
 			send([]string{"!done"})
 		}
 	})

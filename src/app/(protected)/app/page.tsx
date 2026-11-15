@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { NocDenseDashboard } from "@/components/dashboard/noc-dense-dashboard";
 import { DashboardMetricBoard } from "@/components/dashboard/dashboard-metric-board";
 import { MapFocusFromUrl } from "@/components/dashboard/map-focus-from-url";
-import { StreamDisconnectedBanner } from "@/components/dashboard/stream-disconnected-banner";
 import { AnomalyBadge } from "@/components/dashboard/anomaly-badge";
 import { LiveStatus } from "@/components/dashboard/live-status";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { readFocusId } from "@/lib/dashboard/map-focus";
 import { requireSession } from "@/lib/session";
 
@@ -34,9 +34,10 @@ export default async function DashboardPage({
         <div className="flex flex-wrap items-center gap-2">
           <AnomalyBadge />
           <LiveStatus />
+          {/* Aplikasi terputus / router tidak terbaca: lonceng, bukan banner besar. */}
+          <NotificationBell />
         </div>
       </div>
-      <StreamDisconnectedBanner />
       <NocDenseDashboard />
       <div className="sr-only" aria-hidden="true">
         <DashboardMetricBoard />

@@ -211,3 +211,27 @@
 .traffic-tip > :first-child {
   color: var(--muted-foreground);
 }
+
+/* Lonceng notifikasi (notification-bell.tsx): berayun saat ada masalah baru. Dipakai lewat
+   motion-safe:, jadi diam bila pengguna memilih kurangi gerak. */
+@keyframes noc-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(16deg);
+  }
+  30% {
+    transform: rotate(-14deg);
+  }
+  45% {
+    transform: rotate(10deg);
+  }
+  60% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
+}

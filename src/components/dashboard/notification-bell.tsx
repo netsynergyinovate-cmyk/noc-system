@@ -9,7 +9,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useSession } from "@/components/session-provider";
+import { copyText } from "@/lib/clipboard";
 import {
+  appendAllowListCommand,
   describeLastOk,
   diagnoseUnreachable,
   unreachableRouters,
@@ -40,42 +42,44 @@ export function NotificationBell() {
   const signature = `${feed.visible}|${down.map((r) => r.routerId).join(",")}`;
 
   const [open, setOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [helpCopiedId, setHelpCopiedId] = useState<string | null>(null);
-  const [guideFor, setGuideFor] = useState<string | null>(null);
-  // address= layanan saat ini per router, dibaca saat daftar dibuka. Dipakai untuk menyusun
-  // perintah TAMBAH, bukan ganti.
-  const [existing, setExisting] = useState<Record<string, string>>({});
+  // Hasil salin per tombol: "ok" = tersalin, "fail" = peramban menolak (teks tetap bisa diseleksi).
+  const [copied, setCopied] = useState<Record<string, "ok" | "fail">>({});
+  // IP server menurut router, diisi petugas dari langkah 1 (per router).
+  const [ipInput, setIpInput] = useState<Record<string, string>>({});
 
-  function loadExisting() {
-    for (const r of down) {
-      const service = r.protocol === "api" ? "api" : "www";
-      fetch(
-        `/api/routers/${encodeURIComponent(r.routerId)}/service?name=${service}`,
-      )
-        .then((res) => (res.ok ? res.json() : null))
-        .then((json) => {
-          if (!json?.data) return;
-          setExisting((prev) => ({
-            ...prev,
-            [r.routerId]: String(json.data.address ?? ""),
-          }));
-        })
-        .catch(() => {
-          // Gagal membaca daftar lama: perintah tetap memakai versi ganti.
-        });
-    }
+  async function copy(key: string, text: string, host: HTMLElement) {
+    const ok = await copyText(text, host);
+    setCopied((prev) => ({ ...prev, [key]: ok ? "ok" : "fail" }));
+    window.setTimeout(
+      () =>
+        setCopied((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        }),
+      2500,
+    );
   }
 
-  async function copyText(key: string, text: string, help = false) {
-    try {
-      await navigator.clipboard.writeText(text);
-      const set = help ? setHelpCopiedId : setCopiedId;
-      set(key);
-      window.setTimeout(() => set((id) => (id === key ? null : id)), 2000);
-    } catch {
-      // Clipboard tidak tersedia (HTTP non-localhost): teks tetap bisa diseleksi.
-    }
+  function copyButton(key: string, text: string, label = "Salin") {
+    const state = copied[key];
+    return (
+      <button
+        type="button"
+        onClick={(e) => void copy(key, text, e.currentTarget.parentElement!)}
+        className={cn(
+          "shrink-0 rounded border bg-background px-2 py-1 text-xs hover:bg-muted",
+          state === "ok" && "border-success/60 text-success",
+          state === "fail" && "border-destructive/60 text-destructive",
+        )}
+      >
+        {state === "ok"
+          ? "Tersalin"
+          : state === "fail"
+            ? "Gagal, seleksi manual"
+            : label}
+      </button>
+    );
   }
 
   const summary = [
@@ -88,10 +92,7 @@ export function NotificationBell() {
   return (
     <Popover
       open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) loadExisting();
-      }}
+      onOpenChange={setOpen}
     >
       <PopoverTrigger asChild>
         <button
@@ -175,18 +176,24 @@ export function NotificationBell() {
         )}
 
         {down.map((r) => {
+          const service = r.protocol === "api" ? "api" : "www";
           const d = diagnoseUnreachable(r.lastError, {
             sourceIp: r.sourceIp,
             localSourceIp: r.localSourceIp,
-            existingAddress: existing[r.routerId],
             protocol: r.protocol,
+            host: r.host,
           });
           const helpText = [
             `Mohon bantu periksa router ${r.name} (${r.host}).`,
             `Status: tidak terjangkau — ${d.title}`,
             `Error: ${r.lastError || "-"}`,
             "Perintah yang perlu dijalankan di terminal MikroTik:",
-            d.command ?? "-",
+            ...(d.steps
+              ? d.steps.map(
+                  (s, i) =>
+                    `${i + 1}. ${s.title}\n${s.command ?? `(isi IP dari langkah 1) ${appendAllowListCommand(service, s.allowIp || "") ?? `/ip service set ${service} address=([/ip service get ${service} address],"IP-SERVER")`}`}`,
+                )
+              : [d.command ?? "-"]),
           ].join("\n");
           return (
             <div
@@ -201,69 +208,100 @@ export function NotificationBell() {
                   {r.name} tidak terjangkau: {d.title}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-foreground">{d.hint}</p>
-              {d.command && (
-                <div className="mt-2 flex flex-wrap items-start gap-2">
-                  <pre className="min-w-0 flex-1 overflow-x-auto rounded-md bg-background/70 p-2 font-mono text-xs">
-                    {d.command}
-                  </pre>
-                  <button
-                    type="button"
-                    onClick={() => void copyText(r.routerId, d.command!)}
-                    className="rounded border bg-background px-2 py-1 text-xs hover:bg-muted"
-                  >
-                    {copiedId === r.routerId ? "Tersalin" : "Salin"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setGuideFor((id) =>
-                        id === r.routerId ? null : r.routerId,
-                      )
-                    }
-                    className="rounded border bg-background px-2 py-1 text-xs hover:bg-muted"
-                    aria-expanded={guideFor === r.routerId}
-                  >
-                    Panduan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void copyText(`${r.routerId}:help`, helpText, true)
-                    }
-                    className="rounded border bg-background px-2 py-1 text-xs hover:bg-muted"
-                  >
-                    {helpCopiedId === `${r.routerId}:help`
-                      ? "Pesan tersalin"
-                      : "Minta bantuan admin"}
-                  </button>
-                </div>
-              )}
-              {guideFor === r.routerId && (
-                <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-muted-foreground">
-                  <li>Buka Winbox atau SSH ke MikroTik.</li>
-                  <li>Tempel perintah di atas apa adanya.</li>
-                  <li>
-                    Tunggu ±30 detik; backend mencoba ulang otomatis tanpa
-                    restart aplikasi.
-                  </li>
-                  <li>
-                    Kalau masih gagal, klik “Minta bantuan admin” lalu kirim
-                    pesannya.
-                  </li>
+              <p className="mt-1 text-xs leading-relaxed text-foreground">
+                {d.hint}
+              </p>
+              {d.steps ? (
+                <ol className="mt-2 space-y-2" data-testid="router-fix-steps">
+                  {d.steps.map((s, i) => {
+                    const key = `${r.routerId}:${i}`;
+                    const typed = ipInput[r.routerId] ?? s.allowIp ?? "";
+                    const command =
+                      s.allowIp === undefined
+                        ? s.command
+                        : appendAllowListCommand(service, typed);
+                    return (
+                      <li
+                        key={key}
+                        className="rounded-md border border-border/60 bg-background/40 p-2"
+                      >
+                        <p className="text-xs font-medium">
+                          {i + 1}. {s.title}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {s.detail}
+                        </p>
+                        {s.allowIp !== undefined && (
+                          <label className="mt-1.5 flex items-center gap-2 text-[11px]">
+                            <span className="shrink-0 text-muted-foreground">
+                              IP server menurut router
+                            </span>
+                            <input
+                              value={typed}
+                              onChange={(e) =>
+                                setIpInput((prev) => ({
+                                  ...prev,
+                                  [r.routerId]: e.target.value,
+                                }))
+                              }
+                              placeholder="mis. 172.16.15.254"
+                              inputMode="decimal"
+                              aria-invalid={!command}
+                              className="h-7 min-w-0 flex-1 rounded border bg-background px-2 font-mono text-xs"
+                            />
+                          </label>
+                        )}
+                        {command ? (
+                          <div className="mt-1.5 flex items-start gap-2">
+                            <pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre rounded bg-background/70 p-2 font-mono text-xs">
+                              {command}
+                            </pre>
+                            {copyButton(key, command)}
+                          </div>
+                        ) : (
+                          s.allowIp !== undefined && (
+                            <p className="mt-1 text-[11px] text-destructive">
+                              {typed
+                                ? "Bukan IPv4 yang valid (contoh 172.16.15.254 atau 172.16.15.0/24)."
+                                : "Isi IP dari kolom SRC-ADDRESS langkah 1 untuk menyusun perintah."}
+                            </p>
+                          )
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
+              ) : (
+                d.command && (
+                  <div className="mt-2 flex items-start gap-2">
+                    <pre className="min-w-0 flex-1 overflow-x-auto rounded-md bg-background/70 p-2 font-mono text-xs">
+                      {d.command}
+                    </pre>
+                    {copyButton(r.routerId, d.command)}
+                  </div>
+                )
               )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {copyButton(
+                  `${r.routerId}:help`,
+                  helpText,
+                  "Salin pesan untuk admin",
+                )}
+                <span className="text-[11px] text-muted-foreground">
+                  Tempel di Winbox (New Terminal) atau SSH. Notifikasi hilang
+                  sendiri begitu router terbaca lagi.
+                </span>
+              </div>
               {d.cause === "closed" && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Verifikasi dengan{" "}
-                  <code className="font-mono">
-                    /ip service print where name~&quot;
-                    {r.protocol === "api" ? "api" : "www"}&quot;
-                  </code>
-                  : kolom ADDRESS harus memuat IP server di atas. Jika masih
-                  ditutup, periksa{" "}
+                  Masih diputus setelah langkah 1–3? Periksa rule{" "}
                   <code className="font-mono">/ip firewall filter</code> rantai{" "}
-                  <code className="font-mono">input</code> untuk port layanan.
+                  <code className="font-mono">input</code> yang me-reject port
+                  layanan, dan pastikan kolom ADDRESS di{" "}
+                  <code className="font-mono">
+                    /ip service print where name~&quot;{service}&quot;
+                  </code>{" "}
+                  memuat IP langkah 1.
                 </p>
               )}
               <p className="mt-2 text-xs text-muted-foreground">

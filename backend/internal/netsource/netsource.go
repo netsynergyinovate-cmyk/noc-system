@@ -65,22 +65,43 @@ func PublicIP() string {
 // SourceIP mengembalikan alamat yang dipakai untuk menuju host. host boleh
 // berbentuk "10.0.0.1", "10.0.0.1:8728", atau "https://host:port".
 func SourceIP(host string) string {
-	h, port := splitHost(host)
+	h, _ := splitHost(host)
 	ip := net.ParseIP(h)
 	if ip == nil || !isLocal(ip) {
-		if pub := PublicIP(); pub != "" {
+		if pub := PublicIP(); usablePublic(pub, h) {
 			return pub
 		}
 	}
-	return LocalIP(h, port)
+	return LocalSourceIP(host)
+}
+
+// usablePublic: IP publik server yang SAMA dengan alamat router berarti server
+// keluar ke internet lewat router itu (PPPoE/LAN di belakangnya). Router melihat
+// alamat internal server, bukan IP publiknya sendiri, jadi IP itu tidak berguna.
+func usablePublic(pub, routerHost string) bool {
+	return pub != "" && pub != routerHost
 }
 
 // LocalSourceIP mengembalikan alamat interface lokal menuju host (tanpa paket).
 // Dipakai bersama IP publik: router di jaringan yang sama bisa melihat alamat
-// LAN server, bukan IP publik hasil NAT.
+// LAN server, bukan IP publik hasil NAT. Di dalam container hasilnya kosong:
+// alamat container (mis. 10.0.5.x Coolify) di-SNAT Docker dan tidak pernah
+// sampai ke router.
 func LocalSourceIP(host string) string {
+	if inContainer() {
+		return ""
+	}
 	h, port := splitHost(host)
 	return LocalIP(h, port)
+}
+
+func inContainer() bool {
+	for _, p := range []string{"/.dockerenv", "/run/.containerenv"} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // LocalIP mencari alamat interface lokal menuju host tanpa mengirim paket.

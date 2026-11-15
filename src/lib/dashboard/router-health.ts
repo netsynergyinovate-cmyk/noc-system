@@ -28,6 +28,13 @@ export interface UnreachableDiagnosis {
   hint: string;
   // Perintah RouterOS yang membantu; kosong bila tidak relevan.
   command?: string;
+  // Langkah perbaikan berurutan. allowIp ada = langkah isian IP (perintah disusun dari isian).
+  steps?: {
+    title: string;
+    detail: string;
+    command?: string;
+    allowIp?: string;
+  }[];
 }
 
 export interface UnreachableContext {
@@ -39,6 +46,8 @@ export interface UnreachableContext {
   // MENAMBAHKAN IP baru tanpa menghapus entri lama.
   existingAddress?: string | null;
   protocol?: "rest" | "api" | null;
+  // Alamat router (RouterHealth.host): dasar perintah baca tabel koneksi.
+  host?: string | null;
 }
 
 /**
@@ -84,6 +93,44 @@ export function allowListCommand(
   const entries = [...new Set([...existing, ...newEntries])];
   if (entries.length === 0) return undefined;
   return `/ip service set ${service} address=${entries.join(",")}`;
+}
+
+// shortcut: hanya IPv4 (dengan /prefix opsional); tambah IPv6 bila ada router yang dihubungi lewat IPv6.
+const IPV4 =
+  /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}(\/(3[0-2]|[12]?\d))?$/;
+
+/** IP yang boleh disisipkan ke perintah RouterOS (masukan petugas divalidasi ketat). */
+export function isAllowListIp(value: string): boolean {
+  return IPV4.test(value.trim());
+}
+
+/**
+ * MENAMBAH satu entri ke address= layanan dengan ekspresi array RouterOS, jadi
+ * entri lama tetap ada walau aplikasi tidak bisa membacanya (router menolak kita).
+ */
+export function appendAllowListCommand(
+  service: "www" | "api",
+  ip: string,
+): string | undefined {
+  if (!isAllowListIp(ip)) return undefined;
+  return `/ip service set ${service} address=([/ip service get ${service} address],"${formatAllowListEntry(ip)}")`;
+}
+
+/** Baca IP sumber server menurut router dari tabel koneksi (hanya baca). */
+export function seenSourceCommand(
+  host: string,
+  service: "www" | "api",
+): string | undefined {
+  const m = /^\[?([^\]]+?)\]?(?::(\d+))?$/.exec(
+    host.trim().replace(/^[a-z]+:\/\//i, "").replace(/\/$/, ""),
+  );
+  if (!m || !isAllowListIp(m[1])) return undefined;
+  const port = m[2] ?? (service === "api" ? "8728" : "80");
+  return `/ip firewall connection print where protocol=tcp and dst-address~"${m[1]}:${port}\\$"`;
+}
+
+export function dropStaleSessionsCommand(service: "www" | "api"): string {
+  return `/ip service disable ${service}\n/ip service enable ${service}`;
 }
 
 // Urutan penting: yang paling spesifik lebih dulu.
@@ -138,21 +185,40 @@ export function diagnoseUnreachable(
       e,
     )
   ) {
-    const command = allowListCommand(
-      service,
-      sourceIp,
-      localSourceIp,
-      ctx.existingAddress,
-    );
-    // Sesi basi: server/link mati tanpa menutup sesi, slot max-sessions router penuh sampai keepalive TCP router habis.
-    const stale = `Bila router ini sebelumnya tersambung (mis. setelah mati listrik atau backend restart), slot max-sessions layanan ${label} masih terisi sesi lama: jalankan /ip service disable ${service} lalu /ip service enable ${service} untuk membuangnya.`;
+    const guessIp = sourceIp || localSourceIp;
+    const seen = ctx.host ? seenSourceCommand(ctx.host, service) : undefined;
+    const append = guessIp ? appendAllowListCommand(service, guessIp) : undefined;
     return {
       cause: "closed",
-      title: "Router menutup koneksi",
-      hint: command
-        ? `Router menerima sambungan lalu langsung menutupnya. ${stale} Bila belum pernah tersambung, IP server ini (${ipLabel}) belum ada di kolom address= layanan ${label}. Perintah di bawah ${ctx.existingAddress ? "MENAMBAHKAN IP itu ke daftar yang sudah ada (entri lama dipertahankan)" : "MENGGANTI daftar address= dengan IP itu"}; akses Winbox/SSH tidak terpengaruh. Tempel apa adanya.`
-        : `Router menerima sambungan lalu langsung menutupnya. ${stale} Bila belum pernah tersambung, biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan ${label}. Jalankan perintah di bawah untuk melihat daftar, lalu tambahkan IP server yang tampil di backend.`,
-      command: command ?? `/ip service print where name~"${service}"`,
+      title: "Router memutus sambungan dari server",
+      hint:
+        `Router menerima sambungan lalu memutusnya sebelum menjawab (reset/EOF). Penyebabnya di sisi router, ada dua: ` +
+        `(1) IP server menurut router tidak ada di daftar address= layanan ${label}. Server di belakang router ini (PPPoE/LAN) atau di dalam Docker terlihat dengan IP internalnya, bukan IP publik, dan IP PPPoE/DHCP itu bisa berganti setelah mati listrik. ` +
+        `(2) Slot max-sessions layanan ${label} (bawaan 20) masih terisi sesi lama setelah server atau link mati mendadak. ` +
+        (guessIp
+          ? `Perkiraan backend: ${ipLabel}, pastikan dulu di langkah 1. `
+          : "Backend tidak bisa mengetahui IP itu dari dalam container atau dari balik router ini, jadi baca di langkah 1. ") +
+        "Setelah router mengizinkan, backend tersambung sendiri dalam ±2 detik tanpa restart.",
+      command: append ?? seen ?? `/ip service print where name~"${service}"`,
+      steps: [
+        {
+          title: "Lihat IP server menurut router",
+          detail: `Hanya membaca, tidak mengubah apa pun. Kolom SRC-ADDRESS (tanpa :port) adalah IP server menurut router. Bila kosong, jalankan lagi beberapa detik kemudian; backend mencoba tiap 2 detik.`,
+          command: [seen, `/ip service print where name~"${service}"`]
+            .filter(Boolean)
+            .join("\n"),
+        },
+        {
+          title: "Izinkan IP itu, daftar lama tetap",
+          detail: `Isi IP dari langkah 1. Perintah MENAMBAH ke address= ${label}; entri lama dan akses Winbox/SSH tidak berubah. IP privat ditulis /24 supaya tetap cocok bila IP PPPoE/DHCP server berganti setelah mati listrik.`,
+          allowIp: guessIp || "",
+        },
+        {
+          title: "Bila masih diputus: buang sesi lama",
+          detail: `Mematikan lalu menyalakan layanan ${service} membuang semua sesi lama sekaligus (pengguna webfig/REST lain ikut tersambung ulang).`,
+          command: dropStaleSessionsCommand(service),
+        },
+      ],
     };
   }
   if (

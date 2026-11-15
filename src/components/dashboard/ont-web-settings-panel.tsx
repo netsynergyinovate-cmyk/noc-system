@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { acsUrlProblem } from "@/lib/genieacs/acs-url";
 
 // Bentuk jawaban GET/PUT /api/ont-web/settings (tanpa kata sandi).
 export type OntWebSettings = {
@@ -68,9 +69,9 @@ export function OntWebSettingsPanel({
   const seconds = /^\d{1,6}$/.test(interval.trim()) ? Number(interval) : NaN;
   const intervalOk =
     Number.isInteger(seconds) && seconds >= 30 && seconds <= 86400;
-  const urlOk = /^https?:\/\/[^\s/@]+(?::\d{1,5})?(?:\/\S*)?$/i.test(
-    acsUrl.trim(),
-  );
+  // Sama dengan validasi server: alamat yang tidak bisa dicapai modem ditolak di sini juga.
+  const urlProblem = acsUrl.trim() === "" ? null : acsUrlProblem(acsUrl);
+  const urlOk = acsUrl.trim() !== "" && urlProblem === null;
   const valid = urlOk && intervalOk;
 
   async function save(e: FormEvent) {
@@ -81,7 +82,8 @@ export function OntWebSettingsPanel({
       setPhase({
         kind: "failed",
         message: !urlOk
-          ? "Isi Alamat ACS lengkap, mis. http://172.16.0.1:7547 (teks abu-abu hanya contoh)."
+          ? (urlProblem ??
+            "Isi Alamat ACS lengkap, mis. http://172.16.0.1:7547 (teks abu-abu hanya contoh).")
           : "Interval lapor harus 30–86400 detik.",
       });
       return;
@@ -151,9 +153,23 @@ export function OntWebSettingsPanel({
             autoComplete="off"
             placeholder="http://172.16.0.1:7547"
             value={acsUrl}
-            aria-invalid={acsUrl !== "" && !urlOk}
+            aria-invalid={urlProblem !== null}
+            aria-describedby={urlProblem ? "ont-set-acs-problem" : undefined}
             onChange={(e) => setAcsUrl(e.target.value)}
           />
+          {urlProblem && (
+            <p
+              id="ont-set-acs-problem"
+              data-testid="ont-set-acs-problem"
+              className="text-xs text-destructive"
+            >
+              {urlProblem}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Alamat CWMP (port 7547) yang dicapai modem dari jaringan pelanggan,
+            bukan GENIEACS_NBI_URL (port 7557) yang dipakai aplikasi.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ont-set-interval">Interval lapor (detik)</Label>

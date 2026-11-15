@@ -103,6 +103,8 @@ export interface CpeLite {
   pppoeUsername: string;
   macAddress: string;
   isOnline: boolean;
+  /** `_lastInform` GenieACS, detik epoch; 0 = belum pernah. */
+  lastInformAt: number;
 }
 
 export interface CpeMatch {
@@ -443,4 +445,34 @@ export function bulkEligibility(
   }
   if (o.status !== "online") return { ok: false, reason: "ONU tidak online" };
   return { ok: true, reason: "" };
+}
+
+/**
+ * Bukti dari GenieACS bahwa modem ONU ini melapor. HANYA "informing" boleh disebut tersambung;
+ * isian TR-069 di modem yang sudah benar bukan bukti (modem bisa diberi ACS yang tak terjangkau).
+ *  - unreadable: daftar GenieACS gagal dibaca (status tidak ditebak).
+ *  - loading: daftar belum dimuat.
+ *  - missing: tidak ada perangkat GenieACS yang cocok (PPPoE/MAC) dengan ONU ini.
+ *  - stale: perangkat ada tetapi _lastInform lebih tua dari jendela online GenieACS.
+ */
+export type InformEvidence =
+  | { kind: "unreadable" | "loading" | "missing" }
+  | { kind: "stale" | "informing"; deviceId: string; lastInformAt: number };
+
+export function informEvidence(
+  onuId: string,
+  reg: ReadonlyMap<string, CpeMatch> | null,
+  devices: readonly CpeLite[] | null,
+  failed: boolean,
+): InformEvidence {
+  if (failed) return { kind: "unreadable" };
+  if (reg === null || devices === null) return { kind: "loading" };
+  const m = reg.get(onuId);
+  const d = m && devices.find((x) => x.deviceId === m.deviceId);
+  if (!d) return { kind: "missing" };
+  return {
+    kind: d.isOnline && d.lastInformAt > 0 ? "informing" : "stale",
+    deviceId: d.deviceId,
+    lastInformAt: d.lastInformAt,
+  };
 }

@@ -176,9 +176,6 @@ func (a *OntWebAPI) loadFromDB(ctx context.Context) (ontweb.Config, error) {
 	if err := rows.Scan(&cfg.ACSURL, &cfg.ACSUsername, &acsPassEnc, &cfg.InformInterval, &cfg.Username, &webPassEnc, &cfg.ZimlinkUsername, &zlPassEnc, &cfg.GGCLinkUsername, &ggPassEnc, &cfg.F609Username, &f6PassEnc); err != nil {
 		return ontweb.Config{}, err
 	}
-	if err := ontweb.ValidateACSURL(cfg.ACSURL); err != nil {
-		return ontweb.Config{}, fmt.Errorf("ont_web_settings.acs_url tidak sah: %w", err)
-	}
 	if acsPassEnc != "" {
 		if cfg.ACSPassword, err = collector.DecryptCredential(acsPassEnc, a.deviceSecret); err != nil {
 			return ontweb.Config{}, fmt.Errorf("buka kata sandi ACS: %w", err)
@@ -246,6 +243,15 @@ func (a *OntWebAPI) install(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logger.Error("pasang TR-069 lewat web ONT: baca pengaturan gagal", "error", err.Error())
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal"})
+		return
+	}
+	// Dicek di sini (bukan saat memuat) supaya petugas melihat alasannya. Nilai lama yang
+	// salah (mis. http://genieacs:7557, alamat NBI di jaringan Docker) tidak pernah
+	// ditulis ke modem: modem tidak bisa Inform ke sana.
+	if err := ontweb.ValidateACSURL(cfg.ACSURL); err != nil {
+		writeJSON(w, http.StatusConflict, errorResponse{
+			Error: "acs_url_invalid", Message: "Alamat ACS di Pengaturan GenieACS tidak bisa dipakai modem: " + err.Error() + ". Perbaiki lewat ikon ⚙ Pengaturan di halaman GenieACS.",
+		})
 		return
 	}
 
@@ -328,7 +334,9 @@ func (a *OntWebAPI) install(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, host, err)
 		return
 	}
-	msg := "Modem sudah memakai pengaturan ini; tidak ada yang diubah."
+	// Tidak ada pesan di sini yang menyatakan "tersambung": bukti hanya dari GenieACS
+	// (perangkat ada dan _lastInform baru), yang dicek dialog dari daftar perangkat GenieACS.
+	msg := "Isian TR-069 di modem sudah sama dengan pengaturan; tidak ada yang diubah. Ini belum bukti modem melapor ke GenieACS."
 	switch {
 	case kind == ontweb.KindGGCLink && res.WANChanged:
 		// WAN baru (DHCP), WAN pelanggan tidak disentuh: tidak ada sambung ulang PPPoE.
@@ -349,7 +357,7 @@ func (a *OntWebAPI) install(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "changed": res.Changed, "fields": res.Fields, "host": host,
 		"informing": res.Informing, "message": msg, "model": ontweb.KindLabel(kind), "acsStatus": res.ACSStatus,
-		"wanChanged": res.WANChanged, "wanNote": res.WANNote,
+		"wanChanged": res.WANChanged, "wanNote": res.WANNote, "acsUrl": cfg.ACSURL,
 	})
 }
 

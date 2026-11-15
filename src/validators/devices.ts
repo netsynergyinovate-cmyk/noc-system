@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { acsUrlProblem } from "../lib/genieacs/acs-url.ts";
 
 export const createOltSchema = z
   .object({
@@ -198,22 +199,15 @@ export type OntWebTr069Input = z.infer<typeof ontWebTr069Schema>;
 const optionalSecret = z.string().max(100).optional();
 export const ontWebSettingsSchema = z
   .object({
+    // Alamat CWMP yang dicapai MODEM: bukan nama layanan Docker, localhost, atau port NBI.
     acsUrl: z
       .string()
       .trim()
       .max(256)
-      .refine((v) => {
-        try {
-          const u = new URL(v);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            !u.username &&
-            !u.password
-          );
-        } catch {
-          return false;
-        }
-      }, "Isi alamat ACS seperti http://172.16.0.1:7547"),
+      .superRefine((v, ctx) => {
+        const problem = acsUrlProblem(v);
+        if (problem) ctx.addIssue({ code: "custom", message: problem });
+      }),
     acsUsername: z.string().trim().max(100).optional(),
     acsPassword: optionalSecret,
     informInterval: z.number().int().min(30).max(86400),

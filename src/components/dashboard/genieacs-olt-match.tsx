@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
 import {
+  informEvidence,
   matchOnusToCpe,
   onuMac,
   parseOnuModel,
@@ -387,6 +388,13 @@ export function GenieacsOltMatch() {
           onu={ontWebOnu}
           open={ontWebOnu !== null}
           onOpenChange={(open) => !open && setOntWebId(null)}
+          evidence={informEvidence(
+            ontWebId ?? "",
+            reg,
+            registry.devices,
+            registry.failed,
+          )}
+          onRecheck={registry.reload}
         />
         {bulkOpen && (
           <BulkRegisterDialog

@@ -21,6 +21,7 @@ async function fetchAll(signal?: AbortSignal): Promise<CpeLite[]> {
         pppoeUsername: string;
         macAddress: string;
         isOnline: boolean;
+        lastInformAt: number;
       }[];
       total?: number;
     };
@@ -31,6 +32,7 @@ async function fetchAll(signal?: AbortSignal): Promise<CpeLite[]> {
         pppoeUsername: d.pppoeUsername ?? "",
         macAddress: d.macAddress ?? "",
         isOnline: !!d.isOnline,
+        lastInformAt: Number(d.lastInformAt) || 0,
       });
     }
     if (rows.length < PAGE || out.length >= (json.total ?? 0)) break;

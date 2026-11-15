@@ -67,15 +67,35 @@ func PolicyFromEnv(getenv func(string) string) ([]*net.IPNet, error) {
 	return nets, nil
 }
 
-// ValidateACSURL: http(s)://host[:port] tanpa nama pengguna, paling panjang 256
-// karakter (batas kolom di modem).
+// nonCWMPPorts: port GenieACS lain yang sering salah disalin ke ACS URL. Modem
+// yang diberi port ini tidak pernah bisa Inform (bukan layanan CWMP).
+var nonCWMPPorts = map[string]string{"7557": "NBI (API)", "7558": "UI", "7567": "file server"}
+
+// ValidateACSURL: alamat CWMP yang ditulis ke MODEM harus bisa dicapai modem dari
+// jaringan pelanggan: http(s)://host[:port] tanpa nama pengguna, paling panjang 256
+// karakter (batas kolom di modem), host berupa IP atau nama ber-domain (bukan
+// nama layanan Docker seperti "genieacs", bukan localhost/loopback), dan port bukan
+// NBI/UI/FS GenieACS. Aturan yang sama ada di src/lib/genieacs/acs-url.ts.
 func ValidateACSURL(raw string) error {
 	if len(raw) > 256 {
 		return fmt.Errorf("ACS URL terlalu panjang (modem membatasi 256 karakter)")
 	}
 	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil {
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil {
 		return fmt.Errorf("ACS URL harus http(s)://host:port tanpa nama pengguna")
+	}
+	host := strings.ToLower(u.Hostname())
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsUnspecified() {
+			return fmt.Errorf("ACS URL %s menunjuk ke modem itu sendiri, bukan ke GenieACS; pakai IP server GenieACS yang terlihat dari jaringan pelanggan", host)
+		}
+	} else if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return fmt.Errorf("ACS URL %s menunjuk ke modem itu sendiri, bukan ke GenieACS; pakai IP server GenieACS yang terlihat dari jaringan pelanggan", host)
+	} else if !strings.Contains(host, ".") {
+		return fmt.Errorf("host %q tanpa domain (mis. nama layanan Docker) tidak bisa di-resolve modem; pakai IP atau nama domain yang terlihat dari jaringan pelanggan, mis. http://172.16.0.1:7547", host)
+	}
+	if name, bad := nonCWMPPorts[u.Port()]; bad {
+		return fmt.Errorf("port %s adalah %s GenieACS, bukan CWMP; modem harus ke port CWMP (biasanya 7547)", u.Port(), name)
 	}
 	return nil
 }

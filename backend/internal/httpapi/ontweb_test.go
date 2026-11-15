@@ -176,6 +176,39 @@ func TestOntWebInstallsAndIsIdempotent(t *testing.T) {
 	}
 }
 
+// ACS URL tersimpan yang tidak bisa dicapai modem (nama host Docker + port NBI, kasus
+// produksi http://genieacs:7557) ditolak dengan pesan jelas SEBELUM login ke modem.
+func TestOntWebRejectsUnreachableACSURL(t *testing.T) {
+	for _, acs := range []string{"ftp://x", "http://genieacs:7557", "http://genieacs:7547", "http://localhost:7547", "http://172.16.0.1:7557"} {
+		var logins atomic.Int32
+		h := newOntWebHarness(t, ontSettings{"acs": acs, "user": "admin", "pass": "pw"}, fakeModem(t, &logins))
+		rec := h.postJSON(manageTicket(h), `{"host":"172.16.15.248"}`)
+		if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "acs_url_invalid") {
+			t.Errorf("%s: %d %s", acs, rec.Code, rec.Body)
+		}
+		if logins.Load() != 0 {
+			t.Errorf("%s: modem tidak boleh disentuh", acs)
+		}
+	}
+}
+
+// Isian modem yang sudah sama BUKAN bukti tersambung: pesan tidak boleh mengklaimnya.
+func TestOntWebUnchangedIsNotClaimedConnected(t *testing.T) {
+	var logins atomic.Int32
+	h := newOntWebHarness(t, ontEnv, fakeModem(t, &logins))
+	_ = h.postJSON(manageTicket(h), `{"host":"172.16.15.248"}`)
+	rec := h.postJSON(manageTicket(h), `{"host":"172.16.15.248"}`)
+	var out struct {
+		Changed bool   `json:"changed"`
+		Message string `json:"message"`
+		ACSURL  string `json:"acsUrl"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &out)
+	if rec.Code != http.StatusOK || out.Changed || !strings.Contains(out.Message, "belum bukti") || out.ACSURL != ontEnv["acs"] {
+		t.Fatalf("%d %+v", rec.Code, out)
+	}
+}
+
 func TestOntWebRejectsBadInput(t *testing.T) {
 	var logins atomic.Int32
 	h := newOntWebHarness(t, ontEnv, fakeModem(t, &logins))
@@ -292,10 +325,8 @@ func TestOntWebLoadFromDBFailures(t *testing.T) {
 	if _, err := NewOntWebAPI(&fakeSettingsDB{}, testDeviceSecret, nil, log).load(context.Background()); !errors.Is(err, errOntWebNotConfigured) {
 		t.Errorf("tanpa baris: %v", err)
 	}
-	bad := &fakeSettingsDB{vals: []any{"ftp://x", "", "", 300, "", "", "", "", "", "", "", ""}}
-	if _, err := NewOntWebAPI(bad, testDeviceSecret, nil, log).load(context.Background()); err == nil {
-		t.Error("acs_url tidak sah harus galat")
-	}
+	// acs_url yang tidak sah dimuat apa adanya lalu ditolak install() dengan pesan untuk
+	// petugas (TestOntWebRejectsUnreachableACSURL), bukan 500 tanpa penjelasan.
 	wrongKey := &fakeSettingsDB{vals: []any{"http://x:7547", "", "", 300, "admin", mustEncryptForTest(t, "pw", testDeviceSecret), "", "", "", "", "", ""}}
 	if _, err := NewOntWebAPI(wrongKey, strings.Repeat("z", 32), nil, log).load(context.Background()); err == nil || strings.Contains(err.Error(), "pw") {
 		t.Errorf("kunci salah harus galat tanpa membocorkan: %v", err)

@@ -18,13 +18,18 @@ func TestPolicyFromEnv(t *testing.T) {
 }
 
 func TestValidateACSURL(t *testing.T) {
-	for _, ok := range []string{"http://172.16.0.1:7547", "https://acs.example.net", "http://a:7547/"} {
+	for _, ok := range []string{"http://172.16.0.1:7547", "https://acs.example.net", "http://172.16.0.1:7547/", "http://103.167.70.136:7547", "http://[2001:db8::1]:7547"} {
 		if err := ValidateACSURL(ok); err != nil {
 			t.Errorf("%q: %v", ok, err)
 		}
 	}
 	long := "http://a/" + string(make([]byte, 300))
-	for _, bad := range []string{"", "ftp://x:7547", "http://u:p@x:7547", "x:7547", "http://", "javascript:alert(1)", long} {
+	for _, bad := range []string{"", "ftp://x:7547", "http://u:p@x:7547", "x:7547", "http://", "javascript:alert(1)", long,
+		// Nama layanan Docker, loopback dan port NBI/UI/FS: modem tidak pernah bisa Inform ke sana.
+		"http://genieacs:7547", "http://genieacs:7557", "http://GenieACS:7547", "http://backend:8080",
+		"http://localhost:7547", "http://acs.localhost:7547", "http://127.0.0.1:7547", "http://0.0.0.0:7547", "http://[::1]:7547",
+		"http://172.16.0.1:7557", "http://acs.example.net:7558", "http://172.16.0.1:7567",
+	} {
 		if ValidateACSURL(bad) == nil {
 			t.Errorf("%q harus ditolak", bad)
 		}

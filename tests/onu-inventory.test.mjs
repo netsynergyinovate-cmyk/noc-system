@@ -504,3 +504,29 @@ test("MTKc F609 adalah ZTE F609 dan bisa lewat metode web bila online; MTKc lain
     [a.id],
   );
 });
+
+import { informEvidence } from "../src/lib/dashboard/onu-inventory.ts";
+
+test("informEvidence: tersambung hanya bila GenieACS punya perangkatnya dan inform baru", () => {
+  const dev = (over) => ({
+    deviceId: "D05FAF-CDTC-1",
+    pppoeUsername: "17060001824@runsnet.id",
+    macAddress: "",
+    isOnline: true,
+    lastInformAt: 1_700_000_000,
+    ...over,
+  });
+  const reg = new Map([["onu-1", { deviceId: "D05FAF-CDTC-1", via: "pppoe", isOnline: true }]]);
+  assert.deepEqual(informEvidence("onu-1", reg, [dev()], false), {
+    kind: "informing",
+    deviceId: "D05FAF-CDTC-1",
+    lastInformAt: 1_700_000_000,
+  });
+  assert.equal(informEvidence("onu-1", reg, [dev({ isOnline: false })], false).kind, "stale");
+  assert.equal(informEvidence("onu-1", reg, [dev({ lastInformAt: 0 })], false).kind, "stale");
+  assert.equal(informEvidence("onu-2", reg, [dev()], false).kind, "missing");
+  assert.equal(informEvidence("onu-1", reg, [], false).kind, "missing");
+  assert.equal(informEvidence("onu-1", null, null, false).kind, "loading");
+  // Gagal baca GenieACS: data lama tidak dipakai sebagai bukti.
+  assert.equal(informEvidence("onu-1", reg, [dev()], true).kind, "unreadable");
+});

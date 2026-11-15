@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
+import type { InformEvidence } from "@/lib/dashboard/onu-inventory";
+import { acsUrlProblem } from "@/lib/genieacs/acs-url";
 import type { OntWebSettings } from "./ont-web-settings-panel";
 
 type Phase =
@@ -22,7 +24,118 @@ type Phase =
 
 const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
-function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
+const fmtInform = (sec: number) =>
+  new Date(sec * 1000).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+
+/** Status di GenieACS: satu-satunya dasar untuk menyebut modem "tersambung". */
+function InformStatus({
+  evidence,
+  acsUrl,
+  informInterval,
+  onRecheck,
+}: {
+  evidence: InformEvidence;
+  acsUrl: string;
+  informInterval: number | null;
+  onRecheck: () => Promise<void>;
+}) {
+  const [checking, setChecking] = useState(false);
+  async function recheck() {
+    setChecking(true);
+    try {
+      await onRecheck();
+    } finally {
+      setChecking(false);
+    }
+  }
+  const proven = evidence.kind === "informing";
+  let text: string;
+  switch (evidence.kind) {
+    case "informing":
+      text = `Terbukti melapor ke GenieACS: inform terakhir ${fmtInform(evidence.lastInformAt)} WIB (${evidence.deviceId}).`;
+      break;
+    case "stale":
+      text =
+        evidence.lastInformAt > 0
+          ? `Ada di GenieACS (${evidence.deviceId}) tetapi inform terakhir ${fmtInform(evidence.lastInformAt)} WIB, lebih dari 15 menit lalu: modem tidak sedang melapor.`
+          : `Ada di GenieACS (${evidence.deviceId}) tetapi belum pernah inform.`;
+      break;
+    case "missing":
+      text =
+        "Menunggu inform: GenieACS belum punya perangkat yang cocok dengan ONU ini (PPPoE atau MAC).";
+      break;
+    case "loading":
+      text = "Membaca daftar perangkat GenieACS…";
+      break;
+    default:
+      text =
+        "Daftar perangkat GenieACS tidak bisa dibaca; status lapor modem belum diketahui.";
+  }
+  return (
+    <div
+      className="space-y-2 rounded-md border p-3 text-sm"
+      data-testid="ont-web-inform"
+      data-state={evidence.kind}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p
+          role="status"
+          className={proven ? "text-success" : "text-muted-foreground"}
+        >
+          <span className="font-medium text-foreground">
+            Status di GenieACS:
+          </span>{" "}
+          {text}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid="btn-ont-web-recheck"
+          aria-disabled={checking}
+          className="aria-disabled:opacity-50"
+          onClick={() => {
+            if (!checking) void recheck();
+          }}
+        >
+          {checking ? "Memeriksa…" : "Periksa GenieACS"}
+        </Button>
+      </div>
+      {(evidence.kind === "missing" || evidence.kind === "stale") && (
+        <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+          <li>
+            Modem baru diubah: inform pertama menunggu WAN TR-069 tersambung,
+            lalu tiap {informInterval ?? "—"} detik. Periksa lagi setelahnya.
+          </li>
+          <li>
+            {acsUrl || "ACS URL"} tidak terjangkau dari jaringan pelanggan:
+            periksa route/NAT/firewall MikroTik ke server GenieACS port 7547.
+          </li>
+          <li>
+            Modem belum punya WAN pembawa TR-069 yang mendapat IP (centang opsi
+            WAN di bawah lalu pasang lagi).
+          </li>
+          <li>
+            Modem sudah melapor tetapi tidak cocok dengan ONU ini (PPPoE/MAC
+            berbeda): cari SN-nya di tab perangkat GenieACS.
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Body({
+  onu,
+  onClose,
+  evidence,
+  onRecheck,
+}: {
+  onu: DashboardOnu;
+  onClose: () => void;
+  evidence: InformEvidence;
+  onRecheck: () => Promise<void>;
+}) {
   // Lanjutan (semua opsional): IP manual dan admin web modem khusus modem ini.
   const [host, setHost] = useState("");
   const [username, setUsername] = useState("");
@@ -52,6 +165,8 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
   else if (settings !== "error" && !settings.configured)
     blockReason =
       "Pengaturan GenieACS belum diisi: buka ikon ⚙ Pengaturan di kanan atas halaman GenieACS.";
+  else if (settings !== "error" && acsUrlProblem(settings.acsUrl))
+    blockReason = `Alamat ACS tersimpan tidak bisa dipakai modem: ${acsUrlProblem(settings.acsUrl)}. Perbaiki lewat ikon ⚙ Pengaturan di halaman GenieACS.`;
   else if (!hostOk) blockReason = "IP manual harus IPv4, mis. 172.16.15.248.";
   const canSubmit = !saving && blockReason === null;
 
@@ -167,6 +282,19 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
         </p>
       )}
 
+      <InformStatus
+        evidence={evidence}
+        acsUrl={
+          settings !== null && settings !== "error" ? settings.acsUrl : ""
+        }
+        informInterval={
+          settings !== null && settings !== "error"
+            ? settings.informInterval
+            : null
+        }
+        onRecheck={onRecheck}
+      />
+
       <form onSubmit={submit} noValidate className="space-y-4">
         <label className="flex items-start gap-2 text-sm">
           <input
@@ -255,7 +383,7 @@ function Body({ onu, onClose }: { onu: DashboardOnu; onClose: () => void }) {
           <p
             role="status"
             data-testid="ont-web-result"
-            className="text-sm text-success"
+            className="text-sm"
           >
             {phase.message}
             {phase.host ? ` (modem ${phase.host})` : ""}
@@ -307,17 +435,28 @@ export function OntWebDialog({
   onu,
   open,
   onOpenChange,
+  evidence,
+  onRecheck,
 }: {
   onu: DashboardOnu | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Bukti lapor dari daftar GenieACS untuk ONU ini (informEvidence). */
+  evidence: InformEvidence;
+  onRecheck: () => Promise<void>;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="ont-web-dialog">
         {/* key: formulir (termasuk kata sandi) dibuang setiap ONU berganti atau dialog ditutup */}
         {onu && (
-          <Body key={onu.id} onu={onu} onClose={() => onOpenChange(false)} />
+          <Body
+            key={onu.id}
+            onu={onu}
+            onClose={() => onOpenChange(false)}
+            evidence={evidence}
+            onRecheck={onRecheck}
+          />
         )}
       </DialogContent>
     </Dialog>

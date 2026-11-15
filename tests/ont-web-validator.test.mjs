@@ -190,3 +190,48 @@ test("ontWebSettingsSchema: kredensial F609 opsional dengan aturan sandi yang sa
     false,
   );
 });
+
+import { acsUrlProblem } from "../src/lib/genieacs/acs-url.ts";
+
+// Kasus produksi: dialog memasang http://genieacs:7557 (nama host Docker + port NBI) ke modem
+// 172.16.15.251; modem tidak pernah bisa Inform ke sana. Aturan harus sama dengan Go ValidateACSURL.
+test("acsUrlProblem menolak alamat yang tidak bisa dicapai modem", () => {
+  for (const ok of [
+    "http://172.16.0.1:7547",
+    "https://acs.example.net",
+    "http://172.16.0.1:7547/",
+    "http://103.167.70.136:7547",
+    "http://[2001:db8::1]:7547",
+  ]) {
+    assert.equal(acsUrlProblem(ok), null, ok);
+  }
+  const cases = {
+    "http://genieacs:7557": /tanpa domain/,
+    "http://genieacs:7547": /tanpa domain/,
+    "http://GenieACS:7547": /tanpa domain/,
+    "http://backend:8080": /tanpa domain/,
+    "http://localhost:7547": /modem itu sendiri/,
+    "http://acs.localhost:7547": /modem itu sendiri/,
+    "http://127.0.0.1:7547": /modem itu sendiri/,
+    "http://0.0.0.0:7547": /modem itu sendiri/,
+    "http://[::1]:7547": /modem itu sendiri/,
+    "http://172.16.0.1:7557": /NBI/,
+    "http://acs.example.net:7558": /UI/,
+    "http://172.16.0.1:7567": /file server/,
+    "": /http\(s\)/,
+    "ftp://x:7547": /http\(s\)/,
+    "http://u:p@x.y:7547": /http\(s\)/,
+  };
+  for (const [bad, why] of Object.entries(cases)) {
+    assert.match(acsUrlProblem(bad) ?? "", why, bad);
+  }
+});
+
+test("ontWebSettingsSchema menolak ACS URL internal dengan pesan acsUrlProblem", () => {
+  const r = ontWebSettingsSchema.safeParse({
+    acsUrl: "http://genieacs:7557",
+    informInterval: 300,
+  });
+  assert.equal(r.success, false);
+  assert.match(r.error.issues[0].message, /tanpa domain/);
+});

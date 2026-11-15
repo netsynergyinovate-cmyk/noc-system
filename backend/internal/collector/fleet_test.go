@@ -5,9 +5,13 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -314,5 +318,49 @@ func TestSyncKeepsOnlineStatusFromPolling(t *testing.T) {
 	}
 	if c, ok := mgr.CustomerByPPPoE("budi"); !ok || !c.IsOnline {
 		t.Fatalf("status online dari polling harus bertahan, got %+v ok=%v", c, ok)
+	}
+}
+
+// Router membatasi tiap layanan ke max-sessions (bawaan 20). Permintaan serentak
+// tidak boleh membuka lebih dari routerMaxConns koneksi, supaya sesi basi setelah
+// mati listrik tidak memenuhi semua slot.
+func TestDefaultHTTPClientCapsConnectionsPerRouter(t *testing.T) {
+	var mu sync.Mutex
+	open, peak := 0, 0
+	release := make(chan struct{})
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+	srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch s {
+		case http.StateNew:
+			open++
+			peak = max(peak, open)
+		case http.StateClosed, http.StateHijacked:
+			open--
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+
+	client := DefaultHTTPClient()
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if resp, err := client.Get(srv.URL); err == nil {
+				resp.Body.Close()
+			}
+		}()
+	}
+	time.Sleep(300 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if peak > routerMaxConns || routerMaxConns >= 20 {
+		t.Fatalf("koneksi serentak ke satu router = %d, batas %d (max-sessions RouterOS 20)", peak, routerMaxConns)
 	}
 }

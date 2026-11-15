@@ -162,6 +162,10 @@ func LoadTargets(ctx context.Context, q Querier, deviceSecret string, logger *sl
 	return out, nil
 }
 
+// routerMaxConns cukup untuk job polling yang berjalan bersamaan (queue, VLAN,
+// ppp-active, resource, interface) plus baca proxy, jauh di bawah 20.
+const routerMaxConns = 6
+
 // defaultRouterTransport adalah transport tunggal bersama untuk seluruh klien router,
 // agar koneksi idle dapat di-reuse secara optimal dan tidak membuat transport baru berulang kali.
 var defaultRouterTransport = &http.Transport{
@@ -170,9 +174,15 @@ var defaultRouterTransport = &http.Transport{
 		Timeout:   5 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}).DialContext,
-	ForceAttemptHTTP2:     false,
-	MaxIdleConns:          100,
-	MaxIdleConnsPerHost:   20,
+	ForceAttemptHTTP2: false,
+	MaxIdleConns:      100,
+	// RouterOS membatasi tiap layanan (www/www-ssl) ke max-sessions, bawaan 20.
+	// Bila server/link mati tanpa FIN, sesi lama tetap memakan slot di router
+	// sampai keepalive TCP router habis (~2 jam) dan sambungan baru ditutup (EOF).
+	// Maksimal routerMaxConns sesi per router menyisakan slot untuk tersambung
+	// lagi segera setelah listrik/link pulih.
+	MaxConnsPerHost:       routerMaxConns,
+	MaxIdleConnsPerHost:   routerMaxConns,
 	IdleConnTimeout:       90 * time.Second,
 	TLSHandshakeTimeout:   5 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,

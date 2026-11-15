@@ -20,6 +20,8 @@ test("galat 'EOF' (router menutup koneksi) dikenali sebagai IP server tidak diiz
     });
     assert.equal(d.cause, "closed", e);
     assert.match(d.hint, /203\.0\.113\.5/);
+    // Setelah mati listrik: sesi basi memenuhi max-sessions, bukan IP yang berubah.
+    assert.match(d.hint, /max-sessions.*\/ip service disable www lalu \/ip service enable www/);
     assert.ok(
       d.command.includes("/ip service set www address=203.0.113.5/32"),
       d.command,

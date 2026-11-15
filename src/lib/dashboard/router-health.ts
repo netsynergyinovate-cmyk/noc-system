@@ -144,12 +144,14 @@ export function diagnoseUnreachable(
       localSourceIp,
       ctx.existingAddress,
     );
+    // Sesi basi: server/link mati tanpa menutup sesi, slot max-sessions router penuh sampai keepalive TCP router habis.
+    const stale = `Bila router ini sebelumnya tersambung (mis. setelah mati listrik atau backend restart), slot max-sessions layanan ${label} masih terisi sesi lama: jalankan /ip service disable ${service} lalu /ip service enable ${service} untuk membuangnya.`;
     return {
       cause: "closed",
       title: "Router menutup koneksi",
       hint: command
-        ? `Router menerima sambungan lalu langsung menutupnya. IP server ini (${ipLabel}) belum ada di kolom address= layanan ${label}. Perintah di bawah ${ctx.existingAddress ? "MENAMBAHKAN IP itu ke daftar yang sudah ada (entri lama dipertahankan)" : "MENGGANTI daftar address= dengan IP itu"}; akses Winbox/SSH tidak terpengaruh. Tempel apa adanya.`
-        : `Router menerima sambungan lalu langsung menutupnya. Biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan ${label}. Jalankan perintah di bawah untuk melihat daftar, lalu tambahkan IP server yang tampil di backend.`,
+        ? `Router menerima sambungan lalu langsung menutupnya. ${stale} Bila belum pernah tersambung, IP server ini (${ipLabel}) belum ada di kolom address= layanan ${label}. Perintah di bawah ${ctx.existingAddress ? "MENAMBAHKAN IP itu ke daftar yang sudah ada (entri lama dipertahankan)" : "MENGGANTI daftar address= dengan IP itu"}; akses Winbox/SSH tidak terpengaruh. Tempel apa adanya.`
+        : `Router menerima sambungan lalu langsung menutupnya. ${stale} Bila belum pernah tersambung, biasanya alamat IP server ini tidak ada di daftar yang diizinkan layanan ${label}. Jalankan perintah di bawah untuk melihat daftar, lalu tambahkan IP server yang tampil di backend.`,
       command: command ?? `/ip service print where name~"${service}"`,
     };
   }

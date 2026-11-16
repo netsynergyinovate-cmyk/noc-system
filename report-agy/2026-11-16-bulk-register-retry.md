@@ -29,3 +29,18 @@ lanjut.
 - Belum dicoba di browser, belum di-build Docker, belum di-deploy.
 - Akar kegagalan login: kredensial admin bawaan merek yang gagal di Pengaturan GenieACS ⚙
   salah/berbeda dari modem; perlu dicek pengguna.
+
+## Lanjutan: tampilan proses (2026-11-16)
+Permintaan: tampilkan proses berjalan, klien yang sedang dikerjakan, dan info gagal yang jelas.
+- Bilah kemajuan + "X/Y selesai · berhasil · gagal · dilewati".
+- Kotak "Sedang dikerjakan (n/Y): NAMA · merek · SN · percobaan a/3 · N dtk" (detik
+  berjalan, `aria-hidden` agar pembaca layar tidak dibanjiri).
+- Baris aktif disorot (`aria-current="step"`) dan digulir otomatis ke tampilan.
+- Saat diulang: alasan percobaan sebelumnya tampil di baris ("Percobaan 1 gagal: ...").
+- Gagal: teks merah "Gagal setelah N percobaan: <alasan>" + ringkasan semua modem gagal
+  di bawah daftar setelah putaran selesai.
+- Bukti: `npx tsc --noEmit -p .` exit 0; `node --test tests/onu-inventory.test.mjs` 19/19;
+  eslint 0 error, 1 peringatan `react-hooks/purity` untuk `Date.now()` di handler async
+  (bukan render; positif palsu).
+- Belum dicek di browser: menjalankan putaran sungguhan login ke modem pelanggan, jadi
+  tidak dijalankan dari lingkungan lokal.

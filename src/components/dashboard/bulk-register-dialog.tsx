@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
   CircleAlert,
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
 import {
   BULK_ATTEMPTS,
@@ -29,9 +30,9 @@ import {
 
 type ItemState =
   | { kind: "queued" }
-  | { kind: "running" }
+  | { kind: "running"; attempt: number; startedAt: number; note?: string }
   | { kind: "done"; message: string }
-  | { kind: "failed"; message: string }
+  | { kind: "failed"; message: string; attempts: number }
   | { kind: "skipped"; message: string };
 
 type Attempt = { ok: boolean; message: string; code: string; status: number };
@@ -157,28 +158,48 @@ export function BulkRegisterDialog({
         }));
         continue;
       }
-      setItems((s) => ({ ...s, [onu.id]: { kind: "running" } }));
+      const startedAt = Date.now();
+      setItems((s) => ({
+        ...s,
+        [onu.id]: { kind: "running", attempt: 1, startedAt },
+      }));
       let r = await registerOne(onu, method, ensureWan);
       let action = r.ok ? "next" : bulkFailureAction(r.code, r.status);
-      for (
-        let attempt = 2;
-        action === "retry" && attempt <= BULK_ATTEMPTS && !cancel.current;
-        attempt++
+      let attempts = 1;
+      while (
+        action === "retry" &&
+        attempts < BULK_ATTEMPTS &&
+        !cancel.current
       ) {
+        const prev = r.message;
+        setItems((s) => ({
+          ...s,
+          [onu.id]: {
+            kind: "running",
+            attempt: attempts,
+            startedAt,
+            note: `Percobaan ${attempts} gagal: ${prev} Diulang 3 detik lagi.`,
+          },
+        }));
         await new Promise((ok) => setTimeout(ok, 3000));
+        attempts++;
+        setItems((s) => ({
+          ...s,
+          [onu.id]: {
+            kind: "running",
+            attempt: attempts,
+            startedAt,
+            note: `Percobaan sebelumnya gagal: ${prev}`,
+          },
+        }));
         r = await registerOne(onu, method, ensureWan);
         action = r.ok ? "next" : bulkFailureAction(r.code, r.status);
-        if (!r.ok && action === "retry" && attempt === BULK_ATTEMPTS)
-          r = {
-            ...r,
-            message: `${r.message} (gagal ${BULK_ATTEMPTS} kali, dilanjutkan ke modem berikutnya)`,
-          };
       }
       setItems((s) => ({
         ...s,
         [onu.id]: r.ok
           ? { kind: "done", message: r.message }
-          : { kind: "failed", message: r.message },
+          : { kind: "failed", message: r.message, attempts },
       }));
       if (action === "skip-brand") {
         badBrands.set(brand, parseOnuModel(onu.model).brandLabel);
@@ -195,11 +216,38 @@ export function BulkRegisterDialog({
     onFinished();
   }
 
+  const states = Object.values(items);
   const counts = {
-    done: Object.values(items).filter((s) => s.kind === "done").length,
-    failed: Object.values(items).filter((s) => s.kind === "failed").length,
+    done: states.filter((s) => s.kind === "done").length,
+    failed: states.filter((s) => s.kind === "failed").length,
+    skipped: states.filter((s) => s.kind === "skipped").length,
     total: toRun.length,
   };
+  const processed = counts.done + counts.failed + counts.skipped;
+  const currentIndex = toRun.findIndex(
+    (p) => items[p.onu.id]?.kind === "running",
+  );
+  const current = currentIndex === -1 ? null : toRun[currentIndex].onu;
+  const currentState = current ? items[current.id] : undefined;
+  const failedList = toRun.filter((p) => items[p.onu.id]?.kind === "failed");
+
+  // Detik berjalan untuk modem yang sedang dikerjakan (satu modem bisa sampai ±45 dtk).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  // Baris yang sedang dikerjakan selalu terlihat di daftar.
+  const listRef = useRef<HTMLUListElement>(null);
+  const currentId = current?.id;
+  useEffect(() => {
+    if (!currentId) return;
+    listRef.current
+      ?.querySelector(`[data-onu-id="${currentId}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [currentId]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !running && onOpenChange(next)}>
@@ -280,6 +328,7 @@ export function BulkRegisterDialog({
 
         <div className="rounded-md border">
           <ul
+            ref={listRef}
             className="max-h-64 divide-y overflow-y-auto text-xs"
             aria-label="Daftar perangkat yang diproses"
           >
@@ -290,8 +339,13 @@ export function BulkRegisterDialog({
               return (
                 <li
                   key={onu.id}
-                  className="flex items-start gap-2 px-3 py-2"
+                  className={cn(
+                    "flex items-start gap-2 px-3 py-2",
+                    st?.kind === "running" && "bg-primary/10",
+                  )}
                   data-testid="bulk-item"
+                  data-onu-id={onu.id}
+                  aria-current={st?.kind === "running" ? "step" : undefined}
                 >
                   <span className="mt-0.5 shrink-0">
                     {st?.kind === "running" ? (
@@ -328,18 +382,27 @@ export function BulkRegisterDialog({
                       {id.modelLabel !== "Tidak diketahui" ? id.modelLabel : ""}{" "}
                       · {onu.serialNumber}
                     </span>
-                    <span className="block text-muted-foreground">
-                      {st?.kind === "done" ||
-                      st?.kind === "failed" ||
-                      st?.kind === "skipped"
-                        ? st.message
-                        : !check.ok
-                          ? `Dilewati: ${check.reason}`
-                          : !included
-                            ? `Dilewati: lewat batas ${BULK_MAX} per putaran`
-                            : st?.kind === "running"
-                              ? "Sedang diproses…"
-                              : "Menunggu giliran"}
+                    <span
+                      className={cn(
+                        "block",
+                        st?.kind === "failed"
+                          ? "text-destructive"
+                          : st?.kind === "running"
+                            ? "text-foreground"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {st?.kind === "failed"
+                        ? `Gagal${st.attempts > 1 ? ` setelah ${st.attempts} percobaan` : ""}: ${st.message}`
+                        : st?.kind === "done" || st?.kind === "skipped"
+                          ? st.message
+                          : !check.ok
+                            ? `Dilewati: ${check.reason}`
+                            : !included
+                              ? `Dilewati: lewat batas ${BULK_MAX} per putaran`
+                              : st?.kind === "running"
+                                ? `Sedang dikerjakan · percobaan ${st.attempt}/${BULK_ATTEMPTS}${st.note ? ` · ${st.note}` : ""}`
+                                : "Menunggu giliran"}
                     </span>
                   </span>
                 </li>
@@ -376,13 +439,85 @@ export function BulkRegisterDialog({
         )}
 
         {(running || finished) && (
-          <p role="status" className="text-sm" data-testid="bulk-progress">
-            {counts.done} berhasil · {counts.failed} gagal · {counts.total}{" "}
-            diproses
-            {finished &&
-              !running &&
-              " — selesai. Modem muncul di GenieACS dalam 1–5 menit."}
-          </p>
+          <div className="space-y-1.5 text-sm" data-testid="bulk-progress">
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label="Kemajuan pendaftaran"
+              aria-valuemin={0}
+              aria-valuemax={counts.total}
+              aria-valuenow={processed}
+            >
+              <div
+                className="h-full bg-primary transition-[width] motion-reduce:transition-none"
+                style={{
+                  width: `${counts.total ? (processed / counts.total) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <p role="status">
+              {processed}/{counts.total} selesai · {counts.done} berhasil ·{" "}
+              {counts.failed} gagal · {counts.skipped} dilewati
+              {!running &&
+                " — putaran selesai. Modem yang berhasil muncul di GenieACS dalam 1–5 menit."}
+            </p>
+            {current && currentState?.kind === "running" && (
+              <p
+                className="rounded-md border border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs"
+                data-testid="bulk-current"
+              >
+                <Loader2
+                  className="mr-1.5 inline size-3.5 animate-spin align-[-2px] text-primary motion-reduce:animate-none"
+                  aria-hidden
+                />
+                Sedang dikerjakan ({currentIndex + 1}/{counts.total}):{" "}
+                <strong>{current.customerName}</strong>{" "}
+                <span className="font-mono text-muted-foreground">
+                  {parseOnuModel(current.model).brandLabel} ·{" "}
+                  {current.serialNumber}
+                </span>{" "}
+                · percobaan {currentState.attempt}/{BULK_ATTEMPTS}
+                <span aria-hidden>
+                  {" "}
+                  ·{" "}
+                  {Math.max(
+                    0,
+                    Math.round((now - currentState.startedAt) / 1000),
+                  )}{" "}
+                  dtk
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+        {!running && failedList.length > 0 && (
+          <div
+            className="rounded-md border border-destructive/40 p-2.5 text-xs"
+            data-testid="bulk-failed-summary"
+          >
+            <p className="mb-1 font-medium text-destructive">
+              {failedList.length} modem gagal:
+            </p>
+            <ul className="space-y-1">
+              {failedList.map(({ onu }) => {
+                const st = items[onu.id];
+                return (
+                  <li key={onu.id}>
+                    <strong>{onu.customerName}</strong>{" "}
+                    <span className="font-mono text-muted-foreground">
+                      {parseOnuModel(onu.model).brandLabel} · {onu.serialNumber}
+                    </span>
+                    {st?.kind === "failed" && (
+                      <span className="block text-muted-foreground">
+                        {st.attempts > 1 ? `${st.attempts} percobaan. ` : ""}
+                        {st.message}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
         {stopNote && (
           <p role="alert" className="text-sm text-destructive">

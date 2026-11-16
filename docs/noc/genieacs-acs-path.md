@@ -31,7 +31,7 @@ akan berbohong.
 | `ACS_IP` | `10.99.0.10/32` | Alamat layanan GenieACS, tetap selamanya |
 | Transit WireGuard | `10.98.0.1/30` (MikroTik), `10.98.0.2/30` (server) | Interface `wg-acs` |
 | Transit LAN | `10.98.1.1/30` (MikroTik), `10.98.1.2/30` (server) | Fase LAN |
-| `ONT_POOLS` | `172.16.0.0/20`, `10.30.0.0/21` | Pool PPPoE (172.16.0.2–172.16.15.254) + jaringan manajemen ONT, menurut `docs/DOKUMENTASI-APLIKASI.md` bagian 3; cocokkan lagi di router |
+| `ONT_POOLS` | `172.16.0.0/20`, `172.172.0.0/20`, `10.30.0.0/21` | Dicek di router 2026-11-16: `POOL-BRAS-RUNSNET`, `POOL-BRAS-RUNSNET-ISOLIR`, `NOC-MGMT-P1..P6` (10.30.1–6.x) |
 | Port WireGuard MikroTik | `13232/udp` | Interface baru, tidak menyentuh WireGuard `10.167.80.1` yang sudah ada |
 
 Cari `ONT_POOLS` di MikroTik: `/ip pool print` dan `/ppp profile print` (kolom
@@ -99,10 +99,18 @@ systemctl enable --now wg-quick@wg-acs
     comment="wg-acs" place-before=0
 ```
 
+Rule `nat-ip-local-internet` (masquerade `src-address-list=POOL-BRAS-RUNSNET` tanpa
+`out-interface`) akan men-NAT modem ke `10.98.0.1`. GenieACS butuh IP modem yang asli,
+jadi kecualikan `wg-acs` di paling atas:
+
+```routeros
+/ip firewall nat add chain=srcnat out-interface=wg-acs action=accept \
+    comment="wg-acs tanpa NAT" place-before=0
+```
+
 Bila ada rule `chain=forward` yang memblok lalu lintas pelanggan ke jaringan privat,
 izinkan `dst-address=10.99.0.10 dst-port=7547 protocol=tcp` dan arah sebaliknya
-(server ke `ONT_POOLS`). Jangan tambahkan masquerade untuk `out-interface=wg-acs`:
-GenieACS butuh IP modem yang asli.
+(server ke `ONT_POOLS`).
 
 ### 1c. Uji fase 1
 
@@ -121,13 +129,16 @@ ip route get <IP WAN salah satu ONT> # harus "dev wg-acs"
 
 1. Di `/app/genieacs`, ikon ⚙: ACS URL = `http://10.99.0.10:7547`, simpan.
 2. Modem baru: "Pasang GenieACS lewat web ONT" seperti biasa.
-3. Modem lama masih menyimpan `http://172.16.0.1:7547`, yang di-dst-nat MikroTik ke PC dev
-   `10.20.30.3` (GenieACS lokal, sudah dihentikan). Arahkan rule itu sementara ke ACS baru
-   agar mereka inform ke server:
+3. Modem lama masih menyimpan alamat GenieACS lokal yang sudah mati: `http://172.16.0.1:7547`
+   (dst-nat lama sudah tidak ada di router per 2026-11-16) atau `http://10.167.80.2:7547`
+   (PC dev lewat "WireGuard Remote"; masquerade `Masq-GenieACS-WireGuard`). Belokkan
+   keduanya sementara ke ACS baru agar modem lama inform ke server:
 
    ```routeros
-   /ip firewall nat print where dst-address=172.16.0.1 dst-port=7547
-   /ip firewall nat set [find dst-address=172.16.0.1 dst-port=7547] to-addresses=10.99.0.10
+   /ip firewall nat add chain=dstnat protocol=tcp dst-address=172.16.0.1 dst-port=7547 \
+       action=dst-nat to-addresses=10.99.0.10 comment="ACS lama ke GenieACS server (sementara)" place-before=0
+   /ip firewall nat add chain=dstnat protocol=tcp dst-address=10.167.80.2 dst-port=7547 \
+       action=dst-nat to-addresses=10.99.0.10 comment="ACS lama ke GenieACS server (sementara)" place-before=0
    ```
 
 4. Modem yang sudah inform ke GenieACS server: kirim
@@ -135,8 +146,8 @@ ip route get <IP WAN salah satu ONT> # harus "dev wg-acs"
    `Device.ManagementServer.URL` (TR-181) = `http://10.99.0.10:7547` dari GenieACS UI
    SELAGI URL lama masih hidup. Setelah inform pertama ke alamat baru, modem tampil
    "Tersambung" di aplikasi.
-5. Setelah tidak ada modem yang inform lewat `172.16.0.1` (cek `packets` rule dst-nat
-   tidak bertambah), nonaktifkan rule itu.
+5. Setelah `packets` kedua rule sementara itu tidak bertambah lagi, nonaktifkan keduanya
+   beserta masquerade lama `Masq-GenieACS-WireGuard`.
 
 Ini satu-satunya kali modem perlu disentuh.
 
@@ -147,10 +158,13 @@ luar jam sibuk dan lewat konsol/SSH yang TIDAK melewati `wg-acs`.
 
 1. Colok kabel: port MikroTik (contoh `ether5`) ke NIC kedua server (`<NIC_MIKROTIK>`,
    lihat `ip -br link`).
-2. MikroTik:
+2. MikroTik (rule srcnat wajib: `nat-ip-local-internet` tanpa `out-interface` akan
+   men-NAT modem ke `10.98.1.1`):
 
    ```routeros
    /ip address add address=10.98.1.1/30 interface=ether5 comment="GenieACS LAN"
+   /ip firewall nat add chain=srcnat out-interface=ether5 action=accept \
+       comment="GenieACS LAN tanpa NAT" place-before=0
    ```
 
 3. Server: tambah alamat transit saja dulu di netplan

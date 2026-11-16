@@ -1,0 +1,13 @@
+{
+  "weight": 0,
+  "channel": "noc-acs-url",
+  "events": {},
+  "precondition": "",
+  "configurations": [
+    {
+      "type": "provision",
+      "name": "noc-acs-url",
+      "args": ["http://10.99.0.10:7547"]
+    }
+  ]
+}

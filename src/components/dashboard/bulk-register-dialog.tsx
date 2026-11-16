@@ -18,8 +18,10 @@ import {
 import { Button } from "@/components/ui/button";
 import type { DashboardOnu } from "@/lib/dashboard/onus";
 import {
+  BULK_ATTEMPTS,
   BULK_MAX,
   bulkEligibility,
+  bulkFailureAction,
   parseOnuModel,
   type BulkMethod,
   type CpeMatch,
@@ -32,20 +34,13 @@ type ItemState =
   | { kind: "failed"; message: string }
   | { kind: "skipped"; message: string };
 
-// Kode galat yang berarti kredensial modem ditolak atau dikunci: meneruskan ke modem berikutnya
-// hanya menambah percobaan salah (modem mengunci setelah 3 kali), jadi seluruh putaran dihentikan.
-const STOP_CODES = new Set([
-  "ont_login_rejected",
-  "ont_locked",
-  "acs_not_configured",
-  "BACKEND_UNAVAILABLE",
-]);
+type Attempt = { ok: boolean; message: string; code: string; status: number };
 
 async function registerOne(
   o: DashboardOnu,
   method: BulkMethod,
   ensureWan: boolean,
-): Promise<{ ok: boolean; message: string; stop: boolean }> {
+): Promise<Attempt> {
   try {
     const res =
       method === "web"
@@ -69,23 +64,25 @@ async function registerOne(
         ok: true,
         message:
           (json.message ?? "Berhasil.") + (json.host ? ` (${json.host})` : ""),
-        stop: false,
+        code: "",
+        status: res.status,
       };
     }
-    const code = json?.error?.code ?? "";
     return {
       ok: false,
       message:
         res.status === 403
           ? "Hanya admin (izin kelola CPE) yang boleh mendaftarkan."
           : (json?.error?.message ?? "Gagal."),
-      stop: STOP_CODES.has(code) || res.status === 403,
+      code: json?.error?.code ?? "",
+      status: res.status,
     };
   } catch {
     return {
       ok: false,
       message: "Server aplikasi tidak terjangkau.",
-      stop: false,
+      code: "network",
+      status: 0,
     };
   }
 }
@@ -140,30 +137,56 @@ export function BulkRegisterDialog({
       ),
     );
     let stopped = false;
+    // Merek yang kredensial admin-nya ditolak: sisa modem merek itu dilewati, merek lain lanjut.
+    const badBrands = new Map<string, string>();
     // Satu per satu: modem yang WAN-nya diubah menyambung ulang PPPoE, dan tiap login yang salah
     // dihitung modem. Paralel hanya menumpuk keduanya.
     for (const { onu } of toRun) {
-      if (cancel.current || stopped) {
+      const brand = parseOnuModel(onu.model).brandKey;
+      const skipWhy = cancel.current
+        ? "Dibatalkan."
+        : stopped
+          ? "Dilewati karena putaran dihentikan."
+          : badBrands.has(brand)
+            ? `Dilewati: login admin merek ini ditolak di modem lain (${badBrands.get(brand)}). Perbaiki kredensialnya di Pengaturan GenieACS.`
+            : null;
+      if (skipWhy) {
         setItems((s) => ({
           ...s,
-          [onu.id]: {
-            kind: "skipped",
-            message: stopped
-              ? "Dilewati karena putaran dihentikan."
-              : "Dibatalkan.",
-          },
+          [onu.id]: { kind: "skipped", message: skipWhy },
         }));
         continue;
       }
       setItems((s) => ({ ...s, [onu.id]: { kind: "running" } }));
-      const r = await registerOne(onu, method, ensureWan);
+      let r = await registerOne(onu, method, ensureWan);
+      let action = r.ok ? "next" : bulkFailureAction(r.code, r.status);
+      for (
+        let attempt = 2;
+        action === "retry" && attempt <= BULK_ATTEMPTS && !cancel.current;
+        attempt++
+      ) {
+        await new Promise((ok) => setTimeout(ok, 3000));
+        r = await registerOne(onu, method, ensureWan);
+        action = r.ok ? "next" : bulkFailureAction(r.code, r.status);
+        if (!r.ok && action === "retry" && attempt === BULK_ATTEMPTS)
+          r = {
+            ...r,
+            message: `${r.message} (gagal ${BULK_ATTEMPTS} kali, dilanjutkan ke modem berikutnya)`,
+          };
+      }
       setItems((s) => ({
         ...s,
         [onu.id]: r.ok
           ? { kind: "done", message: r.message }
           : { kind: "failed", message: r.message },
       }));
-      if (r.stop) {
+      if (action === "skip-brand") {
+        badBrands.set(brand, parseOnuModel(onu.model).brandLabel);
+        setStopNote(
+          `Login admin ditolak untuk merek ${parseOnuModel(onu.model).brandLabel}: sisa modem merek itu dilewati, merek lain dilanjutkan. ${r.message}`,
+        );
+      }
+      if (action === "stop") {
         stopped = true;
         setStopNote(`Putaran dihentikan: ${r.message}`);
       }
@@ -345,8 +368,9 @@ export function BulkRegisterDialog({
               Saya paham: modem yang WAN-nya diubah{" "}
               <strong>menyambung ulang PPPoE sekitar 30 detik</strong>, jadi
               internet pelanggan itu terputus sebentar. Tiap login yang salah
-              dihitung modem, karena itu putaran berhenti sendiri bila
-              kredensial ditolak.
+              dihitung modem, karena itu login yang ditolak tidak diulang dan
+              sisa modem merek itu dilewati. Gagal karena jaringan diulang
+              sampai {BULK_ATTEMPTS} kali, lalu lanjut ke modem berikutnya.
             </span>
           </label>
         )}

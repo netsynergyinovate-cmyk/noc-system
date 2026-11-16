@@ -516,17 +516,41 @@ test("informEvidence: tersambung hanya bila GenieACS punya perangkatnya dan info
     lastInformAt: 1_700_000_000,
     ...over,
   });
-  const reg = new Map([["onu-1", { deviceId: "D05FAF-CDTC-1", via: "pppoe", isOnline: true }]]);
+  const reg = new Map([
+    ["onu-1", { deviceId: "D05FAF-CDTC-1", via: "pppoe", isOnline: true }],
+  ]);
   assert.deepEqual(informEvidence("onu-1", reg, [dev()], false), {
     kind: "informing",
     deviceId: "D05FAF-CDTC-1",
     lastInformAt: 1_700_000_000,
   });
-  assert.equal(informEvidence("onu-1", reg, [dev({ isOnline: false })], false).kind, "stale");
-  assert.equal(informEvidence("onu-1", reg, [dev({ lastInformAt: 0 })], false).kind, "stale");
+  assert.equal(
+    informEvidence("onu-1", reg, [dev({ isOnline: false })], false).kind,
+    "stale",
+  );
+  assert.equal(
+    informEvidence("onu-1", reg, [dev({ lastInformAt: 0 })], false).kind,
+    "stale",
+  );
   assert.equal(informEvidence("onu-2", reg, [dev()], false).kind, "missing");
   assert.equal(informEvidence("onu-1", reg, [], false).kind, "missing");
   assert.equal(informEvidence("onu-1", null, null, false).kind, "loading");
   // Gagal baca GenieACS: data lama tidak dipakai sebagai bukti.
   assert.equal(informEvidence("onu-1", reg, [dev()], true).kind, "unreadable");
+});
+
+test("bulkFailureAction: login ditolak tidak diulang, jaringan diulang, pengaturan menghentikan", async () => {
+  const { bulkFailureAction } =
+    await import("../src/lib/dashboard/onu-inventory.ts");
+  assert.equal(bulkFailureAction("ont_login_rejected", 422), "skip-brand");
+  assert.equal(bulkFailureAction("ont_locked", 423), "skip-brand");
+  assert.equal(bulkFailureAction("credentials_required", 400), "skip-brand");
+  assert.equal(bulkFailureAction("ont_timeout", 504), "retry");
+  assert.equal(bulkFailureAction("ont_unreachable", 502), "retry");
+  assert.equal(bulkFailureAction("network", 0), "retry");
+  assert.equal(bulkFailureAction("acs_url_invalid", 409), "stop");
+  assert.equal(bulkFailureAction("acs_not_configured", 503), "stop");
+  assert.equal(bulkFailureAction("", 403), "stop");
+  assert.equal(bulkFailureAction("customer_offline", 409), "next");
+  assert.equal(bulkFailureAction("ont_wrong_device", 422), "next");
 });

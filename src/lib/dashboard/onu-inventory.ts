@@ -402,6 +402,48 @@ export function summarizeInventory(
 /** Batas satu putaran massal: tiap modem bisa memutus PPPoE pelanggannya ±30 detik. */
 export const BULK_MAX = 30;
 
+/** Percobaan maksimal per modem untuk galat sementara. */
+export const BULK_ATTEMPTS = 3;
+
+// Galat yang berlaku untuk SEMUA modem (pengaturan/izin/backend): putaran berhenti.
+const BULK_STOP = new Set([
+  "acs_not_configured",
+  "acs_url_invalid",
+  "BACKEND_UNAVAILABLE",
+]);
+// Kredensial admin per merek ditolak/dikunci: mengulang hanya menambah login salah
+// (modem mengunci setelah 3 kali), dan merek yang sama memakai kredensial yang sama.
+const BULK_SKIP_BRAND = new Set([
+  "ont_login_rejected",
+  "ont_locked",
+  "credentials_required",
+]);
+// Bisa sembuh sendiri: modem/jaringan sibuk atau lambat.
+const BULK_RETRY = new Set([
+  "ont_timeout",
+  "ont_unreachable",
+  "ont_session_busy",
+  "ont_failed",
+  "ip_lookup_failed",
+  "BACKEND_UNREACHABLE",
+  "network",
+]);
+
+/**
+ * Tindakan setelah satu modem gagal pada putaran massal.
+ * stop = hentikan putaran; skip-brand = lewati sisa modem merek ini; retry = ulangi modem
+ * ini (sampai BULK_ATTEMPTS); next = lanjut ke modem berikutnya.
+ */
+export function bulkFailureAction(
+  code: string,
+  status: number,
+): "stop" | "skip-brand" | "retry" | "next" {
+  if (status === 403 || BULK_STOP.has(code)) return "stop";
+  if (BULK_SKIP_BRAND.has(code)) return "skip-brand";
+  if (BULK_RETRY.has(code)) return "retry";
+  return "next";
+}
+
 export type BulkMethod = "web" | "olt";
 
 export interface BulkEligibility {
